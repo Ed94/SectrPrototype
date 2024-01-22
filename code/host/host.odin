@@ -33,7 +33,8 @@ VMemChunk :: struct {
 	eng_persistent : mem.Arena,
 	eng_transient  : mem.Arena,
 	env_persistent : mem.Arena,
-	env_transient  : mem.Arena
+	env_transient  : mem.Arena,
+	env_temp       : mem.Arena
 }
 
 setup_engine_memory :: proc () -> VMemChunk
@@ -57,22 +58,29 @@ setup_engine_memory :: proc () -> VMemChunk
 	}
 
 	// For now I'm making persistent sections each 128 meg and transient sections w/e is left over / 2 (one for engine the other for the env)
-	persistent_size := Megabyte * 128
-	transient_size  := (Gigabyte * 2 - persistent_size * 2) / 2
+	persistent_size :: Megabyte * 128 * 2
+	transient_size  :: (Gigabyte * 2 - persistent_size * 2) / 2
+
+	eng_persistent_size :: persistent_size / 4
+	eng_transient_size  :: transient_size  / 4
+
+	env_persistent_size :: persistent_size - eng_persistent_size
+	env_trans_temp_size :: (transient_size  - eng_transient_size) / 2
 
 	block := memory.sarena.curr_block
 
 	// Try to get a slice for each segment
-	eng_persistent_slice := slice_ptr( block.base,                                  persistent_size)
-	eng_transient_slice  := slice_ptr( & eng_persistent_slice[persistent_size - 1], transient_size)
-	env_persistent_slice := slice_ptr( & eng_transient_slice [transient_size - 1],  persistent_size)
-	env_transient_slice  := slice_ptr( & env_persistent_slice[persistent_size -1],  transient_size)
+	eng_persistent_slice := slice_ptr( block.base,                                      eng_persistent_size)
+	eng_transient_slice  := slice_ptr( & eng_persistent_slice[ eng_persistent_size - 1], eng_transient_size)
+	env_persistent_slice := slice_ptr( & eng_transient_slice [ eng_transient_size  - 1], env_persistent_size)
+	env_transient_slice  := slice_ptr( & env_persistent_slice[ env_persistent_size - 1], env_trans_temp_size)
+	env_temp_slice       := slice_ptr( & env_transient_slice [ env_trans_temp_size - 1], env_trans_temp_size)
 
 	arena_init( & eng_persistent, eng_persistent_slice )
 	arena_init( & eng_transient,  eng_transient_slice  )
 	arena_init( & env_persistent, env_persistent_slice )
 	arena_init( & env_transient,  env_transient_slice  )
-
+	arena_init( & env_temp,       env_temp_slice       )
 	return memory;
 }
 
@@ -141,15 +149,10 @@ main :: proc()
 
 	state : RuntimeState
 	state.running            = true;
-	// state.monitor_id         = monitor_id
-	// state.screen_width       = screen_width
-	// state.screen_height      = screen_height
-	// state.monitor_id         = monitor_id
-	// state.monitor_refresh_hz = monitor_refresh_hz
 	state.memory             = memory
 	state.sectr_api          = sectr_api
 
-	state.sectr_api.startup( & memory.env_persistent, & memory.env_persistent )
+	state.sectr_api.startup( & memory.env_persistent, & memory.env_transient, & memory.env_temp )
 
 	// TODO(Ed) : This should return a end status so that we know the reason the engine stopped.
 	for ; state.running ;

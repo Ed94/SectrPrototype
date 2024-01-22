@@ -23,18 +23,20 @@ ModuleAPI :: struct {
 
 Memory :: struct {
 	persistent : ^ mem.Arena,
-	transient  : ^ mem.Arena
+	transient  : ^ mem.Arena,
+	temp       : ^ mem.Arena
 }
 
 memory : Memory
 
 @export
-startup :: proc( persistent, transient : ^ mem.Arena )
+startup :: proc( persistent, transient, temp : ^ mem.Arena )
 {
-	memory.persistent      = persistent
-	memory.transient       = transient
+	memory.persistent = persistent
+
+	// Anything allocated by default is considered transient.
 	context.allocator      = mem.arena_allocator( transient )
-	context.temp_allocator = mem.arena_allocator( transient )
+	context.temp_allocator = mem.arena_allocator( temp )
 
 	state := cast(^State) memory.persistent
 
@@ -53,7 +55,7 @@ startup :: proc( persistent, transient : ^ mem.Arena )
 	// Basic Font Setup
 	{
 		path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
-		cstr                         := strings.clone_to_cstring(path_rec_mono_semicasual_reg)
+		cstr                         := strings.clone_to_cstring( path_rec_mono_semicasual_reg )
 		font_rec_mono_semicasual_reg  = rl.LoadFontEx( cstr, 24, nil, 0 )
 		delete( cstr)
 
@@ -71,7 +73,7 @@ sectr_shutdown :: proc()
 }
 
 @export
-reload :: proc( persistent, transient : ^ mem.Arena )
+reload :: proc( persistent, transient, temp : ^ mem.Arena )
 {
 	memory.persistent      = persistent
 	memory.transient       = transient

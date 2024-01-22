@@ -1,8 +1,9 @@
 cls
 
-$path_root  = git rev-parse --show-toplevel
-$path_code  = join-path $path_root 'code'
-$path_build = join-path $path_root 'build'
+$path_root       = git rev-parse --show-toplevel
+$path_code       = join-path $path_root 'code'
+$path_build      = join-path $path_root 'build'
+$path_thirdparty = join-path $path_root 'thirdparty'
 
 # Odin Compiler Flags
 
@@ -86,6 +87,12 @@ push-location $path_root
 		$build_args += $flag_pdb_name + $pdb
 
 		& odin $build_args
+
+    $third_party_dlls = Get-ChildItem -Path $path_thirdparty -Filter '*.dll'
+    foreach ($dll in $third_party_dlls) {
+        $destination = join-path $path_build $dll.Name
+        Copy-Item $dll.FullName -Destination $destination -Force
+    }
 
 		Pop-Location
 	}
