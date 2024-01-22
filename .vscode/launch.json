@@ -8,9 +8,9 @@
 			"type": "lldb",
 			"request": "launch",
 			"name": "Debug",
-			"program": "${workspaceFolder}/<executable file>",
+			"program": "${workspaceFolder}/build/sectr_host.exe",
 			"args": [],
-			"cwd": "${workspaceFolder}"
+			"cwd": "${workspaceFolder}/build"
 		}
 	]
 }

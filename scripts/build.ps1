@@ -24,6 +24,7 @@ $flag_show_more_timings                   = '-show-more-timings'
 $flag_thread_count                        = '-thread-count:'
 $flag_collection                          = '-collection:'
 $flag_build_mode                          = '-build-mode:'
+$flag_build_mode_dll                      = '-build-mode:dll'
 $flag_no_bounds_check                     = '-no-bounds-check'
 $flag_disable_assert                      = '-disable-assert'
 $flag_no_thread_local                     = '-no-thread-local'
@@ -58,17 +59,31 @@ push-location $path_root
 		push-location $path_code
 
 		$project_name = 'sectr'
-		$executable = join-path $path_build ($project_name + '.exe')
-		$pdb        = join-path $path_build ($project_name + '.pdb')
+		$executable   = join-path $path_build ($project_name + '_host.exe')
+		$pdb          = join-path $path_build ($project_name + '_host.pdb')
 
 		$build_args = @()
 		$build_args += $flag_build
-		$build_args += '.'
+		$build_args += './host'
 		$build_args += $flag_output_path + $executable
 		$build_args += $flag_optimize_none
 		$build_args += $flag_debug
 		$build_args += $flag_pdb_name + $pdb
 		$build_args += $flag_subsystem + 'windows'
+
+		& odin $build_args
+
+		$module_dll = join-path $path_build ( $project_name + '.dll' )
+		$pdb        = join-path $path_build ( $project_name + '.pdb' )
+
+		$build_args = @()
+		$build_args += $flag_build
+		$build_args += '.'
+		$build_args += $flag_build_mode_dll
+		$build_args += $flag_output_path + $module_dll
+		$build_args += $flag_optimize_none
+		$build_args += $flag_debug
+		$build_args += $flag_pdb_name + $pdb
 
 		& odin $build_args
 

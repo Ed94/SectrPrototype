@@ -1,0 +1,177 @@
+package host
+
+import      "core:dynlib"
+import      "core:io"
+import      "core:fmt"
+import      "core:log"
+import      "core:mem"
+import      "core:mem/virtual"
+	Byte     :: 1
+	Kilobyte :: 1024 * Byte
+	Megabyte :: 1024 * Kilobyte
+	Gigabyte :: 1024 * Megabyte
+	Terabyte :: 1024 * Gigabyte
+	Petabyte :: 1024 * Terabyte
+	Exabyte  :: 1024 * Petabyte
+import       "core:os"
+import       "core:runtime"
+import       "core:strings"
+import rl    "vendor:raylib"
+import sectr "../."
+
+RuntimeState :: struct {
+	running : b32,
+
+
+	memory : VMemChunk,
+
+	sectr_api : sectr.ModuleAPI,
+}
+
+VMemChunk :: struct {
+	sarena         : virtual.Arena,
+	eng_persistent : mem.Arena,
+	eng_transient  : mem.Arena,
+	env_persistent : mem.Arena,
+	env_transient  : mem.Arena
+}
+
+setup_engine_memory :: proc () -> VMemChunk
+{
+	memory : VMemChunk
+	using memory
+
+	arena_init :: mem.arena_init
+	ptr_offset :: mem.ptr_offset
+	slice_ptr  :: mem.slice_ptr
+
+	// Setup the static arena for the entire application
+	if  result := virtual.arena_init_static( & sarena, Gigabyte * 2, Gigabyte * 2 );
+		result != runtime.Allocator_Error.None
+	{
+		// TODO(Ed) : Setup a proper logging interface
+		fmt.    printf( "Failed to allocate memory for the engine" )
+		runtime.debug_trap()
+		os.     exit( -1 )
+		// TODO(Ed) : Figure out the error code enums..
+	}
+
+	// For now I'm making persistent sections each 128 meg and transient sections w/e is left over / 2 (one for engine the other for the env)
+	persistent_size := Megabyte * 128
+	transient_size  := (Gigabyte * 2 - persistent_size * 2) / 2
+
+	block := memory.sarena.curr_block
+
+	// Try to get a slice for each segment
+	eng_persistent_slice := slice_ptr( block.base,                                  persistent_size)
+	eng_transient_slice  := slice_ptr( & eng_persistent_slice[persistent_size - 1], transient_size)
+	env_persistent_slice := slice_ptr( & eng_transient_slice [transient_size - 1],  persistent_size)
+	env_transient_slice  := slice_ptr( & env_persistent_slice[persistent_size -1],  transient_size)
+
+	arena_init( & eng_persistent, eng_persistent_slice )
+	arena_init( & eng_transient,  eng_transient_slice  )
+	arena_init( & env_persistent, env_persistent_slice )
+	arena_init( & env_transient,  env_transient_slice  )
+
+	return memory;
+}
+
+load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
+{
+	loaded_module : sectr.ModuleAPI
+
+	load_time,
+	   result := os.last_write_time_by_name("sectr.dll")
+	if result != os.ERROR_NONE {
+		fmt.    println("Could not resolve the last write time for sectr.dll")
+		runtime.debug_trap()
+		return {}
+	}
+
+	lock_file := fmt.tprintf( "sectr_{0}_locked.dll", version_id )
+	sectr.copy_file_sync( "sectr.dll", lock_file )
+
+	lib, load_result := dynlib.load_library( lock_file )
+	if ! load_result {
+		fmt.    println( "Failed to load the sectr module." )
+		runtime.debug_trap()
+		return {}
+	}
+
+	loaded_module = {
+		lib         = lib,
+		load_time   = load_time,
+		lib_version = version_id,
+
+		startup  = cast( type_of( sectr.startup        )) dynlib.symbol_address( lib, "startup" ),
+		shutdown = cast( type_of( sectr.sectr_shutdown )) dynlib.symbol_address( lib, "sectr_shutdown" ),
+		reload   = cast( type_of( sectr.reload         )) dynlib.symbol_address( lib, "reload" ),
+		update   = cast( type_of( sectr.update         )) dynlib.symbol_address( lib, "update" ),
+		render   = cast( type_of( sectr.render         )) dynlib.symbol_address( lib, "render" )
+	}
+	return loaded_module
+}
+
+main :: proc()
+{
+	fmt.println("Hellope!")
+
+	// Basic Giant VMem Block
+	memory : VMemChunk
+	{
+		// By default odin uses a growing arena for the runtime context
+		// We're going to make it static for the prototype and separate it from the 'project' memory.
+		// Then shove the context allocator for the engine to it.
+		// The project's context will use its own subsection arena allocator.
+		memory                 = setup_engine_memory()
+		context.allocator      = mem.arena_allocator( & memory.eng_persistent )
+		context.temp_allocator = mem.arena_allocator( & memory.eng_transient )
+	}
+
+	// Load the Enviornment API for the first-time
+	sectr_api : sectr.ModuleAPI
+	{
+		   sectr_api = load_sectr_api( 1 )
+		if sectr_api.lib_version == 0 {
+			fmt.    println( "Failed to initially load the sectr module" )
+			runtime.debug_trap()
+			os.     exit( -1 )
+		}
+	}
+
+	state : RuntimeState
+	state.running            = true;
+	// state.monitor_id         = monitor_id
+	// state.screen_width       = screen_width
+	// state.screen_height      = screen_height
+	// state.monitor_id         = monitor_id
+	// state.monitor_refresh_hz = monitor_refresh_hz
+	state.memory             = memory
+	state.sectr_api          = sectr_api
+
+	state.sectr_api.startup( & memory.env_persistent, & memory.env_persistent )
+
+	// TODO(Ed) : This should return a end status so that we know the reason the engine stopped.
+	for ; state.running ;
+	{
+		// Hot-Reload
+		// TODO(ED) : Detect if currently loaded code is outdated.
+		{
+			// state.sectr_api.reload()
+		}
+
+		// Logic Update
+		state.running = state.sectr_api.update()
+
+		// Rendering
+		state.sectr_api.render()
+	}
+
+	// Determine how the run_cyle completed, if it failed due to an error,
+	// fallback the env to a failsafe state and reload the run_cycle.
+	{
+		// TODO(Ed): Implement this.
+	}
+
+	state.sectr_api.shutdown()
+}
