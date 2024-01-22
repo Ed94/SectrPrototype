@@ -11,7 +11,7 @@ Path_Assets :: "../assets/"
 
 ModuleAPI :: struct {
 	lib         : dynlib.Library,
-	load_time   : os.File_Time,
+	write_time  : os.File_Time,
 	lib_version : i32,
 
 	startup  : type_of( startup       ),
@@ -33,22 +33,21 @@ memory : Memory
 startup :: proc( persistent, transient, temp : ^ mem.Arena )
 {
 	memory.persistent = persistent
+	state            := cast(^State) memory.persistent; using state
 
 	// Anything allocated by default is considered transient.
 	context.allocator      = mem.arena_allocator( transient )
 	context.temp_allocator = mem.arena_allocator( temp )
 
-	state := cast(^State) memory.persistent
-
 	// Rough setup of window with rl stuff
-	screen_width  : i32 = 1280
-	screen_height : i32 = 1000
+	screen_width  = 1280
+	screen_height = 1000
 	win_title     : cstring = "Sectr Prototype"
 	rl.InitWindow( screen_width, screen_height, win_title )
 
 	// Determining current monitor and setting the target frametime based on it..
-	monitor_id         := rl.GetCurrentMonitor()
-	monitor_refresh_hz := rl.GetMonitorRefreshRate( monitor_id )
+	monitor_id         = rl.GetCurrentMonitor()
+	monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
 	rl.SetTargetFPS( monitor_refresh_hz )
 	fmt.println( "Set target FPS to: %v", monitor_refresh_hz )
 
@@ -68,7 +67,11 @@ startup :: proc( persistent, transient, temp : ^ mem.Arena )
 @export
 sectr_shutdown :: proc()
 {
-	rl.UnloadFont( font_rec_mono_semicasual_reg )
+	if memory.persistent == nil {
+		return
+	}
+	state := cast( ^ State ) memory.persistent
+	rl.UnloadFont( state.font_rec_mono_semicasual_reg )
 	rl.CloseWindow()
 }
 
@@ -77,21 +80,25 @@ reload :: proc( persistent, transient, temp : ^ mem.Arena )
 {
 	memory.persistent      = persistent
 	memory.transient       = transient
-	context.allocator      = mem.arena_allocator( persistent )
-	context.temp_allocator = mem.arena_allocator( transient )
+	memory.temp            = temp
+	context.allocator      = mem.arena_allocator( transient )
+	context.temp_allocator = mem.arena_allocator( temp )
 }
 
 @export
 update :: proc() -> b32
 {
-	should_shutdown : b32 =  ! cast(b32) rl.WindowShouldClose()
+	state := cast( ^ State ) memory.persistent
+
+	should_shutdown : b32 = ! cast(b32) rl.WindowShouldClose()
 	return should_shutdown
 }
 
-draw_text_y : f32 = 50
 @export
 render :: proc()
 {
+	state := cast( ^ State ) memory.persistent; using state
+
 	rl.BeginDrawing()
 	rl.ClearBackground( Color_BG )
 	defer {
@@ -102,21 +109,22 @@ render :: proc()
 
 	draw_text :: proc( format : string, args : ..any )
 	{
-		@static
-		draw_text_scratch : [Kilobyte * 64]u8
-		if ( draw_text_y > 500 ) {
-			draw_text_y = 50
+		@static draw_text_scratch : [Kilobyte * 64]u8
+
+		state := cast( ^ State ) memory.persistent; using state
+		if ( draw_debug_text_y > 800 ) {
+			draw_debug_text_y = 50
 		}
 
 		content := fmt.bprintf( draw_text_scratch[:], format, ..args )
-		debug_text( content, 25, draw_text_y )
+		debug_text( content, 25, draw_debug_text_y )
 
-		draw_text_y += 16
+		draw_debug_text_y += 16
 	}
 
 	draw_text( "Monitor      : %v", rl.GetMonitorName(0) )
 	draw_text( "Screen Width : %v", rl.GetScreenWidth() )
 	draw_text( "Screen Height: %v", rl.GetScreenHeight() )
 
-	draw_text_y = 50
+	draw_debug_text_y = 50
 }

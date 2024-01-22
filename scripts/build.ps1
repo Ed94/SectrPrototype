@@ -57,22 +57,35 @@ push-location $path_root
 	}
 	function build-prototype
 	{
+		$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
+
 		push-location $path_code
 
 		$project_name = 'sectr'
 		$executable   = join-path $path_build ($project_name + '_host.exe')
 		$pdb          = join-path $path_build ($project_name + '_host.pdb')
 
-		$build_args = @()
-		$build_args += $flag_build
-		$build_args += './host'
-		$build_args += $flag_output_path + $executable
-		$build_args += $flag_optimize_none
-		$build_args += $flag_debug
-		$build_args += $flag_pdb_name + $pdb
-		$build_args += $flag_subsystem + 'windows'
+		if ( -not($host_process_active)) {
+			$build_args = @()
+			$build_args += $flag_build
+			$build_args += './host'
+			$build_args += $flag_output_path + $executable
+			$build_args += $flag_optimize_none
+			$build_args += $flag_debug
+			$build_args += $flag_pdb_name + $pdb
+			$build_args += $flag_subsystem + 'windows'
 
-		& odin $build_args
+			& odin $build_args
+
+			$third_party_dlls = Get-ChildItem -Path $path_thirdparty -Filter '*.dll'
+			foreach ($dll in $third_party_dlls) {
+					$destination = join-path $path_build $dll.Name
+					Copy-Item $dll.FullName -Destination $destination -Force
+			}
+		}
+		else {
+			write-host 'Skipping sectr_host build, process is active'
+		}
 
 		$module_dll = join-path $path_build ( $project_name + '.dll' )
 		$pdb        = join-path $path_build ( $project_name + '.pdb' )
@@ -87,12 +100,6 @@ push-location $path_root
 		$build_args += $flag_pdb_name + $pdb
 
 		& odin $build_args
-
-    $third_party_dlls = Get-ChildItem -Path $path_thirdparty -Filter '*.dll'
-    foreach ($dll in $third_party_dlls) {
-        $destination = join-path $path_build $dll.Name
-        Copy-Item $dll.FullName -Destination $destination -Force
-    }
 
 		Pop-Location
 	}

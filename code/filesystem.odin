@@ -4,9 +4,9 @@ import "core:fmt"
 import "core:os"
 import "core:runtime"
 
-copy_file_sync :: proc( path_src, path_dst: string ) -> bool
+copy_file_sync :: proc( path_src, path_dst: string ) -> b32
 {
-    file_size : i64
+  file_size : i64
 	{
 		path_info, result := os.stat( path_src, context.temp_allocator )
 		if result != os.ERROR_NONE {
@@ -29,5 +29,19 @@ copy_file_sync :: proc( path_src, path_dst: string ) -> bool
 		runtime.debug_trap()
 		return false
 	}
-    return true
+	return true
+}
+
+is_file_locked :: proc( file_path: string ) -> b32 {
+	// Try to open the file for read access without sharing.
+	// If the file is locked, the call will fail.
+	handle, err := os.open(file_path, os.O_RDONLY)
+	if err != os.ERROR_NONE {
+			// If the error indicates the file is in use, return true.
+			return true
+	}
+
+	// If the file opens successfully, close it and return false.
+	os.close(handle)
+	return false
 }
