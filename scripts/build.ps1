@@ -1,9 +1,14 @@
 cls
 
+$incremental_checks = Join-Path $PSScriptRoot 'helpers/incremental_checks.ps1'
+. $incremental_checks
+
 $path_root       = git rev-parse --show-toplevel
-$path_code       = join-path $path_root 'code'
-$path_build      = join-path $path_root 'build'
-$path_thirdparty = join-path $path_root 'thirdparty'
+$path_code       = join-path $path_root       'code'
+$path_build      = join-path $path_root       'build'
+$path_scripts    = join-path $path_root       'scripts'
+$path_thirdparty = join-path $path_root       'thirdparty'
+$path_odin       = join-path $path_thirdparty 'odin'
 
 # Odin Compiler Flags
 
@@ -52,9 +57,16 @@ $flag_use_lld                             = '-lld'
 
 push-location $path_root
 
+	$update_deps = join-path $path_scripts 'update_deps.ps1'
+	$odin        = join-path $path_odin    'odin.exe'
+	write-host 'OdinPATH: ' + $odin
+
 	if ( -not( test-path 'build') ) {
 		new-item -ItemType Directory -Path 'build'
 	}
+
+	& $update_deps
+
 	function build-prototype
 	{
 		$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
@@ -65,7 +77,10 @@ push-location $path_root
 		$executable   = join-path $path_build ($project_name + '_host.exe')
 		$pdb          = join-path $path_build ($project_name + '_host.pdb')
 
-		if ( -not($host_process_active)) {
+		$module_host = join-path $path_code 'host'
+
+		$should_build = check-ModuleForChanges $module_host
+		if ( -not($host_process_active) -and $should_build ) {
 			$build_args = @()
 			$build_args += $flag_build
 			$build_args += './host'
@@ -75,31 +90,31 @@ push-location $path_root
 			$build_args += $flag_pdb_name + $pdb
 			$build_args += $flag_subsystem + 'windows'
 
-			& odin $build_args
-
-			$third_party_dlls = Get-ChildItem -Path $path_thirdparty -Filter '*.dll'
-			foreach ($dll in $third_party_dlls) {
-					$destination = join-path $path_build $dll.Name
-					Copy-Item $dll.FullName -Destination $destination -Force
-			}
+			write-host 'Building Host Module'
+			& $odin $build_args
 		}
 		else {
 			write-host 'Skipping sectr_host build, process is active'
 		}
 
-		$module_dll = join-path $path_build ( $project_name + '.dll' )
-		$pdb        = join-path $path_build ( $project_name + '.pdb' )
+		$module_sectr = $path_code
+		$should_build = check-ModuleForChanges $module_sectr
+		if ( $should_build ) {
+			$module_dll = join-path $path_build ( $project_name + '.dll' )
+			$pdb        = join-path $path_build ( $project_name + '.pdb' )
 
-		$build_args = @()
-		$build_args += $flag_build
-		$build_args += '.'
-		$build_args += $flag_build_mode_dll
-		$build_args += $flag_output_path + $module_dll
-		$build_args += $flag_optimize_none
-		$build_args += $flag_debug
-		$build_args += $flag_pdb_name + $pdb
+			$build_args = @()
+			$build_args += $flag_build
+			$build_args += '.'
+			$build_args += $flag_build_mode_dll
+			$build_args += $flag_output_path + $module_dll
+			$build_args += $flag_optimize_none
+			$build_args += $flag_debug
+			$build_args += $flag_pdb_name + $pdb
 
-		& odin $build_args
+			write-host 'Building Sectr Module'
+			& $odin $build_args
+		}
 
 		Pop-Location
 	}

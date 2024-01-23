@@ -125,6 +125,7 @@ render :: proc()
 	draw_text( "Monitor      : %v", rl.GetMonitorName(0) )
 	draw_text( "Screen Width : %v", rl.GetScreenWidth() )
 	draw_text( "Screen Height: %v", rl.GetScreenHeight() )
+	// draw_text( "HOT RELOAD BITCHES" )
 
 	draw_debug_text_y = 50
 }
