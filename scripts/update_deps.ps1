@@ -34,6 +34,8 @@ if (Test-Path -Path $path_odin)
 			push-location $path_odin
 			& .\build.bat
 			pop-location
+
+			$binaries_dirty = true
 	}
 	else
 	{
@@ -48,16 +50,20 @@ else
 	push-location $path_odin
 	& .\build.bat
 	pop-location
+
+	$binaries_dirty = true
 }
 
 $path_vendor        = join-path $path_odin          'vendor'
 $path_vendor_raylib = join-path $path_vendor        'raylib'
 $path_raylib_dlls   = join-path $path_vendor_raylib 'windows'
 
-$third_party_dlls = Get-ChildItem -Path $path_raylib_dlls -Filter '*.dll'
-foreach ($dll in $third_party_dlls) {
-		$destination = join-path $path_build $dll.Name
-		Copy-Item $dll.FullName -Destination $destination -Force
+if ( $binaries_dirty )
+{
+	$third_party_dlls = Get-ChildItem -Path $path_raylib_dlls -Filter '*.dll'
+	foreach ($dll in $third_party_dlls) {
+			$destination = join-path $path_build $dll.Name
+			Copy-Item $dll.FullName -Destination $destination -Force
+	}
 }
-
 pop-location
