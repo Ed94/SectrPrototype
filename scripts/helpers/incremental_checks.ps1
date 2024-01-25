@@ -52,7 +52,7 @@ function check-ModuleForChanges
 	}
 
 	$file_hashes = @{}
-	get-childitem -path $path_module -recurse -file -Exclude $excludes | foreach-object {
+	get-childitem -path $path_module -file -Exclude $excludes | foreach-object {
 		$id                 = $_.fullname
 		$hash_info          = get-filehash -path $id -Algorithm MD5
 		$file_hashes[ $id ] = $hash_info.Hash

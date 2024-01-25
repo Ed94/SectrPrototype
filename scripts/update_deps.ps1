@@ -50,8 +50,6 @@ else
 	pop-location
 }
 
-write-host 'Odin up to date'
-
 $path_vendor        = join-path $path_odin          'vendor'
 $path_vendor_raylib = join-path $path_vendor        'raylib'
 $path_raylib_dlls   = join-path $path_vendor_raylib 'windows'

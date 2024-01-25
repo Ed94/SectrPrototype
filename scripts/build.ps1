@@ -59,8 +59,6 @@ push-location $path_root
 
 	$update_deps = join-path $path_scripts 'update_deps.ps1'
 	$odin        = join-path $path_odin    'odin.exe'
-	write-host 'OdinPATH: ' + $odin
-
 	if ( -not( test-path 'build') ) {
 		new-item -ItemType Directory -Path 'build'
 	}
@@ -69,18 +67,29 @@ push-location $path_root
 
 	function build-prototype
 	{
-		$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
-
 		push-location $path_code
-
 		$project_name = 'sectr'
-		$executable   = join-path $path_build ($project_name + '_host.exe')
-		$pdb          = join-path $path_build ($project_name + '_host.pdb')
 
-		$module_host = join-path $path_code 'host'
+		write-host "`nBuilding Sectr Prototype"
 
-		$should_build = check-ModuleForChanges $module_host
-		if ( -not($host_process_active) -and $should_build ) {
+		function build-host
+		{
+			$executable   = join-path $path_build ($project_name + '_host.exe')
+			$pdb          = join-path $path_build ($project_name + '_host.pdb')
+			$module_host  = join-path $path_code 'host'
+
+			$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
+			if ( $host_process_active ) {
+				write-host 'Skipping sectr_host build, process is active'
+				return
+			}
+			
+			$should_build = check-ModuleForChanges $module_host
+			if ( -not( $should_build)) {
+				write-host 'Skipping sectr_host build, module up to date'
+				return
+			}
+
 			$build_args = @()
 			$build_args += $flag_build
 			$build_args += './host'
@@ -93,13 +102,17 @@ push-location $path_root
 			write-host 'Building Host Module'
 			& $odin $build_args
 		}
-		else {
-			write-host 'Skipping sectr_host build, process is active'
-		}
+		build-host
 
-		$module_sectr = $path_code
-		$should_build = check-ModuleForChanges $module_sectr
-		if ( $should_build ) {
+		function build-sectr
+		{
+			$module_sectr = $path_code
+			$should_build = check-ModuleForChanges $module_sectr
+			if ( -not( $should_build)) {
+				write-host 'Skipping sectr build, module up to date'
+				return
+			}
+
 			$module_dll = join-path $path_build ( $project_name + '.dll' )
 			$pdb        = join-path $path_build ( $project_name + '.pdb' )
 
@@ -115,6 +128,7 @@ push-location $path_root
 			write-host 'Building Sectr Module'
 			& $odin $build_args
 		}
+		build-sectr
 
 		Pop-Location
 	}

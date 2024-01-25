@@ -33,8 +33,6 @@ copy_file_sync :: proc( path_src, path_dst: string ) -> b32
 }
 
 is_file_locked :: proc( file_path: string ) -> b32 {
-	// Try to open the file for read access without sharing.
-	// If the file is locked, the call will fail.
 	handle, err := os.open(file_path, os.O_RDONLY)
 	if err != os.ERROR_NONE {
 			// If the error indicates the file is in use, return true.

@@ -1,0 +1,7 @@
+{
+	// "ols.server.path": "{workspace"
+	"search.exclude": {
+		"thirdparty/**" : false,
+		"**/thirdparty" : false,
+	}
+}

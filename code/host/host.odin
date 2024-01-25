@@ -20,6 +20,8 @@ import       "core:time"
 import rl    "vendor:raylib"
 import sectr "../."
 
+path_snapshot :: "VMemChunk_1.snapshot"
+
 RuntimeState :: struct {
 	running   : b32,
 	memory    : VMemChunk,
@@ -27,24 +29,29 @@ RuntimeState :: struct {
 }
 
 VMemChunk :: struct {
-	sarena         : virtual.Arena,
-	eng_persistent : mem.Arena,
-	eng_transient  : mem.Arena,
-	env_persistent : mem.Arena,
-	env_transient  : mem.Arena,
-	env_temp       : mem.Arena
+	sarena            : virtual.Arena,
+	host_persistent   : ^ mem.Arena,
+	host_transient    : ^ mem.Arena,
+	sectr_persistent  : ^ mem.Arena,
+	sectr_transient   : ^ mem.Arena,
+	sectr_temp        : ^ mem.Arena,
+
+	// snapshot : 
 }
 
 setup_engine_memory :: proc () -> VMemChunk
 {
 	memory : VMemChunk; using memory
 
+	Arena      :: mem.Arena
 	arena_init :: mem.arena_init
 	ptr_offset :: mem.ptr_offset
 	slice_ptr  :: mem.slice_ptr
 
+	chunk_size :: 2 * Gigabyte
+
 	// Setup the static arena for the entire application
-	if  result := virtual.arena_init_static( & sarena, Gigabyte * 2, Gigabyte * 2 );
+	if  result := virtual.arena_init_static( & sarena, chunk_size, chunk_size );
 		result != runtime.Allocator_Error.None
 	{
 		// TODO(Ed) : Setup a proper logging interface
@@ -54,29 +61,44 @@ setup_engine_memory :: proc () -> VMemChunk
 		// TODO(Ed) : Figure out the error code enums..
 	}
 
-	// For now I'm making persistent sections each 128 meg and transient sections w/e is left over / 2 (one for engine the other for the env)
-	persistent_size     :: Megabyte * 128 * 2
-	transient_size      :: (Gigabyte * 2 - persistent_size * 2) / 2
-	eng_persistent_size :: persistent_size / 4
-	eng_transient_size  :: transient_size  / 4
-	env_persistent_size :: persistent_size - eng_persistent_size
-	env_trans_temp_size :: (transient_size  - eng_transient_size) / 2
+	arena_size :: size_of( Arena)
+
+	persistent_size       :: Megabyte * 128 * 2
+	transient_size        :: (chunk_size - persistent_size * 2) / 2
+	host_persistent_size  :: persistent_size / 4 - arena_size
+	host_transient_size   :: transient_size  / 4 - arena_size
+	sectr_persistent_size :: persistent_size - host_persistent_size - arena_size
+	sectr_trans_temp_size :: (transient_size - host_transient_size) / 2 - arena_size
 
 	block := memory.sarena.curr_block
 
-	// Try to get a slice for each segment
-	eng_persistent_slice := slice_ptr( block.base,                                       eng_persistent_size)
-	eng_transient_slice  := slice_ptr( & eng_persistent_slice[ eng_persistent_size - 1], eng_transient_size)
-	env_persistent_slice := slice_ptr( & eng_transient_slice [ eng_transient_size  - 1], env_persistent_size)
-	env_transient_slice  := slice_ptr( & env_persistent_slice[ env_persistent_size - 1], env_trans_temp_size)
-	env_temp_slice       := slice_ptr( & env_transient_slice [ env_trans_temp_size - 1], env_trans_temp_size)
-	arena_init( & eng_persistent, eng_persistent_slice )
-	arena_init( & eng_transient,  eng_transient_slice  )
-	arena_init( & env_persistent, env_persistent_slice )
-	arena_init( & env_transient,  env_transient_slice  )
-	arena_init( & env_temp,       env_temp_slice       )
+	// We assign the beginning of the block to be the host's persistent memory's arena.
+	// Then we offset past the arena and determine its slice to be the amount left after for the size of host's persistent.
+	host_persistent        = cast( ^ Arena ) block.base
+	host_persistent_slice := slice_ptr( ptr_offset( block.base, arena_size), host_persistent_size)
+	arena_init( host_persistent, host_persistent_slice )
+
+	// Initialize a sub-section of our virtual memory as a sub-arena
+	sub_arena_init :: proc( address : ^ byte, size : int ) -> ( ^ Arena) {
+		sub_arena := cast( ^ Arena ) address
+		mem_slice := slice_ptr( ptr_offset( address, arena_size), size )
+		arena_init( sub_arena, mem_slice )
+		return sub_arena
+	}
+
+	// Helper to get the the beginning of memory after a slice
+	next :: proc( slice : []byte ) -> ( ^ byte) {
+		return ptr_offset( & slice[0], len(slice) )
+	}
+
+	host_transient   = sub_arena_init( next( host_persistent.data),  host_transient_size)
+	sectr_persistent = sub_arena_init( next( host_transient.data),   sectr_persistent_size)
+	sectr_transient  = sub_arena_init( next( sectr_persistent.data), sectr_trans_temp_size)
+	sectr_temp       = sub_arena_init( next( sectr_transient.data),  sectr_trans_temp_size)
 	return memory;
 }
+
+setup_snapshot_memory :: proc ()
 
 load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 {
@@ -126,7 +148,7 @@ load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 		shutdown = shutdown,
 		reload   = reload,
 		update   = update,
-		render   = render
+		render   = render,
 	}
 	return loaded_module
 }
@@ -153,8 +175,8 @@ main :: proc()
 		// Then shove the context allocator for the engine to it.
 		// The project's context will use its own subsection arena allocator.
 		memory                 = setup_engine_memory()
-		context.allocator      = mem.arena_allocator( & memory.eng_persistent )
-		context.temp_allocator = mem.arena_allocator( & memory.eng_transient )
+		context.allocator      = mem.arena_allocator( memory.host_persistent )
+		context.temp_allocator = mem.arena_allocator( memory.host_transient )
 	}
 
 	// Load the Enviornment API for the first-time
@@ -170,7 +192,7 @@ main :: proc()
 	running            = true;
 	memory             = memory
 	sectr_api          = sectr_api
-	sectr_api.startup( & memory.env_persistent, & memory.env_transient, & memory.env_temp )
+	sectr_api.startup( memory.sectr_persistent, memory.sectr_transient, memory.sectr_temp )
 
 	// TODO(Ed) : This should have an end status so that we know the reason the engine stopped.
 	for ; running ;
@@ -185,7 +207,7 @@ main :: proc()
 			// Wait for pdb to unlock (linker may still be writting)
 			for ; sectr.is_file_locked( "sectr.pdb" ); {
 			}
-			time.sleep( time.Millisecond )
+			time.sleep( time.Second * 10 )
 
 			sectr_api = load_sectr_api( version_id )
 			if sectr_api.lib_version == 0 {
@@ -193,13 +215,13 @@ main :: proc()
 				runtime.debug_trap()
 				os.exit(-1)
 			}
-			sectr_api.reload( & memory.env_persistent, & memory.env_transient, & memory.env_temp )
+			sectr_api.reload( memory.sectr_persistent, memory.sectr_transient, memory.sectr_temp )
 		}
 
 		running = sectr_api.update()
 		sectr_api.render()
 
-		free_all( mem.arena_allocator( & memory.env_temp ) )
+		free_all( mem.arena_allocator( memory.sectr_temp ) )
 		// free_all( mem.arena_allocator( & memory.env_transient ) )
 	}
 
