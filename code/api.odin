@@ -36,8 +36,8 @@ startup :: proc( persistent, transient, temp : ^ mem.Arena )
 	state            := cast(^State) memory.persistent; using state
 
 	// Anything allocated by default is considered transient.
-	context.allocator      = mem.arena_allocator( transient )
-	context.temp_allocator = mem.arena_allocator( temp )
+	// context.allocator      = mem.arena_allocator( transient )
+	// context.temp_allocator = mem.arena_allocator( temp )
 
 	// Rough setup of window with rl stuff
 	screen_width  = 1280
@@ -125,7 +125,7 @@ render :: proc()
 	draw_text( "Monitor      : %v", rl.GetMonitorName(0) )
 	draw_text( "Screen Width : %v", rl.GetScreenWidth() )
 	draw_text( "Screen Height: %v", rl.GetScreenHeight() )
-	// draw_text( "HOT RELOAD BITCHES" )
+	draw_text( "HOT RELOAD BITCHES" )
 
 	draw_debug_text_y = 50
 }

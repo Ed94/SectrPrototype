@@ -83,7 +83,7 @@ push-location $path_root
 				write-host 'Skipping sectr_host build, process is active'
 				return
 			}
-			
+
 			$should_build = check-ModuleForChanges $module_host
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr_host build, module up to date'

@@ -207,7 +207,7 @@ main :: proc()
 			// Wait for pdb to unlock (linker may still be writting)
 			for ; sectr.is_file_locked( "sectr.pdb" ); {
 			}
-			time.sleep( time.Second * 10 )
+			time.sleep( time.Millisecond )
 
 			sectr_api = load_sectr_api( version_id )
 			if sectr_api.lib_version == 0 {
