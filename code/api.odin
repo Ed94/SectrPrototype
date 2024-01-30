@@ -65,8 +65,8 @@ startup :: proc( live_mem, snapshot_mem : ^ virtual.Arena )
 		transient  = tracked_allocator_init_vmem( transient_slice,  internals_size )
 		temp       = tracked_allocator_init_vmem( temp_slice ,      internals_size )
 
-		// context.allocator      = tracked_allocator( transient )
-		// context.temp_allocator = tracked_allocator( temp )
+		context.allocator      = tracked_allocator( transient )
+		context.temp_allocator = tracked_allocator( temp )
 	}
 	state := new( State, tracked_allocator( memory.persistent ) )
 	using state
@@ -163,8 +163,6 @@ render :: proc()
 
 		draw_debug_text_y += 16
 	}
-
-	// draw_text( "Hot-Reload Count : %v", -1 )
 
 	draw_text( "Screen Width : %v", rl.GetScreenWidth() )
 	draw_text( "Screen Height: %v", rl.GetScreenHeight() )

@@ -54,7 +54,7 @@ tracked_allocator :: proc ( self : ^ TrackedAllocator ) -> mem.Allocator {
 	return mem.tracking_allocator( & self.tracker )
 }
 
-tracked_allocator_init :: proc( size, internals_size : int ) -> TrackedAllocator
+tracked_allocator_init :: proc( size, internals_size : int, allocator := context.allocator ) -> TrackedAllocator
 {
 	result : TrackedAllocator
 
@@ -69,7 +69,7 @@ tracked_allocator_init :: proc( size, internals_size : int ) -> TrackedAllocator
 	internals_size          := internals_size + arena_size
 	raw_size                := backing_size + internals_size
 
-	raw_mem, raw_mem_code := mem.alloc( raw_size )
+	raw_mem, raw_mem_code := mem.alloc( raw_size, mem.DEFAULT_ALIGNMENT, allocator )
 	if ( raw_mem_code != mem.Allocator_Error.None )
 	{
 		// TODO(Ed) : Setup a proper logging interface

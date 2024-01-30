@@ -14,7 +14,6 @@
             "path": "C:/projects/SectrPrototype/code"
         }
     ],
-    "enable_format": false,
     "enable_document_symbols": true,
     "enable_semantic_tokens": false,
     "enable_hover": true,
