@@ -3,11 +3,20 @@
     "collections": [
         {
             "name": "core",
-            "path": "C:\\apps\\Microsoft VS Code\\core"
+            "path": "C:/projects/SectrPrototype/thirdparty/Odin/core"
+        },
+        {
+            "name": "vendor",
+            "path": "C:/projects/SectrPrototype/thirdparty/Odin/vendor"
+        },
+        {
+            "name": "code",
+            "path": "C:/projects/SectrPrototype/code"
         }
     ],
+    "enable_format": false,
     "enable_document_symbols": true,
-    "enable_semantic_tokens": true,
+    "enable_semantic_tokens": false,
     "enable_hover": true,
     "enable_snippets": true
 }
