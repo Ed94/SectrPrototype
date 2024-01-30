@@ -20,7 +20,17 @@ import       "core:time"
 import rl    "vendor:raylib"
 import sectr "../."
 
+TrackedAllocator       :: sectr.TrackedAllocator
+tracked_allocator      :: sectr.tracked_allocator
+tracked_allocator_init :: sectr.tracked_allocator_init
+
 path_snapshot :: "VMemChunk_1.snapshot"
+when ODIN_OS == runtime.Odin_OS_Type.Windows
+{
+	path_sectr_module        :: "sectr.dll"
+	path_sectr_live_module   :: "sectr_live.dll"
+	path_sectr_debug_symbols :: "sectr.pdb"
+}
 
 RuntimeState :: struct {
 	running   : b32,
@@ -29,76 +39,45 @@ RuntimeState :: struct {
 }
 
 VMemChunk :: struct {
-	sarena            : virtual.Arena,
-	host_persistent   : ^ mem.Arena,
-	host_transient    : ^ mem.Arena,
-	sectr_persistent  : ^ mem.Arena,
-	sectr_transient   : ^ mem.Arena,
-	sectr_temp        : ^ mem.Arena,
-
-	// snapshot : 
+	og_allocator            : mem.Allocator,
+	og_temp_allocator       : mem.Allocator,
+	host_persistent         : TrackedAllocator,
+	host_transient          : TrackedAllocator,
+	sectr_live              : virtual.Arena,
+	sectr_snapshot          : virtual.Arena
 }
 
-setup_engine_memory :: proc () -> VMemChunk
+setup_memory :: proc () -> VMemChunk
 {
+	Arena              :: mem.Arena
+	Tracking_Allocator :: mem.Tracking_Allocator
 	memory : VMemChunk; using memory
 
-	Arena      :: mem.Arena
-	arena_init :: mem.arena_init
-	ptr_offset :: mem.ptr_offset
-	slice_ptr  :: mem.slice_ptr
+	host_persistent_size :: 32 * Megabyte
+	host_transient_size  :: 96 * Megabyte
+	internals_size       :: 4  * Megabyte
 
-	chunk_size :: 2 * Gigabyte
+	host_persistent = tracked_allocator_init( host_persistent_size, internals_size )
+	host_transient  = tracked_allocator_init( host_transient_size,  internals_size )
 
 	// Setup the static arena for the entire application
-	if  result := virtual.arena_init_static( & sarena, chunk_size, chunk_size );
-		result != runtime.Allocator_Error.None
+	if  result := virtual.arena_init_static( & sectr_live, sectr.memory_chunk_size, sectr.memory_chunk_size );
+		  result != runtime.Allocator_Error.None
 	{
 		// TODO(Ed) : Setup a proper logging interface
-		fmt.    printf( "Failed to allocate memory for the engine" )
+		fmt.    printf( "Failed to allocate memory for the sectr module" )
 		runtime.debug_trap()
 		os.     exit( -1 )
 		// TODO(Ed) : Figure out the error code enums..
 	}
 
-	arena_size :: size_of( Arena)
-
-	persistent_size       :: Megabyte * 128 * 2
-	transient_size        :: (chunk_size - persistent_size * 2) / 2
-	host_persistent_size  :: persistent_size / 4 - arena_size
-	host_transient_size   :: transient_size  / 4 - arena_size
-	sectr_persistent_size :: persistent_size - host_persistent_size - arena_size
-	sectr_trans_temp_size :: (transient_size - host_transient_size) / 2 - arena_size
-
-	block := memory.sarena.curr_block
-
-	// We assign the beginning of the block to be the host's persistent memory's arena.
-	// Then we offset past the arena and determine its slice to be the amount left after for the size of host's persistent.
-	host_persistent        = cast( ^ Arena ) block.base
-	host_persistent_slice := slice_ptr( ptr_offset( block.base, arena_size), host_persistent_size)
-	arena_init( host_persistent, host_persistent_slice )
-
-	// Initialize a sub-section of our virtual memory as a sub-arena
-	sub_arena_init :: proc( address : ^ byte, size : int ) -> ( ^ Arena) {
-		sub_arena := cast( ^ Arena ) address
-		mem_slice := slice_ptr( ptr_offset( address, arena_size), size )
-		arena_init( sub_arena, mem_slice )
-		return sub_arena
-	}
-
-	// Helper to get the the beginning of memory after a slice
-	next :: proc( slice : []byte ) -> ( ^ byte) {
-		return ptr_offset( & slice[0], len(slice) )
-	}
-
-	host_transient   = sub_arena_init( next( host_persistent.data),  host_transient_size)
-	sectr_persistent = sub_arena_init( next( host_transient.data),   sectr_persistent_size)
-	sectr_transient  = sub_arena_init( next( sectr_persistent.data), sectr_trans_temp_size)
-	sectr_temp       = sub_arena_init( next( sectr_transient.data),  sectr_trans_temp_size)
+	// Reassign default allocators for host
+	memory.og_allocator      = context.allocator
+	memory.og_temp_allocator = context.temp_allocator
+	context.allocator        = tracked_allocator( & memory.host_persistent )
+	context.temp_allocator   = tracked_allocator( & memory.host_transient )
 	return memory;
 }
-
-setup_snapshot_memory :: proc ()
 
 load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 {
@@ -112,28 +91,31 @@ load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 		return {}
 	}
 
-	lock_file := fmt.tprintf( "sectr_{0}_locked.dll", version_id )
-	sectr.copy_file_sync( "sectr.dll", lock_file )
+	live_file := path_sectr_live_module
+	sectr.copy_file_sync( path_sectr_module, live_file )
 
-	lib, load_result := dynlib.load_library( lock_file )
+	lib, load_result := dynlib.load_library( live_file )
 	if ! load_result {
+		// TODO(Ed) : Setup a proper logging interface
 		fmt.    println( "Failed to load the sectr module." )
 		runtime.debug_trap()
 		return {}
 	}
 
-	startup  := cast( type_of( sectr.startup        )) dynlib.symbol_address( lib, "startup" )
-	shutdown := cast( type_of( sectr.sectr_shutdown )) dynlib.symbol_address( lib, "sectr_shutdown" )
-	reload   := cast( type_of( sectr.reload         )) dynlib.symbol_address( lib, "reload" )
-	update   := cast( type_of( sectr.update         )) dynlib.symbol_address( lib, "update" )
-	render   := cast( type_of( sectr.render         )) dynlib.symbol_address( lib, "render" )
+	startup    := cast( type_of( sectr.startup        )) dynlib.symbol_address( lib, "startup" )
+	shutdown   := cast( type_of( sectr.sectr_shutdown )) dynlib.symbol_address( lib, "sectr_shutdown" )
+	reload     := cast( type_of( sectr.reload         )) dynlib.symbol_address( lib, "reload" )
+	update     := cast( type_of( sectr.update         )) dynlib.symbol_address( lib, "update" )
+	render     := cast( type_of( sectr.render         )) dynlib.symbol_address( lib, "render" )
+	clean_temp := cast( type_of( sectr.clean_temp     )) dynlib.symbol_address( lib, "clean_temp" )
 
 	missing_symbol : b32 = false
-	if startup  == nil do fmt.println("Failed to load sectr.startup symbol")
-	if shutdown == nil do fmt.println("Failed to load sectr.shutdown symbol")
-	if reload   == nil do fmt.println("Failed to load sectr.reload symbol")
-	if update   == nil do fmt.println("Failed to load sectr.update symbol")
-	if render   == nil do fmt.println("Failed to load sectr.render symbol")
+	if startup    == nil do fmt.println("Failed to load sectr.startup symbol")
+	if shutdown   == nil do fmt.println("Failed to load sectr.shutdown symbol")
+	if reload     == nil do fmt.println("Failed to load sectr.reload symbol")
+	if update     == nil do fmt.println("Failed to load sectr.update symbol")
+	if render     == nil do fmt.println("Failed to load sectr.render symbol")
+	if clean_temp == nil do fmt.println("Failed to load sector.clean_temp symbol")
 	if missing_symbol {
 		runtime.debug_trap()
 		return {}
@@ -144,21 +126,44 @@ load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 		write_time  = write_time,
 		lib_version = version_id,
 
-		startup  = startup,
-		shutdown = shutdown,
-		reload   = reload,
-		update   = update,
-		render   = render,
+		startup    = startup,
+		shutdown   = shutdown,
+		reload     = reload,
+		update     = update,
+		render     = render,
+		clean_temp = clean_temp,
 	}
 	return loaded_module
 }
 
 unload_sectr_api :: proc ( module : ^ sectr.ModuleAPI )
 {
-	lock_file := fmt.tprintf( "sectr_{0}_locked.dll", module.lib_version )
 	dynlib.unload_library( module.lib )
-	// os.remove( lock_file )
+	os.remove( path_sectr_live_module )
 	module^ = {}
+}
+
+sync_sectr_api :: proc ( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk )
+{
+	if write_time, result := os.last_write_time_by_name( path_sectr_module );
+	result == os.ERROR_NONE && sectr_api.write_time != write_time
+	{
+		version_id := sectr_api.lib_version + 1
+		unload_sectr_api( sectr_api )
+
+		// Wait for pdb to unlock (linker may still be writting)
+		for ; sectr.is_file_locked( path_sectr_debug_symbols ) && sectr.is_file_locked( path_sectr_live_module ); {}
+		time.sleep( time.Millisecond )
+
+		sectr_api ^ = load_sectr_api( version_id )
+		if sectr_api.lib_version == 0 {
+			fmt.println("Failed to hot-reload the sectr module")
+			runtime.debug_trap()
+			os.exit(-1)
+			// TODO(Ed) : Figure out the error code enums..
+		}
+		sectr_api.reload( & memory.sectr_live, & memory.sectr_snapshot )
+	}
 }
 
 main :: proc()
@@ -174,55 +179,35 @@ main :: proc()
 		// We're going to make it static for the prototype and separate it from the 'project' memory.
 		// Then shove the context allocator for the engine to it.
 		// The project's context will use its own subsection arena allocator.
-		memory                 = setup_engine_memory()
-		context.allocator      = mem.arena_allocator( memory.host_persistent )
-		context.temp_allocator = mem.arena_allocator( memory.host_transient )
+		memory = setup_memory()
 	}
 
 	// Load the Enviornment API for the first-time
 	{
 		   sectr_api = load_sectr_api( 1 )
 		if sectr_api.lib_version == 0 {
+			// TODO(Ed) : Setup a proper logging interface
 			fmt.    println( "Failed to initially load the sectr module" )
 			runtime.debug_trap()
 			os.     exit( -1 )
+			// TODO(Ed) : Figure out the error code enums..
 		}
 	}
 
 	running            = true;
 	memory             = memory
 	sectr_api          = sectr_api
-	sectr_api.startup( memory.sectr_persistent, memory.sectr_transient, memory.sectr_temp )
+	sectr_api.startup( & memory.sectr_live, & memory.sectr_snapshot )
 
 	// TODO(Ed) : This should have an end status so that we know the reason the engine stopped.
 	for ; running ;
 	{
 		// Hot-Reload
-		if write_time, result := os.last_write_time_by_name("sectr.dll");
-			result == os.ERROR_NONE && sectr_api.write_time != write_time
-		{
-			version_id := sectr_api.lib_version + 1
-			unload_sectr_api( & sectr_api )
-
-			// Wait for pdb to unlock (linker may still be writting)
-			for ; sectr.is_file_locked( "sectr.pdb" ); {
-			}
-			time.sleep( time.Millisecond )
-
-			sectr_api = load_sectr_api( version_id )
-			if sectr_api.lib_version == 0 {
-				fmt.println("Failed to hot-reload the sectr module")
-				runtime.debug_trap()
-				os.exit(-1)
-			}
-			sectr_api.reload( memory.sectr_persistent, memory.sectr_transient, memory.sectr_temp )
-		}
+		sync_sectr_api( & sectr_api, & memory )
 
 		running = sectr_api.update()
-		sectr_api.render()
-
-		free_all( mem.arena_allocator( memory.sectr_temp ) )
-		// free_all( mem.arena_allocator( & memory.env_transient ) )
+		          sectr_api.render()
+		          sectr_api.clean_temp()
 	}
 
 	// Determine how the run_cyle completed, if it failed due to an error,

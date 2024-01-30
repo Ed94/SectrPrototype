@@ -3,7 +3,9 @@ package sectr
 import    "core:dynlib"
 import    "core:fmt"
 import    "core:mem"
+import    "core:mem/virtual"
 import    "core:os"
+import    "core:slice"
 import    "core:strings"
 import rl "vendor:raylib"
 
@@ -14,30 +16,60 @@ ModuleAPI :: struct {
 	write_time  : os.File_Time,
 	lib_version : i32,
 
-	startup  : type_of( startup       ),
-	shutdown : type_of( sectr_shutdown),
-	reload   : type_of( reload        ),
-	update   : type_of( update        ),
-	render   : type_of( render        )
+	startup    : type_of( startup ),
+	shutdown   : type_of( sectr_shutdown),
+	reload     : type_of( reload ),
+	update     : type_of( update ),
+	render     : type_of( render ),
+	clean_temp : type_of( clean_temp ),
 }
 
+memory_chunk_size      :: 2 * Gigabyte
+memory_persistent_size :: 128 * Megabyte
+memory_trans_temp_size :: (memory_chunk_size - memory_persistent_size ) / 2
+
 Memory :: struct {
-	persistent : ^ mem.Arena,
-	transient  : ^ mem.Arena,
-	temp       : ^ mem.Arena
+	live       : ^ virtual.Arena,
+	snapshot   : ^ virtual.Arena,
+	persistent : ^ TrackedAllocator,
+	transient  : ^ TrackedAllocator,
+	temp       : ^ TrackedAllocator
 }
 
 memory : Memory
 
 @export
-startup :: proc( persistent, transient, temp : ^ mem.Arena )
+startup :: proc( live_mem, snapshot_mem : ^ virtual.Arena )
 {
-	memory.persistent = persistent
-	state            := cast(^State) memory.persistent; using state
+	// Setup memory for the first time
+	{
+		Arena              :: mem.Arena
+		Tracking_Allocator :: mem.Tracking_Allocator
+		arena_allocator    :: mem.arena_allocator
+		arena_init         :: mem.arena_init
+		slice_ptr          :: mem.slice_ptr
 
-	// Anything allocated by default is considered transient.
-	// context.allocator      = mem.arena_allocator( transient )
-	// context.temp_allocator = mem.arena_allocator( temp )
+		arena_size     :: size_of( mem.Arena)
+		internals_size :: 4 * Megabyte
+
+		using memory;
+		block := live_mem.curr_block
+
+		persistent_slice := slice_ptr( block.base, memory_persistent_size )
+		transient_slice  := slice_ptr( memory_after( persistent_slice), memory_trans_temp_size )
+		temp_slice       := slice_ptr( memory_after( transient_slice),  memory_trans_temp_size )
+
+		// We assign the beginning of the block to be the host's persistent memory's arena.
+		// Then we offset past the arena and determine its slice to be the amount left after for the size of host's persistent.
+		persistent = tracked_allocator_init_vmem( persistent_slice, internals_size )
+		transient  = tracked_allocator_init_vmem( transient_slice,  internals_size )
+		temp       = tracked_allocator_init_vmem( temp_slice ,      internals_size )
+
+		// context.allocator      = tracked_allocator( transient )
+		// context.temp_allocator = tracked_allocator( temp )
+	}
+	state := new( State, tracked_allocator( memory.persistent ) )
+	using state
 
 	// Rough setup of window with rl stuff
 	screen_width  = 1280
@@ -70,25 +102,35 @@ sectr_shutdown :: proc()
 	if memory.persistent == nil {
 		return
 	}
-	state := cast( ^ State ) memory.persistent
+	state := get_state()
 	rl.UnloadFont( state.font_rec_mono_semicasual_reg )
 	rl.CloseWindow()
 }
 
 @export
-reload :: proc( persistent, transient, temp : ^ mem.Arena )
+reload :: proc( live_mem, snapshot_mem : ^ virtual.Arena )
 {
-	memory.persistent      = persistent
-	memory.transient       = transient
-	memory.temp            = temp
-	context.allocator      = mem.arena_allocator( transient )
-	context.temp_allocator = mem.arena_allocator( temp )
+	Arena              :: mem.Arena
+	Tracking_Allocator :: mem.Tracking_Allocator
+	arena_allocator    :: mem.arena_allocator
+	slice_ptr          :: mem.slice_ptr
+
+	using memory;
+	block := live_mem.curr_block
+
+	persistent_slice := slice_ptr( block.base, memory_persistent_size )
+	transient_slice  := slice_ptr( memory_after( persistent_slice), memory_trans_temp_size )
+	temp_slice       := slice_ptr( memory_after( transient_slice),  memory_trans_temp_size )
+
+	persistent = cast( ^TrackedAllocator ) & persistent_slice[0]
+	transient  = cast( ^TrackedAllocator ) & transient_slice[0]
+	temp       = cast( ^TrackedAllocator ) & temp_slice[0]
 }
 
 @export
 update :: proc() -> b32
 {
-	state := cast( ^ State ) memory.persistent
+	state := get_state(); using state
 
 	should_shutdown : b32 = ! cast(b32) rl.WindowShouldClose()
 	return should_shutdown
@@ -97,7 +139,7 @@ update :: proc() -> b32
 @export
 render :: proc()
 {
-	state := cast( ^ State ) memory.persistent; using state
+	state := get_state(); using state
 
 	rl.BeginDrawing()
 	rl.ClearBackground( Color_BG )
@@ -111,7 +153,7 @@ render :: proc()
 	{
 		@static draw_text_scratch : [Kilobyte * 64]u8
 
-		state := cast( ^ State ) memory.persistent; using state
+		state := get_state(); using state
 		if ( draw_debug_text_y > 800 ) {
 			draw_debug_text_y = 50
 		}
@@ -122,10 +164,21 @@ render :: proc()
 		draw_debug_text_y += 16
 	}
 
-	draw_text( "Monitor      : %v", rl.GetMonitorName(0) )
+	// draw_text( "Hot-Reload Count : %v", -1 )
+
 	draw_text( "Screen Width : %v", rl.GetScreenWidth() )
 	draw_text( "Screen Height: %v", rl.GetScreenHeight() )
-	// draw_text( "HOT RELOAD BITCHES" )
 
 	draw_debug_text_y = 50
+}
+
+@export
+clean_temp :: proc()
+{
+	mem.tracking_allocator_clear( & memory.temp.tracker )
+}
+
+get_state :: proc() -> (^ State)
+{
+	return cast(^ State) raw_data( memory.persistent.backing.data )
 }

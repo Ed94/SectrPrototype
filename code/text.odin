@@ -12,7 +12,7 @@ debug_text :: proc( content : string, x, y : f32, size : f32 = 16.0, color : rl.
 
 	font := font
 	if ( font.chars == nil ) {
-		font = ( cast( ^ State) memory.persistent ).default_font
+		font = get_state().default_font
 	}
 
 	rl.DrawTextCodepoints( font,
