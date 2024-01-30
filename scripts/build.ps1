@@ -63,8 +63,6 @@ push-location $path_root
 		new-item -ItemType Directory -Path 'build'
 	}
 
-	& $update_deps
-
 	function build-prototype
 	{
 		push-location $path_code
@@ -89,6 +87,8 @@ push-location $path_root
 				write-host 'Skipping sectr_host build, module up to date'
 				return
 			}
+
+			& $update_deps
 
 			$build_args = @()
 			$build_args += $flag_build
