@@ -1,5 +1,22 @@
 package sectr
 
+import "core:mem/virtual"
+
+memory : Memory
+
+memory_chunk_size      :: 2 * Gigabyte
+memory_persistent_size :: 128 * Megabyte
+memory_trans_temp_size :: (memory_chunk_size - memory_persistent_size ) / 2
+
+Memory :: struct {
+	live       : ^ virtual.Arena,
+	snapshot   : ^ virtual.Arena,
+	persistent : ^ TrackedAllocator,
+	transient  : ^ TrackedAllocator,
+	temp       : ^ TrackedAllocator
+}
+
+
 State :: struct {
 	project : Project,
 

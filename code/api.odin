@@ -24,31 +24,11 @@ ModuleAPI :: struct {
 	clean_temp : type_of( clean_temp ),
 }
 
-memory_chunk_size      :: 2 * Gigabyte
-memory_persistent_size :: 128 * Megabyte
-memory_trans_temp_size :: (memory_chunk_size - memory_persistent_size ) / 2
-
-Memory :: struct {
-	live       : ^ virtual.Arena,
-	snapshot   : ^ virtual.Arena,
-	persistent : ^ TrackedAllocator,
-	transient  : ^ TrackedAllocator,
-	temp       : ^ TrackedAllocator
-}
-
-memory : Memory
-
 @export
 startup :: proc( live_mem, snapshot_mem : ^ virtual.Arena )
 {
 	// Setup memory for the first time
 	{
-		Arena              :: mem.Arena
-		Tracking_Allocator :: mem.Tracking_Allocator
-		arena_allocator    :: mem.arena_allocator
-		arena_init         :: mem.arena_init
-		slice_ptr          :: mem.slice_ptr
-
 		arena_size     :: size_of( mem.Arena)
 		internals_size :: 4 * Megabyte
 
@@ -110,11 +90,6 @@ sectr_shutdown :: proc()
 @export
 reload :: proc( live_mem, snapshot_mem : ^ virtual.Arena )
 {
-	Arena              :: mem.Arena
-	Tracking_Allocator :: mem.Tracking_Allocator
-	arena_allocator    :: mem.arena_allocator
-	slice_ptr          :: mem.slice_ptr
-
 	using memory;
 	block := live_mem.curr_block
 
