@@ -299,7 +299,8 @@ poll_input :: proc( old, new : ^ InputState )
 	{
 		check_range :: proc( old, new : ^ InputState, start, end : i32 )
 		{
-			for id := start; id < end; id += 1 {
+			for id := start; id < end; id += 1
+			{
 				// TODO(Ed) : LOOK OVER THIS...
 				entry_old := & old.keyboard.keys[id - 1]
 				entry_new := & new.keyboard.keys[id - 1]
@@ -329,7 +330,8 @@ poll_input :: proc( old, new : ^ InputState )
 	// Mouse
 	{
 		// Process Buttons
-		for id : i32 = 0; id < i32(MouseBtn.count); id += 1 {
+		for id : i32 = 0; id < i32(MouseBtn.count); id += 1
+		{
 			old_btn := & old.mouse.btns[id]
 			new_btn := & new.mouse.btns[id]
 
@@ -353,7 +355,11 @@ record_input :: proc( replay_file : os.Handle, input : ^ InputState ) {
 
 play_input :: proc( replay_file : os.Handle, input : ^ InputState ) {
 	raw_data := slice_ptr( transmute(^ byte) input, size_of(InputState) )
-	os.read( replay_file, raw_data )
+	total_read, result_code := os.read( replay_file, raw_data )
+	if result_code == os.ERROR_HANDLE_EOF {
+		rewind( replay_file )
+		load_snapshot( & memory.snapshot[0] )
+	}
 }
 
 to_raylib_key :: proc ( key : i32 ) -> rl.KeyboardKey {

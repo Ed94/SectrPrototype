@@ -19,7 +19,9 @@ Memory :: struct {
 	snapshot   : []u8,
 	persistent : ^ TrackedAllocator,
 	transient  : ^ TrackedAllocator,
-	temp       : ^ TrackedAllocator
+	temp       : ^ TrackedAllocator,
+
+	replay : ReplayState
 }
 
 State :: struct {
@@ -28,7 +30,6 @@ State :: struct {
 	input_prev : ^ InputState,
 	input      : ^ InputState,
 
-	replay : ReplayState,
 	debug  : DebugData,
 
 	project : Project,
@@ -66,7 +67,7 @@ DebugData :: struct {
 	draw_debug_text_y : f32,
 
 	mouse_vis : b32,
-	mouse_pos : vec3,
+	mouse_pos : vec2,
 }
 
 DebugActions :: struct {
@@ -84,11 +85,11 @@ poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 	using actions
 	using input
 
-	base_replay_bind := pressed(keyboard.right_alt) && pressed( keyboard.L)
-	record_replay     = base_replay_bind && pressed(keyboard.right_shift)
-	play_replay       = base_replay_bind
+	base_replay_bind := keyboard.right_alt.ended_down && pressed( keyboard.L)
+	record_replay     = base_replay_bind &&   keyboard.right_shift.ended_down
+	play_replay       = base_replay_bind && ! keyboard.right_shift.ended_down
 
-	show_mouse_pos = pressed(keyboard.right_alt) && pressed(keyboard.M)
+	show_mouse_pos = keyboard.right_alt.ended_down && pressed(keyboard.M)
 }
 
 save_snapshot :: proc( snapshot : [^]u8 ) {
@@ -115,14 +116,16 @@ ReplayState :: struct {
 
 replay_recording_begin :: proc( path : string )
 {
-	result := os.remove( path )
-	if ( result != os.ERROR_NONE )
-	{
-			// TODO(Ed) : Setup a proper logging interface
-			fmt.    printf( "Failed to delete replay file before beginning a new one" )
-			runtime.debug_trap()
-			os.     exit( -1 )
-			// TODO(Ed) : Figure out the error code enums..
+	if file_exists( path ) {
+		result := os.remove( path )
+		if ( result != os.ERROR_NONE )
+		{
+				// TODO(Ed) : Setup a proper logging interface
+				fmt.    printf( "Failed to delete replay file before beginning a new one" )
+				runtime.debug_trap()
+				os.     exit( -1 )
+				// TODO(Ed) : Figure out the error code enums..
+		}
 	}
 
 	replay_file, open_error := os.open( path, os.O_RDWR | os.O_CREATE )
@@ -134,15 +137,18 @@ replay_recording_begin :: proc( path : string )
 		os.     exit( -1 )
 		// TODO(Ed) : Figure out the error code enums..
 	}
+	os.seek( replay_file, 0, 0 )
 
-	state := get_state(); using state
+	replay := & memory.replay
 	replay.active_file = replay_file
 	replay.mode        = ReplayMode.Record
 }
 
 replay_recording_end :: proc() {
-	state := get_state(); using state
+	replay := & memory.replay
 	replay.mode = ReplayMode.Off
+
+	os.seek( replay.active_file, 0, 0 )
 	os.close( replay.active_file )
 }
 
@@ -167,14 +173,17 @@ replay_playback_begin :: proc( path : string )
 		// TODO(Ed) : Figure out the error code enums..
 	}
 	// TODO(Ed): WE need to wrap any actions that can throw a fatal like this. Files need a grime wrap.
+	os.seek( replay_file, 0, 0 )
 
-	state := get_state(); using state
+	replay := & memory.replay
 	replay.active_file = replay_file
 	replay.mode = ReplayMode.Playback
 }
 
 replay_playback_end :: proc() {
-	state := get_state(); using state
+	input := get_state().input
+	replay := & memory.replay
 	replay.mode = ReplayMode.Off
+	os.seek( replay.active_file, 0, 0 )
 	os.close( replay.active_file )
 }

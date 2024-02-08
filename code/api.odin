@@ -37,6 +37,9 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8 )
 		using memory;
 		block := live_mem.curr_block
 
+		live     = live_mem
+		snapshot = snapshot_mem
+
 		persistent_slice := slice_ptr( block.base, memory_persistent_size )
 		transient_slice  := slice_ptr( memory_after( persistent_slice), memory_trans_temp_size )
 		temp_slice       := slice_ptr( memory_after( transient_slice),  memory_trans_temp_size )
@@ -91,7 +94,7 @@ sectr_shutdown :: proc()
 
 	// Replay
 	{
-		os.close( state.replay.active_file )
+		os.close( memory.replay.active_file )
 	}
 
 	// Raylib
@@ -107,6 +110,9 @@ reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8 )
 	using memory;
 	block := live_mem.curr_block
 
+	live     = live_mem
+	snapshot = snapshot_mem
+
 	persistent_slice := slice_ptr( block.base, memory_persistent_size )
 	transient_slice  := slice_ptr( memory_after( persistent_slice), memory_trans_temp_size )
 	temp_slice       := slice_ptr( memory_after( transient_slice),  memory_trans_temp_size )
@@ -114,8 +120,6 @@ reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8 )
 	persistent = cast( ^TrackedAllocator ) & persistent_slice[0]
 	transient  = cast( ^TrackedAllocator ) & transient_slice[0]
 	temp       = cast( ^TrackedAllocator ) & temp_slice[0]
-
-	snapshot = snapshot_mem
 }
 
 // TODO(Ed) : This lang really not have a fucking swap?
@@ -126,12 +130,13 @@ swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 @export
 update :: proc() -> b32
 {
-	state := get_state(); using state
+	state  := get_state(); using state
+	replay := & memory.replay
 
 	state.input, state.input_prev = swap( state.input, state.input_prev )
 	poll_input( state.input_prev, state.input )
 
-	debug_actions : DebugActions
+	debug_actions : DebugActions = {}
 	poll_debug_actions( & debug_actions, state.input )
 
 	// Input Replay
@@ -147,36 +152,48 @@ update :: proc() -> b32
 			}
 		}}
 
+		DO_NOT_CONTINUE : b32 = false
+
 		if debug_actions.play_replay { switch replay.mode
 		{
 			case ReplayMode.Off : {
-				replay_playback_begin( Path_Input_Replay )
+				if ! file_exists( Path_Input_Replay ) {
+					save_snapshot( & memory.snapshot[0] )
+					replay_recording_begin( Path_Input_Replay )
+					break
+				}
+				else {
+					load_snapshot( & memory.snapshot[0] )
+					replay_playback_begin( Path_Input_Replay )
+					break
+				}
 			}
 			case ReplayMode.Playback : {
 				replay_playback_end()
 				load_snapshot( & memory.snapshot[0] )
+				break
 			}
 			case ReplayMode.Record : {
-				replay_recording_end( )
+				replay_recording_end()
 				load_snapshot( & memory.snapshot[0] )
 				replay_playback_begin( Path_Input_Replay )
+				break
 			}
 		}}
 
-		if replay.loop_active
-		{
-			if replay.mode == ReplayMode.Record {
-				record_input( replay.active_file, input )
-			}
-			else if replay.mode == ReplayMode.Playback {
-				play_input( replay.active_file, input )
-			}
+		if replay.mode == ReplayMode.Record {
+			record_input( replay.active_file, input )
+		}
+		else if replay.mode == ReplayMode.Playback {
+			play_input( replay.active_file, input )
 		}
 	}
 
 	if debug_actions.show_mouse_pos {
 		debug.mouse_vis = !debug.mouse_vis
 	}
+
+	debug.mouse_pos.basis = { input.mouse.X, input.mouse.Y }
 
 	should_shutdown : b32 = ! cast(b32) rl.WindowShouldClose()
 	return should_shutdown
@@ -185,7 +202,8 @@ update :: proc() -> b32
 @export
 render :: proc()
 {
-	state := get_state(); using state
+	state  := get_state(); using state
+	replay := & memory.replay
 
 	rl.BeginDrawing()
 	rl.ClearBackground( Color_BG )
@@ -213,16 +231,18 @@ render :: proc()
 	draw_text( "Screen Width : %v", rl.GetScreenWidth () )
 	draw_text( "Screen Height: %v", rl.GetScreenHeight() )
 
-	if pressed( input.keyboard.M ) {
-		draw_text( "M Prssed" )
+	if replay.mode == ReplayMode.Record {
+		draw_text( "Recording Input")
 	}
-	if pressed( input.keyboard.right_alt ) {
-		draw_text( "Alt Pressed")
+	if replay.mode == ReplayMode.Playback {
+		draw_text( "Replaying Input")
 	}
 
 	if debug.mouse_vis {
 		width : f32 = 32
 		pos   := debug.mouse_pos
+
+		draw_text( "Position: %v", rl.GetMousePosition() )
 
 		mouse_rect : rl.Rectangle
 		mouse_rect.x      = pos.x - width/2

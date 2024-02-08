@@ -62,7 +62,9 @@ setup_memory :: proc () -> VMemChunk
 
 	// Setup the static arena for the entire application
 	{
-		result := virtual.arena_init_static( & sectr_live, sectr.memory_chunk_size, sectr.memory_chunk_size )
+		base_address : rawptr = transmute( rawptr) u64(Terabyte * 2)
+
+		result := arena_init_static( & sectr_live, base_address, sectr.memory_chunk_size, sectr.memory_chunk_size )
 		if result != runtime.Allocator_Error.None
 		{
 			// TODO(Ed) : Setup a proper logging interface
@@ -86,7 +88,12 @@ setup_memory :: proc () -> VMemChunk
 			os.     exit( -1 )
 			// TODO(Ed) : Figure out the error code enums..
 		}
-		file_resize( snapshot_file, sectr.memory_chunk_size )
+		file_info, stat_code := os.stat( path_snapshot )
+		{
+			if file_info.size != sectr.memory_chunk_size {
+				file_resize( snapshot_file, sectr.memory_chunk_size )
+			}
+		}
 
 		map_error : virtual.Map_File_Error
 		sectr_snapshot, map_error = virtual.map_file_from_file_descriptor( uintptr(snapshot_file), { virtual.Map_File_Flag.Read, virtual.Map_File_Flag.Write } )

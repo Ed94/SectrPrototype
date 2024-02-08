@@ -52,3 +52,14 @@ is_file_locked :: proc( file_path : string ) -> b32 {
 	os.close(handle)
 	return false
 }
+
+rewind :: proc ( file : os.Handle ) {
+	os.seek( file, 0, 0 )
+}
+
+read_looped :: proc ( file : os.Handle, data : []byte ) {
+	total_read, result_code := os.read( file, data )
+	if result_code == os.ERROR_HANDLE_EOF {
+		rewind( file )
+	}
+}
