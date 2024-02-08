@@ -1,5 +1,6 @@
 package host
 
+import       "base:runtime"
 import      "core:dynlib"
 import      "core:io"
 import      "core:fmt"
@@ -14,7 +15,6 @@ import      "core:mem/virtual"
 	Petabyte :: 1024 * Terabyte
 	Exabyte  :: 1024 * Petabyte
 import       "core:os"
-import       "core:runtime"
 import       "core:strings"
 import       "core:time"
 import rl    "vendor:raylib"
@@ -44,7 +44,7 @@ VMemChunk :: struct {
 	host_persistent         : TrackedAllocator,
 	host_transient          : TrackedAllocator,
 	sectr_live              : virtual.Arena,
-	sectr_snapshot          : virtual.Arena
+	sectr_snapshot          : []u8
 }
 
 setup_memory :: proc () -> VMemChunk
@@ -61,14 +61,45 @@ setup_memory :: proc () -> VMemChunk
 	host_transient  = tracked_allocator_init( host_transient_size,  internals_size )
 
 	// Setup the static arena for the entire application
-	if  result := virtual.arena_init_static( & sectr_live, sectr.memory_chunk_size, sectr.memory_chunk_size );
-		  result != runtime.Allocator_Error.None
 	{
-		// TODO(Ed) : Setup a proper logging interface
-		fmt.    printf( "Failed to allocate memory for the sectr module" )
-		runtime.debug_trap()
-		os.     exit( -1 )
-		// TODO(Ed) : Figure out the error code enums..
+		result := virtual.arena_init_static( & sectr_live, sectr.memory_chunk_size, sectr.memory_chunk_size )
+		if result != runtime.Allocator_Error.None
+		{
+			// TODO(Ed) : Setup a proper logging interface
+			fmt.    printf( "Failed to allocate live memory for the sectr module" )
+			runtime.debug_trap()
+			os.     exit( -1 )
+			// TODO(Ed) : Figure out the error code enums..
+		}
+	}
+
+	// Setup memory mapped io for snapshots
+	{
+		file_resize :: os.ftruncate
+
+		snapshot_file, open_error := os.open( path_snapshot, os.O_RDWR | os.O_CREATE )
+		if ( open_error != os.ERROR_NONE )
+		{
+			// TODO(Ed) : Setup a proper logging interface
+			fmt.    printf( "Failed to open snapshot file for the sectr module" )
+			runtime.debug_trap()
+			os.     exit( -1 )
+			// TODO(Ed) : Figure out the error code enums..
+		}
+		file_resize( snapshot_file, sectr.memory_chunk_size )
+
+		map_error : virtual.Map_File_Error
+		sectr_snapshot, map_error = virtual.map_file_from_file_descriptor( uintptr(snapshot_file), { virtual.Map_File_Flag.Read, virtual.Map_File_Flag.Write } )
+		if map_error != virtual.Map_File_Error.None
+		{
+			// TODO(Ed) : Setup a proper logging interface
+			fmt.    printf( "Failed to allocate snapshot memory for the sectr module" )
+			runtime.debug_trap()
+			os.     exit( -1 )
+			// TODO(Ed) : Figure out the error code enums..
+		}
+
+		os.close(snapshot_file)
 	}
 
 	// Reassign default allocators for host
@@ -162,7 +193,7 @@ sync_sectr_api :: proc ( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk )
 			os.exit(-1)
 			// TODO(Ed) : Figure out the error code enums..
 		}
-		sectr_api.reload( & memory.sectr_live, & memory.sectr_snapshot )
+		sectr_api.reload( memory.sectr_live, memory.sectr_snapshot )
 	}
 }
 
@@ -197,7 +228,7 @@ main :: proc()
 	running            = true;
 	memory             = memory
 	sectr_api          = sectr_api
-	sectr_api.startup( & memory.sectr_live, & memory.sectr_snapshot )
+	sectr_api.startup( memory.sectr_live, memory.sectr_snapshot )
 
 	// TODO(Ed) : This should have an end status so that we know the reason the engine stopped.
 	for ; running ;

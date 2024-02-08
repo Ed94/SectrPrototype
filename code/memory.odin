@@ -1,3 +1,4 @@
+// TODO(Ed) : Move this to a grime package problably
 package sectr
 
 import "core:fmt"

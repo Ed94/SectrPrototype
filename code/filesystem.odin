@@ -1,3 +1,4 @@
+// TODO(Ed) : Move this to a grime package
 package sectr
 
 import "core:fmt"
@@ -32,7 +33,15 @@ copy_file_sync :: proc( path_src, path_dst: string ) -> b32
 	return true
 }
 
-is_file_locked :: proc( file_path: string ) -> b32 {
+file_exists :: proc ( file_path : string ) -> b32 {
+	path_info, result := os.stat( file_path, context.temp_allocator )
+	if result != os.ERROR_NONE {
+		return false
+	}
+	return true;
+}
+
+is_file_locked :: proc( file_path : string ) -> b32 {
 	handle, err := os.open(file_path, os.O_RDONLY)
 	if err != os.ERROR_NONE {
 			// If the error indicates the file is in use, return true.
