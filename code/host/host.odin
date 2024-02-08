@@ -62,7 +62,7 @@ setup_memory :: proc () -> VMemChunk
 
 	// Setup the static arena for the entire application
 	{
-		base_address : rawptr = transmute( rawptr) u64(Terabyte * 2)
+		base_address : rawptr = transmute( rawptr) u64(Terabyte * 1)
 
 		result := arena_init_static( & sectr_live, base_address, sectr.memory_chunk_size, sectr.memory_chunk_size )
 		if result != runtime.Allocator_Error.None
@@ -206,8 +206,6 @@ sync_sectr_api :: proc ( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk )
 
 main :: proc()
 {
-	fmt.println("Hellope!")
-
 	state : RuntimeState
 	using state
 
