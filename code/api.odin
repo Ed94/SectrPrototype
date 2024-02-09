@@ -27,8 +27,11 @@ ModuleAPI :: struct {
 }
 
 @export
-startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8 )
+startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ Logger )
 {
+	init( & memory.logger, "Sectr", host_logger.file_path, host_logger.file )
+	context.logger = to_odin_logger( & memory.logger )
+
 	// Setup memory for the first time
 	{
 		arena_size     :: size_of( mem.Arena)
@@ -53,6 +56,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8 )
 		context.allocator      = tracked_allocator( transient )
 		context.temp_allocator = tracked_allocator( temp )
 	}
+
 	state := new( State, tracked_allocator( memory.persistent ) )
 	using state
 
@@ -64,12 +68,13 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8 )
 	screen_height = 1000
 	win_title     : cstring = "Sectr Prototype"
 	rl.InitWindow( screen_width, screen_height, win_title )
+	log( "Raylib initialized and window opened" )
 
 	// Determining current monitor and setting the target frametime based on it..
 	monitor_id         = rl.GetCurrentMonitor    ()
 	monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
 	rl.SetTargetFPS( monitor_refresh_hz )
-	fmt.println( "Set target FPS to: %v", monitor_refresh_hz )
+	log( fmt.tprintf( "Set target FPS to: %v", monitor_refresh_hz ) )
 
 	// Basic Font Setup
 	{
@@ -80,6 +85,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8 )
 
 		rl.GuiSetFont( font_rec_mono_semicasual_reg ) // TODO(Ed) : Does this do anything?
 		default_font = font_rec_mono_semicasual_reg
+		log( "Default font loaded" )
 	}
 }
 
@@ -102,10 +108,11 @@ sectr_shutdown :: proc()
 		rl.UnloadFont ( state.font_rec_mono_semicasual_reg )
 		rl.CloseWindow()
 	}
+	log("Module shutdown complete")
 }
 
 @export
-reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8 )
+reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ Logger )
 {
 	using memory;
 	block := live_mem.curr_block
@@ -120,6 +127,8 @@ reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8 )
 	persistent = cast( ^TrackedAllocator ) & persistent_slice[0]
 	transient  = cast( ^TrackedAllocator ) & transient_slice[0]
 	temp       = cast( ^TrackedAllocator ) & temp_slice[0]
+
+	log("Module reloaded")
 }
 
 // TODO(Ed) : This lang really not have a fucking swap?
@@ -152,32 +161,26 @@ update :: proc() -> b32
 			}
 		}}
 
-		DO_NOT_CONTINUE : b32 = false
-
 		if debug_actions.play_replay { switch replay.mode
 		{
 			case ReplayMode.Off : {
 				if ! file_exists( Path_Input_Replay ) {
 					save_snapshot( & memory.snapshot[0] )
 					replay_recording_begin( Path_Input_Replay )
-					break
 				}
 				else {
 					load_snapshot( & memory.snapshot[0] )
 					replay_playback_begin( Path_Input_Replay )
-					break
 				}
 			}
 			case ReplayMode.Playback : {
 				replay_playback_end()
 				load_snapshot( & memory.snapshot[0] )
-				break
 			}
 			case ReplayMode.Record : {
 				replay_recording_end()
 				load_snapshot( & memory.snapshot[0] )
 				replay_playback_begin( Path_Input_Replay )
-				break
 			}
 		}}
 

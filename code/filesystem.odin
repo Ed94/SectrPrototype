@@ -11,7 +11,7 @@ copy_file_sync :: proc( path_src, path_dst: string ) -> b32
 	{
 		path_info, result := os.stat( path_src, context.temp_allocator )
 		if result != os.ERROR_NONE {
-			fmt.println("Error getting file info: ", result )
+			logf("Could not get file info: %v", result, LogLevel.Error )
 			return false
 		}
 		file_size = path_info.size
@@ -19,14 +19,14 @@ copy_file_sync :: proc( path_src, path_dst: string ) -> b32
 
 	src_content, result := os.read_entire_file( path_src, context.temp_allocator )
 	if ! result {
-		fmt.println( "Failed to read file to copy" )
+		logf( "Failed to read file to copy: %v", path_src, LogLevel.Error )
 		runtime.debug_trap()
 		return false
 	}
 
 	result = os.write_entire_file( path_dst, src_content, false )
 	if ! result {
-		fmt.println( "Failed to copy file")
+		logf( "Failed to copy file: %v", path_dst, LogLevel.Error )
 		runtime.debug_trap()
 		return false
 	}

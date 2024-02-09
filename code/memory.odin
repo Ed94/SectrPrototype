@@ -34,6 +34,7 @@ tracked_allocator :: proc ( self : ^ TrackedAllocator ) -> Allocator {
 	return tracking_allocator( & self.tracker )
 }
 
+// TODO(Ed): These allocators are bad... not sure why.
 tracked_allocator_init :: proc( size, internals_size : int, allocator := context.allocator ) -> TrackedAllocator
 {
 	result : TrackedAllocator
@@ -44,20 +45,22 @@ tracked_allocator_init :: proc( size, internals_size : int, allocator := context
 	raw_size       := backing_size + internals_size
 
 	raw_mem, raw_mem_code := alloc( raw_size, mem.DEFAULT_ALIGNMENT, allocator )
-	if ( raw_mem_code != mem.Allocator_Error.None )
-	{
-		// TODO(Ed) : Setup a proper logging interface
-		fmt.    printf( "Failed to allocate memory for the TrackingAllocator" )
-		runtime.debug_trap()
-		os.     exit( -1 )
-		// TODO(Ed) : Figure out the error code enums..
-	}
-	arena_init( & result.backing,   slice_ptr( cast( ^ byte) raw_mem,              backing_size   ) )
-	arena_init( & result.internals, slice_ptr( memory_after( result.backing.data), internals_size ) )
+	verify( raw_mem_code != mem.Allocator_Error.None, "Failed to allocate memory for the TrackingAllocator" )
+
+	backing_slice   := slice_ptr( cast( ^ byte) raw_mem,        backing_size )
+	internals_slice := slice_ptr( memory_after( backing_slice), internals_size )
+
+	arena_init( & result.backing,   backing_slice )
+	arena_init( & result.internals, internals_slice )
 
 	backing_allocator   := arena_allocator( & result.backing )
 	internals_allocator := arena_allocator( & result.internals )
 	tracking_allocator_init( & result.tracker, backing_allocator, internals_allocator )
+	{
+		tracker_arena := cast(^Arena) result.tracker.backing.data
+		arena_len     := len( tracker_arena.data )
+		verify( arena_len != len(result.backing.data), "BAD SIZE ON TRACKER'S ARENA" )
+	}
 	return result
 }
 
@@ -68,14 +71,7 @@ tracked_allocator_init_vmem :: proc( vmem : [] byte, internals_size : int ) -> ^
 	backing_size            := len(vmem)    - internals_size
 	raw_size                := backing_size + internals_size
 
-	if backing_size < 0 || len(vmem) < raw_size
-	{
-		// TODO(Ed) : Setup a proper logging interface
-		fmt.    printf( "Provided virtual memory slice is not large enough to hold the TrackedAllocator" )
-		runtime.debug_trap()
-		os.     exit( -1 )
-		// TODO(Ed) : Figure out the error code enums..
-	}
+	verify( backing_size < 0 || len(vmem) < raw_size, "Provided virtual memory slice is not large enough to hold the TrackedAllocator" )
 
 	result       := cast( ^ TrackedAllocator) & vmem[0]
 	result_slice := slice_ptr( & vmem[0], tracking_allocator_size )

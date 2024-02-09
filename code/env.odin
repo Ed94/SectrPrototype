@@ -21,7 +21,8 @@ Memory :: struct {
 	transient  : ^ TrackedAllocator,
 	temp       : ^ TrackedAllocator,
 
-	replay : ReplayState
+	replay : ReplayState,
+	logger : Logger,
 }
 
 State :: struct {
@@ -93,6 +94,11 @@ poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 }
 
 save_snapshot :: proc( snapshot : [^]u8 ) {
+	state := get_state() 
+
+	// state.font_rec_mono_semicasual_reg
+	// state.default_font
+
 	live_ptr := cast( ^ rawptr ) memory.live.curr_block.base
 	mem.copy_non_overlapping( & snapshot[0], live_ptr, memory_chunk_size )
 }
@@ -118,25 +124,12 @@ replay_recording_begin :: proc( path : string )
 {
 	if file_exists( path ) {
 		result := os.remove( path )
-		if ( result != os.ERROR_NONE )
-		{
-				// TODO(Ed) : Setup a proper logging interface
-				fmt.    printf( "Failed to delete replay file before beginning a new one" )
-				runtime.debug_trap()
-				os.     exit( -1 )
-				// TODO(Ed) : Figure out the error code enums..
-		}
+		verify( result != os.ERROR_NONE, "Failed to delete replay file before beginning a new one" )
 	}
 
 	replay_file, open_error := os.open( path, os.O_RDWR | os.O_CREATE )
-	if ( open_error != os.ERROR_NONE )
-	{
-		// TODO(Ed) : Setup a proper logging interface
-		fmt.    printf( "Failed to create or open the replay file" )
-		runtime.debug_trap()
-		os.     exit( -1 )
-		// TODO(Ed) : Figure out the error code enums..
-	}
+	verify( open_error != os.ERROR_NONE, "Failed to create or open the replay file" )
+
 	os.seek( replay_file, 0, 0 )
 
 	replay := & memory.replay
@@ -154,34 +147,20 @@ replay_recording_end :: proc() {
 
 replay_playback_begin :: proc( path : string )
 {
-	if ! file_exists( path )
-	{
-				// TODO(Ed) : Setup a proper logging interface
-				fmt.    printf( "Failed to create or open the replay file" )
-				runtime.debug_trap()
-				os.     exit( -1 )
-				// TODO(Ed) : Figure out the error code enums..
-	}
+	verify( ! file_exists( path ), "Failed to find replay file" )
 
 	replay_file, open_error := os.open( path, os.O_RDWR | os.O_CREATE )
-	if ( open_error != os.ERROR_NONE )
-	{
-		// TODO(Ed) : Setup a proper logging interface
-		fmt.    printf( "Failed to create or open the replay file" )
-		runtime.debug_trap()
-		os.     exit( -1 )
-		// TODO(Ed) : Figure out the error code enums..
-	}
-	// TODO(Ed): WE need to wrap any actions that can throw a fatal like this. Files need a grime wrap.
+	verify( open_error != os.ERROR_NONE, "Failed to create or open the replay file" )
+
 	os.seek( replay_file, 0, 0 )
 
 	replay := & memory.replay
 	replay.active_file = replay_file
-	replay.mode = ReplayMode.Playback
+	replay.mode        = ReplayMode.Playback
 }
 
 replay_playback_end :: proc() {
-	input := get_state().input
+	input  := get_state().input
 	replay := & memory.replay
 	replay.mode = ReplayMode.Off
 	os.seek( replay.active_file, 0, 0 )

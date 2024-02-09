@@ -2,11 +2,13 @@
 // This was made becaause odin didn't expose the base_address param that virtual alloc allows.
 package host
 
+import "base:runtime"
 import "core:mem"
 import "core:mem/virtual"
 
 import win32 "core:sys/windows"
 
+when ODIN_OS == runtime.Odin_OS_Type.Windows {
 @(private="file")
 virtual_Platform_Memory_Block :: struct {
 	block:      virtual.Memory_Block,
@@ -123,4 +125,7 @@ arena_init_static :: proc(arena: ^virtual.Arena, base_address : rawptr,
 	arena.total_used     = 0
 	arena.total_reserved = arena.curr_block.reserved
 	return
+}
+
+// END WINDOWS CHECK WRAP
 }

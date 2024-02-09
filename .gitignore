@@ -2,3 +2,4 @@ build/**
 *.exe
 thirdparty/**
 ~thirdparty/odin/core/**
+logs

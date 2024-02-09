@@ -16,7 +16,7 @@ btn_pressed :: proc( btn : DigitalBtn ) -> b32 {
 }
 
 pressed :: proc {
-	btn_pressed
+	btn_pressed,
 }
 
 MaxKeyboardKeys :: 256
@@ -286,7 +286,7 @@ poll_input :: proc( old, new : ^ InputState )
 	input_process_digital_btn :: proc ( old_state, new_state : ^ DigitalBtn, is_down : b32 )
 	{
 		new_state.ended_down = is_down
-		had_transition      := old_state.ended_down != new_state.ended_down
+		had_transition := old_state.ended_down != new_state.ended_down
 		if had_transition {
 			new_state.half_transitions += 1
 		}
@@ -477,7 +477,7 @@ to_raylib_key :: proc ( key : i32 ) -> rl.KeyboardKey {
 		rl.KeyboardKey.KP_SUBTRACT,
 		rl.KeyboardKey.KP_MULTIPLY,
 		rl.KeyboardKey.KP_DIVIDE,
-		rl.KeyboardKey.KP_ENTER
+		rl.KeyboardKey.KP_ENTER 
 	}
 	return raylib_key_lookup_table[ key ]
 }

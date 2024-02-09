@@ -15,6 +15,7 @@ import      "core:mem/virtual"
 	Petabyte :: 1024 * Terabyte
 	Exabyte  :: 1024 * Petabyte
 import       "core:os"
+	file_resize :: os.ftruncate
 import       "core:strings"
 import       "core:time"
 import rl    "vendor:raylib"
@@ -24,9 +25,15 @@ TrackedAllocator       :: sectr.TrackedAllocator
 tracked_allocator      :: sectr.tracked_allocator
 tracked_allocator_init :: sectr.tracked_allocator_init
 
+LogLevel :: sectr.LogLevel
+log      :: sectr.log
+fatal    :: sectr.fatal
+verify   :: sectr.verify
+
 path_snapshot :: "VMemChunk_1.snapshot"
 when ODIN_OS == runtime.Odin_OS_Type.Windows
 {
+	path_logs                :: "../logs"
 	path_sectr_module        :: "sectr.dll"
 	path_sectr_live_module   :: "sectr_live.dll"
 	path_sectr_debug_symbols :: "sectr.pdb"
@@ -65,29 +72,14 @@ setup_memory :: proc () -> VMemChunk
 		base_address : rawptr = transmute( rawptr) u64(Terabyte * 1)
 
 		result := arena_init_static( & sectr_live, base_address, sectr.memory_chunk_size, sectr.memory_chunk_size )
-		if result != runtime.Allocator_Error.None
-		{
-			// TODO(Ed) : Setup a proper logging interface
-			fmt.    printf( "Failed to allocate live memory for the sectr module" )
-			runtime.debug_trap()
-			os.     exit( -1 )
-			// TODO(Ed) : Figure out the error code enums..
-		}
+		verify( result != runtime.Allocator_Error.None, "Failed to allocate live memory for the sectr module" )
 	}
 
 	// Setup memory mapped io for snapshots
 	{
-		file_resize :: os.ftruncate
-
 		snapshot_file, open_error := os.open( path_snapshot, os.O_RDWR | os.O_CREATE )
-		if ( open_error != os.ERROR_NONE )
-		{
-			// TODO(Ed) : Setup a proper logging interface
-			fmt.    printf( "Failed to open snapshot file for the sectr module" )
-			runtime.debug_trap()
-			os.     exit( -1 )
-			// TODO(Ed) : Figure out the error code enums..
-		}
+		verify( open_error != os.ERROR_NONE, "Failed to open snapshot file for the sectr module" )
+
 		file_info, stat_code := os.stat( path_snapshot )
 		{
 			if file_info.size != sectr.memory_chunk_size {
@@ -95,16 +87,10 @@ setup_memory :: proc () -> VMemChunk
 			}
 		}
 
-		map_error : virtual.Map_File_Error
-		sectr_snapshot, map_error = virtual.map_file_from_file_descriptor( uintptr(snapshot_file), { virtual.Map_File_Flag.Read, virtual.Map_File_Flag.Write } )
-		if map_error != virtual.Map_File_Error.None
-		{
-			// TODO(Ed) : Setup a proper logging interface
-			fmt.    printf( "Failed to allocate snapshot memory for the sectr module" )
-			runtime.debug_trap()
-			os.     exit( -1 )
-			// TODO(Ed) : Figure out the error code enums..
-		}
+		map_error                : virtual.Map_File_Error
+		map_flags                : virtual.Map_File_Flags = { virtual.Map_File_Flag.Read, virtual.Map_File_Flag.Write }
+		sectr_snapshot, map_error = virtual.map_file_from_file_descriptor( uintptr(snapshot_file), map_flags )
+		verify( map_error != virtual.Map_File_Error.None, "Failed to allocate snapshot memory for the sectr module" )
 
 		os.close(snapshot_file)
 	}
@@ -112,8 +98,7 @@ setup_memory :: proc () -> VMemChunk
 	// Reassign default allocators for host
 	memory.og_allocator      = context.allocator
 	memory.og_temp_allocator = context.temp_allocator
-	context.allocator        = tracked_allocator( & memory.host_persistent )
-	context.temp_allocator   = tracked_allocator( & memory.host_transient )
+	log("Memory setup")
 	return memory;
 }
 
@@ -121,10 +106,9 @@ load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 {
 	loaded_module : sectr.ModuleAPI
 
-	write_time,
-	   result := os.last_write_time_by_name("sectr.dll")
+	write_time, result := os.last_write_time_by_name("sectr.dll")
 	if result != os.ERROR_NONE {
-		fmt.    println("Could not resolve the last write time for sectr.dll")
+		log( "Could not resolve the last write time for sectr.dll", LogLevel.Warning )
 		runtime.debug_trap()
 		return {}
 	}
@@ -134,8 +118,7 @@ load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 
 	lib, load_result := dynlib.load_library( live_file )
 	if ! load_result {
-		// TODO(Ed) : Setup a proper logging interface
-		fmt.    println( "Failed to load the sectr module." )
+		log( "Failed to load the sectr module.", LogLevel.Warning )
 		runtime.debug_trap()
 		return {}
 	}
@@ -159,6 +142,7 @@ load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 		return {}
 	}
 
+	log("Loaded sectr API")
 	loaded_module = {
 		lib         = lib,
 		write_time  = write_time,
@@ -179,9 +163,10 @@ unload_sectr_api :: proc ( module : ^ sectr.ModuleAPI )
 	dynlib.unload_library( module.lib )
 	os.remove( path_sectr_live_module )
 	module^ = {}
+	log("Unloaded sectr API")
 }
 
-sync_sectr_api :: proc ( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk )
+sync_sectr_api :: proc ( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk, logger : ^ sectr.Logger )
 {
 	if write_time, result := os.last_write_time_by_name( path_sectr_module );
 	result == os.ERROR_NONE && sectr_api.write_time != write_time
@@ -194,13 +179,9 @@ sync_sectr_api :: proc ( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk )
 		time.sleep( time.Millisecond )
 
 		sectr_api ^ = load_sectr_api( version_id )
-		if sectr_api.lib_version == 0 {
-			fmt.println("Failed to hot-reload the sectr module")
-			runtime.debug_trap()
-			os.exit(-1)
-			// TODO(Ed) : Figure out the error code enums..
-		}
-		sectr_api.reload( memory.sectr_live, memory.sectr_snapshot )
+		verify( sectr_api.lib_version == 0, "Failed to hot-reload the sectr module" )
+
+		sectr_api.reload( memory.sectr_live, memory.sectr_snapshot, logger )
 	}
 }
 
@@ -208,6 +189,32 @@ main :: proc()
 {
 	state : RuntimeState
 	using state
+
+	path_logger_finalized : string
+	{
+		startup_time     := time.now()
+		year, month, day := time.date( startup_time)
+		hour, min, sec   := time.clock_from_time( startup_time)
+
+		if ! os.is_dir( path_logs ) {
+			os.make_directory( path_logs )
+		}
+
+		timestamp            := fmt.tprintf("%04d-%02d-%02d_%02d-%02d-%02d", year, month, day, hour, min, sec)
+		path_logger_finalized = strings.clone( fmt.tprintf( "%s/sectr_%v.log", path_logs, timestamp) )
+	}
+	logger :  sectr.Logger
+	sectr.init( & logger, "Sectr Host", fmt.tprintf( "%s/sectr.log", path_logs ) )
+	context.logger = sectr.to_odin_logger( & logger )
+	{
+		// Log System Context
+		backing_builder : [16 * Kilobyte] u8
+		builder         := strings.builder_from_bytes( backing_builder[:] )
+		fmt.sbprintf( & builder, "Core Count: %v, ", os.processor_core_count() )
+		fmt.sbprintf( & builder, "Page Size: %v", os.get_page_size() )
+
+		sectr.log( strings.to_string(builder) )
+	}
 
 	// Basic Giant VMem Block
 	{
@@ -218,28 +225,26 @@ main :: proc()
 		memory = setup_memory()
 	}
 
+	// TODO(Ed): Cannot use the manually created allocators for the host. Not sure why
+	// context.allocator        = tracked_allocator( & memory.host_persistent )
+	// context.temp_allocator   = tracked_allocator( & memory.host_transient )
+
 	// Load the Enviornment API for the first-time
 	{
-		   sectr_api = load_sectr_api( 1 )
-		if sectr_api.lib_version == 0 {
-			// TODO(Ed) : Setup a proper logging interface
-			fmt.    println( "Failed to initially load the sectr module" )
-			runtime.debug_trap()
-			os.     exit( -1 )
-			// TODO(Ed) : Figure out the error code enums..
-		}
+		sectr_api = load_sectr_api( 1 )
+		verify( sectr_api.lib_version == 0, "Failed to initially load the sectr module" )
 	}
 
 	running            = true;
 	memory             = memory
 	sectr_api          = sectr_api
-	sectr_api.startup( memory.sectr_live, memory.sectr_snapshot )
+	sectr_api.startup( memory.sectr_live, memory.sectr_snapshot, & logger )
 
 	// TODO(Ed) : This should have an end status so that we know the reason the engine stopped.
 	for ; running ;
 	{
 		// Hot-Reload
-		sync_sectr_api( & sectr_api, & memory )
+		sync_sectr_api( & sectr_api, & memory, & logger )
 
 		running = sectr_api.update()
 		          sectr_api.render()
@@ -254,4 +259,8 @@ main :: proc()
 
 	sectr_api.shutdown()
 	unload_sectr_api( & sectr_api )
+
+	log("Succesfuly closed")
+	os.close( logger.file )
+	os.rename( logger.file_path, path_logger_finalized )
 }
