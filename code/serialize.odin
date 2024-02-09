@@ -11,7 +11,6 @@ Serializer_Loading :: false
 ArchiveData :: struct {
 	data        : [] byte,
 	version     : i32,
-	is_writting : b32
 }
 
 archive_init_temp :: proc () -> ^ ArchiveData {
@@ -34,7 +33,15 @@ project_serialize :: proc ( project : ^ Project, archive : ^ ArchiveData, is_wri
 
 	if is_writting
 	{
-		json_data, marshal_code := json.marshal( project^, options, allocator = context.temp_allocator )
+		marshal_archive : struct {
+			version : i32,
+			project : Project
+		}
+		marshal_archive.version = archive.version
+		marshal_archive.project = project^
+		// TODO(Ed): In the future this will be more complicated, as serialization of workspaces and the code database won't be trivial
+
+		json_data, marshal_code := json.marshal( marshal_archive, options, allocator = context.temp_allocator )
 		verify( marshal_code != json.Marshal_Data_Error.None, "Failed to marshal the project to JSON" )
 
 		archive.data = json_data
@@ -44,7 +51,11 @@ project_serialize :: proc ( project : ^ Project, archive : ^ ArchiveData, is_wri
 		parsed_json, parse_code := json.parse( archive.data, json.Specification.MJSON, allocator = context.temp_allocator )
 		verify( parse_code != json.Error.None, "Failed to parse project JSON")
 
-		project_json := parsed_json.(json.Object)
+		archive_json := parsed_json.(json.Object)
+		archive_version : i32 = cast(i32) archive_json["version"].(json.Float)
+		verify( Serializer_Version != archive_version, "Version mismatch on archive!" )
+
+		project_json := archive_json["project"].(json.Object)
 		project.name  = project_json["name"].(json.String)
 
 		// TODO(Ed) : Make this a separate proc
