@@ -477,8 +477,7 @@ to_raylib_key :: proc ( key : i32 ) -> rl.KeyboardKey {
 		rl.KeyboardKey.KP_SUBTRACT,
 		rl.KeyboardKey.KP_MULTIPLY,
 		rl.KeyboardKey.KP_DIVIDE,
-		rl.KeyboardKey.KP_ENTER 
-	}
+		rl.KeyboardKey.KP_ENTER }
 	return raylib_key_lookup_table[ key ]
 }
 
