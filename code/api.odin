@@ -60,6 +60,8 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 	state := new( State, tracked_allocator( memory.persistent ) )
 	using state
 
+	context.user_ptr = state
+
 	input      = & input_data[1]
 	input_prev = & input_data[0]
 
@@ -87,6 +89,14 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 		default_font = font_rec_mono_semicasual_reg
 		log( "Default font loaded" )
 	}
+
+	project.path = "./"
+	project.name = "First Project"
+	project.workspace.name = "First Workspace"
+
+	project_save( & project )
+	project = {}
+	project_load( "./First Project.sectr_proj", & project )
 }
 
 // For some reason odin's symbols conflict with native foreign symbols...
