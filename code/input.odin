@@ -345,6 +345,7 @@ poll_input :: proc( old, new : ^ InputState )
 
 		new.mouse.X = mouse_pos.x
 		new.mouse.Y = mouse_pos.y
+		new.mouse.vertical_wheel = rl.GetMouseWheelMove()
 	}
 }
 

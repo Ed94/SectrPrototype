@@ -20,7 +20,7 @@ archive_init_temp :: proc () -> ^ ArchiveData {
 }
 
 state_serialize :: proc ( archive : ^ ArchiveData = nil ) {
-
+	// TODO(Ed): We'll need this for a better save/load snapshot setup.
 }
 
 project_serialize :: proc ( project : ^ Project, archive : ^ ArchiveData, is_writting : b32 = true )
@@ -83,7 +83,8 @@ project_save :: proc ( project : ^ Project, archive : ^ ArchiveData = nil )
 	os.write_entire_file( fmt.tprint( project.path, project.name, ".sectr_proj", sep = ""), archive.data )
 }
 
-project_load :: proc ( path : string, project : ^ Project, archive : ^ ArchiveData = nil ) {
+project_load :: proc ( path : string, project : ^ Project, archive : ^ ArchiveData = nil )
+{
 	archive := archive
 	if archive == nil {
 		archive = archive_init_temp()

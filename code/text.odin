@@ -3,7 +3,7 @@ package sectr
 import    "core:unicode/utf8"
 import rl "vendor:raylib"
 
-debug_text :: proc( content : string, x, y : f32, size : f32 = 16.0, color : rl.Color = rl.WHITE, font : rl.Font = {} )
+debug_text :: proc( content : string, pos : Vec2, size : f32 = 16.0, color : rl.Color = rl.WHITE, font : rl.Font = {} )
 {
 	if len( content ) == 0 {
 		return
@@ -17,7 +17,7 @@ debug_text :: proc( content : string, x, y : f32, size : f32 = 16.0, color : rl.
 
 	rl.DrawTextCodepoints( font,
 		raw_data(runes), cast(i32) len(runes),
-		position = rl.Vector2 { x, y },
+		position = transmute(rl.Vector2) pos,
 		fontSize = size,
 		spacing  = 0.0,
 		tint     = color );

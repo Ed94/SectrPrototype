@@ -21,8 +21,7 @@ ModuleAPI :: struct {
 	startup    : type_of( startup ),
 	shutdown   : type_of( sectr_shutdown),
 	reload     : type_of( reload ),
-	update     : type_of( update ),
-	render     : type_of( render ),
+	tick       : type_of( tick ),
 	clean_temp : type_of( clean_temp ),
 }
 
@@ -66,14 +65,18 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 	input_prev = & input_data[0]
 
 	// Rough setup of window with rl stuff
-	screen_width  = 1280
-	screen_height = 1000
+	screen_width  = 1920
+	screen_height = 1080
 	win_title     : cstring = "Sectr Prototype"
 	rl.InitWindow( screen_width, screen_height, win_title )
 	log( "Raylib initialized and window opened" )
 
+	// We do not support non-uniform DPI.
+	screen_dpi_scale = rl.GetWindowScaleDPI().x
+	screen_dpc       = os_default_dpc * screen_dpi_scale
+
 	// Determining current monitor and setting the target frametime based on it..
-	monitor_id         = rl.GetCurrentMonitor    ()
+	monitor_id         = rl.GetCurrentMonitor()
 	monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
 	rl.SetTargetFPS( monitor_refresh_hz )
 	log( fmt.tprintf( "Set target FPS to: %v", monitor_refresh_hz ) )
@@ -90,13 +93,33 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 		log( "Default font loaded" )
 	}
 
-	project.path = "./"
-	project.name = "First Project"
-	project.workspace.name = "First Workspace"
+	{
+		using project
+		path           = "./"
+		name           = "First Project"
+		workspace.name = "First Workspace"
+		{
+			using project.workspace
+			cam = {
+				target = { 0, 0 },
+				offset = { f32(screen_width) / 2, f32(screen_height) / 2 },
+				rotation = 0,
+				zoom = 1.0,
+			}
+			// cam = {
+			// 	position   = { 0, 0, -100 },
+			// 	target     = { 0, 0, 0 },
+			// 	up         = { 0, 1, 0 },
+			// 	fovy       = 90,
+			// 	projection = rl.CameraProjection.ORTHOGRAPHIC,
+			// }
 
-	project_save( & project )
-	project = {}
-	project_load( "./First Project.sectr_proj", & project )
+			frame_1.color  = Color_BG_TextBox
+			// Frame is getting interpreted as points (It doesn't have to be, I'm just doing it...)
+			frame_1.width  = 400
+			frame_1.height = 250
+		}
+	}
 }
 
 // For some reason odin's symbols conflict with native foreign symbols...
@@ -147,125 +170,11 @@ swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 }
 
 @export
-update :: proc() -> b32
+tick :: proc ( delta_time : f64 ) -> b32
 {
-	state  := get_state(); using state
-	replay := & memory.replay
-
-	state.input, state.input_prev = swap( state.input, state.input_prev )
-	poll_input( state.input_prev, state.input )
-
-	debug_actions : DebugActions = {}
-	poll_debug_actions( & debug_actions, state.input )
-
-	// Input Replay
-	{
-		if debug_actions.record_replay { #partial switch replay.mode
-		{
-			case ReplayMode.Off : {
-				save_snapshot( & memory.snapshot[0] )
-				replay_recording_begin( Path_Input_Replay )
-			}
-			case ReplayMode.Record : {
-				replay_recording_end()
-			}
-		}}
-
-		if debug_actions.play_replay { switch replay.mode
-		{
-			case ReplayMode.Off : {
-				if ! file_exists( Path_Input_Replay ) {
-					save_snapshot( & memory.snapshot[0] )
-					replay_recording_begin( Path_Input_Replay )
-				}
-				else {
-					load_snapshot( & memory.snapshot[0] )
-					replay_playback_begin( Path_Input_Replay )
-				}
-			}
-			case ReplayMode.Playback : {
-				replay_playback_end()
-				load_snapshot( & memory.snapshot[0] )
-			}
-			case ReplayMode.Record : {
-				replay_recording_end()
-				load_snapshot( & memory.snapshot[0] )
-				replay_playback_begin( Path_Input_Replay )
-			}
-		}}
-
-		if replay.mode == ReplayMode.Record {
-			record_input( replay.active_file, input )
-		}
-		else if replay.mode == ReplayMode.Playback {
-			play_input( replay.active_file, input )
-		}
-	}
-
-	if debug_actions.show_mouse_pos {
-		debug.mouse_vis = !debug.mouse_vis
-	}
-
-	debug.mouse_pos.basis = { input.mouse.X, input.mouse.Y }
-
-	should_shutdown : b32 = ! cast(b32) rl.WindowShouldClose()
-	return should_shutdown
-}
-
-@export
-render :: proc()
-{
-	state  := get_state(); using state
-	replay := & memory.replay
-
-	rl.BeginDrawing()
-	rl.ClearBackground( Color_BG )
-	defer {
-		rl.DrawFPS( 0, 0 )
-		rl.EndDrawing()
-		// Note(Ed) : Polls input as well.
-	}
-
-	draw_text :: proc( format : string, args : ..any )
-	{
-		@static draw_text_scratch : [Kilobyte * 64]u8
-
-		state := get_state(); using state
-		if debug.draw_debug_text_y > 800 {
-			debug.draw_debug_text_y = 50
-		}
-
-		content := fmt.bprintf( draw_text_scratch[:], format, ..args )
-		debug_text( content, 25, debug.draw_debug_text_y )
-
-		debug.draw_debug_text_y += 16
-	}
-
-	draw_text( "Screen Width : %v", rl.GetScreenWidth () )
-	draw_text( "Screen Height: %v", rl.GetScreenHeight() )
-
-	if replay.mode == ReplayMode.Record {
-		draw_text( "Recording Input")
-	}
-	if replay.mode == ReplayMode.Playback {
-		draw_text( "Replaying Input")
-	}
-
-	if debug.mouse_vis {
-		width : f32 = 32
-		pos   := debug.mouse_pos
-
-		draw_text( "Position: %v", rl.GetMousePosition() )
-
-		mouse_rect : rl.Rectangle
-		mouse_rect.x      = pos.x - width/2
-		mouse_rect.y      = pos.y - width/2
-		mouse_rect.width  = width
-		mouse_rect.height = width
-		rl.DrawRectangleRec( mouse_rect, Color_White )
-	}
-
-	debug.draw_debug_text_y = 50
+	result := update( delta_time )
+	render()
+	return result
 }
 
 @export

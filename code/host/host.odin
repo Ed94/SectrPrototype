@@ -126,16 +126,14 @@ load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 	startup    := cast( type_of( sectr.startup        )) dynlib.symbol_address( lib, "startup" )
 	shutdown   := cast( type_of( sectr.sectr_shutdown )) dynlib.symbol_address( lib, "sectr_shutdown" )
 	reload     := cast( type_of( sectr.reload         )) dynlib.symbol_address( lib, "reload" )
-	update     := cast( type_of( sectr.update         )) dynlib.symbol_address( lib, "update" )
-	render     := cast( type_of( sectr.render         )) dynlib.symbol_address( lib, "render" )
+	tick       := cast( type_of( sectr.tick           )) dynlib.symbol_address( lib, "tick" )
 	clean_temp := cast( type_of( sectr.clean_temp     )) dynlib.symbol_address( lib, "clean_temp" )
 
 	missing_symbol : b32 = false
 	if startup    == nil do fmt.println("Failed to load sectr.startup symbol")
 	if shutdown   == nil do fmt.println("Failed to load sectr.shutdown symbol")
 	if reload     == nil do fmt.println("Failed to load sectr.reload symbol")
-	if update     == nil do fmt.println("Failed to load sectr.update symbol")
-	if render     == nil do fmt.println("Failed to load sectr.render symbol")
+	if tick       == nil do fmt.println("Failed to load sectr.tick symbol")
 	if clean_temp == nil do fmt.println("Failed to load sector.clean_temp symbol")
 	if missing_symbol {
 		runtime.debug_trap()
@@ -151,8 +149,7 @@ load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 		startup    = startup,
 		shutdown   = shutdown,
 		reload     = reload,
-		update     = update,
-		render     = render,
+		tick       = tick,
 		clean_temp = clean_temp,
 	}
 	return loaded_module
@@ -240,15 +237,20 @@ main :: proc()
 	sectr_api          = sectr_api
 	sectr_api.startup( memory.sectr_live, memory.sectr_snapshot, & logger )
 
+	delta_ns : time.Duration
+
 	// TODO(Ed) : This should have an end status so that we know the reason the engine stopped.
 	for ; running ;
 	{
+		start_tick := time.tick_now()
+
 		// Hot-Reload
 		sync_sectr_api( & sectr_api, & memory, & logger )
 
-		running = sectr_api.update()
-		          sectr_api.render()
-		          sectr_api.clean_temp()
+		running = sectr_api.tick( time.duration_seconds( delta_ns ) )
+		sectr_api.clean_temp()
+
+		delta_ns = time.tick_lap_time( & start_tick )
 	}
 
 	// Determine how the run_cyle completed, if it failed due to an error,

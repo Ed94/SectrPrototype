@@ -49,8 +49,10 @@ State :: struct {
 
 	project : Project,
 
-	screen_width  : i32,
-	screen_height : i32,
+	screen_width       : i32,
+	screen_height      : i32,
+	screen_dpi_scale   : f32,
+	screen_dpc         : f32,  // Pixels per cm
 
 	monitor_id         : i32,
 	monitor_refresh_hz : i32,
@@ -75,7 +77,10 @@ Project :: struct {
 }
 
 Workspace :: struct {
-	name : string
+	name : string,
+
+	cam     : Camera,
+	frame_1 : Frame
 }
 
 DebugData :: struct {
@@ -85,27 +90,5 @@ DebugData :: struct {
 	draw_debug_text_y : f32,
 
 	mouse_vis : b32,
-	mouse_pos : vec2,
-}
-
-DebugActions :: struct {
-	pause_renderer : b32,
-
-	load_auto_snapshot : b32,
-	record_replay      : b32,
-	play_replay        : b32,
-
-	show_mouse_pos : b32,
-}
-
-poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
-{
-	using actions
-	using input
-
-	base_replay_bind := keyboard.right_alt.ended_down && pressed( keyboard.L)
-	record_replay     = base_replay_bind &&   keyboard.right_shift.ended_down
-	play_replay       = base_replay_bind && ! keyboard.right_shift.ended_down
-
-	show_mouse_pos = keyboard.right_alt.ended_down && pressed(keyboard.M)
+	mouse_pos : Vec2,
 }

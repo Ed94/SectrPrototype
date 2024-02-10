@@ -36,9 +36,9 @@ slice_ptr               :: mem.slice_ptr
 Tracking_Allocator      :: mem.Tracking_Allocator
 tracking_allocator      :: mem.tracking_allocator
 tracking_allocator_init :: mem.tracking_allocator_init
+OS_Type                 :: type_of(ODIN_OS)
 
 import rl "vendor:raylib"
 
-Font :: rl.Font
-
-
+Font      :: rl.Font
+Rectangle :: rl.Rectangle
