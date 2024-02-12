@@ -16,6 +16,8 @@ DebugActions :: struct {
 
 	show_mouse_pos : b32,
 
+	mouse_select : b32,
+
 	cam_move_up    : b32,
 	cam_move_left  : b32,
 	cam_move_down  : b32,
@@ -43,6 +45,8 @@ poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 	play_replay       = base_replay_bind && ! keyboard.right_shift.ended_down
 
 	show_mouse_pos = keyboard.right_alt.ended_down && pressed(keyboard.M)
+
+	mouse_select = pressed(mouse.left)
 
 	cam_move_up    = keyboard.W.ended_down && ( ! modifier_active || keyboard.left_shift.ended_down )
 	cam_move_left  = keyboard.A.ended_down && ( ! modifier_active || keyboard.left_shift.ended_down )
@@ -150,6 +154,38 @@ update :: proc( delta_time : f64 ) -> b32
 			if is_within_screenspace(input.mouse.pos) {
 				pan_velocity := input.mouse.delta * (1/cam.zoom)
 				cam.target   -= pan_velocity
+			}
+		}
+	}
+
+	// Frame 1 bounds detection
+	{
+		if debug_actions.mouse_select {
+			cursor_pos := screen_to_world( input.mouse.pos )
+
+			box_bounds := box_get_bounds(& project.workspace.frame_1)
+			within_x_bounds : b32 = cursor_pos.x >= box_bounds.top_left.x     && cursor_pos.x <= box_bounds.bottom_right.x
+			within_y_bounds : b32 = cursor_pos.y >= box_bounds.bottom_right.y && cursor_pos.y <= box_bounds.top_left.y
+
+			if within_x_bounds && within_y_bounds {
+				debug.frame_1_on_top = true
+			}
+		}
+	}
+
+	// Frame 2 bounds detection
+	{
+		if debug_actions.mouse_select {
+			cursor_pos := screen_to_world( input.mouse.pos )
+			box_extent    := & project.workspace.frame_2.extent
+
+			box_bounds := box_get_bounds(& project.workspace.frame_2)
+
+			within_x_bounds : b32 = cursor_pos.x >= box_bounds.top_left.x     && cursor_pos.x <= box_bounds.bottom_right.x
+			within_y_bounds : b32 = cursor_pos.y >= box_bounds.bottom_right.y && cursor_pos.y <= box_bounds.top_left.y
+
+			if within_x_bounds && within_y_bounds {
+				debug.frame_1_on_top = false
 			}
 		}
 	}

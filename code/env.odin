@@ -85,7 +85,8 @@ Workspace :: struct {
 	name : string,
 
 	cam     : Camera,
-	frame_1 : Box2
+	frame_1 : Box2,
+	frame_2 : Box2,
 }
 
 DebugData :: struct {
@@ -98,4 +99,6 @@ DebugData :: struct {
 	cursor_unlock_pos : Vec2, // Raylib changes the mose position on lock, we want restore the position the user would be in on screen
 	mouse_vis         : b32,
 	last_mouse_pos    : Vec2,
+
+	frame_1_on_top : b32,
 }

@@ -38,7 +38,7 @@ render :: proc()
 			screen_corners := screen_get_corners()
 
 			position   := screen_corners.top_right
-			position.x -= 300
+			position.x -= 200
 			position.y += debug.draw_debug_text_y
 
 			content := fmt.bprintf( draw_text_scratch[:], format, ..args )
@@ -49,8 +49,8 @@ render :: proc()
 
 		// Debug Text
 		{
-			debug_text( "Screen Width : %v", rl.GetScreenWidth () )
-			debug_text( "Screen Height: %v", rl.GetScreenHeight() )
+			// debug_text( "Screen Width : %v", rl.GetScreenWidth () )
+			// debug_text( "Screen Height: %v", rl.GetScreenHeight() )
 			if replay.mode == ReplayMode.Record {
 				debug_text( "Recording Input")
 			}
@@ -61,15 +61,8 @@ render :: proc()
 
 		if debug.mouse_vis {
 			debug_text( "Position: %v", input.mouse.pos )
-			rect_pos :=  transmute(Vec2) state.app_window.extent + input.mouse.pos
-
-			width : f32 = 32
-			mouse_rect : rl.Rectangle
-			mouse_rect.x      = rect_pos.x - width * 0.5
-			mouse_rect.y      = rect_pos.y - width * 0.5
-			mouse_rect.width  = width
-			mouse_rect.height = width
-			rl.DrawRectangleRec( mouse_rect, Color_White )
+			cursor_pos :=  transmute(Vec2) state.app_window.extent + input.mouse.pos
+			rl.DrawCircleV( cursor_pos, 10, Color_White_A125 )
 		}
 
 		debug.draw_debug_text_y = 50
@@ -84,38 +77,31 @@ render_mode_2d :: proc() {
 
 	rl.BeginMode2D( project.workspace.cam )
 
-	// Frame 1
-	{
-		frame_1 := & project.workspace.frame_1
-		rect := get_rl_rect( frame_1 )
-		screen_pos := world_to_screen_pos(frame_1.position)
+	// debug.frame_1_on_top = true
 
-		rect.width  = points_to_pixels( rect.width )
-		rect.height = points_to_pixels( rect.height )
-		rect.x      = points_to_pixels( screen_pos.x )
-		rect.y      = points_to_pixels( screen_pos.y )
-
-		rl.DrawRectangleRec( rect, frame_1.color )
-		// rl.DrawRectangleV( frame_1.position, { frame_1.width, frame_1.height }, frame_1.color )
-		// rl.DrawRectanglePro( rect, frame_1.position, 0, frame_1.color )
+	boxes : [2]^Box2
+	if debug.frame_1_on_top {
+		boxes = { & project.workspace.frame_2, & project.workspace.frame_1 }
+	}
+	else {
+		boxes = { & project.workspace.frame_1, & project.workspace.frame_2 }
 	}
 
-		// Frame 2
-		when false
-		{
-			frame_1 := & project.workspace.frame_1
-			rect := get_rl_rect( frame_1 )
-			screen_pos := world_to_screen_pos(frame_1.position)
+	for box in boxes {
+		screen_pos := world_to_screen_pos(box.position) - Vec2(box.extent)
+		size       := transmute(Vec2) box.extent * 2.0
 
-			rect.width  = points_to_pixels( rect.width )
-			rect.height = points_to_pixels( rect.height )
-			rect.x      = points_to_pixels( screen_pos.x )
-			rect.y      = points_to_pixels( screen_pos.y )
+		rect : rl.Rectangle
+		rect.x      = screen_pos.x
+		rect.y      = screen_pos.y
+		rect.width  = size.x
+		rect.height = size.y
+		rl.DrawRectangleRec( rect, box.color )
+	}
 
-			rl.DrawRectangleRec( rect, frame_1.color )
-			// rl.DrawRectangleV( frame_1.position, { frame_1.width, frame_1.height }, frame_1.color )
-			// rl.DrawRectanglePro( rect, frame_1.position, 0, frame_1.color )
-		}
+	if debug.mouse_vis {
+		// rl.DrawCircleV(  screen_to_world(input.mouse.pos), 10, Color_GreyRed )
+	}
 
 	rl.EndMode2D()
 }

@@ -24,6 +24,7 @@ box_set_size :: proc( box : ^ Box2, size : AreaSize ) {
 	box.extent = transmute(Extents2) size * 0.5
 }
 
+// TODO(Ed) : Fix this up?
 get_rl_rect :: proc ( box : ^ Box2 ) -> rl.Rectangle {
 	rect : rl.Rectangle = {
 		x = box.position.x - box.extent.x,

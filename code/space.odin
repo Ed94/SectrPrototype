@@ -16,6 +16,10 @@ when ODIN_OS == OS_Type.Windows {
 	// 1 inch = 2.54 cm, 96 inch * 2.54 = 243.84 DPC
 }
 
+// points_to_cm :: proc( points : f32 ) -> f32 {
+// 	return points * 
+// }
+
 cm_to_pixels :: proc( cm : f32 ) -> f32 {
 	screen_dpc := get_state().app_window.dpc
 	return cm * screen_dpc
@@ -101,6 +105,12 @@ view_get_corners :: proc() -> BoundsCorners2 {
 	bottom_left  := cam.target + Vec2 { -screen_extent.x, -screen_extent.y }
 	bottom_right := cam.target + Vec2 {  screen_extent.x, -screen_extent.y }
 	return { top_left, top_right, bottom_left, bottom_right }
+}
+
+screen_to_world :: proc( pos : Vec2 ) -> Vec2 {
+	state          := get_state(); using state
+	cam            := & project.workspace.cam
+	return cam.target + pos * (1 / cam.zoom)
 }
 
 screen_to_render :: proc( pos : Vec2 ) -> Vec2 {

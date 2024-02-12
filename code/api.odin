@@ -123,6 +123,9 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 			frame_1.color  = Color_BG_TextBox
 			// Frame is getting interpreted as points (It doesn't have to be, I'm just doing it...)
 			box_set_size( & frame_1, { 400, 200 } )
+
+			frame_2.color = Color_BG_TextBox_Green
+			box_set_size( & frame_2, { 350, 500 } )
 			// frame_1.position = { 1000, 1000 }
 		}
 	}
