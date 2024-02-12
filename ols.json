@@ -12,6 +12,10 @@
         {
             "name": "code",
             "path": "C:/projects/SectrPrototype/code"
+        },
+        {
+            "name": "ini",
+            "path": "C:/projects/SectrPrototype/thirdparty/ini"
         }
     ],
     "enable_document_symbols": true,

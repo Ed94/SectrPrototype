@@ -1,6 +1,8 @@
 // TODO(Ed) : This if its gets larget can be moved to its own package
 package sectr
 
+import "base:runtime"
+
 AnalogAxis  :: f32
 AnalogStick :: struct {
 	X, Y : f32
@@ -267,9 +269,8 @@ MouseState :: struct {
 			side, forward, back, extra : DigitalBtn
 		}
 	},
-	X, Y,
-	vertical_wheel,
-	horizontal_wheel : AnalogAxis
+	pos, delta                       : Vec2,
+	vertical_wheel, horizontal_wheel : AnalogAxis
 }
 
 InputState :: struct {
@@ -308,10 +309,6 @@ poll_input :: proc( old, new : ^ InputState )
 				key_id := cast(KeyboardKey) id
 
 				is_down := cast(b32) rl.IsKeyDown( to_raylib_key(id) )
-				if is_down {
-					nothing := true
-					nothing = false
-				}
 				input_process_digital_btn( entry_old, entry_new, is_down )
 			}
 		}
@@ -337,14 +334,12 @@ poll_input :: proc( old, new : ^ InputState )
 
 			mouse_id := cast(MouseBtn) id
 
-			is_down := cast(b32) rl.IsMouseButtonPressed( to_raylib_mouse_btn(id) )
-			input_process_digital_btn( & old.mouse.left, & new.mouse.left, is_down )
+			is_down := cast(b32) rl.IsMouseButtonDown( to_raylib_mouse_btn(id) )
+			input_process_digital_btn( old_btn, new_btn, is_down )
 		}
 
-		mouse_pos := rl.GetMousePosition()
-
-		new.mouse.X = mouse_pos.x
-		new.mouse.Y = mouse_pos.y
+		new.mouse.pos            = rl.GetMousePosition() - transmute(Vec2) get_state().app_window.extent
+		new.mouse.delta          = rl.GetMouseDelta()
 		new.mouse.vertical_wheel = rl.GetMouseWheelMove()
 	}
 }

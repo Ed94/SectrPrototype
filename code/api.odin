@@ -64,16 +64,22 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 	input      = & input_data[1]
 	input_prev = & input_data[0]
 
+	rl.SetConfigFlags( { rl.ConfigFlag.WINDOW_RESIZABLE, rl.ConfigFlag.WINDOW_TOPMOST } )
+
 	// Rough setup of window with rl stuff
-	screen_width  = 1920
-	screen_height = 1080
+	window_width  : i32 = 1000
+	window_height : i32 = 600
 	win_title     : cstring = "Sectr Prototype"
-	rl.InitWindow( screen_width, screen_height, win_title )
+	rl.InitWindow( window_width, window_height, win_title )
 	log( "Raylib initialized and window opened" )
 
+	window := & state.app_window
+	window.extent.x = f32(window_width)  * 0.5
+	window.extent.y = f32(window_height) * 0.5
+
 	// We do not support non-uniform DPI.
-	screen_dpi_scale = rl.GetWindowScaleDPI().x
-	screen_dpc       = os_default_dpc * screen_dpi_scale
+	window.dpi_scale = rl.GetWindowScaleDPI().x
+	window.dpc       = os_default_dpc * window.dpi_scale
 
 	// Determining current monitor and setting the target frametime based on it..
 	monitor_id         = rl.GetCurrentMonitor()
@@ -102,7 +108,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 			using project.workspace
 			cam = {
 				target = { 0, 0 },
-				offset = { f32(screen_width) / 2, f32(screen_height) / 2 },
+				offset = transmute(Vec2) window.extent,
 				rotation = 0,
 				zoom = 1.0,
 			}
@@ -116,8 +122,8 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 
 			frame_1.color  = Color_BG_TextBox
 			// Frame is getting interpreted as points (It doesn't have to be, I'm just doing it...)
-			frame_1.width  = 400
-			frame_1.height = 250
+			box_set_size( & frame_1, { 400, 200 } )
+			// frame_1.position = { 1000, 1000 }
 		}
 	}
 }

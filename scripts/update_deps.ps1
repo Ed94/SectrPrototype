@@ -5,8 +5,10 @@ $path_code       = join-path $path_root 'code'
 $path_build      = join-path $path_root 'build'
 $path_thirdparty = join-path $path_root 'thirdparty'
 
-$url_odin_repo = 'https://github.com/Ed94/Odin.git'
-$path_odin     = join-path $path_thirdparty 'Odin'
+$url_odin_repo   = 'https://github.com/Ed94/Odin.git'
+$url_ini_parser  = 'https://github.com/laytan/odin-ini-parser.git'
+$path_odin       = join-path $path_thirdparty 'Odin'
+$path_ini_parser = join-path $path_thirdparty 'ini'
 
 $incremental_checks = Join-Path $PSScriptRoot 'helpers/incremental_checks.ps1'
 . $incremental_checks
@@ -25,21 +27,18 @@ if (Test-Path -Path $path_odin)
 	# Get the latest local and remote commit hashes for the current branch
 	$localCommit  = git -C $path_odin rev-parse HEAD
 	$remoteCommit = git -C $path_odin rev-parse '@{u}'
-
-	# Compare local and remote commits
-	if ($localCommit -ne $remoteCommit) 
+	if ($localCommit -ne $remoteCommit)
 	{
-			Write-Host "Odin repository is out-of-date. Pulling changes and rebuilding..."
-			git -C $path_odin pull
-			push-location $path_odin
-			& .\build.bat
-			pop-location
+		Write-Host "Odin repository is out-of-date. Pulling changes and rebuilding..."
+		git -C $path_odin pull
+		push-location $path_odin
+		& .\build.bat
+		pop-location
 
-			$binaries_dirty = $true
+		$binaries_dirty = $true
 	}
-	else
-	{
-			Write-Host "Odin repository is up-to-date. No need to rebuild."
+	else {
+		Write-Host "Odin repository is up-to-date. No need to rebuild."
 	}
 }
 else
@@ -52,6 +51,23 @@ else
 	pop-location
 
 	$binaries_dirty = $true
+}
+
+if (Test-Path -Path $path_ini_parser)
+{
+	Write-Host "Checking for updates on the ini-parser"
+	$localCommit  = git -C $path_ini_parser rev-parse HEAD
+	$remoteCommit = git -C $path_ini_parser rev-parse '@{u}'
+	if ($localCommit -ne $remoteCommit)
+	{
+		Write-Host "ini-parser repository is out-of-date. Pulling changes and rebuilding..."
+		git -C $path_ini_parser pull
+	}
+}
+else
+{
+	Write-Host "Cloning Odin repository..."
+	git clone $url_ini_parser $path_ini_parser
 }
 
 $path_vendor        = join-path $path_odin          'vendor'

@@ -26,11 +26,6 @@ Memory :: struct {
 }
 
 save_snapshot :: proc( snapshot : [^]u8 ) {
-	state := get_state() 
-
-	// state.font_rec_mono_semicasual_reg
-	// state.default_font
-
 	live_ptr := cast( ^ rawptr ) memory.live.curr_block.base
 	mem.copy_non_overlapping( & snapshot[0], live_ptr, memory_chunk_size )
 }
@@ -38,6 +33,12 @@ save_snapshot :: proc( snapshot : [^]u8 ) {
 load_snapshot :: proc( snapshot : [^]u8 ) {
 	live_ptr := cast( ^ rawptr ) memory.live.curr_block.base
 	mem.copy_non_overlapping( live_ptr, snapshot, memory_chunk_size )
+}
+
+AppConfig :: struct {
+	resolution_width  : uint,
+	resolution_height : uint,
+	refresh_rate      : uint
 }
 
 State :: struct {
@@ -49,10 +50,8 @@ State :: struct {
 
 	project : Project,
 
-	screen_width       : i32,
-	screen_height      : i32,
-	screen_dpi_scale   : f32,
-	screen_dpc         : f32,  // Pixels per cm
+	config     : AppConfig,
+	app_window : AppWindow,
 
 	monitor_id         : i32,
 	monitor_refresh_hz : i32,
@@ -64,8 +63,14 @@ State :: struct {
 	default_font                 : Font,
 }
 
-get_state :: proc() -> (^ State) {
+get_state :: proc "contextless" () -> ^ State {
 	return cast( ^ State ) raw_data( memory.persistent.backing.data )
+}
+
+AppWindow :: struct {
+	extent    : Extents2, // Window half-size
+	dpi_scale : f32,      // Dots per inch scale (provided by raylib via glfw)
+	dpc       : f32,      // Dots per centimetre
 }
 
 Project :: struct {
@@ -80,7 +85,7 @@ Workspace :: struct {
 	name : string,
 
 	cam     : Camera,
-	frame_1 : Frame
+	frame_1 : Box2
 }
 
 DebugData :: struct {
@@ -89,6 +94,8 @@ DebugData :: struct {
 
 	draw_debug_text_y : f32,
 
-	mouse_vis : b32,
-	mouse_pos : Vec2,
+	cursor_locked     : b32,
+	cursor_unlock_pos : Vec2, // Raylib changes the mose position on lock, we want restore the position the user would be in on screen
+	mouse_vis         : b32,
+	last_mouse_pos    : Vec2,
 }

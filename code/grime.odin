@@ -40,5 +40,9 @@ OS_Type                 :: type_of(ODIN_OS)
 
 import rl "vendor:raylib"
 
-Font      :: rl.Font
-Rectangle :: rl.Rectangle
+Font :: rl.Font
+
+get_bounds :: proc {
+	box_get_bounds,
+	view_get_bounds,
+}
