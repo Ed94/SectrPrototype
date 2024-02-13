@@ -160,4 +160,5 @@ DebugData :: struct {
 	last_mouse_pos    : Vec2,
 
 	frame_1_on_top : b32,
+	zoom_target : f32,
 }

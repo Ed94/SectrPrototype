@@ -97,11 +97,11 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 	// Basic Font Setup
 	{
 		font_provider_startup()
-		path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
-		font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 24.0, "RecMonoSemiCasual_Regular" )
+		// path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
+		// font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 24.0, "RecMonoSemiCasual_Regular" )
 
-		path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
-		font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
+		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
+		// font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
 		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
 		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
@@ -142,10 +142,10 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 
 			frame_1.color  = Color_BG_TextBox
 			// Frame is getting interpreted as points (It doesn't have to be, I'm just doing it...)
-			box_set_size( & frame_1, { 50, 25 } * CM_Per_Point )
+			box_set_size( & frame_1, { 100, 50 } * CM_Per_Point )
 
 			frame_2.color = Color_BG_TextBox_Green
-			box_set_size( & frame_2, { 30, 50 } * CM_Per_Point )
+			box_set_size( & frame_2, { 60, 100 } * CM_Per_Point )
 			// frame_1.position = { 1000, 1000 }
 		}
 	}
@@ -196,6 +196,10 @@ reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ L
 
 	context.allocator      = transient_allocator()
 	context.temp_allocator = temp_allocator()
+
+	// font_provider_data := & get_state().font_provider_data
+	// font_provider_data.font_cache.allocator = arena_allocator( & font_provider_data.font_arena )
+
 	log("Module reloaded")
 }
 
@@ -207,6 +211,9 @@ swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 @export
 tick :: proc ( delta_time : f64 ) -> b32
 {
+	context.allocator      = transient_allocator()
+	context.temp_allocator = temp_allocator()
+
 	result := update( delta_time )
 	render()
 	return result

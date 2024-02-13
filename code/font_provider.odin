@@ -11,7 +11,8 @@ import rl "vendor:raylib"
 Font_Arena_Size      :: 32 * Megabyte
 Font_Largest_Px_Size :: 96
 
-Font_Default :: ""
+// Font_Default :: ""
+Font_Default :: 0
 Font_Default_Point_Size :: 18.0
 
 Font_TTF_Default_Chars_Padding :: 4
@@ -28,7 +29,8 @@ Font_Atlas_Packing_Method :: enum u32 {
 Font :: rl.Font
 
 // TODO(Ed) : Use this instead of the raylib font directly
-FontID  :: distinct string
+// FontID  :: distinct string
+FontID  :: distinct i32
 FontTag :: struct {
 	key        : FontID,
 	point_size : f32
@@ -52,7 +54,11 @@ FontDef :: struct {
 
 FontProviderData :: struct {
 	font_arena : Arena,
-	font_cache : ^ map [FontID] FontDef,
+
+	//TODO(Ed) : There is an issue with hot-reload and map allocations that I can't figure out right now..
+	// font_cache : map [FontID](FontDef),
+	font_cache : [10] FontDef,
+	open_id    : i32
 }
 
 font_provider_startup :: proc()
@@ -65,7 +71,9 @@ font_provider_startup :: proc()
 
 	arena_init( & font_arena, data )
 
-	font_cache = new( type_of(font_cache ^), arena_allocator( & font_arena) )
+	// font_cache  = new( map[FontID](FontDef), arena_allocator( & font_arena ) )
+	// font_cache = make_map( map[FontID](FontDef), capacity = 10, allocator = arena_allocator( & font_arena ) )
+	open_id = 0
 	log("font_cache created")
 	log("font_provider initialized")
 }
@@ -74,8 +82,9 @@ font_provider_shutdown :: proc()
 {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
-	for key, & value in font_cache        {
-		for & px_render in value.size_table {
+	// for key, & def in font_cache        {
+	for & def in font_cache             {
+		for & px_render in def.size_table {
 			using px_render
 			rl.UnloadFontData( glyphs, count )
 			rl.UnloadTexture ( texture )
@@ -86,7 +95,7 @@ font_provider_shutdown :: proc()
 
 font_load :: proc ( path_file : string,
 	default_size : f32    = Font_Load_Use_Default_Size,
-	desired_id   : FontID = Font_Load_Gen_ID
+	desired_id   : string = Font_Load_Gen_ID
 ) -> FontID
 {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
@@ -100,7 +109,8 @@ font_load :: proc ( path_file : string,
 	if len(desired_id) == 0 {
 		// NOTE(Ed): This should never be used except for laziness so I'll be throwing a warning everytime.
 		log("desired_key not provided, using file name. Give it a proper name!")
-		desired_id = cast(FontID) file_name_from_path(path_file)
+		// desired_id = cast(FontID) file_name_from_path(path_file)
+		desired_id = file_name_from_path(path_file)
 	}
 
 	default_size := default_size
@@ -108,8 +118,10 @@ font_load :: proc ( path_file : string,
 		default_size = Font_Default_Point_Size
 	}
 
-	font_cache[desired_id] = {}
-	def := & font_cache[desired_id];
+	// font_cache[desired_id] = {}
+	// def := & font_cache[desired_id];
+	def := & font_cache[open_id]
+	open_id += 1
 	def.path_file    = path_file
 	def.data         = font_data
 	def.default_size = i32(points_to_pixels(default_size))
@@ -132,7 +144,6 @@ font_load :: proc ( path_file : string,
 
 		atlas  := rl.GenImageFontAtlas( glyphs, & recs, count, size, padding, i32(Font_Atlas_Packing_Method.Raylib_Basic) )
 		texture = rl.LoadTextureFromImage( atlas )
-		rl.SetTextureFilter( texture, rl.TextureFilter.POINT )
 
 		// glyphs_slice := slice_ptr( glyphs, count )
 		// for glyph in glyphs_slice {
@@ -148,7 +159,8 @@ font_load :: proc ( path_file : string,
 		rl.UnloadImage( atlas )
 	}
 
-	return desired_id
+	// return desired_id
+	return cast(FontID) open_id - 1
 }
 
 Font_Use_Default_Size :: f32(0.0)
@@ -156,12 +168,12 @@ Font_Use_Default_Size :: f32(0.0)
 to_rl_Font :: proc ( id : FontID, size := Font_Use_Default_Size ) -> rl.Font {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
-	size := clamp( i32(math.round(size)), 12, Font_Largest_Px_Size )
-
-	verify( size > Font_Largest_Px_Size, "attempt to get a font larger than the largest loaded pixel size" )
+	size      := clamp( i32( math.round(size * 0.5) * 2.0), 8, Font_Largest_Px_Size )
 	def       := & font_cache[id]
 	size       = size if size != i32(Font_Use_Default_Size) else def.default_size
 	px_render := & def.size_table[ size - 1 ]
+
+	rl.SetTextureFilter( px_render.texture, rl.TextureFilter.TRILINEAR )
 
 	rl_font : rl.Font
 	rl_font.baseSize     = px_render.size

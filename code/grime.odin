@@ -42,6 +42,7 @@ tracking_allocator_init :: mem.tracking_allocator_init
 file_name_from_path     :: filepath.short_stem
 OS_Type                 :: type_of(ODIN_OS)
 
+
 get_bounds :: proc {
 	box_get_bounds,
 	view_get_bounds,
