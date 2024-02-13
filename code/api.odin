@@ -46,17 +46,24 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 		transient_slice  := slice_ptr( memory_after( persistent_slice), memory_trans_temp_size )
 		temp_slice       := slice_ptr( memory_after( transient_slice),  memory_trans_temp_size )
 
-		// We assign the beginning of the block to be the host's persistent memory's arena.
-		// Then we offset past the arena and determine its slice to be the amount left after for the size of host's persistent.
-		persistent = tracked_allocator_init_vmem( persistent_slice, internals_size )
-		transient  = tracked_allocator_init_vmem( transient_slice,  internals_size )
-		temp       = tracked_allocator_init_vmem( temp_slice ,      internals_size )
+		when Use_TrackingAllocator {
+			// We assign the beginning of the block to be the host's persistent memory's arena.
+			// Then we offset past the arena and determine its slice to be the amount left after for the size of host's persistent.
+			persistent = tracked_allocator_init_vmem( persistent_slice, internals_size )
+			transient  = tracked_allocator_init_vmem( transient_slice,  internals_size )
+			temp       = tracked_allocator_init_vmem( temp_slice ,      internals_size )
+		}
+		else {
+			persistent = arena_allocator_init_vmem( persistent_slice )
+			transient  = arena_allocator_init_vmem( transient_slice )
+			temp       = arena_allocator_init_vmem( temp_slice )
+		}
 
-		context.allocator      = tracked_allocator( transient )
-		context.temp_allocator = tracked_allocator( temp )
+		context.allocator      = transient_allocator()
+		context.temp_allocator = temp_allocator()
 	}
 
-	state := new( State, tracked_allocator( memory.persistent ) )
+	state := new( State, persistent_allocator() )
 	using state
 
 	context.user_ptr = state
@@ -64,7 +71,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 	input      = & input_data[1]
 	input_prev = & input_data[0]
 
-	rl.SetConfigFlags( { rl.ConfigFlag.WINDOW_RESIZABLE, rl.ConfigFlag.WINDOW_TOPMOST } )
+	rl.SetConfigFlags( { rl.ConfigFlag.WINDOW_RESIZABLE /*, rl.ConfigFlag.WINDOW_TOPMOST*/ } )
 
 	// Rough setup of window with rl stuff
 	window_width  : i32 = 1000
@@ -79,7 +86,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 
 	// We do not support non-uniform DPI.
 	window.dpi_scale = rl.GetWindowScaleDPI().x
-	window.dpc       = os_default_dpc * window.dpi_scale
+	window.ppcm      = os_default_ppcm * window.dpi_scale
 
 	// Determining current monitor and setting the target frametime based on it..
 	monitor_id         = rl.GetCurrentMonitor()
@@ -89,17 +96,25 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 
 	// Basic Font Setup
 	{
+		font_provider_startup()
 		path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
-		cstr                         := strings.clone_to_cstring( path_rec_mono_semicasual_reg )
+		font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 24.0, "RecMonoSemiCasual_Regular" )
 
-		font_data, read_succeded : = os.read_entire_file( path_rec_mono_semicasual_reg  )
-		verify( ! read_succeded, fmt.tprintf("Failed to read font file for: %v", path_rec_mono_semicasual_reg) )
+		path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
+		font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
-		font_rec_mono_semicasual_reg  = rl.LoadFontEx( cstr, cast(i32) points_to_pixels(24.0), nil, 0 )
-		delete( cstr)
+		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
+		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 
-		rl.GuiSetFont( font_rec_mono_semicasual_reg ) // TODO(Ed) : Does this do anything?
-		default_font = font_rec_mono_semicasual_reg
+		// font_data, read_succeded : = os.read_entire_file( path_rec_mono_semicasual_reg  )
+		// verify( ! read_succeded, fmt.tprintf("Failed to read font file for: %v", path_rec_mono_semicasual_reg) )
+
+		// cstr                         := strings.clone_to_cstring( path_rec_mono_semicasual_reg )
+		// font_rec_mono_semicasual_reg  = rl.LoadFontEx( cstr, cast(i32) points_to_pixels(24.0), nil, 0 )
+		// delete( cstr)
+
+		// rl.GuiSetFont( font_rec_mono_semicasual_reg ) // TODO(Ed) : Does this do anything?
+		default_font = font_firacode
 		log( "Default font loaded" )
 	}
 
@@ -112,10 +127,10 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 		{
 			using project.workspace
 			cam = {
-				target = { 0, 0 },
-				offset = transmute(Vec2) window.extent,
+				target   = { 0, 0 },
+				offset   = transmute(Vec2) window.extent,
 				rotation = 0,
-				zoom = 1.0,
+				zoom     = 1.0,
 			}
 			// cam = {
 			// 	position   = { 0, 0, -100 },
@@ -150,11 +165,8 @@ sectr_shutdown :: proc()
 		os.close( memory.replay.active_file )
 	}
 
-	// Raylib
-	{
-		rl.UnloadFont ( state.font_rec_mono_semicasual_reg )
-		rl.CloseWindow()
-	}
+	font_provider_shutdown()
+
 	log("Module shutdown complete")
 }
 
@@ -171,10 +183,19 @@ reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ L
 	transient_slice  := slice_ptr( memory_after( persistent_slice), memory_trans_temp_size )
 	temp_slice       := slice_ptr( memory_after( transient_slice),  memory_trans_temp_size )
 
-	persistent = cast( ^TrackedAllocator ) & persistent_slice[0]
-	transient  = cast( ^TrackedAllocator ) & transient_slice[0]
-	temp       = cast( ^TrackedAllocator ) & temp_slice[0]
+	when Use_TrackingAllocator {
+		persistent = cast( ^ TrackedAllocator ) & persistent_slice[0]
+		transient  = cast( ^ TrackedAllocator ) & transient_slice[0]
+		temp       = cast( ^ TrackedAllocator ) & temp_slice[0]
+	}
+	else {
+		persistent = cast( ^ Arena ) & persistent_slice[0]
+		transient  = cast( ^ Arena ) & transient_slice[0]
+		temp       = cast( ^ Arena ) & temp_slice[0]
+	}
 
+	context.allocator      = transient_allocator()
+	context.temp_allocator = temp_allocator()
 	log("Module reloaded")
 }
 
@@ -192,7 +213,11 @@ tick :: proc ( delta_time : f64 ) -> b32
 }
 
 @export
-clean_temp :: proc()
-{
-	mem.tracking_allocator_clear( & memory.temp.tracker )
+clean_temp :: proc() {
+	when Use_TrackingAllocator {
+		mem.tracking_allocator_clear( & memory.temp.tracker )
+	}
+	else {
+		free_all( temp_allocator() )
+	}
 }

@@ -1,6 +1,7 @@
 package sectr
 
 import "base:runtime"
+import "core:math"
 import "core:fmt"
 
 import rl "vendor:raylib"
@@ -136,11 +137,14 @@ update :: proc( delta_time : f64 ) -> b32
 	// Camera Manual Nav
 	{
 		digital_move_speed : f32 = 200.0
-		zoom_sensitiviity  : f32 = 3.5
+		zoom_sensitiviity  : f32 = 0.05
 
-		cam      := & project.workspace.cam
-		cam.zoom *= 1 + input.mouse.vertical_wheel * zoom_sensitiviity * f32(delta_time)
-		cam.zoom  = clamp( cam.zoom, 0.05, 10.0 )
+		cam        := & project.workspace.cam
+		zoom_delta := input.mouse.vertical_wheel * zoom_sensitiviity
+		// zoom_delta *= f32(delta_time)
+		cam.zoom   *= 1 + zoom_delta
+		cam.zoom    = clamp( cam.zoom, 0.5, 10.0 )
+		// cam.zoom = 2.0
 
 		move_velocity : Vec2 = {
 			- cast(f32) i32(debug_actions.cam_move_left) + cast(f32) i32(debug_actions.cam_move_right),

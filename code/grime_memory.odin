@@ -86,3 +86,16 @@ tracked_allocator_init_vmem :: proc( vmem : [] byte, internals_size : int ) -> ^
 	tracking_allocator_init( & result.tracker, arena_allocator( backing ), arena_allocator( internals ) )
 	return result
 }
+
+arena_allocator_init_vmem :: proc ( vmem : [] byte ) -> ^ Arena
+{
+	arena_size   :: size_of( Arena)
+	backing_size := len(vmem)
+
+	result       := cast( ^ Arena) & vmem[0]
+	result_slice := slice_ptr( & vmem[0], arena_size )
+
+	backing_slice := slice_ptr( memory_after( result_slice), backing_size )
+	arena_init( result, backing_slice )
+	return result
+}

@@ -11,18 +11,66 @@ import rl "vendor:raylib"
 memory : Memory
 
 memory_chunk_size      :: 2 * Gigabyte
-memory_persistent_size :: 128 * Megabyte
+memory_persistent_size :: 256 * Megabyte
 memory_trans_temp_size :: (memory_chunk_size - memory_persistent_size ) / 2
 
-Memory :: struct {
-	live       : virtual.Arena,
-	snapshot   : []u8,
-	persistent : ^ TrackedAllocator,
-	transient  : ^ TrackedAllocator,
-	temp       : ^ TrackedAllocator,
+// TODO(Ed): There is an issue with mutex locks on the tracking allocator..
+Use_TrackingAllocator :: false
 
-	replay : ReplayState,
-	logger : Logger,
+when Use_TrackingAllocator
+{
+	Memory :: struct {
+		live       : virtual.Arena,
+		snapshot   : []u8,
+
+		persistent : ^ TrackedAllocator,
+		transient  : ^ TrackedAllocator,
+		temp       : ^ TrackedAllocator,
+
+		replay : ReplayState,
+		logger : Logger,
+	}
+}
+else
+{
+	Memory :: struct {
+		live       : virtual.Arena,
+		snapshot   : []u8,
+
+		persistent : ^ Arena,
+		transient  : ^ Arena,
+		temp       : ^ Arena,
+
+		replay : ReplayState,
+		logger : Logger,
+	}
+}
+
+persistent_allocator :: proc () -> Allocator {
+	when Use_TrackingAllocator {
+		return tracked_allocator( memory.persistent )
+	}
+	else {
+		return arena_allocator( memory.persistent )
+	}
+}
+
+transient_allocator :: proc () -> Allocator {
+	when Use_TrackingAllocator {
+		return tracked_allocator( memory.transient )
+	}
+	else {
+		return arena_allocator( memory.transient )
+	}
+}
+
+temp_allocator :: proc () -> Allocator {
+	when Use_TrackingAllocator {
+		return tracked_allocator( memory.temp )
+	}
+	else {
+		return arena_allocator( memory.temp )
+	}
 }
 
 save_snapshot :: proc( snapshot : [^]u8 ) {
@@ -38,10 +86,14 @@ load_snapshot :: proc( snapshot : [^]u8 ) {
 AppConfig :: struct {
 	resolution_width  : uint,
 	resolution_height : uint,
-	refresh_rate      : uint
+	refresh_rate      : uint,
+	min_zoom          : uint,
+	max_zoom          : uint,
 }
 
 State :: struct {
+	font_provider_data : FontProviderData,
+
 	input_data : [2] InputState,
 	input_prev : ^   InputState,
 	input      : ^   InputState,
@@ -59,18 +111,25 @@ State :: struct {
 	engine_refresh_hz     : i32,
 	engine_refresh_target : i32,
 
-	font_rec_mono_semicasual_reg : Font,
-	default_font                 : Font,
+	font_firacode                : FontID,
+	font_squidgy_slimes          : FontID,
+	font_rec_mono_semicasual_reg : FontID,
+	default_font                 : FontID,
 }
 
 get_state :: proc "contextless" () -> ^ State {
-	return cast( ^ State ) raw_data( memory.persistent.backing.data )
+	when Use_TrackingAllocator {
+		return cast( ^ State ) raw_data( memory.persistent.backing.data )
+	}
+	else {
+		return cast( ^ State ) raw_data( memory.persistent. data )
+	}
 }
 
 AppWindow :: struct {
 	extent    : Extents2, // Window half-size
 	dpi_scale : f32,      // Dots per inch scale (provided by raylib via glfw)
-	dpc       : f32,      // Dots per centimetre
+	ppcm      : f32,      // Dots per centimetre
 }
 
 Project :: struct {

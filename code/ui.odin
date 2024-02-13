@@ -12,6 +12,25 @@ Axis2 :: enum {
 	Count,
 }
 
+UI_IconKind :: enum u32 {
+	Null,
+	Arrow_Up,
+	Arrow_Left,
+	Arrow_Right,
+	Arrow_Down,
+	Caret_Up,
+	Caret_Left,
+	Caret_Right,
+	Caret_Down,
+	Check_Hollow,
+	Check_Filled,
+	Count,
+}
+
+UI_IconInfo :: struct {
+	placehodler : int
+}
+
 UI_SizeKind :: enum u32 {
 	Null,
 	Pixels,
@@ -19,6 +38,7 @@ UI_SizeKind :: enum u32 {
 	TextContent,
 	PercentOfParent,
 	ChildrenSum,
+	Count,
 }
 
 UI_Size :: struct {
@@ -95,6 +115,8 @@ UI_BoxFlag :: enum u64 {
 	Has_Display_String,
 	Has_Fuzzy_Match_Ranges,
 	Round_Children_By_Parent,
+
+	Count,
 }
 UI_BoxFlags :: bit_set[UI_BoxFlag; u64]
 
@@ -123,7 +145,9 @@ UI_Box :: struct {
 
 	// Note(rjf) : Per-frame info provided by builders
 	flags : UI_BoxFlags,
-	semantic_size    : [Axis2.Count]UI_Size,
+	display_str : string,
+	semantic_size : [Axis2.Count]UI_Size,
+
 
 	// Note(rjf) : Computed every frame
 	computed_rel_pos : Vec2,

@@ -4,6 +4,7 @@ package sectr
 
 import "core:mem"
 import "core:mem/virtual"
+import "core:path/filepath"
 
 Byte     :: 1
 Kilobyte :: 1024 * Byte
@@ -27,7 +28,9 @@ terabyte  :: proc ( tb : $ integer_type ) -> integer_type {
 }
 
 Allocator               :: mem.Allocator
+AllocatorError          :: mem.Allocator_Error
 alloc                   :: mem.alloc
+alloc_bytes             :: mem.alloc_bytes
 Arena                   :: mem.Arena
 arena_allocator         :: mem.arena_allocator
 arena_init              :: mem.arena_init
@@ -36,11 +39,8 @@ slice_ptr               :: mem.slice_ptr
 Tracking_Allocator      :: mem.Tracking_Allocator
 tracking_allocator      :: mem.tracking_allocator
 tracking_allocator_init :: mem.tracking_allocator_init
+file_name_from_path     :: filepath.short_stem
 OS_Type                 :: type_of(ODIN_OS)
-
-import rl "vendor:raylib"
-
-Font :: rl.Font
 
 get_bounds :: proc {
 	box_get_bounds,
