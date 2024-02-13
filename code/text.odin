@@ -3,7 +3,7 @@ package sectr
 import    "core:unicode/utf8"
 import rl "vendor:raylib"
 
-debug_draw_text :: proc( content : string, pos : Vec2, size : f32 = 16.0, color : rl.Color = rl.WHITE, font : rl.Font = {} )
+debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : rl.Font = {} )
 {
 	state := get_state(); using state
 

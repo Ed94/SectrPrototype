@@ -22,7 +22,7 @@ pressed :: proc {
 }
 
 MaxKeyboardKeys :: 256
-KeyboardKey :: enum {
+KeyboardKey :: enum u32 {
 	null = 0x00,
 
 	enter         = 0x01,
@@ -249,7 +249,7 @@ KeyboardState :: struct #raw_union {
 }
 
 MaxMouseBtns :: 16
-MouseBtn :: enum {
+MouseBtn :: enum u32 {
 	Left    = 0x0,
 	Middle  = 0x1,
 	Right   = 0x2,

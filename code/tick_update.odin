@@ -158,34 +158,28 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 	}
 
-	// Frame 1 bounds detection
-	{
-		if debug_actions.mouse_select {
-			cursor_pos := screen_to_world( input.mouse.pos )
-
-			box_bounds := box_get_bounds(& project.workspace.frame_1)
-			within_x_bounds : b32 = cursor_pos.x >= box_bounds.top_left.x     && cursor_pos.x <= box_bounds.bottom_right.x
-			within_y_bounds : b32 = cursor_pos.y >= box_bounds.bottom_right.y && cursor_pos.y <= box_bounds.top_left.y
-
-			if within_x_bounds && within_y_bounds {
-				debug.frame_1_on_top = true
-			}
-		}
+	boxes : [2]^Box2
+	boxes = { & project.workspace.frame_1, & project.workspace.frame_2 }
+	if debug.frame_1_on_top {
+		boxes = { & project.workspace.frame_2, & project.workspace.frame_1 }
+	}
+	else {
+		boxes = { & project.workspace.frame_1, & project.workspace.frame_2 }
 	}
 
-	// Frame 2 bounds detection
+	if debug_actions.mouse_select
 	{
-		if debug_actions.mouse_select {
+		for box in boxes
+		{
 			cursor_pos := screen_to_world( input.mouse.pos )
-			box_extent    := & project.workspace.frame_2.extent
-
-			box_bounds := box_get_bounds(& project.workspace.frame_2)
-
-			within_x_bounds : b32 = cursor_pos.x >= box_bounds.top_left.x     && cursor_pos.x <= box_bounds.bottom_right.x
-			within_y_bounds : b32 = cursor_pos.y >= box_bounds.bottom_right.y && cursor_pos.y <= box_bounds.top_left.y
-
-			if within_x_bounds && within_y_bounds {
-				debug.frame_1_on_top = false
+			if box_is_within( box, cursor_pos )
+			{
+				if box == & project.workspace.frame_1 {
+					debug.frame_1_on_top = true
+				}
+				else {
+					debug.frame_1_on_top = false
+				}
 			}
 		}
 	}

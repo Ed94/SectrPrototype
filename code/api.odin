@@ -91,7 +91,11 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 	{
 		path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
 		cstr                         := strings.clone_to_cstring( path_rec_mono_semicasual_reg )
-		font_rec_mono_semicasual_reg  = rl.LoadFontEx( cstr, 24, nil, 0 )
+
+		font_data, read_succeded : = os.read_entire_file( path_rec_mono_semicasual_reg  )
+		verify( ! read_succeded, fmt.tprintf("Failed to read font file for: %v", path_rec_mono_semicasual_reg) )
+
+		font_rec_mono_semicasual_reg  = rl.LoadFontEx( cstr, cast(i32) points_to_pixels(24.0), nil, 0 )
 		delete( cstr)
 
 		rl.GuiSetFont( font_rec_mono_semicasual_reg ) // TODO(Ed) : Does this do anything?
@@ -99,6 +103,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 		log( "Default font loaded" )
 	}
 
+	// Demo project setup
 	{
 		using project
 		path           = "./"
@@ -122,10 +127,10 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 
 			frame_1.color  = Color_BG_TextBox
 			// Frame is getting interpreted as points (It doesn't have to be, I'm just doing it...)
-			box_set_size( & frame_1, { 400, 200 } )
+			box_set_size( & frame_1, { 50, 25 } * CM_Per_Point )
 
 			frame_2.color = Color_BG_TextBox_Green
-			box_set_size( & frame_2, { 350, 500 } )
+			box_set_size( & frame_2, { 30, 50 } * CM_Per_Point )
 			// frame_1.position = { 1000, 1000 }
 		}
 	}

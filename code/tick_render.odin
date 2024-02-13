@@ -19,11 +19,12 @@ render :: proc()
 	rl.BeginDrawing()
 	rl.ClearBackground( Color_BG )
 	render_mode_2d()
+	// Render Screenspace
 	{
 		fps_msg       := fmt.tprint( "FPS:", rl.GetFPS() )
-		fps_msg_width := measure_text_size( fps_msg, default_font, 16.0, 0.0 ).x
+		fps_msg_width := measure_text_size( fps_msg, default_font, points_to_pixels(24.0), 0.0 ).x
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 }
-		debug_draw_text( fps_msg, fps_msg_pos, color = rl.GREEN )
+		debug_draw_text( fps_msg, fps_msg_pos, points_to_pixels(24.0), color = rl.GREEN )
 
 		debug_text :: proc( format : string, args : ..any )
 		{
@@ -42,7 +43,7 @@ render :: proc()
 			position.y += debug.draw_debug_text_y
 
 			content := fmt.bprintf( draw_text_scratch[:], format, ..args )
-			debug_draw_text( content, position )
+			debug_draw_text( content, position, points_to_pixels(24.0) )
 
 			debug.draw_debug_text_y += 16
 		}
@@ -88,8 +89,8 @@ render_mode_2d :: proc() {
 	}
 
 	for box in boxes {
-		screen_pos := world_to_screen_pos(box.position) - Vec2(box.extent)
-		size       := transmute(Vec2) box.extent * 2.0
+		screen_pos := world_to_screen_no_zoom(box.position) - vec2_cm_to_pixels( Vec2(box.extent) )
+		size       := vec2_cm_to_pixels( transmute(Vec2) box.extent * 2.0 )
 
 		rect : rl.Rectangle
 		rect.x      = screen_pos.x

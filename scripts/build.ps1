@@ -70,11 +70,13 @@ push-location $path_root
 
 		write-host "`nBuilding Sectr Prototype"
 
+		$module_host  = join-path $path_code 'host'
+		$module_sectr = $path_code
+
 		function build-host
 		{
 			$executable   = join-path $path_build ($project_name + '_host.exe')
 			$pdb          = join-path $path_build ($project_name + '_host.pdb')
-			$module_host  = join-path $path_code 'host'
 
 			$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
 			if ( $host_process_active ) {
@@ -82,7 +84,7 @@ push-location $path_root
 				return
 			}
 
-			$should_build = check-ModuleForChanges $module_host
+			$should_build = (check-ModuleForChanges $module_host)
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr_host build, module up to date'
 				return
@@ -106,7 +108,6 @@ push-location $path_root
 
 		function build-sectr
 		{
-			$module_sectr = $path_code
 			$should_build = check-ModuleForChanges $module_sectr
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr build, module up to date'

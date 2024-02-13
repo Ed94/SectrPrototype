@@ -4,10 +4,15 @@ import "core:encoding/json"
 
 import rl "vendor:raylib"
 
+// TODO(Ed) : I made this before doing Ryan's UI series. It was my initial attempt at a "frame"
+// conceptually that I need as an Entity primitive for all my 2D primitives that I would lay out
+// in either world (workspace) space or in screenspace (fixed ui space)
+
 Box2 :: struct {
 	position : Vec2,
 	extent   : Extents2,
-	color    : Color
+	color    : Color,
+	layer    : i32,
 }
 
 box_size :: proc( box : ^ Box2 ) -> AreaSize {
