@@ -12,7 +12,7 @@ Font_Arena_Size      :: 32 * Megabyte
 Font_Largest_Px_Size :: 96
 
 // Font_Default :: ""
-Font_Default :: 0
+Font_Default            :: 0
 Font_Default_Point_Size :: 18.0
 
 Font_TTF_Default_Chars_Padding :: 4
@@ -21,14 +21,12 @@ Font_Load_Use_Default_Size :: -1
 Font_Load_Gen_ID           :: ""
 
 Font_Atlas_Packing_Method :: enum u32 {
-	Raylib_Basic = 0,  // Basic packing algo
+	Raylib_Basic  = 0,  // Basic packing algo
 	Skyeline_Rect = 1, // stb_pack_rect
 }
 
-// TODO(Ed) : This isn't good enough for what we need font wise..
-Font :: rl.Font
-
-// TODO(Ed) : Use this instead of the raylib font directly
+// TODO(Ed) : These are currently i32, I wanted them to be string ids for debug ease of use.
+// There is an issue with the hash map type preventing me from doing so. Its allocator reference breaks.
 // FontID  :: distinct string
 FontID  :: distinct i32
 FontTag :: struct {
@@ -50,13 +48,14 @@ FontDef :: struct {
 	data         : [] u8,
 	default_size : i32,
 	size_table   : [Font_Largest_Px_Size] FontGlyphsRender,
+	// TODO(Ed) : This is a rough way to do even multiplies, we are wasting half the array, I'll make a proper accessor/generation to it eventually.
 }
 
 FontProviderData :: struct {
 	font_arena : Arena,
 
 	//TODO(Ed) : There is an issue with hot-reload and map allocations that I can't figure out right now..
-	// font_cache : map [FontID](FontDef),
+	// font_cache : ^ map [FontID](FontDef),
 	font_cache : [10] FontDef,
 	open_id    : i32
 }
@@ -72,7 +71,7 @@ font_provider_startup :: proc()
 	arena_init( & font_arena, data )
 
 	// font_cache  = new( map[FontID](FontDef), arena_allocator( & font_arena ) )
-	// font_cache = make_map( map[FontID](FontDef), capacity = 10, allocator = arena_allocator( & font_arena ) )
+	// font_cache^ = make_map( map[FontID](FontDef), capacity = 10, allocator = arena_allocator( & font_arena ) )
 	open_id = 0
 	log("font_cache created")
 	log("font_provider initialized")
@@ -128,7 +127,8 @@ font_load :: proc ( path_file : string,
 
 	// TODO(Ed): this is extremely slow
 	// Render all sizes at once
-	for id : i32 = 0; id < Font_Largest_Px_Size; id += 1
+	// Note(Ed) : We only generate textures for even multiples of the font.
+	for id : i32 = 1; id < Font_Largest_Px_Size; id += 2
 	{
 		px_render := & def.size_table[id]
 		using px_render
@@ -168,11 +168,13 @@ Font_Use_Default_Size :: f32(0.0)
 to_rl_Font :: proc ( id : FontID, size := Font_Use_Default_Size ) -> rl.Font {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
-	size      := clamp( i32( math.round(size * 0.5) * 2.0), 8, Font_Largest_Px_Size )
+	even_size := math.round(size * 0.5) * 2.0
+	size      := clamp( i32( even_size), 8, Font_Largest_Px_Size )
 	def       := & font_cache[id]
 	size       = size if size != i32(Font_Use_Default_Size) else def.default_size
 	px_render := & def.size_table[ size - 1 ]
 
+	// This is free for now perf wise... may have to move this out to on a setting change later.
 	rl.SetTextureFilter( px_render.texture, rl.TextureFilter.TRILINEAR )
 
 	rl_font : rl.Font

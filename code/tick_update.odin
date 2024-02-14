@@ -139,7 +139,7 @@ update :: proc( delta_time : f64 ) -> b32
 		cam := & project.workspace.cam
 
 		digital_move_speed : f32 = 200.0
-		zoom_sensitivity   : f32 = 0.1 // Digital
+		zoom_sensitivity   : f32 = 0.2 // Digital
 		// zoom_sensitivity   : f32 = 2.0  // Smooth
 
 		if debug.zoom_target == 0.0 {
@@ -149,12 +149,12 @@ update :: proc( delta_time : f64 ) -> b32
     // Adjust zoom_target based on input, not the actual zoom
     zoom_delta        := input.mouse.vertical_wheel * zoom_sensitivity
     debug.zoom_target *= 1 + zoom_delta //* f32(delta_time)
-    debug.zoom_target  = clamp(debug.zoom_target, 0.5, 10.0)
+    debug.zoom_target  = clamp(debug.zoom_target, 0.25, 10.0)
 
 		// Linearly interpolate cam.zoom towards zoom_target
 		lerp_factor := cast(f32) 4.0 // Adjust this value to control the interpolation speed
 		cam.zoom    += (debug.zoom_target - cam.zoom) * lerp_factor * f32(delta_time)
-		cam.zoom     = clamp(cam.zoom, 0.5, 10.0) // Ensure cam.zoom stays within bounds
+		cam.zoom     = clamp(cam.zoom, 0.25, 10.0) // Ensure cam.zoom stays within bounds
 
 		move_velocity : Vec2 = {
 			- cast(f32) i32(debug_actions.cam_move_left) + cast(f32) i32(debug_actions.cam_move_right),

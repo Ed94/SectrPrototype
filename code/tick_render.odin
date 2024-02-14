@@ -71,7 +71,8 @@ render :: proc()
 	rl.EndDrawing()
 }
 
-render_mode_2d :: proc() {
+render_mode_2d :: proc()
+{
 	state  := get_state(); using state
 	cam    := & project.workspace.cam
 	win_extent := state.app_window.extent

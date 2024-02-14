@@ -19,7 +19,7 @@ ModuleAPI :: struct {
 	lib_version : i32,
 
 	startup    : type_of( startup ),
-	shutdown   : type_of( sectr_shutdown),
+	shutdown   : type_of( sectr_shutdown ),
 	reload     : type_of( reload ),
 	tick       : type_of( tick ),
 	clean_temp : type_of( clean_temp ),
@@ -141,12 +141,10 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 			// }
 
 			frame_1.color  = Color_BG_TextBox
-			// Frame is getting interpreted as points (It doesn't have to be, I'm just doing it...)
 			box_set_size( & frame_1, { 100, 50 } * CM_Per_Point )
 
 			frame_2.color = Color_BG_TextBox_Green
 			box_set_size( & frame_2, { 60, 100 } * CM_Per_Point )
-			// frame_1.position = { 1000, 1000 }
 		}
 	}
 }
@@ -196,6 +194,11 @@ reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ L
 
 	context.allocator      = transient_allocator()
 	context.temp_allocator = temp_allocator()
+
+	// Procedure Addresses are not preserved on hot-reload. They must be restored for persistent data.
+	// The only way to alleviate this is to either do custom handles to allocators
+	// Or as done below, correct containers using allocators on reload.
+	// Thankfully persistent dynamic allocations are rare, and thus we know exactly which ones they are.
 
 	// font_provider_data := & get_state().font_provider_data
 	// font_provider_data.font_cache.allocator = arena_allocator( & font_provider_data.font_arena )
