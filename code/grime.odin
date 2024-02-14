@@ -2,6 +2,7 @@
 package sectr
 // At least its less than C/C++ ...
 
+import "base:builtin"
 import "core:mem"
 import "core:mem/virtual"
 import "core:path/filepath"
@@ -27,6 +28,7 @@ terabyte  :: proc ( tb : $ integer_type ) -> integer_type {
 	return tb * Terabyte
 }
 
+copy                    :: builtin.copy
 Allocator               :: mem.Allocator
 AllocatorError          :: mem.Allocator_Error
 alloc                   :: mem.alloc
@@ -34,6 +36,7 @@ alloc_bytes             :: mem.alloc_bytes
 Arena                   :: mem.Arena
 arena_allocator         :: mem.arena_allocator
 arena_init              :: mem.arena_init
+free                    :: mem.free
 ptr_offset              :: mem.ptr_offset
 slice_ptr               :: mem.slice_ptr
 Tracking_Allocator      :: mem.Tracking_Allocator
@@ -41,7 +44,6 @@ tracking_allocator      :: mem.tracking_allocator
 tracking_allocator_init :: mem.tracking_allocator_init
 file_name_from_path     :: filepath.short_stem
 OS_Type                 :: type_of(ODIN_OS)
-
 
 get_bounds :: proc {
 	box_get_bounds,
