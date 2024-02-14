@@ -97,7 +97,7 @@ hashtable_grow :: proc( ht : ^ HashTable( $ Type ) ) -> AllocatorError {
 	return rehash( ht, new_num )
 }
 
-hashtable_rehash :: proc ( ht : ^ HashTabe( $ Type ), new_num : i64 ) -> AllocatorError
+hashtable_rehash :: proc ( ht : ^ HashTable( $ Type ), new_num : i64 ) -> AllocatorError
 {
 	last_added_index : i64
 
