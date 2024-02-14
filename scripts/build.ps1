@@ -73,38 +73,7 @@ push-location $path_root
 		$module_host  = join-path $path_code 'host'
 		$module_sectr = $path_code
 
-		function build-host
-		{
-			$executable   = join-path $path_build ($project_name + '_host.exe')
-			$pdb          = join-path $path_build ($project_name + '_host.pdb')
-
-			$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
-			if ( $host_process_active ) {
-				write-host 'Skipping sectr_host build, process is active'
-				return
-			}
-
-			$should_build = (check-ModuleForChanges $module_host)
-			if ( -not( $should_build)) {
-				write-host 'Skipping sectr_host build, module up to date'
-				return
-			}
-
-			& $update_deps
-
-			$build_args = @()
-			$build_args += $flag_build
-			$build_args += './host'
-			$build_args += $flag_output_path + $executable
-			$build_args += $flag_optimize_none
-			$build_args += $flag_debug
-			$build_args += $flag_pdb_name + $pdb
-			$build_args += $flag_subsystem + 'windows'
-
-			write-host 'Building Host Module'
-			& $odin $build_args
-		}
-		build-host
+		& $update_deps
 
 		function build-sectr
 		{
@@ -130,6 +99,37 @@ push-location $path_root
 			& $odin $build_args
 		}
 		build-sectr
+
+		function build-host
+		{
+			$executable   = join-path $path_build ($project_name + '_host.exe')
+			$pdb          = join-path $path_build ($project_name + '_host.pdb')
+
+			$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
+			if ( $host_process_active ) {
+				write-host 'Skipping sectr_host build, process is active'
+				return
+			}
+
+			$should_build = (check-ModuleForChanges $module_host)
+			if ( -not( $should_build)) {
+				write-host 'Skipping sectr_host build, module up to date'
+				return
+			}
+
+			$build_args = @()
+			$build_args += $flag_build
+			$build_args += './host'
+			$build_args += $flag_output_path + $executable
+			$build_args += $flag_optimize_none
+			$build_args += $flag_debug
+			$build_args += $flag_pdb_name + $pdb
+			$build_args += $flag_subsystem + 'windows'
+
+			write-host 'Building Host Module'
+			& $odin $build_args
+		}
+		build-host
 
 		Pop-Location
 	}
