@@ -12,6 +12,14 @@ Axis2 :: enum {
 	Count,
 }
 
+UI_FocusKind :: enum u32 {
+	Null,
+	Off,
+	On,
+	Root,
+	Count,
+}
+
 UI_IconKind :: enum u32 {
 	Null,
 	Arrow_Up,
@@ -29,6 +37,34 @@ UI_IconKind :: enum u32 {
 
 UI_IconInfo :: struct {
 	placehodler : int
+}
+
+UI_NavDeltaUnit :: enum u32 {
+	Element,
+	Chunk,
+	Whole,
+	End_Point,
+	Count,
+}
+
+UI_NavActionFlag :: enum u32 {
+	Keep_Mark,
+	Delete,
+	Copy,
+	Paste,
+	Zero_Delta_On_Select,
+	Pick_Select_Side,
+	Can_At_Line,
+	Explicit_Directional,
+	Replace_And_Commit,
+}
+UI_NavActionFlags :: bit_set[UI_NavActionFlag; u32]
+
+UI_NavAction :: struct {
+	flags      : UI_NavActionFlags,
+	delta      : Vec2i,
+	delta_unit : UI_NavDeltaUnit,
+	insertion  : string,
 }
 
 UI_SizeKind :: enum u32 {
