@@ -138,7 +138,11 @@ UI_Layout :: struct {
 
 	corner_radii : [Corner.Count]f32,
 
-	size : UI_ScalarConstraint,
+	// TODO(Ed) I problably won't use this as I can determine
+	// the size of content manually when needed and make helper procs...
+	// size_to_content : b32,
+
+	size : Vec2,
 }
 
 UI_Style :: struct {
@@ -187,11 +191,17 @@ UI_Box :: struct {
 	disabled_time : f32,
 }
 
+Layout_Stack_Size :: 512
+Style_Stack_Size  :: 512
+
 UI_State :: struct {
 	box_cache : HashTable( UI_Box ),
 
-	box_tree_dirty : b32,
-	root           : ^ UI_Box,
+	root : ^ UI_Box,
+
+	layout_dirty  : b32,
+	layout_stack  : Stack( UI_Layout, Layout_Stack_Size ),
+	style_stack   : Stack( UI_Style, Style_Stack_Size ),
 
 	hot                : UI_Key,
 	active             : UI_Key,
@@ -202,7 +212,83 @@ UI_State :: struct {
 	// drag_state data  : string,
 }
 
+ui_key_from_string :: proc ( value : string ) -> UI_Key {
+	key := cast(UI_Key) crc32( transmute([]byte) value )
+	return key
+}
+
+ui_box_equal :: proc ( a, b : ^ UI_Box ) -> b32 {
+	BoxSize :: size_of(UI_Box)
+	hash_a := crc32( transmute([]u8) slice_ptr( a, BoxSize ) )
+	hash_b := crc32( transmute([]u8) slice_ptr( b, BoxSize ) )
+	result : b32 = hash_a == hash_b
+	return result
+}
+
+ui_startup :: proc ( ui : ^ UI_State, cache_allocator : Allocator ) {
+	ui := ui
+	ui^ = {}
+
+	box_cache, allocation_error := hashtable_init_reserve( UI_Box, cache_allocator, Kilobyte * 8 )
+	verify( allocation_error != AllocatorError.None, "Failed to allocate box cache" )
+	ui.box_cache = box_cache
+}
+
+ui_reload :: proc ( ui : ^ UI_State, cache_allocator : Allocator ) {
+	// We need to repopulate Allocator references
+	ui.box_cache.entries.allocator = cache_allocator
+	ui.box_cache.hashes.allocator  = cache_allocator
+}
+
+// TODO(Ed) : Is this even needed?
+ui_shutdown :: proc () {
+}
+
+ui_graph_build_begin :: proc ( ui : ^ UI_State )
+{
+	ui_context := & get_state().ui_context
+	ui_context = ui
+	using ui_context
+
+	box : UI_Box = {}
+	box.label  = "root#001"
+	box.key    = ui_key_from_string( box.label )
+	box.layout = stack_peek( & layout_stack ) ^
+	box.style  = stack_peek( & style_stack )  ^
+
+	cached_box := hashtable_get( & box_cache, cast(u64) box.key )
+
+	if cached_box != nil {
+		layout_dirty &= ! ui_box_equal( & box, cached_box )
+	}
+	else {
+		layout_dirty = true
+	}
+
+	set_result, set_error: = hashtable_set( & box_cache, cast(u64) box.key, box )
+	verify( set_error != AllocatorError.None, "Failed to set hashtable due to allocator error" )
+	root = set_result
+}
+
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 {
+
+
 	return nil
+}
+
+ui_layout_push :: proc ( preset : UI_Layout ) {
+
+}
+
+ui_layout_pop :: proc () {
+
+}
+
+ui_layout_push_size :: proc( size : Vec2 ) {
+
+}
+
+ui_style_push :: proc ( preset : UI_Style ) {
+	
 }

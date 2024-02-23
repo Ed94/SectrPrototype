@@ -176,8 +176,14 @@ update :: proc( delta_time : f64 ) -> b32
 
 	//region Imgui Tick
 	{
-		// Layout 
+		ui_context := & state.project.workspace.ui
 
+		// Build Graph (Determines if layout is dirty)
+		ui_graph_build_begin( ui_context )
+
+		
+
+		// Regnerate compute if layout is dirty.
 	}
 	// endregion
 

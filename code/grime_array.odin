@@ -6,6 +6,7 @@ package sectr
 
 import "core:c/libc"
 import "core:mem"
+import "core:slice"
 
 Array :: struct ( $ Type : typeid ) {
 	allocator : Allocator,
@@ -28,7 +29,7 @@ array_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( Array(Type), A
 
 array_init_reserve :: proc( $ Type : typeid, allocator : Allocator, capacity : u64 ) -> ( Array(Type), AllocatorError )
 {
-	raw_data, result_code = alloc( capacity * size_of(Type), allocator = allocator )
+	raw_data, result_code := alloc( int(capacity) * size_of(Type), allocator = allocator )
 	result : Array( Type)
 	result.data      = cast( [^] Type ) raw_data
 	result.allocator = allocator
@@ -157,6 +158,10 @@ array_fill :: proc ( array : ^ Array( $ Type ), begin, end : u64, value : Type )
 		return false
 	}
 
+	// TODO(Ed) : Bench this?
+	// data_slice := slice_ptr( ptr_offset( data, begin ), end - begin )
+	// slice.fill( data_slice, cast(int) value )
+
 	for id := begin; id < end; id += 1 {
 		data[ id ] = value
 	}
@@ -172,7 +177,7 @@ array_free :: proc( array : ^ Array( $ Type ) ) {
 array_grow :: proc( array : ^ Array( $ Type ), min_capacity : u64 ) -> AllocatorError
 {
 	using array
-	new_capacity = grow_formula( capacity )
+	new_capacity := array_grow_formula( capacity )
 
 	if new_capacity < min_capacity {
 		new_capacity = min_capacity
@@ -211,7 +216,7 @@ array_resize :: proc ( array : ^ Array( $ Type ), num : u64 ) -> AllocatorError
 {
 	if array.capacity < num
 	{
-		grow_result := array_grow( array, capacity )
+		grow_result := array_grow( array, array.capacity )
 		if grow_result != AllocatorError.None {
 			return grow_result
 		}
@@ -225,14 +230,14 @@ array_set_capacity :: proc( array : ^ Array( $ Type ), new_capacity : u64 ) -> A
 {
 	using array
 	if new_capacity == capacity {
-		return true
+		return AllocatorError.None
 	}
 	if new_capacity < num {
 		num = new_capacity
-		return true
+		return AllocatorError.None
 	}
 
-	raw_data, result_code = alloc( new_capacity * size_of(Type), allocator = allocator )
+	raw_data, result_code := alloc( cast(int) new_capacity * size_of(Type), allocator = allocator )
 	data     = cast( [^] Type ) raw_data
 	capacity = new_capacity
 	return result_code

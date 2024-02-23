@@ -143,13 +143,8 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 			// 	projection = rl.CameraProjection.ORTHOGRAPHIC,
 			// }
 
-			frame_1.color  = Color_BG_TextBox
-			box_set_size( & frame_1, { 100, 50 } * CM_Per_Point )
-
-			frame_2.color = Color_BG_TextBox_Green
-			box_set_size( & frame_2, { 60, 100 } * CM_Per_Point )
-
-
+			// Setup workspace UI state
+			ui_startup( & workspace.ui, persistent_allocator() )
 		}
 	}
 }
@@ -207,6 +202,9 @@ reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ L
 
 	// font_provider_data := & get_state().font_provider_data
 	// font_provider_data.font_cache.allocator = arena_allocator( & font_provider_data.font_arena )
+
+	// Have to reload allocators for all dynamic allocating data-structures.
+	ui_reload( & get_state().project.workspace.ui, persistent_allocator() )
 
 	log("Module reloaded")
 }

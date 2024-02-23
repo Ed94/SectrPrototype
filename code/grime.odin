@@ -4,11 +4,13 @@ package sectr
 
 import "base:builtin"
 import "base:runtime"
-import c "core:c/libc"
+import "core:hash"
 import "core:mem"
 import "core:mem/virtual"
 import "core:os"
 import "core:path/filepath"
+
+import c "core:c/libc"
 
 Byte     :: 1
 Kilobyte :: 1024 * Byte
@@ -32,6 +34,7 @@ terabyte  :: proc ( tb : $ integer_type ) -> integer_type {
 }
 
 copy                    :: builtin.copy
+crc32                   :: hash.crc32
 Allocator               :: mem.Allocator
 AllocatorError          :: mem.Allocator_Error
 alloc                   :: mem.alloc
@@ -52,6 +55,39 @@ get_bounds :: proc {
 	box_get_bounds,
 	view_get_bounds,
 }
+
+//region Stack - Basic fixed-size stack container
+Stack :: struct ( $ Type : typeid, $ Size : i32 ) {
+	idx   : i32,
+	items : [ Size ] Type,
+}
+
+stack_push :: proc( stack : ^ $ StackType / Stack( $ Type, $ Size ), value : Type ) {
+	using stack
+	verify( idx < len( items ), "Attempted to push on a full stack" )
+
+	items[ idx ] = value
+	idx += 1
+}
+
+stack_pop :: proc( stack : ^ $ StackType / Stack( $ Type, $ Size ) ) {
+	using stack
+	verify( idx > 0, "Attempted to pop an empty stack" )
+
+	idx -= 1
+}
+
+stack_peek :: proc ( stack : ^ Stack( $ Type, $ Size ) ) -> ^ Type {
+	using stack
+	return & items[idx]
+}
+//endregion Stack
+
+
+
+
+
+
 
 
 

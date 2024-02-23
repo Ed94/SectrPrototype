@@ -115,6 +115,11 @@ State :: struct {
 	font_squidgy_slimes          : FontID,
 	font_rec_mono_semicasual_reg : FontID,
 	default_font                 : FontID,
+
+	// There are two potential UI contextes for this prototype so far,
+	// the screen-space UI and the current workspace UI.
+	// This is used so that the ui api doesn't need to have the user pass the context every single time.
+	ui_context : UI_State,
 }
 
 get_state :: proc "contextless" () -> ^ State {
