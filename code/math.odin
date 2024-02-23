@@ -19,7 +19,7 @@ Vec2_f32 :: struct #raw_union {
 	}
 }
 
-// make_vec2 :: proc ( x, y : f32 ) {
+// make_vec2 :: proc( x, y : f32 ) {
 
 // }
 

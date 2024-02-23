@@ -66,7 +66,7 @@ font_provider_startup :: proc()
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
 	data, alloc_result := alloc_bytes( Font_Arena_Size, allocator = persistent_allocator() )
-	verify( alloc_result != AllocatorError.None, "Failed to allocate memory for font_arena from persistent" )
+	verify( alloc_result == AllocatorError.None, "Failed to allocate memory for font_arena from persistent" )
 	log("font_arena allocated from persistent memory")
 
 	arena_init( & font_arena, data )
@@ -93,7 +93,7 @@ font_provider_shutdown :: proc()
 	}
 }
 
-font_load :: proc ( path_file : string,
+font_load :: proc( path_file : string,
 	default_size : f32    = Font_Load_Use_Default_Size,
 	desired_id   : string = Font_Load_Gen_ID
 ) -> FontID
@@ -101,7 +101,7 @@ font_load :: proc ( path_file : string,
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
 	font_data, read_succeded : = os.read_entire_file( path_file  )
-	verify( ! read_succeded, fmt.tprintf("Failed to read font file for: %v", path_file) )
+	verify( b32(read_succeded), fmt.tprintf("Failed to read font file for: %v", path_file) )
 	font_data_size := cast(i32) len(font_data)
 
 	desired_id := desired_id
@@ -141,7 +141,7 @@ font_load :: proc ( path_file : string,
 			codepoints     = nil,
 			codepointCount = count,
 			type = rl.FontType.DEFAULT )
-		verify( glyphs == nil, fmt.tprintf("Failed to load glyphs for font: %v at desired size: %v", desired_id, size ) )
+		verify( glyphs != nil, fmt.tprintf("Failed to load glyphs for font: %v at desired size: %v", desired_id, size ) )
 
 		atlas  := rl.GenImageFontAtlas( glyphs, & recs, count, size, padding, i32(Font_Atlas_Packing_Method.Raylib_Basic) )
 		texture = rl.LoadTextureFromImage( atlas )
@@ -166,7 +166,7 @@ font_load :: proc ( path_file : string,
 
 Font_Use_Default_Size :: f32(0.0)
 
-to_rl_Font :: proc ( id : FontID, size := Font_Use_Default_Size ) -> rl.Font {
+to_rl_Font :: proc( id : FontID, size := Font_Use_Default_Size ) -> rl.Font {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
 	even_size := math.round(size * 0.5) * 2.0

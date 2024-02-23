@@ -46,7 +46,7 @@ else
 	}
 }
 
-persistent_allocator :: proc () -> Allocator {
+persistent_allocator :: proc() -> Allocator {
 	when Use_TrackingAllocator {
 		return tracked_allocator( memory.persistent )
 	}
@@ -55,7 +55,7 @@ persistent_allocator :: proc () -> Allocator {
 	}
 }
 
-transient_allocator :: proc () -> Allocator {
+transient_allocator :: proc() -> Allocator {
 	when Use_TrackingAllocator {
 		return tracked_allocator( memory.transient )
 	}
@@ -64,7 +64,7 @@ transient_allocator :: proc () -> Allocator {
 	}
 }
 
-temp_allocator :: proc () -> Allocator {
+temp_allocator :: proc() -> Allocator {
 	when Use_TrackingAllocator {
 		return tracked_allocator( memory.temp )
 	}
@@ -119,7 +119,7 @@ State :: struct {
 	// There are two potential UI contextes for this prototype so far,
 	// the screen-space UI and the current workspace UI.
 	// This is used so that the ui api doesn't need to have the user pass the context every single time.
-	ui_context : UI_State,
+	ui_context : ^ UI_State,
 }
 
 get_state :: proc "contextless" () -> ^ State {
@@ -161,8 +161,6 @@ Workspace :: struct {
 	name : string,
 
 	cam     : Camera,
-	frame_1 : Box2,
-	frame_2 : Box2,
 
 	// TODO(Ed) : The workspace is mainly a 'UI' conceptually...
 	ui : UI_State,

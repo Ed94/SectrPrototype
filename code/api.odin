@@ -110,7 +110,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 
 		// font_data, read_succeded : = os.read_entire_file( path_rec_mono_semicasual_reg  )
-		// verify( ! read_succeded, fmt.tprintf("Failed to read font file for: %v", path_rec_mono_semicasual_reg) )
+		// verify( read_succeded, fmt.tprintf("Failed to read font file for: %v", path_rec_mono_semicasual_reg) )
 
 		// cstr                         := strings.clone_to_cstring( path_rec_mono_semicasual_reg )
 		// font_rec_mono_semicasual_reg  = rl.LoadFontEx( cstr, cast(i32) points_to_pixels(24.0), nil, 0 )
@@ -215,7 +215,7 @@ swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 }
 
 @export
-tick :: proc ( delta_time : f64 ) -> b32
+tick :: proc( delta_time : f64 ) -> b32
 {
 	context.allocator      = transient_allocator()
 	context.temp_allocator = temp_allocator()

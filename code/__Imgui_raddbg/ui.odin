@@ -268,7 +268,7 @@ ui_button :: proc( label : string ) -> UI_Signal {
 	return signal
 }
 
-ui_spacer :: proc ( label : string = UI_NullLabel ) -> UI_Signal {
+ui_spacer :: proc( label : string = UI_NullLabel ) -> UI_Signal {
 	box    := ui_box_make( UI_BoxFlags_Null, label )
 	signal := ui_signal_from_box( box )
 	return signal

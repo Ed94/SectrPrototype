@@ -20,16 +20,16 @@ Terabyte :: 1024 * Gigabyte
 Petabyte :: 1024 * Terabyte
 Exabyte  :: 1024 * Petabyte
 
-kilobytes :: proc ( kb : $ integer_type ) -> integer_type {
+kilobytes :: proc( kb : $ integer_type ) -> integer_type {
 	return kb * Kilobyte
 }
-megabytes :: proc ( mb : $ integer_type ) -> integer_type {
+megabytes :: proc( mb : $ integer_type ) -> integer_type {
 	return mb * Megabyte
 }
-gigabyte  :: proc ( gb : $ integer_type ) -> integer_type {
+gigabyte  :: proc( gb : $ integer_type ) -> integer_type {
 	return gb * Gigabyte
 }
-terabyte  :: proc ( tb : $ integer_type ) -> integer_type {
+terabyte  :: proc( tb : $ integer_type ) -> integer_type {
 	return tb * Terabyte
 }
 
@@ -75,16 +75,40 @@ stack_pop :: proc( stack : ^ $ StackType / Stack( $ Type, $ Size ) ) {
 	verify( idx > 0, "Attempted to pop an empty stack" )
 
 	idx -= 1
+	if idx == 0 {
+		items[idx] = {}
+	}
 }
 
-stack_peek :: proc ( stack : ^ Stack( $ Type, $ Size ) ) -> ^ Type {
+stack_peek :: proc( stack : ^ Stack( $ Type, $ Size ) ) -> ^ Type {
 	using stack
 	return & items[idx]
 }
 //endregion Stack
 
 
+//region Doubly Linked List generic procs (verbose)
 
+dbl_linked_list_push_back :: proc(first: ^(^ $ Type), last: ^(^ Type), new_node: ^ Type)
+{
+	if first == nil || first^ == nil {
+			// List is empty, set first and last to the new node
+			(first ^) = new_node
+			(last  ^) = new_node
+			new_node.next = nil
+			new_node.prev = nil
+	}
+	else
+	{
+			// List is not empty, add new node to the end
+			(last^).next = new_node
+			new_node.prev = last^
+			(last ^) = new_node
+			new_node.next = nil
+	}
+}
+
+//endregion
 
 
 

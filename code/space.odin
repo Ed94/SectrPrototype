@@ -38,7 +38,7 @@ points_to_pixels :: proc {
 
 //region Unit Conversion Impl
 
-// cm_to_points :: proc ( cm : f32 ) -> f32 {
+// cm_to_points :: proc( cm : f32 ) -> f32 {
 
 // }
 
@@ -90,7 +90,7 @@ vec2_points_to_pixels :: proc(vpoints: Vec2) -> Vec2 {
 }
 
 
-// vec2_points_to_cm :: proc ( vpoints : Vec2 ) -> Vec2 {
+// vec2_points_to_cm :: proc( vpoints : Vec2 ) -> Vec2 {
 
 // }
 

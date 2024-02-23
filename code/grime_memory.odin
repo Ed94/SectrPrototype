@@ -30,7 +30,7 @@ TrackedAllocator :: struct {
 	tracker   : Tracking_Allocator,
 }
 
-tracked_allocator :: proc ( self : ^ TrackedAllocator ) -> Allocator {
+tracked_allocator :: proc( self : ^ TrackedAllocator ) -> Allocator {
 	return tracking_allocator( & self.tracker )
 }
 
@@ -45,7 +45,7 @@ tracked_allocator_init :: proc( size, internals_size : int, allocator := context
 	raw_size       := backing_size + internals_size
 
 	raw_mem, raw_mem_code := alloc( raw_size, mem.DEFAULT_ALIGNMENT, allocator )
-	verify( raw_mem_code != mem.Allocator_Error.None, "Failed to allocate memory for the TrackingAllocator" )
+	verify( raw_mem_code == mem.Allocator_Error.None, "Failed to allocate memory for the TrackingAllocator" )
 
 	backing_slice   := slice_ptr( cast( ^ byte) raw_mem,        backing_size )
 	internals_slice := slice_ptr( memory_after( backing_slice), internals_size )
@@ -59,7 +59,7 @@ tracked_allocator_init :: proc( size, internals_size : int, allocator := context
 	{
 		tracker_arena := cast(^Arena) result.tracker.backing.data
 		arena_len     := len( tracker_arena.data )
-		verify( arena_len != len(result.backing.data), "BAD SIZE ON TRACKER'S ARENA" )
+		verify( arena_len == len(result.backing.data), "BAD SIZE ON TRACKER'S ARENA" )
 	}
 	return result
 }
@@ -71,7 +71,7 @@ tracked_allocator_init_vmem :: proc( vmem : [] byte, internals_size : int ) -> ^
 	backing_size            := len(vmem)    - internals_size
 	raw_size                := backing_size + internals_size
 
-	verify( backing_size < 0 || len(vmem) < raw_size, "Provided virtual memory slice is not large enough to hold the TrackedAllocator" )
+	verify( backing_size >= 0 && len(vmem) >= raw_size, "Provided virtual memory slice is not large enough to hold the TrackedAllocator" )
 
 	result       := cast( ^ TrackedAllocator) & vmem[0]
 	result_slice := slice_ptr( & vmem[0], tracking_allocator_size )
@@ -87,7 +87,7 @@ tracked_allocator_init_vmem :: proc( vmem : [] byte, internals_size : int ) -> ^
 	return result
 }
 
-arena_allocator_init_vmem :: proc ( vmem : [] byte ) -> ^ Arena
+arena_allocator_init_vmem :: proc( vmem : [] byte ) -> ^ Arena
 {
 	arena_size   :: size_of( Arena)
 	backing_size := len(vmem)

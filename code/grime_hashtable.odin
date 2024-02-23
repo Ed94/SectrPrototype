@@ -33,7 +33,7 @@ hashtable_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( HashTable(
 	return hashtable_init_reserve( Type, allocator )
 }
 
-hashtable_init_reserve :: proc ( $ Type : typeid, allocator : Allocator, num : u64 ) -> ( HashTable( Type), AllocatorError )
+hashtable_init_reserve :: proc( $ Type : typeid, allocator : Allocator, num : u64 ) -> ( HashTable( Type), AllocatorError )
 {
 	result                        : HashTable(Type)
 	hashes_result, entries_result : AllocatorError
@@ -45,7 +45,6 @@ hashtable_init_reserve :: proc ( $ Type : typeid, allocator : Allocator, num : u
 	}
 	array_resize( & result.hashes, num )
 	slice.fill( slice_ptr( result.hashes.data, cast(int) result.hashes.num), -1 )
-	// array_fill( result.hashes, 0, num - 1, -1 )
 
 	result.entries, entries_result = array_init_reserve( HashTable_Entry(Type), allocator, num )
 	if entries_result != AllocatorError.None {
@@ -106,7 +105,7 @@ hashtable_grow :: proc( ht : ^ HashTable( $ Type ) ) -> AllocatorError {
 	return hashtable_rehash( ht, new_num )
 }
 
-hashtable_rehash :: proc ( ht : ^ HashTable( $ Type ), new_num : u64 ) -> AllocatorError
+hashtable_rehash :: proc( ht : ^ HashTable( $ Type ), new_num : u64 ) -> AllocatorError
 {
 	last_added_index : i64
 
@@ -115,11 +114,6 @@ hashtable_rehash :: proc ( ht : ^ HashTable( $ Type ), new_num : u64 ) -> Alloca
 		ensure( false, "New hashtable failed to allocate" )
 		return init_result
 	}
-
-	// for id : u64 = 0; id < new_ht.hashes.num; id += 1 {
-	// 	new_ht.hashes.data[id] = -1
-	// }
-	slice.fill( slice_ptr( new_ht.hashes.data, cast(int) new_ht.hashes.num ), -1 )
 
 	for id : u64 = 0; id < ht.entries.num; id += 1 {
 		find_result : HT_FindResult
@@ -145,7 +139,7 @@ hashtable_rehash :: proc ( ht : ^ HashTable( $ Type ), new_num : u64 ) -> Alloca
 	return AllocatorError.None
 }
 
-hashtable_rehash_fast :: proc ( ht : ^ HashTable( $ Type ) )
+hashtable_rehash_fast :: proc( ht : ^ HashTable( $ Type ) )
 {
 	using ht
 	for id := 0; id < entries.num; id += 1 {
@@ -167,7 +161,7 @@ hashtable_rehash_fast :: proc ( ht : ^ HashTable( $ Type ) )
 	}
 }
 
-hashtable_remove :: proc ( ht : ^ HashTable( $ Type ), key : u64 ) {
+hashtable_remove :: proc( ht : ^ HashTable( $ Type ), key : u64 ) {
 	using ht
 	find_result := hashtable_find( key )
 

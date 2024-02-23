@@ -3,7 +3,7 @@ package sectr
 import "core:math/linalg"
 
 
-box_is_within :: proc ( box : ^ Box2, pos : Vec2 ) -> b32 {
+box_is_within :: proc( box : ^ Box2, pos : Vec2 ) -> b32 {
 	bounds := box_get_bounds( box )
 	within_x_bounds : b32 = pos.x >= bounds.top_left.x     && pos.x <= bounds.bottom_right.x
 	within_y_bounds : b32 = pos.y >= bounds.bottom_right.y && pos.y <= bounds.top_left.y

@@ -15,7 +15,7 @@ Array :: struct ( $ Type : typeid ) {
 	data      : [^]Type,
 }
 
-array_to_slice :: proc ( arr : Array( $ Type) ) -> []Type {
+array_to_slice :: proc( arr : Array( $ Type) ) -> []Type {
 	using arr; return slice_ptr( data, num )
 }
 
@@ -109,7 +109,7 @@ array_append_at :: proc( array : ^ Array( $ Type ), item : Type, id : u64 ) -> A
 	return AllocatorError.None
 }
 
-array_append_at_slice :: proc ( array : ^ Array( $ Type ), items : []Type, id : u64 ) -> AllocatorError
+array_append_at_slice :: proc( array : ^ Array( $ Type ), items : []Type, id : u64 ) -> AllocatorError
 {
 	id := id
 	using array
@@ -146,11 +146,11 @@ array_back :: proc( array : ^ Array( $ Type ) ) -> ^ Type {
 	using array; return & data[ num - 1 ]
 }
 
-array_clear :: proc ( array : ^ Array( $ Type ) ) {
+array_clear :: proc( array : ^ Array( $ Type ) ) {
 	array.num = 0
 }
 
-array_fill :: proc ( array : ^ Array( $ Type ), begin, end : u64, value : Type ) -> b32
+array_fill :: proc( array : ^ Array( $ Type ), begin, end : u64, value : Type ) -> b32
 {
 	using array
 
@@ -187,7 +187,7 @@ array_grow :: proc( array : ^ Array( $ Type ), min_capacity : u64 ) -> Allocator
 }
 
 array_pop :: proc( array : ^ Array( $ Type ) ) {
-	verify( array.num == 0, "Attempted to pop an array with no elements" )
+	verify( array.num != 0, "Attempted to pop an array with no elements" )
 	array.num -= 1
 }
 
@@ -212,7 +212,7 @@ array_reserve :: proc( array : ^ Array( $ Type ), new_capacity : u64 ) -> Alloca
 	return AllocatorError.None
 }
 
-array_resize :: proc ( array : ^ Array( $ Type ), num : u64 ) -> AllocatorError
+array_resize :: proc( array : ^ Array( $ Type ), num : u64 ) -> AllocatorError
 {
 	if array.capacity < num
 	{
@@ -238,6 +238,7 @@ array_set_capacity :: proc( array : ^ Array( $ Type ), new_capacity : u64 ) -> A
 	}
 
 	raw_data, result_code := alloc( cast(int) new_capacity * size_of(Type), allocator = allocator )
+	ensure( result_code == AllocatorError.None, "Failed to allocate for new array capacity" )
 	data     = cast( [^] Type ) raw_data
 	capacity = new_capacity
 	return result_code

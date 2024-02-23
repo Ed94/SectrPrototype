@@ -18,11 +18,11 @@ Logger :: struct {
 	id        : string,
 }
 
-to_odin_logger :: proc ( logger : ^ Logger ) -> core_log.Logger {
+to_odin_logger :: proc( logger : ^ Logger ) -> core_log.Logger {
 	return { logger_interface, logger, core_log.Level.Debug, core_log.Default_File_Logger_Opts }
 }
 
-init :: proc ( logger : ^ Logger,  id : string, file_path : string, file := os.INVALID_HANDLE )
+init :: proc( logger : ^ Logger,  id : string, file_path : string, file := os.INVALID_HANDLE )
 {
 	if file == os.INVALID_HANDLE
 	{
@@ -48,7 +48,7 @@ init :: proc ( logger : ^ Logger,  id : string, file_path : string, file := os.I
 	}
 }
 
-logger_interface :: proc (
+logger_interface :: proc(
 	logger_data :  rawptr,
 	level       :  core_log.Level,
 	text        :  string,
@@ -116,10 +116,10 @@ logger_interface :: proc (
 	fmt.fprintln( logger.file, strings.to_string(builder) )
 }
 
-log :: proc ( msg : string, level := LogLevel.Info, loc := #caller_location ) {
+log :: proc( msg : string, level := LogLevel.Info, loc := #caller_location ) {
 	core_log.log( level, msg, location = loc )
 }
 
-logf :: proc ( fmt : string, args : ..any,  level := LogLevel.Info, loc := #caller_location  ) {
+logf :: proc( fmt : string, args : ..any,  level := LogLevel.Info, loc := #caller_location  ) {
 	core_log.logf( level, fmt, args, location = loc )
 }

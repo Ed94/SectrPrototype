@@ -33,7 +33,7 @@ copy_file_sync :: proc( path_src, path_dst: string ) -> b32
 	return true
 }
 
-file_exists :: proc ( file_path : string ) -> b32 {
+file_exists :: proc( file_path : string ) -> b32 {
 	path_info, result := os.stat( file_path, context.temp_allocator )
 	if result != os.ERROR_NONE {
 		return false
@@ -53,11 +53,11 @@ is_file_locked :: proc( file_path : string ) -> b32 {
 	return false
 }
 
-rewind :: proc ( file : os.Handle ) {
+rewind :: proc( file : os.Handle ) {
 	os.seek( file, 0, 0 )
 }
 
-read_looped :: proc ( file : os.Handle, data : []byte ) {
+read_looped :: proc( file : os.Handle, data : []byte ) {
 	total_read, result_code := os.read( file, data )
 	if result_code == os.ERROR_HANDLE_EOF {
 		rewind( file )

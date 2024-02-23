@@ -54,7 +54,7 @@ VMemChunk :: struct {
 	sectr_snapshot          : []u8
 }
 
-setup_memory :: proc () -> VMemChunk
+setup_memory :: proc() -> VMemChunk
 {
 	Arena              :: mem.Arena
 	Tracking_Allocator :: mem.Tracking_Allocator
@@ -72,13 +72,13 @@ setup_memory :: proc () -> VMemChunk
 		base_address : rawptr = transmute( rawptr) u64(Terabyte * 1)
 
 		result := arena_init_static( & sectr_live, base_address, sectr.memory_chunk_size, sectr.memory_chunk_size )
-		verify( result != runtime.Allocator_Error.None, "Failed to allocate live memory for the sectr module" )
+		verify( result == runtime.Allocator_Error.None, "Failed to allocate live memory for the sectr module" )
 	}
 
 	// Setup memory mapped io for snapshots
 	{
 		snapshot_file, open_error := os.open( path_snapshot, os.O_RDWR | os.O_CREATE )
-		verify( open_error != os.ERROR_NONE, "Failed to open snapshot file for the sectr module" )
+		verify( open_error == os.ERROR_NONE, "Failed to open snapshot file for the sectr module" )
 
 		file_info, stat_code := os.stat( path_snapshot )
 		{
@@ -90,7 +90,7 @@ setup_memory :: proc () -> VMemChunk
 		map_error                : virtual.Map_File_Error
 		map_flags                : virtual.Map_File_Flags = { virtual.Map_File_Flag.Read, virtual.Map_File_Flag.Write }
 		sectr_snapshot, map_error = virtual.map_file_from_file_descriptor( uintptr(snapshot_file), map_flags )
-		verify( map_error != virtual.Map_File_Error.None, "Failed to allocate snapshot memory for the sectr module" )
+		verify( map_error == virtual.Map_File_Error.None, "Failed to allocate snapshot memory for the sectr module" )
 
 		os.close(snapshot_file)
 	}
@@ -102,7 +102,7 @@ setup_memory :: proc () -> VMemChunk
 	return memory;
 }
 
-load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
+load_sectr_api :: proc( version_id : i32 ) -> sectr.ModuleAPI
 {
 	loaded_module : sectr.ModuleAPI
 
@@ -155,7 +155,7 @@ load_sectr_api :: proc ( version_id : i32 ) -> sectr.ModuleAPI
 	return loaded_module
 }
 
-unload_sectr_api :: proc ( module : ^ sectr.ModuleAPI )
+unload_sectr_api :: proc( module : ^ sectr.ModuleAPI )
 {
 	dynlib.unload_library( module.lib )
 	os.remove( path_sectr_live_module )
@@ -163,7 +163,7 @@ unload_sectr_api :: proc ( module : ^ sectr.ModuleAPI )
 	log("Unloaded sectr API")
 }
 
-sync_sectr_api :: proc ( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk, logger : ^ sectr.Logger )
+sync_sectr_api :: proc( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk, logger : ^ sectr.Logger )
 {
 	if write_time, result := os.last_write_time_by_name( path_sectr_module );
 	result == os.ERROR_NONE && sectr_api.write_time != write_time
@@ -176,7 +176,7 @@ sync_sectr_api :: proc ( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk, lo
 		time.sleep( time.Millisecond )
 
 		sectr_api ^ = load_sectr_api( version_id )
-		verify( sectr_api.lib_version == 0, "Failed to hot-reload the sectr module" )
+		verify( sectr_api.lib_version != 0, "Failed to hot-reload the sectr module" )
 
 		sectr_api.reload( memory.sectr_live, memory.sectr_snapshot, logger )
 	}
@@ -229,7 +229,7 @@ main :: proc()
 	// Load the Enviornment API for the first-time
 	{
 		sectr_api = load_sectr_api( 1 )
-		verify( sectr_api.lib_version == 0, "Failed to initially load the sectr module" )
+		verify( sectr_api.lib_version != 0, "Failed to initially load the sectr module" )
 	}
 
 	running            = true;

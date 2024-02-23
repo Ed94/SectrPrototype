@@ -5,7 +5,7 @@ import "core:reflect"
 
 // TODO(Ed) : Generic Unmarshling of json objects (There should be a way I believe todo this generically but the reflect library is not well documented)
 
-vec2_json_unmarshal :: proc ( value : ^ json.Value ) -> Vec2 {
+vec2_json_unmarshal :: proc( value : ^ json.Value ) -> Vec2 {
 	json_v := value.(json.Array)
 	return {
 		f32(json_v[0].(json.Float)),
@@ -13,7 +13,7 @@ vec2_json_unmarshal :: proc ( value : ^ json.Value ) -> Vec2 {
 	}
 }
 
-color_json_unmarshal :: proc ( value : ^ json.Value ) -> Color {
+color_json_unmarshal :: proc( value : ^ json.Value ) -> Color {
 	json_color := value.(json.Array)
 	r := u8(json_color[0].(json.Float))
 	g := u8(json_color[1].(json.Float))
@@ -22,7 +22,7 @@ color_json_unmarshal :: proc ( value : ^ json.Value ) -> Color {
 	return { r, g, b, a }
 }
 
-box_json_unmarshal :: proc ( value : ^ json.Value ) -> Box2 {
+box_json_unmarshal :: proc( value : ^ json.Value ) -> Box2 {
 	object     := value.(json.Object)
 	json_pos   := object["position"].(json.Array)
 
