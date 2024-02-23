@@ -3,6 +3,8 @@
 // with hot-reloads...
 package sectr
 
+// Note(Ed) : See core:hash for hasing procs.
+
 // This might be problematic...
 HT_MapProc    :: #type proc( $ Type : typeid, key : u64, value :   Type )
 HT_MapMutProc :: #type proc( $ Type : typeid, key : u64, value : ^ Type )

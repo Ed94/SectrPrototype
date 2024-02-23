@@ -19,7 +19,7 @@ render :: proc()
 	rl.BeginDrawing()
 	rl.ClearBackground( Color_BG )
 	render_mode_2d()
-	// Render Screenspace
+	//region Render Screenspace
 	{
 		fps_msg       := fmt.tprint( "FPS:", rl.GetFPS() )
 		fps_msg_width := measure_text_size( fps_msg, default_font, 16.0, 0.0 ).x
@@ -68,6 +68,7 @@ render :: proc()
 
 		debug.draw_debug_text_y = 50
 	}
+	//endregion Render Screenspace
 	rl.EndDrawing()
 }
 
@@ -79,27 +80,11 @@ render_mode_2d :: proc()
 
 	rl.BeginMode2D( project.workspace.cam )
 
-	// debug.frame_1_on_top = true
+	//region Imgui Render
+	{
 
-	boxes : [2]^Box2
-	if debug.frame_1_on_top {
-		boxes = { & project.workspace.frame_2, & project.workspace.frame_1 }
 	}
-	else {
-		boxes = { & project.workspace.frame_1, & project.workspace.frame_2 }
-	}
-
-	for box in boxes {
-		screen_pos := world_to_screen_no_zoom(box.position) - vec2_cm_to_pixels( Vec2(box.extent) )
-		size       := vec2_cm_to_pixels( transmute(Vec2) box.extent * 2.0 )
-
-		rect : rl.Rectangle
-		rect.x      = screen_pos.x
-		rect.y      = screen_pos.y
-		rect.width  = size.x
-		rect.height = size.y
-		rl.DrawRectangleRec( rect, box.color )
-	}
+	//endregion Imgui Render
 
 	debug_draw_text_world( "This is text in world space", { 0, 0 }, 16.0  )
 

@@ -132,12 +132,24 @@ AppWindow :: struct {
 	ppcm      : f32,      // Dots per centimetre
 }
 
+// PMDB
+CodeBase :: struct {
+	placeholder : int,
+}
+
+ProjectConfig :: struct {
+	placeholder : int,
+}
+
 Project :: struct {
 	path : string,
 	name : string,
 
+	config   : ProjectConfig,
+	codebase : CodeBase,
+
 	// TODO(Ed) : Support multiple workspaces
-	workspace : Workspace
+	workspace : Workspace,
 }
 
 Workspace :: struct {
@@ -146,6 +158,9 @@ Workspace :: struct {
 	cam     : Camera,
 	frame_1 : Box2,
 	frame_2 : Box2,
+
+	// TODO(Ed) : The workspace is mainly a 'UI' conceptually...
+	ui : UI_State,
 }
 
 DebugData :: struct {

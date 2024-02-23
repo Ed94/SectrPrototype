@@ -2,6 +2,8 @@ package sectr
 
 import rl "vendor:raylib"
 
+// TODO(Ed) : Do we want to have distinct types for cm/pixels/points ? This will make mistakes with unit conversion happen less.
+
 // The points to pixels and pixels to points are our only reference to accurately converting
 // an object from world space to screen-space.
 // This prototype engine will have all its spacial unit base for distances in centimetres.
@@ -16,7 +18,7 @@ DPT_PPCM      :: cast(f32) 96.0 * Inches_To_CM // 243.84 pixels per cm
 when ODIN_OS == OS_Type.Windows {
 	op_default_dpcm :: 72.0 * Inches_To_CM
 	os_default_ppcm :: 96.0 * Inches_To_CM
-	// 1 inch = 2.54 cm, 96 inch * 2.54 = 243.84 DPC
+	// 1 inch = 2.54 cm, 96 inch * 2.54 = 243.84 DPCM
 }
 
 cm_to_pixels :: proc {

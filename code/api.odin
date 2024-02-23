@@ -1,6 +1,7 @@
 package sectr
 
 import    "base:runtime"
+import  c "core:c/libc"
 import    "core:dynlib"
 import    "core:fmt"
 import    "core:mem"
@@ -70,6 +71,8 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 
 	input      = & input_data[1]
 	input_prev = & input_data[0]
+
+	// rl.Odin_SetMalloc( RL_MALLOC )
 
 	rl.SetConfigFlags( { rl.ConfigFlag.WINDOW_RESIZABLE /*, rl.ConfigFlag.WINDOW_TOPMOST*/ } )
 
@@ -145,6 +148,8 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 
 			frame_2.color = Color_BG_TextBox_Green
 			box_set_size( & frame_2, { 60, 100 } * CM_Per_Point )
+
+
 		}
 	}
 }

@@ -86,7 +86,7 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 	}
 
-	// Input Replay
+	//region Input Replay
 	{
 		if debug_actions.record_replay { #partial switch replay.mode
 		{
@@ -129,27 +129,28 @@ update :: proc( delta_time : f64 ) -> b32
 			play_input( replay.active_file, input )
 		}
 	}
+	//endregion Input Replay
 
 	if debug_actions.show_mouse_pos {
 		debug.mouse_vis = !debug.mouse_vis
 	}
 
-	// Camera Manual Nav
+	//region Camera Manual Nav
 	{
 		cam := & project.workspace.cam
 
 		digital_move_speed : f32 = 200.0
-		zoom_sensitivity   : f32 = 0.2 // Digital
-		// zoom_sensitivity   : f32 = 2.0  // Smooth
+		// zoom_sensitivity   : f32 = 0.2 // Digital
+		zoom_sensitivity   : f32 = 4.0  // Smooth
 
 		if debug.zoom_target == 0.0 {
 			debug.zoom_target = cam.zoom
 		}
 
-    // Adjust zoom_target based on input, not the actual zoom
-    zoom_delta        := input.mouse.vertical_wheel * zoom_sensitivity
-    debug.zoom_target *= 1 + zoom_delta //* f32(delta_time)
-    debug.zoom_target  = clamp(debug.zoom_target, 0.25, 10.0)
+		// Adjust zoom_target based on input, not the actual zoom
+		zoom_delta        := input.mouse.vertical_wheel * zoom_sensitivity
+		debug.zoom_target *= 1 + zoom_delta * f32(delta_time)
+		debug.zoom_target  = clamp(debug.zoom_target, 0.25, 10.0)
 
 		// Linearly interpolate cam.zoom towards zoom_target
 		lerp_factor := cast(f32) 4.0 // Adjust this value to control the interpolation speed
@@ -171,32 +172,14 @@ update :: proc( delta_time : f64 ) -> b32
 			}
 		}
 	}
+	//endregion
 
-	boxes : [2]^Box2
-	boxes = { & project.workspace.frame_1, & project.workspace.frame_2 }
-	if debug.frame_1_on_top {
-		boxes = { & project.workspace.frame_2, & project.workspace.frame_1 }
-	}
-	else {
-		boxes = { & project.workspace.frame_1, & project.workspace.frame_2 }
-	}
-
-	if debug_actions.mouse_select
+	//region Imgui Tick
 	{
-		for box in boxes
-		{
-			cursor_pos := screen_to_world( input.mouse.pos )
-			if box_is_within( box, cursor_pos )
-			{
-				if box == & project.workspace.frame_1 {
-					debug.frame_1_on_top = true
-				}
-				else {
-					debug.frame_1_on_top = false
-				}
-			}
-		}
+		// Layout 
+
 	}
+	// endregion
 
 	debug.last_mouse_pos = input.mouse.pos
 

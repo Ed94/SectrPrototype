@@ -9,7 +9,7 @@ import "core:os"
 import rl "vendor:raylib"
 
 Font_Arena_Size      :: 32 * Megabyte
-Font_Largest_Px_Size :: 96
+Font_Largest_Px_Size :: 32
 
 // Font_Default :: ""
 Font_Default            :: 0
@@ -56,6 +56,7 @@ FontProviderData :: struct {
 
 	//TODO(Ed) : There is an issue with hot-reload and map allocations that I can't figure out right now..
 	// font_cache : ^ map [FontID](FontDef),
+	// font_cache : HashTable(FontDef),
 	font_cache : [10] FontDef,
 	open_id    : i32
 }

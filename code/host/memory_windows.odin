@@ -129,3 +129,14 @@ arena_init_static :: proc(arena: ^virtual.Arena, base_address : rawptr,
 
 // END WINDOWS CHECK WRAP
 }
+else
+{
+	// Fallback to regular init_static impl for other platforms for now.
+
+	arena_init_static :: proc(arena: ^virtual.Arena, base_address : rawptr,
+		reserved    : uint = virtual.DEFAULT_ARENA_STATIC_RESERVE_SIZE,
+		commit_size : uint = virtual.DEFAULT_ARENA_STATIC_COMMIT_SIZE
+	) -> (err: virtual.Allocator_Error) {
+		return virtual.arena_init_static( arena, reserved, commit_size )
+	}
+}
