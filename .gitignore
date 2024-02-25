@@ -1,5 +1,4 @@
 build/**
 *.exe
-thirdparty/**
-~thirdparty/odin/core/**
+# thirdparty/**
 logs
