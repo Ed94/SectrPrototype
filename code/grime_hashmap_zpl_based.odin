@@ -1,6 +1,10 @@
 // This is an alternative to Odin's default map type.
 // The only reason I may need this is due to issues with allocator callbacks or something else going on
 // with hot-reloads...
+
+// This implementation uses two ZPL-Based Arrays to hold entires and the actual hash table.
+// Its algorithim isn't that great, removal of elements is very expensive.
+// To the point where if thats done quite a bit another implementation should be looked at.
 package sectr
 
 import "core:slice"
@@ -9,33 +13,35 @@ import "core:slice"
 // Note(Ed) : See core:hash for hasing procs.
 
 // This might be problematic...
-HT_MapProc    :: #type proc( $ Type : typeid, key : u64, value :   Type )
-HT_MapMutProc :: #type proc( $ Type : typeid, key : u64, value : ^ Type )
+HMapZPL_MapProc    :: #type proc( $ Type : typeid, key : u64, value :   Type )
+HMapZPL_MapMutProc :: #type proc( $ Type : typeid, key : u64, value : ^ Type )
 
-HT_FindResult :: struct {
+HMapZPL_CritialLoadScale :: 0.70
+
+HMapZPL_FindResult :: struct {
 	hash_index  : i64,
 	prev_index  : i64,
 	entry_index : i64,
 }
 
-HashTable_Entry :: struct ( $ Type : typeid) {
+HMapZPL_Entry :: struct ( $ Type : typeid) {
 	key   : u64,
 	next  : i64,
 	value : Type,
 }
 
-HashTable :: struct ( $ Type : typeid ) {
+HMapZPL :: struct ( $ Type : typeid ) {
 	hashes  : Array( i64 ),
-	entries : Array( HashTable_Entry(Type) ),
+	entries : Array( HMapZPL_Entry(Type) ),
 }
 
-hashtable_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( HashTable( Type), AllocatorError ) {
-	return hashtable_init_reserve( Type, allocator )
+zpl_hmap_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( HMapZPL( Type), AllocatorError ) {
+	return zpl_hmap_init_reserve( Type, allocator )
 }
 
-hashtable_init_reserve :: proc( $ Type : typeid, allocator : Allocator, num : u64 ) -> ( HashTable( Type), AllocatorError )
+zpl_hmap_init_reserve :: proc( $ Type : typeid, allocator : Allocator, num : u64 ) -> ( HMapZPL( Type), AllocatorError )
 {
-	result                        : HashTable(Type)
+	result                        : HMapZPL(Type)
 	hashes_result, entries_result : AllocatorError
 
 	result.hashes, hashes_result = array_init_reserve( i64, allocator, num )
@@ -46,7 +52,7 @@ hashtable_init_reserve :: proc( $ Type : typeid, allocator : Allocator, num : u6
 	array_resize( & result.hashes, num )
 	slice.fill( slice_ptr( result.hashes.data, cast(int) result.hashes.num), -1 )
 
-	result.entries, entries_result = array_init_reserve( HashTable_Entry(Type), allocator, num )
+	result.entries, entries_result = array_init_reserve( HMapZPL_Entry(Type), allocator, num )
 	if entries_result != AllocatorError.None {
 		ensure( false, "Failed to allocate entries array" )
 		return result, entries_result
@@ -54,8 +60,7 @@ hashtable_init_reserve :: proc( $ Type : typeid, allocator : Allocator, num : u6
 	return result, AllocatorError.None
 }
 
-hashtable_clear :: proc( ht : ^ HashTable( $ Type ) ) {
-	using ht
+zpl_hmap_clear :: proc( using self : ^ HMapZPL( $ Type ) ) {
 	for id := 0; id < hashes.num; id += 1 {
 		hashes[id] = -1
 	}
@@ -64,18 +69,16 @@ hashtable_clear :: proc( ht : ^ HashTable( $ Type ) ) {
 	array_clear( entries )
 }
 
-hashtable_destroy :: proc( using ht : ^ HashTable( $ Type ) ) {
+zpl_hmap_destroy :: proc( using self : ^ HMapZPL( $ Type ) ) {
 	if hashes.data != nil && hashes.capacity > 0 {
 		array_free( & hashes )
 		array_free( & entries )
 	}
 }
 
-hashtable_get :: proc( ht : ^ HashTable( $ Type ), key : u64 ) -> ^ Type
+zpl_hmap_get :: proc( using self : ^ HMapZPL( $ Type ), key : u64 ) -> ^ Type
 {
-	using ht
-
-	id := hashtable_find( ht, key ).entry_index
+	id := zpl_hmap_find( self, key ).entry_index
 	if id >= 0 {
 		return & entries.data[id].value
 	}
@@ -83,44 +86,41 @@ hashtable_get :: proc( ht : ^ HashTable( $ Type ), key : u64 ) -> ^ Type
 	return nil
 }
 
-hashtable_map :: proc( ht : ^ HashTable( $ Type), map_proc : HT_MapProc ) {
-	using ht
+zpl_hmap_map :: proc( using self : ^ HMapZPL( $ Type), map_proc : HMapZPL_MapProc ) {
 	ensure( map_proc != nil, "Mapping procedure must not be null" )
 	for id := 0; id < entries.num; id += 1 {
 		map_proc( Type, entries[id].key, entries[id].value )
 	}
 }
 
-hashtable_map_mut :: proc( ht : ^ HashTable( $ Type), map_proc : HT_MapMutProc ) {
-	using ht
+zpl_hmap_map_mut :: proc( using self : ^ HMapZPL( $ Type), map_proc : HMapZPL_MapMutProc ) {
 	ensure( map_proc != nil, "Mapping procedure must not be null" )
 	for id := 0; id < entries.num; id += 1 {
 		map_proc( Type, entries[id].key, & entries[id].value )
 	}
 }
 
-hashtable_grow :: proc( ht : ^ HashTable( $ Type ) ) -> AllocatorError {
-	using ht
+zpl_hmap_grow :: proc( using self : ^ HMapZPL( $ Type ) ) -> AllocatorError {
 	new_num := array_grow_formula( entries.num )
-	return hashtable_rehash( ht, new_num )
+	return zpl_hmap_rehash( self, new_num )
 }
 
-hashtable_rehash :: proc( ht : ^ HashTable( $ Type ), new_num : u64 ) -> AllocatorError
+zpl_hmap_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorError
 {
 	last_added_index : i64
 
-	new_ht, init_result := hashtable_init_reserve( Type, ht.hashes.allocator, new_num )
+	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.hashes.allocator, new_num )
 	if init_result != AllocatorError.None {
-		ensure( false, "New hashtable failed to allocate" )
+		ensure( false, "New zpl_hmap failed to allocate" )
 		return init_result
 	}
 
 	for id : u64 = 0; id < ht.entries.num; id += 1 {
-		find_result : HT_FindResult
+		find_result : HMapZPL_FindResult
 
 		entry           := & ht.entries.data[id]
-		find_result      = hashtable_find( & new_ht, entry.key )
-		last_added_index = hashtable_add_entry( & new_ht, entry.key )
+		find_result      = zpl_hmap_find( & new_ht, entry.key )
+		last_added_index = zpl_hmap_add_entry( & new_ht, entry.key )
 
 		if find_result.prev_index < 0 {
 			new_ht.hashes.data[ find_result.hash_index ] = last_added_index
@@ -133,15 +133,14 @@ hashtable_rehash :: proc( ht : ^ HashTable( $ Type ), new_num : u64 ) -> Allocat
 		new_ht.entries.data[ last_added_index ].value = entry.value
 	}
 
-	hashtable_destroy( ht )
+	zpl_hmap_destroy( ht )
 
 	(ht ^) = new_ht
 	return AllocatorError.None
 }
 
-hashtable_rehash_fast :: proc( ht : ^ HashTable( $ Type ) )
+zpl_hmap_rehash_fast :: proc( using self : ^ HMapZPL( $ Type ) )
 {
-	using ht
 	for id := 0; id < entries.num; id += 1 {
 		entries[id].Next = -1;
 	}
@@ -150,7 +149,7 @@ hashtable_rehash_fast :: proc( ht : ^ HashTable( $ Type ) )
 	}
 	for id := 0; id < entries.num; id += 1 {
 		entry       := & entries[id]
-		find_result := hashtable_find( entry.key )
+		find_result := zpl_hmap_find( entry.key )
 
 		if find_result.prev_index < 0 {
 			hashes[ find_result.hash_index ] = id
@@ -161,42 +160,39 @@ hashtable_rehash_fast :: proc( ht : ^ HashTable( $ Type ) )
 	}
 }
 
-hashtable_remove :: proc( ht : ^ HashTable( $ Type ), key : u64 ) {
-	using ht
-	find_result := hashtable_find( key )
+zpl_hmap_remove :: proc( self : ^ HMapZPL( $ Type ), key : u64 ) {
+	find_result := zpl_hmap_find( key )
 
 	if find_result.entry_index >= 0 {
-		array_remove_at( & ht.entries, find_result.entry_index )
-		hashtable_rehash_fast( ht )
+		array_remove_at( & entries, find_result.entry_index )
+		zpl_hmap_rehash_fast( self )
 	}
 }
 
-hashtable_remove_entry :: proc( ht : ^ HashTable( $ Type ), id : i64 ) {
-	array_remove_at( & ht.entries, id )
+zpl_hmap_remove_entry :: proc( using self : ^ HMapZPL( $ Type ), id : i64 ) {
+	array_remove_at( & entries, id )
 }
 
-hashtable_set :: proc( ht : ^ HashTable( $ Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
+zpl_hmap_set :: proc( using self : ^ HMapZPL( $ Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
 {
-	using ht
-
 	id          : i64 = 0
-	find_result : HT_FindResult
+	find_result : HMapZPL_FindResult
 
-	if hashtable_full( ht )
+	if zpl_hmap_full( self )
 	{
-		grow_result := hashtable_grow(ht)
+		grow_result := zpl_hmap_grow( self )
 		if grow_result != AllocatorError.None {
 				return nil, grow_result
 		}
 	}
 
-	find_result = hashtable_find( ht, key )
+	find_result = zpl_hmap_find( self, key )
 	if find_result.entry_index >= 0 {
 		id = find_result.entry_index
 	}
 	else
 	{
-		id = hashtable_add_entry( ht, key )
+		id = zpl_hmap_add_entry( self, key )
 		if find_result.prev_index >= 0 {
 			entries.data[ find_result.prev_index ].next = id
 		}
@@ -207,15 +203,14 @@ hashtable_set :: proc( ht : ^ HashTable( $ Type), key : u64, value : Type ) -> (
 
 	entries.data[id].value = value
 
-	if hashtable_full( ht ) {
-		return & entries.data[id].value, hashtable_grow( ht )
+	if zpl_hmap_full( self ) {
+		return & entries.data[id].value, zpl_hmap_grow( self )
 	}
 
 	return & entries.data[id].value, AllocatorError.None
 }
 
-hashtable_slot :: proc( ht : ^ HashTable( $ Type), key : u64 ) -> i64 {
-	using ht
+zpl_hmap_slot :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> i64 {
 	for id : i64 = 0; id < hashes.num; id += 1 {
 		if hashes.data[id] == key                {
 			return id
@@ -224,36 +219,35 @@ hashtable_slot :: proc( ht : ^ HashTable( $ Type), key : u64 ) -> i64 {
 	return -1
 }
 
-hashtable_add_entry :: proc( ht : ^ HashTable( $ Type), key : u64 ) -> i64 {
-	using ht
-	entry : HashTable_Entry(Type) = { key, -1, {} }
+zpl_hmap_add_entry :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> i64 {
+	entry : HMapZPL_Entry(Type) = { key, -1, {} }
 	id    := cast(i64) entries.num
 	array_append( & entries, entry )
 	return id
 }
 
-hashtable_find :: proc( ht : ^ HashTable( $ Type), key : u64 ) -> HT_FindResult
+zpl_hmap_find :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> HMapZPL_FindResult
 {
-	using ht
-	result : HT_FindResult = { -1, -1, -1 }
+	result : HMapZPL_FindResult = { -1, -1, -1 }
 
 	if hashes.num > 0 {
 		result.hash_index  = cast(i64)( key % hashes.num )
 		result.entry_index = hashes.data[ result.hash_index ]
 
 		for ; result.entry_index >= 0;                     {
-			if entries.data[ result.entry_index ].key == key {
+			entry := & entries.data[ result.entry_index ]
+			if entry.key == key {
 				break
 			}
 
 			result.prev_index  = result.entry_index
-			result.entry_index = entries.data[ result.entry_index ].next
+			result.entry_index = entry.next
 		}
 	}
 	return result
 }
 
-hashtable_full :: proc( using ht : ^ HashTable( $ Type) ) -> b32 {
-	result : b32 = entries.num > u64(0.75 * cast(f64) hashes.num)
+zpl_hmap_full :: proc( using self : ^ HMapZPL( $ Type) ) -> b32 {
+	result : b32 = entries.num > u64(HMapZPL_CritialLoadScale * cast(f64) hashes.num)
 	return result
 }

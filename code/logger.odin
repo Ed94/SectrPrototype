@@ -4,7 +4,7 @@ import "base:runtime"
 import "core:fmt"
 import "core:mem"
 import "core:os"
-import "core:strings"
+import str "core:strings"
 import "core:time"
 import core_log "core:log"
 
@@ -22,15 +22,15 @@ to_odin_logger :: proc( logger : ^ Logger ) -> core_log.Logger {
 	return { logger_interface, logger, core_log.Level.Debug, core_log.Default_File_Logger_Opts }
 }
 
-init :: proc( logger : ^ Logger,  id : string, file_path : string, file := os.INVALID_HANDLE )
+logger_init :: proc( logger : ^ Logger,  id : string, file_path : string, file := os.INVALID_HANDLE )
 {
 	if file == os.INVALID_HANDLE
 	{
-		logger_file, result_code := os.open( file_path, os.O_RDWR | os.O_CREATE )
+		logger_file, result_code := file_open( file_path, os.O_RDWR | os.O_CREATE )
 		if result_code != os.ERROR_NONE {
 				// Log failures are fatal and must never occur at runtime (there is no logging)
 				runtime.debug_trap()
-				os.     exit( -1 )
+				os.exit( -1 )
 				// TODO(Ed) : Figure out the error code enums..
 		}
 		logger.file = logger_file
@@ -60,37 +60,37 @@ logger_interface :: proc(
 	@static builder_backing : [16 * Kilobyte] byte; {
 		mem.set( raw_data( builder_backing[:] ), 0, len(builder_backing) )
 	}
-	builder := strings.builder_from_bytes( builder_backing[:] )
+	builder := str.builder_from_bytes( builder_backing[:] )
 
 	first_line_length := len(text) > Max_Logger_Message_Width ? Max_Logger_Message_Width : len(text)
 	first_line        := transmute(string) text[ 0 : first_line_length ]
-	fmt.sbprintf( & builder, "%-*s ", Max_Logger_Message_Width, first_line )
+	str_fmt_builder( & builder, "%-*s ", Max_Logger_Message_Width, first_line )
 
 	// Signature
 	{
 		when time.IS_SUPPORTED
 		{
 			if core_log.Full_Timestamp_Opts & options != nil {
-				fmt.sbprint( & builder, "[")
+				str_fmt_builder( & builder, "[")
 
 				t := time.now()
-				y, m,   d := time.date(t)
-				h, min, s := time.clock(t)
+				year, month,  day    := time.date(t)
+				hour, minute, second := time.clock(t)
 
 				if .Date in options {
-					fmt.sbprintf( & builder, "%d-%02d-%02d ", y, m, d )
+					str_fmt_builder( & builder, "%d-%02d-%02d ", year, month, day )
 				}
 				if .Time in options {
-					fmt.sbprintf( & builder, "%02d:%02d:%02d", h, min, s)
+					str_fmt_builder( & builder, "%02d:%02d:%02d", hour, minute, second)
 				}
 
-				fmt.sbprint( & builder, "] ")
+				str_fmt_builder( & builder, "] ")
 			}
 		}
 		core_log.do_level_header( options, level, & builder )
 
 		if logger.id != "" {
-			fmt.sbprintf( & builder, "[%s] ", logger.id )
+			str_fmt_builder( & builder, "[%s] ", logger.id )
 		}
 		core_log.do_location_header( options, & builder, location  )
 	}
@@ -99,21 +99,21 @@ logger_interface :: proc(
 	if len(text) > Max_Logger_Message_Width
 	{
 		offset := Max_Logger_Message_Width
-		bytes  := transmute([]u8) text
+		bytes  := transmute( []u8 ) text
 		for left := len(bytes) - Max_Logger_Message_Width; left > 0; left -= Max_Logger_Message_Width
 		{
-			fmt.sbprintf( & builder, "\n" )
+			str_fmt_builder( & builder, "\n" )
 			subset_length := len(text) - offset
 			if subset_length > Max_Logger_Message_Width {
 				subset_length = Max_Logger_Message_Width
 			}
 			subset := slice_ptr( ptr_offset( raw_data(bytes), offset), subset_length )
-			fmt.sbprintf( & builder, "%s", transmute(string)subset )
+			str_fmt_builder( & builder, "%s", transmute(string) subset )
 			offset += Max_Logger_Message_Width
 		}
 	}
 
-	fmt.fprintln( logger.file, strings.to_string(builder) )
+	str_to_file_ln( logger.file, to_string(builder) )
 }
 
 log :: proc( msg : string, level := LogLevel.Info, loc := #caller_location ) {

@@ -2,7 +2,6 @@ package sectr
 
 import "base:runtime"
 import "core:math"
-import "core:fmt"
 
 import rl "vendor:raylib"
 
@@ -60,7 +59,7 @@ poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 update :: proc( delta_time : f64 ) -> b32
 {
 	state  := get_state(); using state
-	replay := & memory.replay
+	replay := & Memory_App.replay
 
 	if rl.IsWindowResized() {
 		window := & state.app_window
@@ -82,7 +81,7 @@ update :: proc( delta_time : f64 ) -> b32
 			project_save( & project )
 		}
 		if debug_actions.load_project {
-			project_load( fmt.tprint( project.path, project.name, ".sectr_proj", sep = "" ), & project )
+			project_load( str_tmp_from_any( project.path, project.name, ".sectr_proj", sep = "" ), & project )
 		}
 	}
 
@@ -91,7 +90,7 @@ update :: proc( delta_time : f64 ) -> b32
 		if debug_actions.record_replay { #partial switch replay.mode
 		{
 			case ReplayMode.Off : {
-				save_snapshot( & memory.snapshot[0] )
+				save_snapshot( & Memory_App.snapshot[0] )
 				replay_recording_begin( Path_Input_Replay )
 			}
 			case ReplayMode.Record : {
@@ -103,21 +102,21 @@ update :: proc( delta_time : f64 ) -> b32
 		{
 			case ReplayMode.Off : {
 				if ! file_exists( Path_Input_Replay ) {
-					save_snapshot( & memory.snapshot[0] )
+					save_snapshot( & Memory_App.snapshot[0] )
 					replay_recording_begin( Path_Input_Replay )
 				}
 				else {
-					load_snapshot( & memory.snapshot[0] )
+					load_snapshot( & Memory_App.snapshot[0] )
 					replay_playback_begin( Path_Input_Replay )
 				}
 			}
 			case ReplayMode.Playback : {
 				replay_playback_end()
-				load_snapshot( & memory.snapshot[0] )
+				load_snapshot( & Memory_App.snapshot[0] )
 			}
 			case ReplayMode.Record : {
 				replay_recording_end()
-				load_snapshot( & memory.snapshot[0] )
+				load_snapshot( & Memory_App.snapshot[0] )
 				replay_playback_begin( Path_Input_Replay )
 			}
 		}}
@@ -175,15 +174,16 @@ update :: proc( delta_time : f64 ) -> b32
 	//endregion
 
 	//region Imgui Tick
+
 	{
-		ui_context := & state.project.workspace.ui
+		// Creates the root box node, set its as the first parent.
+		ui_graph_build( & state.project.workspace.ui )
 
-		// Build Graph (Determines if layout is dirty)
-		ui_graph_build_begin( ui_context )
+		ui_style({ bg_color = Color_BG_TextBox })
+		ui_set_layout({ size = { 200, 200 }})
 
-		
-
-		// Regnerate compute if layout is dirty.
+		first_flags : UI_BoxFlags = { .Mouse_Clickable, .Focusable, .Click_To_Focus  }
+		ui_box_make( first_flags, "FIRST BOX BOIS" )
 	}
 	// endregion
 

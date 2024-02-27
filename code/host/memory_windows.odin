@@ -23,7 +23,7 @@ align_formula :: #force_inline proc "contextless" (size, align: uint) -> uint {
 }
 
 @(private="file")
-win32_reserve :: proc "contextless" (base_address : rawptr, size: uint) -> (data: []byte, err: virtual.Allocator_Error) {
+win32_reserve_with_base_address :: proc "contextless" (base_address : rawptr, size: uint) -> (data: []byte, err: virtual.Allocator_Error) {
 	result := win32.VirtualAlloc(base_address, size, win32.MEM_RESERVE, win32.PAGE_READWRITE)
 	if result == nil {
 		err = .Out_Of_Memory
@@ -43,7 +43,7 @@ platform_memory_alloc :: proc "contextless" (to_commit, to_reserve: uint, base_a
 	total_to_reserved := max(to_reserve, size_of( virtual_Platform_Memory_Block))
 	to_commit = clamp(to_commit, size_of( virtual_Platform_Memory_Block), total_to_reserved)
 
-	data := win32_reserve(base_address, total_to_reserved) or_return
+	data := win32_reserve_with_base_address(base_address, total_to_reserved) or_return
 	virtual.commit(raw_data(data), to_commit)
 
 	block = (^virtual_Platform_Memory_Block)(raw_data(data))
@@ -126,13 +126,10 @@ arena_init_static :: proc(arena: ^virtual.Arena, base_address : rawptr,
 	arena.total_reserved = arena.curr_block.reserved
 	return
 }
-
-// END WINDOWS CHECK WRAP
-}
+/* END OF: when ODIN_OS == runtime.Odin_OS_Type.Windows */ }
 else
 {
 	// Fallback to regular init_static impl for other platforms for now.
-
 	arena_init_static :: proc(arena: ^virtual.Arena, base_address : rawptr,
 		reserved    : uint = virtual.DEFAULT_ARENA_STATIC_RESERVE_SIZE,
 		commit_size : uint = virtual.DEFAULT_ARENA_STATIC_COMMIT_SIZE

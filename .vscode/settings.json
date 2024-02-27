@@ -4,5 +4,6 @@
 		"thirdparty/**" : false,
 		"**/thirdparty" : false,
 	},
-	"godot_tools.scene_file_config": "c:\\projects\\SectrPrototype\\code"
+	"godot_tools.scene_file_config": "c:\\projects\\SectrPrototype\\code",
+	"autoHide.autoHidePanel": false
 }

@@ -17,46 +17,46 @@ ReplayState :: struct {
 replay_recording_begin :: proc( path : string )
 {
 	if file_exists( path ) {
-		result := os.remove( path )
+		result := file_remove( path )
 		verify( result != os.ERROR_NONE, "Failed to delete replay file before beginning a new one" )
 	}
 
-	replay_file, open_error := os.open( path, os.O_RDWR | os.O_CREATE )
+	replay_file, open_error := file_open( path, FileFlag_ReadWrite | FileFlag_Create )
 	verify( open_error != os.ERROR_NONE, "Failed to create or open the replay file" )
 
-	os.seek( replay_file, 0, 0 )
+	file_seek( replay_file, 0, 0 )
 
-	replay := & memory.replay
+	replay := & Memory_App.replay
 	replay.active_file = replay_file
 	replay.mode        = ReplayMode.Record
 }
 
 replay_recording_end :: proc() {
-	replay := & memory.replay
+	replay := & Memory_App.replay
 	replay.mode = ReplayMode.Off
 
-	os.seek( replay.active_file, 0, 0 )
-	os.close( replay.active_file )
+	file_seek( replay.active_file, 0, 0 )
+	file_close( replay.active_file )
 }
 
 replay_playback_begin :: proc( path : string )
 {
 	verify( ! file_exists( path ), "Failed to find replay file" )
 
-	replay_file, open_error := os.open( path, os.O_RDWR | os.O_CREATE )
+	replay_file, open_error := file_open( path, FileFlag_ReadWrite | FileFlag_Create )
 	verify( open_error != os.ERROR_NONE, "Failed to create or open the replay file" )
 
-	os.seek( replay_file, 0, 0 )
+	file_seek( replay_file, 0, 0 )
 
-	replay := & memory.replay
+	replay := & Memory_App.replay
 	replay.active_file = replay_file
 	replay.mode        = ReplayMode.Playback
 }
 
 replay_playback_end :: proc() {
 	input  := get_state().input
-	replay := & memory.replay
+	replay := & Memory_App.replay
 	replay.mode = ReplayMode.Off
-	os.seek( replay.active_file, 0, 0 )
-	os.close( replay.active_file )
+	file_seek( replay.active_file, 0, 0 )
+	file_close( replay.active_file )
 }

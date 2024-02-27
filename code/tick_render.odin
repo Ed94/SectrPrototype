@@ -7,7 +7,7 @@ import rl "vendor:raylib"
 render :: proc()
 {
 	state  := get_state(); using state
-	replay := & memory.replay
+	replay := & Memory_App.replay
 	cam    := & project.workspace.cam
 	win_extent := state.app_window.extent
 
@@ -21,7 +21,7 @@ render :: proc()
 	render_mode_2d()
 	//region Render Screenspace
 	{
-		fps_msg       := fmt.tprint( "FPS:", rl.GetFPS() )
+		fps_msg       := str_fmt_tmp( "FPS:", rl.GetFPS() )
 		fps_msg_width := measure_text_size( fps_msg, default_font, 16.0, 0.0 ).x
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 }
 		debug_draw_text( fps_msg, fps_msg_pos, 16.0, color = rl.GREEN )
@@ -42,7 +42,7 @@ render :: proc()
 			position.x -= 200
 			position.y += debug.draw_debug_text_y
 
-			content := fmt.bprintf( draw_text_scratch[:], format, ..args )
+			content := str_fmt_buffer( draw_text_scratch[:], format, ..args )
 			debug_draw_text( content, position, 16.0 )
 
 			debug.draw_debug_text_y += 16
@@ -50,8 +50,8 @@ render :: proc()
 
 		// Debug Text
 		{
-			// debug_text( "Screen Width : %v", rl.GetScreenWidth () )
-			// debug_text( "Screen Height: %v", rl.GetScreenHeight() )
+			debug_text( "Screen Width : %v", rl.GetScreenWidth () )
+			debug_text( "Screen Height: %v", rl.GetScreenHeight() )
 			if replay.mode == ReplayMode.Record {
 				debug_text( "Recording Input")
 			}

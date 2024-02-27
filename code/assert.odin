@@ -1,4 +1,4 @@
-package sectr 
+package sectr
 
 import "base:runtime"
 import "core:os"

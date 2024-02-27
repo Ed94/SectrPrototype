@@ -56,7 +56,7 @@ FontProviderData :: struct {
 
 	//TODO(Ed) : There is an issue with hot-reload and map allocations that I can't figure out right now..
 	// font_cache : ^ map [FontID](FontDef),
-	// font_cache : HashTable(FontDef),
+	// font_cache : HMapZPL(FontDef),
 	font_cache : [10] FontDef,
 	open_id    : i32
 }
@@ -101,7 +101,7 @@ font_load :: proc( path_file : string,
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
 	font_data, read_succeded : = os.read_entire_file( path_file  )
-	verify( b32(read_succeded), fmt.tprintf("Failed to read font file for: %v", path_file) )
+	verify( b32(read_succeded), str_fmt_tmp("Failed to read font file for: %v", path_file) )
 	font_data_size := cast(i32) len(font_data)
 
 	desired_id := desired_id
@@ -141,7 +141,7 @@ font_load :: proc( path_file : string,
 			codepoints     = nil,
 			codepointCount = count,
 			type = rl.FontType.DEFAULT )
-		verify( glyphs != nil, fmt.tprintf("Failed to load glyphs for font: %v at desired size: %v", desired_id, size ) )
+		verify( glyphs != nil, str_fmt_tmp("Failed to load glyphs for font: %v at desired size: %v", desired_id, size ) )
 
 		atlas  := rl.GenImageFontAtlas( glyphs, & recs, count, size, padding, i32(Font_Atlas_Packing_Method.Raylib_Basic) )
 		texture = rl.LoadTextureFromImage( atlas )

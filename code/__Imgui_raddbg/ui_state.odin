@@ -17,7 +17,7 @@ UI_State :: struct {
 	// TODO(ED) : Put this in its own struct?
 	first_free_box : UI_Box,
 	box_table_size : u64,
-	box_table      : ^ UI_BoxHashSlot,  // TODO(Ed) : Can the cache use HashTable?
+	box_table      : ^ UI_BoxHashSlot,  // TODO(Ed) : Can the cache use HMapZPL?
 
 	// Note(rjf) : Build phase output
 	// TODO(ED) : Put this in its own struct?

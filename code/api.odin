@@ -3,7 +3,6 @@ package sectr
 import    "base:runtime"
 import  c "core:c/libc"
 import    "core:dynlib"
-import    "core:fmt"
 import    "core:mem"
 import    "core:mem/virtual"
 import    "core:os"
@@ -16,7 +15,7 @@ Path_Input_Replay :: "scratch.sectr_replay"
 
 ModuleAPI :: struct {
 	lib         : dynlib.Library,
-	write_time  : os.File_Time,
+	write_time  : FileTime,
 	lib_version : i32,
 
 	startup    : type_of( startup ),
@@ -29,23 +28,23 @@ ModuleAPI :: struct {
 @export
 startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ Logger )
 {
-	init( & memory.logger, "Sectr", host_logger.file_path, host_logger.file )
-	context.logger = to_odin_logger( & memory.logger )
+	logger_init( & Memory_App.logger, "Sectr", host_logger.file_path, host_logger.file )
+	context.logger = to_odin_logger( & Memory_App.logger )
 
 	// Setup memory for the first time
 	{
-		arena_size     :: size_of( mem.Arena)
+		arena_size     :: size_of( Arena)
 		internals_size :: 4 * Megabyte
 
-		using memory;
+		using Memory_App;
 		block := live_mem.curr_block
 
 		live     = live_mem
 		snapshot = snapshot_mem
 
-		persistent_slice := slice_ptr( block.base, memory_persistent_size )
-		transient_slice  := slice_ptr( memory_after( persistent_slice), memory_trans_temp_size )
-		temp_slice       := slice_ptr( memory_after( transient_slice),  memory_trans_temp_size )
+		persistent_slice := slice_ptr( block.base, Memory_Persistent_Size )
+		transient_slice  := slice_ptr( memory_after( persistent_slice), Memory_Trans_Temp_Szie )
+		temp_slice       := slice_ptr( memory_after( transient_slice),  Memory_Trans_Temp_Szie )
 
 		when Use_TrackingAllocator {
 			// We assign the beginning of the block to be the host's persistent memory's arena.
@@ -95,7 +94,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 	monitor_id         = rl.GetCurrentMonitor()
 	monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
 	rl.SetTargetFPS( monitor_refresh_hz )
-	log( fmt.tprintf( "Set target FPS to: %v", monitor_refresh_hz ) )
+	log( str_fmt_tmp( "Set target FPS to: %v", monitor_refresh_hz ) )
 
 	// Basic Font Setup
 	{
@@ -153,14 +152,14 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 @export
 sectr_shutdown :: proc()
 {
-	if memory.persistent == nil {
+	if Memory_App.persistent == nil {
 		return
 	}
 	state := get_state()
 
 	// Replay
 	{
-		os.close( memory.replay.active_file )
+		os.close( Memory_App.replay.active_file )
 	}
 
 	font_provider_shutdown()
@@ -171,27 +170,30 @@ sectr_shutdown :: proc()
 @export
 reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ Logger )
 {
-	using memory;
+	using Memory_App;
 	block := live_mem.curr_block
 
 	live     = live_mem
 	snapshot = snapshot_mem
 
-	persistent_slice := slice_ptr( block.base, memory_persistent_size )
-	transient_slice  := slice_ptr( memory_after( persistent_slice), memory_trans_temp_size )
-	temp_slice       := slice_ptr( memory_after( transient_slice),  memory_trans_temp_size )
+	// This is no longer necessary as we have proper base address setting
+	when false
+	{
+		persistent_slice := slice_ptr( block.base, Memory_Persistent_Size )
+		transient_slice  := slice_ptr( memory_after( persistent_slice), Memory_Trans_Temp_Szie )
+		temp_slice       := slice_ptr( memory_after( transient_slice),  Memory_Trans_Temp_Szie )
 
-	when Use_TrackingAllocator {
-		persistent = cast( ^ TrackedAllocator ) & persistent_slice[0]
-		transient  = cast( ^ TrackedAllocator ) & transient_slice[0]
-		temp       = cast( ^ TrackedAllocator ) & temp_slice[0]
+		when Use_TrackingAllocator {
+			persistent = cast( ^ TrackedAllocator ) & persistent_slice[0]
+			transient  = cast( ^ TrackedAllocator ) & transient_slice[0]
+			temp       = cast( ^ TrackedAllocator ) & temp_slice[0]
+		}
+		else {
+			persistent = cast( ^ Arena ) & persistent_slice[0]
+			transient  = cast( ^ Arena ) & transient_slice[0]
+			temp       = cast( ^ Arena ) & temp_slice[0]
+		}
 	}
-	else {
-		persistent = cast( ^ Arena ) & persistent_slice[0]
-		transient  = cast( ^ Arena ) & transient_slice[0]
-		temp       = cast( ^ Arena ) & temp_slice[0]
-	}
-
 	context.allocator      = transient_allocator()
 	context.temp_allocator = temp_allocator()
 
@@ -203,7 +205,6 @@ reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ L
 	// font_provider_data := & get_state().font_provider_data
 	// font_provider_data.font_cache.allocator = arena_allocator( & font_provider_data.font_arena )
 
-	// Have to reload allocators for all dynamic allocating data-structures.
 	ui_reload( & get_state().project.workspace.ui, persistent_allocator() )
 
 	log("Module reloaded")
@@ -228,7 +229,7 @@ tick :: proc( delta_time : f64 ) -> b32
 @export
 clean_temp :: proc() {
 	when Use_TrackingAllocator {
-		mem.tracking_allocator_clear( & memory.temp.tracker )
+		mem.tracking_allocator_clear( & Memory_App.temp.tracker )
 	}
 	else {
 		free_all( temp_allocator() )

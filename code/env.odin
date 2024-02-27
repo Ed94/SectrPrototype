@@ -8,11 +8,12 @@ import "core:os"
 
 import rl "vendor:raylib"
 
-memory : Memory
+Memory_App : Memory
 
-memory_chunk_size      :: 2 * Gigabyte
-memory_persistent_size :: 256 * Megabyte
-memory_trans_temp_size :: (memory_chunk_size - memory_persistent_size ) / 2
+Memory_Base_Address    :: Terabyte * 1
+Memory_Chunk_Size      :: 2 * Gigabyte
+Memory_Persistent_Size :: 256 * Megabyte
+Memory_Trans_Temp_Szie :: (Memory_Chunk_Size - Memory_Persistent_Size ) / 2
 
 // TODO(Ed): There is an issue with mutex locks on the tracking allocator..
 Use_TrackingAllocator :: false
@@ -48,39 +49,39 @@ else
 
 persistent_allocator :: proc() -> Allocator {
 	when Use_TrackingAllocator {
-		return tracked_allocator( memory.persistent )
+		return tracked_allocator( Memory_App.persistent )
 	}
 	else {
-		return arena_allocator( memory.persistent )
+		return arena_allocator( Memory_App.persistent )
 	}
 }
 
 transient_allocator :: proc() -> Allocator {
 	when Use_TrackingAllocator {
-		return tracked_allocator( memory.transient )
+		return tracked_allocator( Memory_App.transient )
 	}
 	else {
-		return arena_allocator( memory.transient )
+		return arena_allocator( Memory_App.transient )
 	}
 }
 
 temp_allocator :: proc() -> Allocator {
 	when Use_TrackingAllocator {
-		return tracked_allocator( memory.temp )
+		return tracked_allocator( Memory_App.temp )
 	}
 	else {
-		return arena_allocator( memory.temp )
+		return arena_allocator( Memory_App.temp )
 	}
 }
 
 save_snapshot :: proc( snapshot : [^]u8 ) {
-	live_ptr := cast( ^ rawptr ) memory.live.curr_block.base
-	mem.copy_non_overlapping( & snapshot[0], live_ptr, memory_chunk_size )
+	live_ptr := cast( ^ rawptr ) Memory_App.live.curr_block.base
+	mem.copy_non_overlapping( & snapshot[0], live_ptr, Memory_Chunk_Size )
 }
 
 load_snapshot :: proc( snapshot : [^]u8 ) {
-	live_ptr := cast( ^ rawptr ) memory.live.curr_block.base
-	mem.copy_non_overlapping( live_ptr, snapshot, memory_chunk_size )
+	live_ptr := cast( ^ rawptr ) Memory_App.live.curr_block.base
+	mem.copy_non_overlapping( live_ptr, snapshot, Memory_Chunk_Size )
 }
 
 AppConfig :: struct {
@@ -124,10 +125,10 @@ State :: struct {
 
 get_state :: proc "contextless" () -> ^ State {
 	when Use_TrackingAllocator {
-		return cast( ^ State ) raw_data( memory.persistent.backing.data )
+		return cast( ^ State ) raw_data( Memory_App.persistent.backing.data )
 	}
 	else {
-		return cast( ^ State ) raw_data( memory.persistent. data )
+		return cast( ^ State ) raw_data( Memory_App.persistent. data )
 	}
 }
 

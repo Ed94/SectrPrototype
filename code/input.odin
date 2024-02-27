@@ -346,15 +346,15 @@ poll_input :: proc( old, new : ^ InputState )
 
 record_input :: proc( replay_file : os.Handle, input : ^ InputState ) {
 	raw_data := slice_ptr( transmute(^ byte) input, size_of(InputState) )
-	os.write( replay_file, raw_data )
+	file_write( replay_file, raw_data )
 }
 
 play_input :: proc( replay_file : os.Handle, input : ^ InputState ) {
 	raw_data := slice_ptr( transmute(^ byte) input, size_of(InputState) )
-	total_read, result_code := os.read( replay_file, raw_data )
+	total_read, result_code := file_read( replay_file, raw_data )
 	if result_code == os.ERROR_HANDLE_EOF {
-		rewind( replay_file )
-		load_snapshot( & memory.snapshot[0] )
+		file_rewind( replay_file )
+		load_snapshot( & Memory_App.snapshot[0] )
 	}
 }
 

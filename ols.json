@@ -18,7 +18,7 @@
             "path": "C:/projects/SectrPrototype/thirdparty/ini"
         }
     ],
-    "odin_command": "C:/projects/SectrPrototype/thirdparty/Odin",
+    "odin_command": "C:/projects/SectrPrototype/thirdparty/Odin/odin.exe",
     "enable_document_symbols": true,
     "enable_fake_methods": true,
     "enable_format": false,

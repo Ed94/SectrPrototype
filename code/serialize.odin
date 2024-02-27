@@ -168,7 +168,7 @@ project_save :: proc( project : ^ Project, archive : ^ ArchiveData = nil )
 		verify( cast(b32) os.is_dir( project.path ), "Failed to create project path for saving" )
 	}
 
-	os.write_entire_file( fmt.tprint( project.path, project.name, ".sectr_proj", sep = ""), archive.data )
+	os.write_entire_file( str_tmp_from_any( project.path, project.name, ".sectr_proj", sep = ""), archive.data )
 }
 
 project_load :: proc( path : string, project : ^ Project, archive : ^ ArchiveData = nil )

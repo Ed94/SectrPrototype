@@ -27,7 +27,7 @@ memory_after :: proc( slice : []byte ) -> ( ^ byte) {
 TrackedAllocator :: struct {
 	backing   : Arena,
 	internals : Arena,
-	tracker   : Tracking_Allocator,
+	tracker   : TrackingAllocator,
 }
 
 tracked_allocator :: proc( self : ^ TrackedAllocator ) -> Allocator {
@@ -45,7 +45,7 @@ tracked_allocator_init :: proc( size, internals_size : int, allocator := context
 	raw_size       := backing_size + internals_size
 
 	raw_mem, raw_mem_code := alloc( raw_size, mem.DEFAULT_ALIGNMENT, allocator )
-	verify( raw_mem_code == mem.Allocator_Error.None, "Failed to allocate memory for the TrackingAllocator" )
+	verify( raw_mem_code == AllocatorError.None, "Failed to allocate memory for the TrackingAllocator" )
 
 	backing_slice   := slice_ptr( cast( ^ byte) raw_mem,        backing_size )
 	internals_slice := slice_ptr( memory_after( backing_slice), internals_size )
@@ -67,7 +67,7 @@ tracked_allocator_init :: proc( size, internals_size : int, allocator := context
 tracked_allocator_init_vmem :: proc( vmem : [] byte, internals_size : int ) -> ^ TrackedAllocator
 {
 	arena_size              :: size_of( Arena)
-	tracking_allocator_size :: size_of( Tracking_Allocator )
+	tracking_allocator_size :: size_of( TrackingAllocator )
 	backing_size            := len(vmem)    - internals_size
 	raw_size                := backing_size + internals_size
 

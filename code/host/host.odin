@@ -1,42 +1,84 @@
 package host
 
-import       "base:runtime"
-import      "core:dynlib"
-import      "core:io"
-import      "core:fmt"
-import      "core:log"
-import      "core:mem"
-import      "core:mem/virtual"
-	Byte     :: 1
-	Kilobyte :: 1024 * Byte
-	Megabyte :: 1024 * Kilobyte
-	Gigabyte :: 1024 * Megabyte
-	Terabyte :: 1024 * Gigabyte
-	Petabyte :: 1024 * Terabyte
-	Exabyte  :: 1024 * Petabyte
-import       "core:os"
-	file_resize :: os.ftruncate
-import       "core:strings"
-import       "core:time"
+//region Grime & Dependencies
+import "base:runtime"
+	Byte     :: runtime.Byte
+	Kilobyte :: runtime.Kilobyte
+	Megabyte :: runtime.Megabyte
+	Gigabyte :: runtime.Gigabyte
+	Terabyte :: runtime.Terabyte
+	Petabyte :: runtime.Petabyte
+	Exabyte  :: runtime.Exabyte
+import "core:dynlib"
+	os_lib_load     :: dynlib.load_library
+	os_lib_unload   :: dynlib.unload_library
+	os_lib_get_proc :: dynlib.symbol_address
+import "core:io"
+import fmt_io "core:fmt"
+	str_fmt         :: fmt_io.printf
+	str_fmt_tmp     :: fmt_io.tprintf
+	str_fmt_builder :: fmt_io.sbprintf
+import "core:log"
+import "core:mem"
+	Allocator         :: mem.Allocator
+	TrackingAllocator :: mem.Tracking_Allocator
+import "core:mem/virtual"
+	Arena        :: virtual.Arena
+	MapFileError :: virtual.Map_File_Error
+	MapFileFlag  :: virtual.Map_File_Flag
+	MapFileFlags :: virtual.Map_File_Flags
+import "core:os"
+	FileFlag_Create        :: os.O_CREATE
+	FileFlag_ReadWrite     :: os.O_RDWR
+	file_open              :: os.open
+	file_close             :: os.close
+	file_rename            :: os.rename
+	file_remove            :: os.remove
+	file_resize            :: os.ftruncate
+	file_status_via_handle :: os.fstat
+	file_status_via_path   :: os.stat
+import "core:strings"
+	builder_to_string      :: strings.to_string
+	str_clone              :: strings.clone
+	str_builder_from_bytes :: strings.builder_from_bytes
+import "core:time"
+	Millisecond      :: time.Millisecond
+	Second           :: time.Second
+	Duration         :: time.Duration
+	duration_seconds :: time.duration_seconds
+	thread_sleep     :: time.sleep
 import rl    "vendor:raylib"
 import sectr "../."
+	fatal                  :: sectr.fatal
+	file_is_locked         :: sectr.file_is_locked
+	file_copy_sync         :: sectr.file_copy_sync
+	Logger                 :: sectr.Logger
+	logger_init            :: sectr.logger_init
+	LogLevel               :: sectr.LogLevel
+	log                    :: sectr.log
+	to_odin_logger         :: sectr.to_odin_logger
+	TrackedAllocator       :: sectr.TrackedAllocator
+	tracked_allocator      :: sectr.tracked_allocator
+	tracked_allocator_init :: sectr.tracked_allocator_init
+	verify                 :: sectr.verify
 
-TrackedAllocator       :: sectr.TrackedAllocator
-tracked_allocator      :: sectr.tracked_allocator
-tracked_allocator_init :: sectr.tracked_allocator_init
+file_status :: proc {
+	file_status_via_handle,
+	file_status_via_path,
+}
 
-LogLevel :: sectr.LogLevel
-log      :: sectr.log
-fatal    :: sectr.fatal
-verify   :: sectr.verify
+to_str :: proc {
+	builder_to_string,
+}
+//endregion Grime & Dependencies
 
-path_snapshot :: "VMemChunk_1.snapshot"
+Path_Snapshot :: "VMemChunk_1.snapshot"
+Path_Logs     :: "../logs"
 when ODIN_OS == runtime.Odin_OS_Type.Windows
 {
-	path_logs                :: "../logs"
-	path_sectr_module        :: "sectr.dll"
-	path_sectr_live_module   :: "sectr_live.dll"
-	path_sectr_debug_symbols :: "sectr.pdb"
+	Path_Sectr_Module        :: "sectr.dll"
+	Path_Sectr_Live_Module   :: "sectr_live.dll"
+	Path_Sectr_Debug_Symbols :: "sectr.pdb"
 }
 
 RuntimeState :: struct {
@@ -46,53 +88,48 @@ RuntimeState :: struct {
 }
 
 VMemChunk :: struct {
-	og_allocator            : mem.Allocator,
-	og_temp_allocator       : mem.Allocator,
+	og_allocator            : Allocator,
+	og_temp_allocator       : Allocator,
 	host_persistent         : TrackedAllocator,
 	host_transient          : TrackedAllocator,
-	sectr_live              : virtual.Arena,
+	sectr_live              : Arena,
 	sectr_snapshot          : []u8
 }
 
 setup_memory :: proc() -> VMemChunk
 {
-	Arena              :: mem.Arena
-	Tracking_Allocator :: mem.Tracking_Allocator
 	memory : VMemChunk; using memory
 
-	host_persistent_size :: 32 * Megabyte
-	host_transient_size  :: 96 * Megabyte
-	internals_size       :: 4  * Megabyte
+	Host_Persistent_Size :: 32 * Megabyte
+	Host_Transient_Size  :: 96 * Megabyte
+	Internals_Size       :: 4  * Megabyte
 
-	host_persistent = tracked_allocator_init( host_persistent_size, internals_size )
-	host_transient  = tracked_allocator_init( host_transient_size,  internals_size )
+	host_persistent = tracked_allocator_init( Host_Persistent_Size, Internals_Size )
+	host_transient  = tracked_allocator_init( Host_Transient_Size,  Internals_Size )
 
 	// Setup the static arena for the entire application
 	{
-		base_address : rawptr = transmute( rawptr) u64(Terabyte * 1)
-
-		result := arena_init_static( & sectr_live, base_address, sectr.memory_chunk_size, sectr.memory_chunk_size )
+		base_address : rawptr = transmute( rawptr) u64(sectr.Memory_Base_Address)
+		result       := arena_init_static( & sectr_live, base_address, sectr.Memory_Chunk_Size, sectr.Memory_Chunk_Size )
 		verify( result == runtime.Allocator_Error.None, "Failed to allocate live memory for the sectr module" )
 	}
 
 	// Setup memory mapped io for snapshots
 	{
-		snapshot_file, open_error := os.open( path_snapshot, os.O_RDWR | os.O_CREATE )
+		snapshot_file, open_error := file_open( Path_Snapshot, FileFlag_ReadWrite | FileFlag_Create )
 		verify( open_error == os.ERROR_NONE, "Failed to open snapshot file for the sectr module" )
 
-		file_info, stat_code := os.stat( path_snapshot )
+		file_info, stat_code := file_status( snapshot_file )
 		{
-			if file_info.size != sectr.memory_chunk_size {
-				file_resize( snapshot_file, sectr.memory_chunk_size )
+			if file_info.size != sectr.Memory_Chunk_Size {
+				file_resize( snapshot_file, sectr.Memory_Chunk_Size )
 			}
 		}
-
-		map_error                : virtual.Map_File_Error
-		map_flags                : virtual.Map_File_Flags = { virtual.Map_File_Flag.Read, virtual.Map_File_Flag.Write }
+		map_error                : MapFileError
+		map_flags                : MapFileFlags = { MapFileFlag.Read, MapFileFlag.Write }
 		sectr_snapshot, map_error = virtual.map_file_from_file_descriptor( uintptr(snapshot_file), map_flags )
-		verify( map_error == virtual.Map_File_Error.None, "Failed to allocate snapshot memory for the sectr module" )
-
-		os.close(snapshot_file)
+		verify( map_error == MapFileError.None, "Failed to allocate snapshot memory for the sectr module" )
+		file_close(snapshot_file)
 	}
 
 	// Reassign default allocators for host
@@ -113,28 +150,28 @@ load_sectr_api :: proc( version_id : i32 ) -> sectr.ModuleAPI
 		return {}
 	}
 
-	live_file := path_sectr_live_module
-	sectr.copy_file_sync( path_sectr_module, live_file )
+	live_file := Path_Sectr_Live_Module
+	file_copy_sync( Path_Sectr_Module, live_file )
 
-	lib, load_result := dynlib.load_library( live_file )
+	lib, load_result := os_lib_load( live_file )
 	if ! load_result {
 		log( "Failed to load the sectr module.", LogLevel.Warning )
 		runtime.debug_trap()
 		return {}
 	}
 
-	startup    := cast( type_of( sectr.startup        )) dynlib.symbol_address( lib, "startup" )
-	shutdown   := cast( type_of( sectr.sectr_shutdown )) dynlib.symbol_address( lib, "sectr_shutdown" )
-	reload     := cast( type_of( sectr.reload         )) dynlib.symbol_address( lib, "reload" )
-	tick       := cast( type_of( sectr.tick           )) dynlib.symbol_address( lib, "tick" )
-	clean_temp := cast( type_of( sectr.clean_temp     )) dynlib.symbol_address( lib, "clean_temp" )
+	startup    := cast( type_of( sectr.startup        )) os_lib_get_proc( lib, "startup" )
+	shutdown   := cast( type_of( sectr.sectr_shutdown )) os_lib_get_proc( lib, "sectr_shutdown" )
+	reload     := cast( type_of( sectr.reload         )) os_lib_get_proc( lib, "reload" )
+	tick       := cast( type_of( sectr.tick           )) os_lib_get_proc( lib, "tick" )
+	clean_temp := cast( type_of( sectr.clean_temp     )) os_lib_get_proc( lib, "clean_temp" )
 
 	missing_symbol : b32 = false
-	if startup    == nil do fmt.println("Failed to load sectr.startup symbol")
-	if shutdown   == nil do fmt.println("Failed to load sectr.shutdown symbol")
-	if reload     == nil do fmt.println("Failed to load sectr.reload symbol")
-	if tick       == nil do fmt.println("Failed to load sectr.tick symbol")
-	if clean_temp == nil do fmt.println("Failed to load sector.clean_temp symbol")
+	if startup    == nil do log("Failed to load sectr.startup symbol", LogLevel.Warning )
+	if shutdown   == nil do log("Failed to load sectr.shutdown symbol", LogLevel.Warning )
+	if reload     == nil do log("Failed to load sectr.reload symbol", LogLevel.Warning )
+	if tick       == nil do log("Failed to load sectr.tick symbol", LogLevel.Warning )
+	if clean_temp == nil do log("Failed to load sector.clean_temp symbol", LogLevel.Warning )
 	if missing_symbol {
 		runtime.debug_trap()
 		return {}
@@ -157,23 +194,23 @@ load_sectr_api :: proc( version_id : i32 ) -> sectr.ModuleAPI
 
 unload_sectr_api :: proc( module : ^ sectr.ModuleAPI )
 {
-	dynlib.unload_library( module.lib )
-	os.remove( path_sectr_live_module )
+	os_lib_unload( module.lib )
+	file_remove( Path_Sectr_Live_Module )
 	module^ = {}
 	log("Unloaded sectr API")
 }
 
-sync_sectr_api :: proc( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk, logger : ^ sectr.Logger )
+sync_sectr_api :: proc( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk, logger : ^ Logger )
 {
-	if write_time, result := os.last_write_time_by_name( path_sectr_module );
+	if write_time, result := os.last_write_time_by_name( Path_Sectr_Module );
 	result == os.ERROR_NONE && sectr_api.write_time != write_time
 	{
 		version_id := sectr_api.lib_version + 1
 		unload_sectr_api( sectr_api )
 
 		// Wait for pdb to unlock (linker may still be writting)
-		for ; sectr.is_file_locked( path_sectr_debug_symbols ) && sectr.is_file_locked( path_sectr_live_module ); {}
-		time.sleep( time.Millisecond )
+		for ; file_is_locked( Path_Sectr_Debug_Symbols ) && file_is_locked( Path_Sectr_Live_Module ); {}
+		thread_sleep( Millisecond * 50 )
 
 		sectr_api ^ = load_sectr_api( version_id )
 		verify( sectr_api.lib_version != 0, "Failed to hot-reload the sectr module" )
@@ -187,30 +224,32 @@ main :: proc()
 	state : RuntimeState
 	using state
 
+	// Generating the logger's name, it will be used when the app is shutting down.
 	path_logger_finalized : string
 	{
 		startup_time     := time.now()
 		year, month, day := time.date( startup_time)
 		hour, min, sec   := time.clock_from_time( startup_time)
 
-		if ! os.is_dir( path_logs ) {
-			os.make_directory( path_logs )
+		if ! os.is_dir( Path_Logs ) {
+			os.make_directory( Path_Logs )
 		}
 
-		timestamp            := fmt.tprintf("%04d-%02d-%02d_%02d-%02d-%02d", year, month, day, hour, min, sec)
-		path_logger_finalized = strings.clone( fmt.tprintf( "%s/sectr_%v.log", path_logs, timestamp) )
+		timestamp            := str_fmt_tmp("%04d-%02d-%02d_%02d-%02d-%02d", year, month, day, hour, min, sec)
+		path_logger_finalized = str_clone( str_fmt_tmp( "%s/sectr_%v.log", Path_Logs, timestamp) )
 	}
+
 	logger :  sectr.Logger
-	sectr.init( & logger, "Sectr Host", fmt.tprintf( "%s/sectr.log", path_logs ) )
-	context.logger = sectr.to_odin_logger( & logger )
+	logger_init( & logger, "Sectr Host", str_fmt_tmp( "%s/sectr.log", Path_Logs ) )
+	context.logger = to_odin_logger( & logger )
 	{
 		// Log System Context
 		backing_builder : [16 * Kilobyte] u8
-		builder         := strings.builder_from_bytes( backing_builder[:] )
-		fmt.sbprintf( & builder, "Core Count: %v, ", os.processor_core_count() )
-		fmt.sbprintf( & builder, "Page Size: %v", os.get_page_size() )
+		builder         := str_builder_from_bytes( backing_builder[:] )
+		str_fmt_builder( & builder, "Core Count: %v, ", os.processor_core_count() )
+		str_fmt_builder( & builder, "Page Size: %v",    os.get_page_size() )
 
-		sectr.log( strings.to_string(builder) )
+		log( to_str(builder) )
 	}
 
 	// Basic Giant VMem Block
@@ -232,12 +271,11 @@ main :: proc()
 		verify( sectr_api.lib_version != 0, "Failed to initially load the sectr module" )
 	}
 
-	running            = true;
-	memory             = memory
-	sectr_api          = sectr_api
+	running   = true;
+	sectr_api = sectr_api
 	sectr_api.startup( memory.sectr_live, memory.sectr_snapshot, & logger )
 
-	delta_ns : time.Duration
+	delta_ns : Duration
 
 	// TODO(Ed) : This should have an end status so that we know the reason the engine stopped.
 	for ; running ;
@@ -247,7 +285,7 @@ main :: proc()
 		// Hot-Reload
 		sync_sectr_api( & sectr_api, & memory, & logger )
 
-		running = sectr_api.tick( time.duration_seconds( delta_ns ) )
+		running = sectr_api.tick( duration_seconds( delta_ns ) )
 		sectr_api.clean_temp()
 
 		delta_ns = time.tick_lap_time( & start_tick )
@@ -263,6 +301,6 @@ main :: proc()
 	unload_sectr_api( & sectr_api )
 
 	log("Succesfuly closed")
-	os.close( logger.file )
-	os.rename( logger.file_path, path_logger_finalized )
+	file_close( logger.file )
+	file_rename( logger.file_path, path_logger_finalized )
 }

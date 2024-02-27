@@ -1,7 +1,7 @@
 package sectr
 
 import "core:math"
-import    "core:unicode/utf8"
+import "core:unicode/utf8"
 import rl "vendor:raylib"
 
 debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
@@ -11,7 +11,7 @@ debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Co
 	if len( content ) == 0 {
 		return
 	}
-	runes := utf8.string_to_runes( content, context.temp_allocator )
+	runes := to_runes( content, context.temp_allocator )
 
 	font := font
 	if font == 0 {
@@ -38,7 +38,7 @@ debug_draw_text_world :: proc( content : string, pos : Vec2, size : f32, color :
 	if len( content ) == 0 {
 		return
 	}
-	runes := utf8.string_to_runes( content, context.temp_allocator )
+	runes := to_runes( content, context.temp_allocator )
 
 	font := font
 	if  font == 0 {

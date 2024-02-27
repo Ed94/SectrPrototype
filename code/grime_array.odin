@@ -1,6 +1,6 @@
 // Based on gencpp's and thus zpl's Array implementation
 // Made becasue of the map issue with fonts during hot-reload.
-// I didn't want to make the HashTable impl with the [dynamic] array for now to isolate
+// I didn't want to make the HMapZPL impl with the [dynamic] array for now to isolate
 // what in the world is going on with the memory...
 package sectr
 
@@ -15,8 +15,11 @@ Array :: struct ( $ Type : typeid ) {
 	data      : [^]Type,
 }
 
-array_to_slice :: proc( arr : Array( $ Type) ) -> []Type {
-	using arr; return slice_ptr( data, num )
+// @(private=file)
+// Array :: Array_ZPL
+
+array_to_slice :: proc( using self : Array( $ Type) ) -> []Type {
+	return slice_ptr( data, num )
 }
 
 array_grow_formula :: proc( value : u64 ) -> u64 {
@@ -30,19 +33,18 @@ array_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( Array(Type), A
 array_init_reserve :: proc( $ Type : typeid, allocator : Allocator, capacity : u64 ) -> ( Array(Type), AllocatorError )
 {
 	raw_data, result_code := alloc( int(capacity) * size_of(Type), allocator = allocator )
-	result : Array( Type)
+	result : Array( Type);
 	result.data      = cast( [^] Type ) raw_data
 	result.allocator = allocator
 	result.capacity  = capacity
 	return result, result_code
 }
 
-array_append :: proc( array : ^ Array( $ Type), value : Type ) -> AllocatorError
+array_append :: proc( using self : ^ Array( $ Type), value : Type ) -> AllocatorError
 {
-	using array
 	if num == capacity
 	{
-		grow_result := array_grow( array, capacity )
+		grow_result := array_grow( self, capacity )
 		if grow_result != AllocatorError.None {
 			return grow_result
 		}
@@ -53,12 +55,11 @@ array_append :: proc( array : ^ Array( $ Type), value : Type ) -> AllocatorError
 	return AllocatorError.None
 }
 
-array_append_slice :: proc( array : ^ Array( $ Type ), items : []Type ) -> AllocatorError
+array_append_slice :: proc( using self : ^ Array( $ Type ), items : []Type ) -> AllocatorError
 {
-	using array
 	if num + len(items) > capacity
 	{
-		grow_result := array_grow( array, capacity )
+		grow_result := array_grow( self, capacity )
 		if grow_result != AllocatorError.None {
 			return grow_result
 		}
@@ -75,11 +76,9 @@ array_append_slice :: proc( array : ^ Array( $ Type ), items : []Type ) -> Alloc
 	return AllocatorError.None
 }
 
-array_append_at :: proc( array : ^ Array( $ Type ), item : Type, id : u64 ) -> AllocatorError
+array_append_at :: proc( using self : ^ Array( $ Type ), item : Type, id : u64 ) -> AllocatorError
 {
 	id := id
-	using array
-
 	if id >= num {
 		id = num - 1
 	}
@@ -89,7 +88,7 @@ array_append_at :: proc( array : ^ Array( $ Type ), item : Type, id : u64 ) -> A
 
 	if capacity < num + 1
 	{
-		grow_result := array_grow( array, capacity )
+		grow_result := array_grow( self, capacity )
 		if grow_result != AllocatorError.None {
 			return grow_result
 		}
@@ -109,17 +108,15 @@ array_append_at :: proc( array : ^ Array( $ Type ), item : Type, id : u64 ) -> A
 	return AllocatorError.None
 }
 
-array_append_at_slice :: proc( array : ^ Array( $ Type ), items : []Type, id : u64 ) -> AllocatorError
+array_append_at_slice :: proc( using self : ^ Array( $ Type ), items : []Type, id : u64 ) -> AllocatorError
 {
 	id := id
-	using array
-
 	if id >= num {
 		return array_append_slice( items )
 	}
 	if len(items) > capacity
 	{
-		grow_result := array_grow( array, capacity )
+		grow_result := array_grow( self, capacity )
 		if grow_result != AllocatorError.None {
 			return grow_result
 		}
@@ -142,18 +139,19 @@ array_append_at_slice :: proc( array : ^ Array( $ Type ), items : []Type, id : u
 	return AllocatorError.None
 }
 
-array_back :: proc( array : ^ Array( $ Type ) ) -> ^ Type {
-	using array; return & data[ num - 1 ]
+array_back :: proc( using self : ^ Array( $ Type ) ) -> ^ Type {
+	return & data[ num - 1 ]
 }
 
-array_clear :: proc( array : ^ Array( $ Type ) ) {
-	array.num = 0
+array_clear :: proc( using self : ^ Array( $ Type ), zero_data : b32 ) {
+	if zero_data {
+		mem.set( raw_data( data ), 0, num )
+	}
+	num = 0
 }
 
-array_fill :: proc( array : ^ Array( $ Type ), begin, end : u64, value : Type ) -> b32
+array_fill :: proc( using self : ^ Array( $ Type ), begin, end : u64, value : Type ) -> b32
 {
-	using array
-
 	if begin < 0 || end >= num {
 		return false
 	}
@@ -168,32 +166,28 @@ array_fill :: proc( array : ^ Array( $ Type ), begin, end : u64, value : Type ) 
 	return true
 }
 
-array_free :: proc( array : ^ Array( $ Type ) ) {
-	using array
+array_free :: proc( using self : ^ Array( $ Type ) ) {
 	free( data, allocator )
 	data = nil
 }
 
-array_grow :: proc( array : ^ Array( $ Type ), min_capacity : u64 ) -> AllocatorError
+array_grow :: proc( using self : ^ Array( $ Type ), min_capacity : u64 ) -> AllocatorError
 {
-	using array
 	new_capacity := array_grow_formula( capacity )
 
 	if new_capacity < min_capacity {
 		new_capacity = min_capacity
 	}
-
-	return array_set_capacity( array, new_capacity )
+	return array_set_capacity( self, new_capacity )
 }
 
-array_pop :: proc( array : ^ Array( $ Type ) ) {
-	verify( array.num != 0, "Attempted to pop an array with no elements" )
-	array.num -= 1
+array_pop :: proc( using self : ^ Array( $ Type ) ) {
+	verify( num != 0, "Attempted to pop an array with no elements" )
+	num -= 1
 }
 
-array_remove_at :: proc( array : ^ Array( $ Type ), id : u64 )
+array_remove_at :: proc( using self : ^ Array( $ Type ), id : u64 )
 {
-	using array
 	verify( id >= num, "Attempted to remove from an index larger than the array" )
 
 	left  = slice_ptr( data, id )
@@ -203,11 +197,10 @@ array_remove_at :: proc( array : ^ Array( $ Type ), id : u64 )
 	num -= 1
 }
 
-array_reserve :: proc( array : ^ Array( $ Type ), new_capacity : u64 ) -> AllocatorError
+array_reserve :: proc( using self : ^ Array( $ Type ), new_capacity : u64 ) -> AllocatorError
 {
-	using array
 	if capacity < new_capacity {
-		return array_set_capacity( array, new_capacity )
+		return array_set_capacity( self, new_capacity )
 	}
 	return AllocatorError.None
 }
@@ -226,9 +219,8 @@ array_resize :: proc( array : ^ Array( $ Type ), num : u64 ) -> AllocatorError
 	return AllocatorError.None
 }
 
-array_set_capacity :: proc( array : ^ Array( $ Type ), new_capacity : u64 ) -> AllocatorError
+array_set_capacity :: proc( using self : ^ Array( $ Type ), new_capacity : u64 ) -> AllocatorError
 {
-	using array
 	if new_capacity == capacity {
 		return AllocatorError.None
 	}
