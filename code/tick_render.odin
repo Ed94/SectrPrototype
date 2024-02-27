@@ -21,7 +21,7 @@ render :: proc()
 	render_mode_2d()
 	//region Render Screenspace
 	{
-		fps_msg       := str_fmt_tmp( "FPS:", rl.GetFPS() )
+		fps_msg       := str_fmt_tmp( "FPS: %v", rl.GetFPS() )
 		fps_msg_width := measure_text_size( fps_msg, default_font, 16.0, 0.0 ).x
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 }
 		debug_draw_text( fps_msg, fps_msg_pos, 16.0, color = rl.GREEN )

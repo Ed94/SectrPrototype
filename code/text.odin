@@ -14,7 +14,7 @@ debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Co
 	runes := to_runes( content, context.temp_allocator )
 
 	font := font
-	if font == 0 {
+	if font.key == Font_Default.key {
 	// if ( len(font) == 0 ) {
 		font = default_font
 	}
@@ -41,7 +41,7 @@ debug_draw_text_world :: proc( content : string, pos : Vec2, size : f32, color :
 	runes := to_runes( content, context.temp_allocator )
 
 	font := font
-	if  font == 0 {
+	if  font.key == Font_Default.key {
 	// if len(font) == 0 {
 		font = default_font
 	}

@@ -17,49 +17,50 @@ if ( $IsWindows ) {
 
 # Odin Compiler Flags
 
+# For a beakdown of any flag, type <odin_compiler> <command> -help
 $command_build  = 'build'
 $command_check  = 'check'
 $command_query  = 'query'
 $command_report = 'report'
 $command_run    = 'run'
 
-$flag_build_mode                          = '-build-mode:'
-$flag_build_mode_dll                      = '-build-mode:dll'
-$flag_collection                          = '-collection:'
-$flag_debug                               = '-debug'
-$flag_define                              = '-define:'
-$flag_disable_assert                      = '-disable-assert'
-$flag_extra_assembler_flags               = '-extra_assembler-flags:'
-$flag_extra_linker_flags                  = '-extra-linker-flags:'
-$flag_ignore_unknown_attributes           = '-ignore-unknown-attributes'
-$flag_keep_temp_files                     = '-keep-temp-files'
-$flag_no_bounds_check                     = '-no-bounds-check'
-$flag_no_crt                              = '-no-crt'
-$flag_no_entrypoint                       = '-no-entry-point'
-$flag_no_thread_local                     = '-no-thread-local'
-$flag_no_thread_checker                   = '-no-thread-checker'
-$flag_output_path                         = '-out='
-$flag_optimization_level                  = '-opt:'
-$flag_optimize_none                       = '-o:none'
-$flag_optimize_minimal                    = '-o:minimal'
-$flag_optimize_size                       = '-o:size'
-$flag_optimize_speed                      = '-o:speed'
-$falg_optimize_aggressive                 = '-o:aggressive'
-$flag_pdb_name                            = '-pdb-name:'
-$flag_sanitize                            = '-sanitize:'
-$flag_subsystem                           = '-subsystem:'
-$flag_show_timings                        = '-show-timings'
-$flag_show_more_timings                   = '-show-more-timings'
-$flag_show_system_calls                   = '-show-system-calls'
-$flag_target                              = '-target:'
-$flag_thread_count                        = '-thread-count:'
-$flag_use_lld                             = '-lld'
-$flag_use_separate_modules                = '-use-separate-modules'
-$flag_vet_all                             = '-vet'
-$flag_vet_unused_entities                 = '-vet-unused'
-$flag_vet_semicolon                       = '-vet-semicolon'
-$flag_vet_shadow_vars                     = '-vet-shadowing'
-$flag_vet_using_stmt                      = '-vet-using-stmt'
+$flag_build_mode                = '-build-mode:'
+$flag_build_mode_dll            = '-build-mode:dll'
+$flag_collection                = '-collection:'
+$flag_debug                     = '-debug'
+$flag_define                    = '-define:'
+$flag_disable_assert            = '-disable-assert'
+$flag_extra_assembler_flags     = '-extra_assembler-flags:'
+$flag_extra_linker_flags        = '-extra-linker-flags:'
+$flag_ignore_unknown_attributes = '-ignore-unknown-attributes'
+$flag_keep_temp_files           = '-keep-temp-files'
+$flag_no_bounds_check           = '-no-bounds-check'
+$flag_no_crt                    = '-no-crt'
+$flag_no_entrypoint             = '-no-entry-point'
+$flag_no_thread_local           = '-no-thread-local'
+$flag_no_thread_checker         = '-no-thread-checker'
+$flag_output_path               = '-out='
+$flag_optimization_level        = '-opt:'
+$flag_optimize_none             = '-o:none'
+$flag_optimize_minimal          = '-o:minimal'
+$flag_optimize_size             = '-o:size'
+$flag_optimize_speed            = '-o:speed'
+$falg_optimize_aggressive       = '-o:aggressive'
+$flag_pdb_name                  = '-pdb-name:'
+$flag_sanitize                  = '-sanitize:'
+$flag_subsystem                 = '-subsystem:'
+$flag_show_timings              = '-show-timings'
+$flag_show_more_timings         = '-show-more-timings'
+$flag_show_system_calls         = '-show-system-calls'
+$flag_target                    = '-target:'
+$flag_thread_count              = '-thread-count:'
+$flag_use_lld                   = '-lld'
+$flag_use_separate_modules      = '-use-separate-modules'
+$flag_vet_all                   = '-vet'
+$flag_vet_unused_entities       = '-vet-unused'
+$flag_vet_semicolon             = '-vet-semicolon'
+$flag_vet_shadow_vars           = '-vet-shadowing'
+$flag_vet_using_stmt            = '-vet-using-stmt'
 
 $flag_msvc_link_disable_dynamic_base = '/DYNAMICBASE:NO'
 $flag_msvc_link_base_address         = '/BASE:'
@@ -87,8 +88,8 @@ push-location $path_root
 		$pkg_collection_thirdparty = 'thirdparty=' + $path_thirdparty
 
 		$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
-
 		if ( -not $host_process_active ) {
+			# We cannot update thidparty dependencies during hot-reload.
 			& $update_deps
 			write-host
 		}
@@ -98,9 +99,10 @@ push-location $path_root
 			$should_build = check-ModuleForChanges $module_sectr
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr build, module up to date'
-				return
+				return $false
 			}
 
+			write-host 'Building Sectr Module'
 			$module_dll = join-path $path_build ( $project_name + '.dll' )
 			$pdb        = join-path $path_build ( $project_name + '.pdb' )
 
@@ -125,11 +127,15 @@ push-location $path_root
 			# $build_args += $flag_show_system_calls
 			# $build_args += $flag_show_timings
 
-			write-host 'Building Sectr Module'
+			if ( Test-Path $module_dll) {
+				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
+			}
 			& $odin_compiler $build_args
-			write-host
+			$module_dll_post_build_hash = get-filehash -path $module_dll -Algorithm MD5
+			return $module_dll_pre_build_hash -ne $module_dll_post_build_hash
 		}
-		build-sectr
+		$sectr_built = build-sectr
+		write-host # newline pad
 
 		function build-host
 		{
@@ -141,7 +147,7 @@ push-location $path_root
 				return
 			}
 
-			$should_build = (check-ModuleForChanges $module_host)
+			$should_build = (check-ModuleForChanges $module_host) && (-not $sectr_built)
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr_host build, module up to date'
 				return

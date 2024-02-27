@@ -9,10 +9,10 @@ import "core:os"
 import rl "vendor:raylib"
 
 Font_Arena_Size      :: 32 * Megabyte
-Font_Largest_Px_Size :: 32
+Font_Largest_Px_Size :: 96
 
 // Font_Default :: ""
-Font_Default            :: 0
+Font_Default            :: FontID { 0, "" }
 Font_Default_Point_Size :: 18.0
 
 Font_TTF_Default_Chars_Padding :: 4
@@ -21,14 +21,17 @@ Font_Load_Use_Default_Size :: -1
 Font_Load_Gen_ID           :: ""
 
 Font_Atlas_Packing_Method :: enum u32 {
-	Raylib_Basic  = 0,  // Basic packing algo
+	Raylib_Basic  = 0, // Basic packing algo
 	Skyeline_Rect = 1, // stb_pack_rect
 }
 
 // TODO(Ed) : These are currently i32, I wanted them to be string ids for debug ease of use.
 // There is an issue with the hash map type preventing me from doing so. Its allocator reference breaks.
 // FontID  :: distinct string
-FontID  :: distinct i32
+FontID  :: struct {
+	key   : u64,
+	label : string,
+}
 FontTag :: struct {
 	key        : FontID,
 	point_size : f32
@@ -47,7 +50,7 @@ FontDef :: struct {
 	path_file    : string,
 	data         : [] u8,
 	default_size : i32,
-	size_table   : [Font_Largest_Px_Size] FontGlyphsRender,
+	size_table   : [Font_Largest_Px_Size / 2] FontGlyphsRender,
 	// TODO(Ed) : This is a rough way to do even multiplies, we are wasting half the array, I'll make a proper accessor/generation to it eventually.
 }
 
@@ -55,10 +58,7 @@ FontProviderData :: struct {
 	font_arena : Arena,
 
 	//TODO(Ed) : There is an issue with hot-reload and map allocations that I can't figure out right now..
-	// font_cache : ^ map [FontID](FontDef),
-	// font_cache : HMapZPL(FontDef),
-	font_cache : [10] FontDef,
-	open_id    : i32
+	font_cache : HMapZPL(FontDef),
 }
 
 font_provider_startup :: proc()
@@ -71,9 +71,10 @@ font_provider_startup :: proc()
 
 	arena_init( & font_arena, data )
 
-	// font_cache  = new( map[FontID](FontDef), arena_allocator( & font_arena ) )
-	// font_cache^ = make_map( map[FontID](FontDef), capacity = 10, allocator = arena_allocator( & font_arena ) )
-	open_id = 0
+	font_cache_alloc_error : AllocatorError
+	font_cache, font_cache_alloc_error = zpl_hmap_init_reserve( FontDef, persistent_allocator(), 8 )
+	verify( font_cache_alloc_error == AllocatorError.None, "Failed to allocate font_cache" )
+
 	log("font_cache created")
 	log("font_provider initialized")
 }
@@ -82,8 +83,10 @@ font_provider_shutdown :: proc()
 {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
-	// for key, & def in font_cache        {
-	for & def in font_cache             {
+	for id in 0 ..< font_cache.entries.num
+	{
+		def := & font_cache.entries.data[id].value
+
 		for & px_render in def.size_table {
 			using px_render
 			rl.UnloadFontData( glyphs, count )
@@ -108,7 +111,7 @@ font_load :: proc( path_file : string,
 	// Use file name as key
 	if len(desired_id) == 0 {
 		// NOTE(Ed): This should never be used except for laziness so I'll be throwing a warning everytime.
-		log("desired_key not provided, using file name. Give it a proper name!")
+		log("desired_key not provided, using file name. Give it a proper name!", LogLevel.Warning)
 		// desired_id = cast(FontID) file_name_from_path(path_file)
 		desired_id = file_name_from_path(path_file)
 	}
@@ -118,10 +121,10 @@ font_load :: proc( path_file : string,
 		default_size = Font_Default_Point_Size
 	}
 
-	// font_cache[desired_id] = {}
-	// def := & font_cache[desired_id];
-	def := & font_cache[open_id]
-	open_id += 1
+	key            := cast(u64) crc32( transmute([]byte) desired_id )
+	def, set_error := zpl_hmap_set( & font_cache, key,FontDef {} )
+	verify( set_error == AllocatorError.None, "Failed to add new font entry to cache" )
+
 	def.path_file    = path_file
 	def.data         = font_data
 	def.default_size = i32(points_to_pixels(default_size))
@@ -129,11 +132,13 @@ font_load :: proc( path_file : string,
 	// TODO(Ed): this is extremely slow
 	// Render all sizes at once
 	// Note(Ed) : We only generate textures for even multiples of the font.
-	for id : i32 = 1; id < Font_Largest_Px_Size; id += 2
+	for font_size : i32 = 2; font_size <= Font_Largest_Px_Size; font_size += 2
 	{
-		px_render := & def.size_table[id]
+		id := (font_size / 2) + (font_size % 2)
+
+		px_render := & def.size_table[id - 1]
 		using px_render
-		size    = id + 1
+		size    = font_size
 		count   = 95 // This is the default codepoint count from raylib when loading a font.
 		padding = Font_TTF_Default_Chars_Padding
 		glyphs  = rl.LoadFontData( raw_data(font_data), font_data_size,
@@ -160,8 +165,7 @@ font_load :: proc( path_file : string,
 		rl.UnloadImage( atlas )
 	}
 
-	// return desired_id
-	return cast(FontID) open_id - 1
+	return { key, desired_id }
 }
 
 Font_Use_Default_Size :: f32(0.0)
@@ -171,9 +175,11 @@ to_rl_Font :: proc( id : FontID, size := Font_Use_Default_Size ) -> rl.Font {
 
 	even_size := math.round(size * 0.5) * 2.0
 	size      := clamp( i32( even_size), 8, Font_Largest_Px_Size )
-	def       := & font_cache[id]
+	def       := zpl_hmap_get( & font_cache, id.key )
 	size       = size if size != i32(Font_Use_Default_Size) else def.default_size
-	px_render := & def.size_table[ size - 1 ]
+
+	id        := (size / 2) + (size % 2)
+	px_render := & def.size_table[ id - 1 ]
 
 	// This is free for now perf wise... may have to move this out to on a setting change later.
 	rl.SetTextureFilter( px_render.texture, rl.TextureFilter.TRILINEAR )
