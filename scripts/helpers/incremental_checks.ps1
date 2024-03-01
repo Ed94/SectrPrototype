@@ -71,3 +71,12 @@ function check-ModuleForChanges
 	}
 	return $false
 }
+
+function mark-ModuleDirty {
+	param( [string]$path_module )
+
+	$module_name = split-path $path_module -leaf
+	$path_csv    = Join-Path $path_build ($module_name + "_module_hashes.csv")
+
+	remove-item -Force -Path $path_csv
+}

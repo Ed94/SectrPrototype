@@ -94,12 +94,16 @@ push-location $path_root
 			write-host
 		}
 
+		$module_build_failed = 0
+		$module_built        = 1
+		$module_unchanged    = 2
+
 		function build-sectr
 		{
 			$should_build = check-ModuleForChanges $module_sectr
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr build, module up to date'
-				return $false
+				return $module_unchanged
 			}
 
 			write-host 'Building Sectr Module'
@@ -130,12 +134,21 @@ push-location $path_root
 			if ( Test-Path $module_dll) {
 				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
 			}
+
 			& $odin_compiler $build_args
-			$module_dll_post_build_hash = get-filehash -path $module_dll -Algorithm MD5
-			return $module_dll_pre_build_hash -ne $module_dll_post_build_hash
+
+			if ( Test-Path $module_dll ) {
+				$module_dll_post_build_hash = get-filehash -path $module_dll -Algorithm MD5
+			}
+
+			$built = ($module_dll_pre_build_hash -eq $null) -or ($module_dll_pre_build_hash.Hash -ne $module_dll_post_build_hash.Hash)
+			if ( -not $built ) {
+				write-host 'Failed to build, marking module dirty'
+				mark-ModuleDirty $module_sectr
+			}
+			return $built
 		}
-		$sectr_built = build-sectr
-		write-host # newline pad
+		$sectr_build_code = build-sectr
 
 		function build-host
 		{
@@ -147,7 +160,13 @@ push-location $path_root
 				return
 			}
 
-			$should_build = (check-ModuleForChanges $module_host) && (-not $sectr_built)
+			$dependencies_built = $sectr_build_code -gt $module_build_failed
+			if ( -not $dependencies_built ) {
+				write-host 'Skipping sectr_host build, dependencies failed to build'
+				return
+			}
+
+			$should_build = (check-ModuleForChanges $module_host) || ( $sectr_build_code == $module_built )
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr_host build, module up to date'
 				return
