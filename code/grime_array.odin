@@ -15,9 +15,6 @@ Array :: struct ( $ Type : typeid ) {
 	data      : [^]Type,
 }
 
-// @(private=file)
-// Array :: Array_ZPL
-
 array_to_slice :: proc( using self : Array( $ Type) ) -> []Type {
 	return slice_ptr( data, num )
 }

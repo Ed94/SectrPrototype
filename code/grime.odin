@@ -3,6 +3,9 @@ package sectr
 
 import "base:builtin"
 	copy :: builtin.copy
+import "base:intrinsics"
+	type_has_field :: intrinsics.type_has_field
+	type_elem_type :: intrinsics.type_elem_type
 import "base:runtime"
 	Byte     :: runtime.Byte
 	Kilobyte :: runtime.Kilobyte
@@ -54,6 +57,19 @@ import str "core:strings"
 	str_builder_to_string  :: str.to_string
 import "core:unicode/utf8"
 
+OS_Type :: type_of(ODIN_OS)
+
+// Alias Tables
+
+get_bounds :: proc {
+	box_get_bounds,
+	view_get_bounds,
+}
+
+is_power_of_two :: proc {
+	is_power_of_two_u32,
+}
+
 to_runes :: proc {
 	utf8.string_to_runes,
 }
@@ -61,47 +77,3 @@ to_runes :: proc {
 to_string :: proc {
 	str_builder_to_string,
 }
-
-OS_Type :: type_of(ODIN_OS)
-
-kilobytes :: #force_inline proc "contextless" ( kb : $ integer_type ) -> integer_type {
-	return kb * Kilobyte
-}
-megabytes :: #force_inline proc "contextless" ( mb : $ integer_type ) -> integer_type {
-	return mb * Megabyte
-}
-gigabytes  :: #force_inline proc "contextless" ( gb : $ integer_type ) -> integer_type {
-	return gb * Gigabyte
-}
-terabytes  :: #force_inline proc "contextless" ( tb : $ integer_type ) -> integer_type {
-	return tb * Terabyte
-}
-
-get_bounds :: proc {
-	box_get_bounds,
-	view_get_bounds,
-}
-
-// TODO(Ed): Review
-//region Doubly Linked List generic procs (verbose)
-
-dbl_linked_list_push_back :: proc(first: ^(^ $ Type), last: ^(^ Type), new_node: ^ Type)
-{
-	if first == nil || first^ == nil {
-			// List is empty, set first and last to the new node
-			(first ^) = new_node
-			(last  ^) = new_node
-			new_node.next = nil
-			new_node.prev = nil
-	}
-	else
-	{
-			// List is not empty, add new node to the end
-			(last^).next = new_node
-			new_node.prev = last^
-			(last ^) = new_node
-			new_node.next = nil
-	}
-}
-
-//endregion

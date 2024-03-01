@@ -17,6 +17,7 @@ HMapZPL_MapProc    :: #type proc( $ Type : typeid, key : u64, value :   Type )
 HMapZPL_MapMutProc :: #type proc( $ Type : typeid, key : u64, value : ^ Type )
 
 HMapZPL_CritialLoadScale :: 0.70
+HMapZPL_HashToEntryRatio :: 1.50
 
 HMapZPL_FindResult :: struct {
 	hash_index  : i64,
@@ -44,12 +45,14 @@ zpl_hmap_init_reserve :: proc( $ Type : typeid, allocator : Allocator, num : u64
 	result                        : HMapZPL(Type)
 	hashes_result, entries_result : AllocatorError
 
-	result.hashes, hashes_result = array_init_reserve( i64, allocator, num )
+	hashes_size := cast(u64) (HMapZPL_HashToEntryRatio * f32(num))
+
+	result.hashes, hashes_result = array_init_reserve( i64, allocator, hashes_size )
 	if hashes_result != AllocatorError.None {
 		ensure( false, "Failed to allocate hashes array" )
 		return result, hashes_result
 	}
-	array_resize( & result.hashes, num )
+	array_resize( & result.hashes, hashes_size )
 	slice.fill( slice_ptr( result.hashes.data, cast(int) result.hashes.num), -1 )
 
 	result.entries, entries_result = array_init_reserve( HMapZPL_Entry(Type), allocator, num )

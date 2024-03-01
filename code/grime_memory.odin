@@ -7,6 +7,19 @@ import "core:mem/virtual"
 import "core:runtime"
 import "core:os"
 
+kilobytes :: #force_inline proc "contextless" ( kb : $ integer_type ) -> integer_type {
+	return kb * Kilobyte
+}
+megabytes :: #force_inline proc "contextless" ( mb : $ integer_type ) -> integer_type {
+	return mb * Megabyte
+}
+gigabytes  :: #force_inline proc "contextless" ( gb : $ integer_type ) -> integer_type {
+	return gb * Gigabyte
+}
+terabytes  :: #force_inline proc "contextless" ( tb : $ integer_type ) -> integer_type {
+	return tb * Terabyte
+}
+
 // Initialize a sub-section of our virtual memory as a sub-arena
 sub_arena_init :: proc( address : ^ byte, size : int ) -> ( ^ Arena) {
 	Arena :: mem.Arena

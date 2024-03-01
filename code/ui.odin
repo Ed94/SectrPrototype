@@ -187,7 +187,8 @@ UI_Box :: struct {
 	label : string,
 
 	// Regenerated per frame.
-	first, last, prev, next, parent : ^ UI_Box,
+	using _      : DLL_NodeFull( UI_Box ), // first, last, prev, next
+	parent       : ^ UI_Box,
 	num_children : i32,
 
 	flags    : UI_BoxFlags,
@@ -195,8 +196,9 @@ UI_Box :: struct {
 	style    : UI_Style,
 
 	// Persistent Data
+	// hash_links : DLL_Node_PN( ^ UI_Box), // This isn't necessary if not using RJF hash table.
 	// prev_computed : UI_Computed,
-	// prev_style    : UI_Style,
+	// prev_style    : UI_Style,v
 	mouse         : UI_InteractState,
 	keyboard      : UI_InteractState,
 }
@@ -240,7 +242,6 @@ UI_State :: struct {
 	drag_start_mouse : Vec2,
 	// drag_state_arena : ^ Arena,
 	// drag_state data  : string,
-
 }
 
 ui_key_from_string :: proc( value : string ) -> UI_Key {
