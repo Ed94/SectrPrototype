@@ -192,11 +192,12 @@ push-location $path_root
 				return
 			}
 
-			$dependencies_built = $sectr_build_code -gt $module_build_failed
-			if ( -not $dependencies_built ) {
-				write-host 'Skipping sectr_host build, dependencies failed to build'
-				return
-			}
+			# TODO(Ed): FIX THIS
+			# $dependencies_built = $sectr_build_code -eq $module_build_failed
+			# if ( -not $dependencies_built ) {
+			# 	write-host 'Skipping sectr_host build, dependencies failed to build'
+			# 	return
+			# }
 
 			$should_build = (check-ModuleForChanges $module_host) || ( $sectr_build_code == $module_built )
 			if ( -not( $should_build)) {

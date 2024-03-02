@@ -15,8 +15,18 @@ Array :: struct ( $ Type : typeid ) {
 	data      : [^]Type,
 }
 
-array_to_slice :: proc( using self : Array( $ Type) ) -> []Type {
-	return slice_ptr( data, num )
+array_underlying_slice :: proc(slice: []($ Type)) -> Array(Type) {
+	if len(slice) == 0 {
+			return nil
+	}
+	array_size := size_of( Array(Type))
+	raw_data   := & slice[0]
+	array_ptr  := cast( ^Array(Type)) ( uintptr(first_element_ptr) - uintptr(array_size))
+	return array_ptr ^
+}
+
+array_to_slice :: proc( using self : Array($ Type) ) -> []Type {
+	return slice_ptr( data, int(num) )
 }
 
 array_grow_formula :: proc( value : u64 ) -> u64 {
@@ -29,12 +39,12 @@ array_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( Array(Type), A
 
 array_init_reserve :: proc( $ Type : typeid, allocator : Allocator, capacity : u64 ) -> ( Array(Type), AllocatorError )
 {
-	raw_data, result_code := alloc( int(capacity) * size_of(Type), allocator = allocator )
-	result : Array( Type);
-	result.data      = cast( [^] Type ) raw_data
+	raw_data, result_code := alloc( size_of(Array) + int(capacity) * size_of(Type), allocator = allocator )
+	result          := cast(^Array(Type)) raw_data;
+	result.data      = cast( [^]Type ) ptr_offset( result, 1 )
 	result.allocator = allocator
 	result.capacity  = capacity
-	return result, result_code
+	return (result ^), result_code
 }
 
 array_append :: proc( using self : ^ Array( $ Type), value : Type ) -> AllocatorError
@@ -231,7 +241,7 @@ array_set_capacity :: proc( using self : ^ Array( $ Type ), new_capacity : u64 )
 		ensure( false, "Failed to allocate for new array capacity" )
 		return result_code
 	}
-	free( raw_data(data) )
+	free( data )
 	data     = cast( [^] Type ) new_data
 	capacity = new_capacity
 	return result_code

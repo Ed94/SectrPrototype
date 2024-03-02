@@ -4,6 +4,7 @@ package sectr
 import "base:builtin"
 	copy :: builtin.copy
 import "base:intrinsics"
+	ptr_sub        :: intrinsics.ptr_sub
 	type_has_field :: intrinsics.type_has_field
 	type_elem_type :: intrinsics.type_elem_type
 import "base:runtime"
@@ -60,8 +61,9 @@ import "core:time"
 import "core:unicode"
 	is_white_space  :: unicode.is_white_space
 import "core:unicode/utf8"
+	str_rune_count  :: utf8.rune_count_in_string
 	runes_to_string :: utf8.runes_to_string
-	string_to_runes :: utf8.string_to_runes
+	// string_to_runes :: utf8.string_to_runes
 
 OS_Type :: type_of(ODIN_OS)
 
@@ -83,4 +85,8 @@ to_runes :: proc {
 to_string :: proc {
 	runes_to_string,
 	str_builder_to_string,
+}
+
+context_ext :: proc( $ Type : typeid ) -> (^Type) {
+	return cast(^Type) context.user_ptr
 }
