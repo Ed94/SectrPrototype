@@ -55,7 +55,13 @@ import "core:path/filepath"
 	file_name_from_path :: filepath.short_stem
 import str "core:strings"
 	str_builder_to_string  :: str.to_string
+import "core:time"
+	Duration :: time.Duration
+import "core:unicode"
+	is_white_space  :: unicode.is_white_space
 import "core:unicode/utf8"
+	runes_to_string :: utf8.runes_to_string
+	string_to_runes :: utf8.string_to_runes
 
 OS_Type :: type_of(ODIN_OS)
 
@@ -71,9 +77,10 @@ is_power_of_two :: proc {
 }
 
 to_runes :: proc {
-	utf8.string_to_runes,
+	string_to_runes,
 }
 
 to_string :: proc {
+	runes_to_string,
 	str_builder_to_string,
 }

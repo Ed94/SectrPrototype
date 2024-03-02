@@ -24,11 +24,13 @@ when ODIN_OS == OS_Type.Windows {
 cm_to_pixels :: proc {
 	f32_cm_to_pixels,
 	vec2_cm_to_pixels,
+	range2_cm_to_pixels,
 }
 
 pixels_to_cm :: proc {
 	f32_pixels_to_cm,
 	vec2_pixels_to_cm,
+	range2_pixels_to_cm,
 }
 
 points_to_pixels :: proc {
@@ -89,6 +91,18 @@ vec2_points_to_pixels :: proc(vpoints: Vec2) -> Vec2 {
 	return vpoints * DPT_PPCM * cm_per_pixel
 }
 
+range2_cm_to_pixels :: proc( range : Range2 ) -> Range2 {
+	screen_ppcm := get_state().app_window.ppcm
+	result := Range2 { pts = { range.min * screen_ppcm, range.max * screen_ppcm }}
+	return result
+}
+
+range2_pixels_to_cm :: proc( range : Range2 ) -> Range2 {
+	screen_ppcm := get_state().app_window.ppcm
+	cm_per_pixel := 1.0 / screen_ppcm
+	result := Range2 { pts = { range.min * cm_per_pixel, range.max * cm_per_pixel }}
+	return result
+}
 
 // vec2_points_to_cm :: proc( vpoints : Vec2 ) -> Vec2 {
 
@@ -166,7 +180,8 @@ view_get_corners :: proc() -> BoundsCorners2 {
 screen_to_world :: proc(pos: Vec2) -> Vec2 {
 	state := get_state(); using state
 	cam   := & project.workspace.cam
-	return vec2_pixels_to_cm( cam.target + pos * (1 / cam.zoom) )
+	result := Vec2 { cam.target.x, -cam.target.y}  + Vec2 { pos.x, -pos.y } * (1 / cam.zoom)
+	return result
 }
 
 screen_to_render :: proc(pos: Vec2) -> Vec2 {

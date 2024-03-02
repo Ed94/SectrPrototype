@@ -112,6 +112,8 @@ State :: struct {
 	engine_refresh_hz     : i32,
 	engine_refresh_target : i32,
 
+	frametime_delta_ns : Duration,
+
 	font_firacode                : FontID,
 	font_squidgy_slimes          : FontID,
 	font_rec_mono_semicasual_reg : FontID,
@@ -178,6 +180,7 @@ DebugData :: struct {
 	mouse_vis         : b32,
 	last_mouse_pos    : Vec2,
 
-	frame_1_on_top : b32,
 	zoom_target : f32,
+
+	frame_2_created : b32,
 }

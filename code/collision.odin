@@ -2,6 +2,11 @@ package sectr
 
 import "core:math/linalg"
 
+pos_within_range2 :: proc( pos : Vec2, range : Range2 ) -> b32 {
+	within_x := pos.x > range.p0.x && pos.x < range.p1.x
+	within_y := pos.y < range.p0.y && pos.y > range.p1.y
+	return b32(within_x && within_y)
+}
 
 box_is_within :: proc( box : ^ Box2, pos : Vec2 ) -> b32 {
 	bounds := box_get_bounds( box )

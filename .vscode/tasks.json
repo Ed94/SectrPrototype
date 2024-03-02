@@ -1,0 +1,26 @@
+{
+	"tasks": [
+        {
+            "label": "Build Sectr",
+            "type": "shell",
+            "command": "pwsh.exe",
+            "args": [
+				"-NoProfile",
+                "-ExecutionPolicy",
+                "Unrestricted",
+                "-File",
+                "${workspaceFolder}/scripts/build.ps1"
+            ],
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+				"focus": false,
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
+    ]
+}

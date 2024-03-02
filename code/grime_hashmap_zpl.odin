@@ -110,6 +110,10 @@ zpl_hmap_grow :: proc( using self : ^ HMapZPL( $ Type ) ) -> AllocatorError {
 
 zpl_hmap_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorError
 {
+	// For now the prototype should never allow this to happen.
+	// We use this almost exclusively in persistent memory and its not setup for 
+	// dealing with reallocations in a conservative manner.
+	ensure( false, "ZPL HMAP IS REHASHING" )
 	last_added_index : i64
 
 	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.hashes.allocator, new_num )

@@ -1,7 +1,13 @@
 cls
+write-host "Build.ps1"
 
 $incremental_checks = Join-Path $PSScriptRoot 'helpers/incremental_checks.ps1'
 . $incremental_checks
+write-host 'incremental_checks.ps1 imported'
+
+$ini_parser = join-path $PSScriptRoot 'helpers/ini.ps1'
+. $ini_parser
+write-host 'ini.ps1 imported'
 
 $path_root       = git rev-parse --show-toplevel
 $path_code       = join-path $path_root       'code'
@@ -10,10 +16,26 @@ $path_scripts    = join-path $path_root       'scripts'
 $path_thirdparty = join-path $path_root       'thirdparty'
 $path_odin       = join-path $path_thirdparty 'odin'
 
-if ( $IsWindows ) {
+if ( -not( test-path $path_build) ) {
+	new-item -ItemType Directory -Path $path_build
+}
+
+$path_system_details = join-path $path_build 'system_details.ini'
+if ( test-path $path_system_details ) {
+    $iniContent = Get-IniContent $path_system_details
+    $CoreCount_Physical = $iniContent["CPU"]["PhysicalCores"]
+    $CoreCount_Logical  = $iniContent["CPU"]["LogicalCores"]
+}
+elseif ( $IsWindows ) {
 	$CPU_Info = Get-CimInstance –ClassName Win32_Processor | Select-Object -Property NumberOfCores, NumberOfLogicalProcessors
 	$CoreCount_Physical, $CoreCount_Logical = $CPU_Info.NumberOfCores, $CPU_Info.NumberOfLogicalProcessors
+
+	new-item -path $path_system_details -ItemType File
+    "[CPU]"                             | Out-File $path_system_details
+    "PhysicalCores=$CoreCount_Physical" | Out-File $path_system_details -Append
+    "LogicalCores=$CoreCount_Logical"   | Out-File $path_system_details -Append
 }
+write-host "Core Count - Physical: $CoreCount_Physical Logical: $CoreCount_Logical"
 
 # Odin Compiler Flags
 
@@ -71,8 +93,17 @@ $msvc_link_default_base_address = 0x180000000
 push-location $path_root
 	$update_deps   = join-path $path_scripts 'update_deps.ps1'
 	$odin_compiler = join-path $path_odin    'odin.exe'
-	if ( -not( test-path 'build') ) {
-		new-item -ItemType Directory -Path 'build'
+
+	function Invoke-WithColorCodedOutput { param( [scriptblock] $command )
+		& $command 2>&1 | ForEach-Object {
+			# Write-Host "Type: $($_.GetType().FullName)" # Add this line for debugging
+			$color = 'White' # Default text color
+			switch ($_) {
+				{ $_ -imatch "error" } { $color = 'Red'; break }
+				{ $_ -imatch "warning" } { $color = 'Yellow'; break }
+			}
+			Write-Host "`t$_" -ForegroundColor $color
+		}
 	}
 
 	function build-prototype
@@ -123,19 +154,20 @@ push-location $path_root
 			$build_args += $flag_output_path + $module_dll
 			$build_args += ($flag_collection + $pkg_collection_thirdparty)
 			$build_args += $flag_use_separate_modules
+			$build_args += $flag_thread_count + $CoreCount_Physical
 			$build_args += $flag_optimize_none
 			$build_args += $flag_debug
 			$build_args += $flag_pdb_name + $pdb
-			$build_args += ($flag_extra_linker_flags + $linker_args )
 			$build_args += $flag_subsystem + 'windows'
 			# $build_args += $flag_show_system_calls
-			# $build_args += $flag_show_timings
+			$build_args += $flag_show_timings
+			$build_args += ($flag_extra_linker_flags + $linker_args )
 
 			if ( Test-Path $module_dll) {
 				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
 			}
 
-			& $odin_compiler $build_args
+			Invoke-WithColorCodedOutput -command { & $odin_compiler $build_args }
 
 			if ( Test-Path $module_dll ) {
 				$module_dll_post_build_hash = get-filehash -path $module_dll -Algorithm MD5
@@ -172,6 +204,7 @@ push-location $path_root
 				return
 			}
 
+			write-host 'Building Host Module'
 			$linker_args = ""
 			$linker_args += ( $flag_msvc_link_disable_dynamic_base + ' ' )
 
@@ -185,14 +218,12 @@ push-location $path_root
 			$build_args += $flag_optimize_none
 			$build_args += $flag_debug
 			$build_args += $flag_pdb_name + $pdb
-			$build_args += ($flag_extra_linker_flags + $linker_args )
 			$build_args += $flag_subsystem + 'windows'
+			$build_args += ($flag_extra_linker_flags + $linker_args )
+			$build_args += $flag_show_timings
 			# $build_args += $flag_show_system_call
-			# $build_args += $flag_show_timings
 
-			write-host 'Building Host Module'
-			& $odin_compiler $build_args
-			write-host
+			Invoke-WithColorCodedOutput { & $odin_compiler $build_args }
 		}
 		build-host
 
@@ -200,3 +231,5 @@ push-location $path_root
 	}
 	build-prototype
 pop-location # path_root
+
+exit 0

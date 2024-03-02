@@ -30,42 +30,45 @@ DLL_NodeFL :: struct ( $ Type : typeid ) {
 	first, last : ^ Type,
 }
 
-type_is_node :: #force_inline proc  "contextless" ( $ Type : typeid ) -> b32
+type_is_node :: #force_inline proc  "contextless" ( $ Type : typeid ) -> bool
 {
 	// elem_type := type_elem_type(Type)
 	return type_has_field( type_elem_type(Type), "prev" ) && type_has_field( type_elem_type(Type), "next" )
 }
 
-dll_insert_raw ::  proc "contextless" ( null, first, last, position, new : ^ DLL_Node( $ Type ) )
+dll_full_insert_raw ::  proc "contextless" ( null : ^($ Type), parent, pos, node : ^ Type )
 {
-	// Empty Case
-	if first == null {
-		first     = new
-		last      = new
-		new.next  = null
-		new.prev  = null
+	if parent.first == null {
+		parent.first = node
+		parent.last  = node
+		node.next    = null
+		node.prev    = null
 	}
-	else if position == null {
+	else if pos == null {
 		// Position is not set, insert at beginning
-		new.next   = first
-		first.prev = new
-		first      = new
-		new.prev   = null
+		node.next         = parent.first
+		parent.first.prev = node
+		parent.first      = node
+		node.prev         = null
 	}
-	else if position == last {
+	else if pos == parent.last {
 		// Positin is set to last, insert at end
-		last.next = new
-		new.prev  = last
-		last      = new
-		new.next  = null
+		parent.last.next = node
+		node.prev        = parent.last
+		parent.last      = node
+		node.next        = null
 	}
-	else {
-		// Insert around position
-		if position.next != null {
-			position.next.prev = new
+	else
+	{
+		if pos.next != null {
+			pos.next.prev = node
 		}
-		new.next      = position.next
-		position.next = new
-		new.prev      = position
+		node.next = pos.next
+		pos.next  = node
+		node.prev = pos
 	}
+}
+
+dll_full_push_back :: proc "contextless" ( null : ^($ Type), parent, node : ^ Type ) {
+	dll_full_insert_raw( null, parent, parent.last, node )
 }

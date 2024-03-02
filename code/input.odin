@@ -17,8 +17,16 @@ btn_pressed :: proc( btn : DigitalBtn ) -> b32 {
 	return btn.ended_down && btn.half_transitions > 0
 }
 
+btn_released :: proc ( btn : DigitalBtn ) -> b32 {
+	return btn.ended_down == false && btn.half_transitions > 0
+}
+
 pressed :: proc {
 	btn_pressed,
+}
+
+released :: proc {
+	btn_released,
 }
 
 MaxKeyboardKeys :: 256

@@ -226,9 +226,13 @@ array_set_capacity :: proc( using self : ^ Array( $ Type ), new_capacity : u64 )
 		return AllocatorError.None
 	}
 
-	raw_data, result_code := alloc( cast(int) new_capacity * size_of(Type), allocator = allocator )
-	ensure( result_code == AllocatorError.None, "Failed to allocate for new array capacity" )
-	data     = cast( [^] Type ) raw_data
+	new_data, result_code := alloc( cast(int) new_capacity * size_of(Type), allocator = allocator )
+	if result_code != AllocatorError.None {
+		ensure( false, "Failed to allocate for new array capacity" )
+		return result_code
+	}
+	free( raw_data(data) )
+	data     = cast( [^] Type ) new_data
 	capacity = new_capacity
 	return result_code
 }

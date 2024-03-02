@@ -210,7 +210,7 @@ sync_sectr_api :: proc( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk, log
 
 		// Wait for pdb to unlock (linker may still be writting)
 		for ; file_is_locked( Path_Sectr_Debug_Symbols ) && file_is_locked( Path_Sectr_Live_Module ); {}
-		thread_sleep( Millisecond * 50 )
+		thread_sleep( Millisecond * 100 )
 
 		sectr_api ^ = load_sectr_api( version_id )
 		verify( sectr_api.lib_version != 0, "Failed to hot-reload the sectr module" )
@@ -285,7 +285,7 @@ main :: proc()
 		// Hot-Reload
 		sync_sectr_api( & sectr_api, & memory, & logger )
 
-		running = sectr_api.tick( duration_seconds( delta_ns ) )
+		running = sectr_api.tick( duration_seconds( delta_ns ), delta_ns )
 		sectr_api.clean_temp()
 
 		delta_ns = time.tick_lap_time( & start_tick )

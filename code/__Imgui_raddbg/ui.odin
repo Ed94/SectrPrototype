@@ -170,7 +170,7 @@ UI_ScrollPt :: struct {
 UI_ScrollPt2 :: [2]UI_ScrollPt
 
 UI_Signal :: struct {
-	box : UI_Box,
+	box : ^ UI_Box,
 
 	cursor_pos : Vec2,
 	drag_delta : Vec2,

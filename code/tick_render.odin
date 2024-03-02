@@ -39,7 +39,7 @@ render :: proc()
 			screen_corners := screen_get_corners()
 
 			position   := screen_corners.top_right
-			position.x -= 200
+			position.x -= 800
 			position.y += debug.draw_debug_text_y
 
 			content := str_fmt_buffer( draw_text_scratch[:], format, ..args )
@@ -61,11 +61,11 @@ render :: proc()
 		}
 
 		if debug.mouse_vis {
-			debug_text( "Position: %v", input.mouse.pos )
+			debug_text( "Mouse Position (Screen): %v", input.mouse.pos )
+			debug_text("Mouse Position (World): %v", screen_to_world(input.mouse.pos) )
 			cursor_pos :=  transmute(Vec2) state.app_window.extent + input.mouse.pos
 			rl.DrawCircleV( cursor_pos, 10, Color_White_A125 )
 		}
-
 		debug.draw_debug_text_y = 50
 	}
 	//endregion Render Screenspace
@@ -76,21 +76,56 @@ render_mode_2d :: proc()
 {
 	state  := get_state(); using state
 	cam    := & project.workspace.cam
+
 	win_extent := state.app_window.extent
 
 	rl.BeginMode2D( project.workspace.cam )
 
-	//region Imgui Render
+	ImguiRender:
 	{
+		ui   := & state.project.workspace.ui
+		root := ui.root
+		if root.num_children == 0 {
+			break ImguiRender
+		}
 
+		current := root.first
+		for ; current != nil; {
+			parent := current.parent
+
+			style    := current.style
+			computed := & current.computed
+
+			// TODO(Ed) : Render Borders
+
+			render_bounds := Range2 { pts = {
+				world_to_screen_pos(computed.bounds.min),
+				world_to_screen_pos(computed.bounds.max),
+			}}
+
+			rect := rl.Rectangle {
+				render_bounds.min.x,
+				render_bounds.min.y,
+				render_bounds.max.x - render_bounds.min.x,
+				render_bounds.max.y - render_bounds.min.y,
+			}
+			rl.DrawRectangleRec( rect, style.bg_color )
+			rl.DrawCircleV( render_bounds.p0, 5, Color_Red )
+			rl.DrawCircleV( render_bounds.p1, 5, Color_Blue )
+
+			current = ui_box_tranverse_next( current )
+		}
 	}
 	//endregion Imgui Render
 
-	debug_draw_text_world( "This is text in world space", { 0, 0 }, 16.0  )
+	debug_draw_text_world( "This is text in world space", { 0, 200 }, 16.0  )
 
 	if debug.mouse_vis {
-		// rl.DrawCircleV(  screen_to_world(input.mouse.pos), 10, Color_GreyRed )
+		cursor_world_pos := screen_to_world(input.mouse.pos)
+		rl.DrawCircleV( world_to_screen_pos(cursor_world_pos), 5, Color_GreyRed )
 	}
+
+	rl.DrawCircleV( { 0, 0 }, 1, Color_White )
 
 	rl.EndMode2D()
 }

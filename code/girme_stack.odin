@@ -21,6 +21,12 @@ stack_pop :: proc( using stack : ^ Stack( $ Type, $ Size ) ) {
 	}
 }
 
-stack_peek :: proc( using stack : ^ Stack( $ Type, $ Size ) ) -> ^ Type {
-	return & items[idx]
+stack_peek_ref :: proc( using stack : ^ Stack( $ Type, $ Size ) ) -> ^ Type {
+	last := max( 0, idx - 1 )
+	return & items[last]
+}
+
+stack_peek :: proc ( using stack : ^ Stack( $ Type, $ Size ) ) -> Type {
+	last := max( 0, idx - 1 )
+	return items[last]
 }

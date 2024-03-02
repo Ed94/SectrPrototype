@@ -171,21 +171,71 @@ update :: proc( delta_time : f64 ) -> b32
 			}
 		}
 	}
-	//endregion
+	//endregion Camera Manual Nav
 
 	//region Imgui Tick
-
 	{
 		// Creates the root box node, set its as the first parent.
 		ui_graph_build( & state.project.workspace.ui )
 
-		ui_style({ bg_color = Color_BG_TextBox })
-		ui_set_layout({ size = { 200, 200 }})
+		frame_style_flags : UI_StyleFlags = {
+			.Fixed_Position_X, .Fixed_Position_Y,
+			.Fixed_Width, .Fixed_Height,
+		}
+		frame_style_default := UI_Style {
+			flags    = frame_style_flags,
+			bg_color = Color_BG_TextBox,
+		}
+		frame_style_disabled := UI_Style {
+			flags = frame_style_flags,
+			bg_color = Color_Frame_Disabled,
+		}
+		frame_style_hovered := UI_Style {
+			flags = frame_style_flags,
+			bg_color = Color_Frame_Hover,
+		}
+		frame_style_select := UI_Style {
+			flags = frame_style_flags,
+			bg_color = Color_Frame_Select,
+		}
+		frame_theme := UI_StyleTheme { styles = {
+			frame_style_default,
+			frame_style_disabled,
+			frame_style_hovered,
+			frame_style_select,
+		}}
+		ui_style_theme( frame_theme )
 
-		first_flags : UI_BoxFlags = { .Mouse_Clickable, .Focusable, .Click_To_Focus  }
-		ui_box_make( first_flags, "FIRST BOX BOIS" )
+		first_layout := UI_Layout {
+			anchor    = {},
+			// alignment = { 0.0, 0.0 },
+			alignment = { 0.5, 0.5 },
+			// alignment = { 1.0, 1.0 },
+			pos       = { 0, 0 },
+			size      = { 200, 200 },
+		}
+		ui_set_layout( first_layout )
+
+		// First Demo
+		when false
+		{
+			first_flags : UI_BoxFlags = { .Mouse_Clickable, .Focusable, .Click_To_Focus  }
+			first_box := ui_box_make( first_flags, "FIRST BOX BOIS" )
+			signal    := ui_signal_from_box( first_box )
+
+			if signal.left_clicked || debug.frame_2_created {
+				second_layout := first_layout
+				second_layout.pos = { 250, 0 }
+				ui_set_layout( second_layout )
+
+				second_box := ui_box_make( first_flags, "SECOND BOX BOIS" )
+				signal     := ui_signal_from_box( second_box )
+
+				debug.frame_2_created = true
+			}
+		}
 	}
-	// endregion
+	//endregion Imgui Tick
 
 	debug.last_mouse_pos = input.mouse.pos
 

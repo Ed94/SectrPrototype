@@ -73,7 +73,10 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 
 	// rl.Odin_SetMalloc( RL_MALLOC )
 
-	rl.SetConfigFlags( { rl.ConfigFlag.WINDOW_RESIZABLE /*, rl.ConfigFlag.WINDOW_TOPMOST*/ } )
+	rl.SetConfigFlags( {
+		rl.ConfigFlag.WINDOW_RESIZABLE,
+		rl.ConfigFlag.WINDOW_TOPMOST,
+	})
 
 	// Rough setup of window with rl stuff
 	window_width  : i32 = 1000
@@ -177,7 +180,7 @@ reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ L
 	snapshot = snapshot_mem
 
 	// This is no longer necessary as we have proper base address setting
-	when false
+	when true
 	{
 		persistent_slice := slice_ptr( block.base, Memory_Persistent_Size )
 		transient_slice  := slice_ptr( memory_after( persistent_slice), Memory_Trans_Temp_Szie )
@@ -216,10 +219,12 @@ swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 }
 
 @export
-tick :: proc( delta_time : f64 ) -> b32
+tick :: proc( delta_time : f64, delta_ns : Duration ) -> b32
 {
 	context.allocator      = transient_allocator()
 	context.temp_allocator = temp_allocator()
+
+	get_state().frametime_delta_ns = delta_ns
 
 	result := update( delta_time )
 	render()
