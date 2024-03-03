@@ -217,7 +217,7 @@ update :: proc( delta_time : f64 ) -> b32
 		ui_set_layout( first_layout )
 
 		// First Demo
-		when false
+		when true
 		{
 			first_flags : UI_BoxFlags = { .Mouse_Clickable, .Focusable, .Click_To_Focus  }
 			first_box := ui_box_make( first_flags, "FIRST BOX BOIS" )

@@ -25,8 +25,12 @@ array_underlying_slice :: proc(slice: []($ Type)) -> Array(Type) {
 	return array_ptr ^
 }
 
-array_to_slice :: proc( using self : Array($ Type) ) -> []Type {
+array_to_slice_num :: proc( using self : Array($ Type) ) -> []Type {
 	return slice_ptr( data, int(num) )
+}
+
+array_to_slice :: proc( using self : Array($ Type) ) -> []Type {
+	return slice_ptr( data, int(capacity))
 }
 
 array_grow_formula :: proc( value : u64 ) -> u64 {
@@ -41,7 +45,7 @@ array_init_reserve :: proc( $ Type : typeid, allocator : Allocator, capacity : u
 {
 	raw_data, result_code := alloc( size_of(Array) + int(capacity) * size_of(Type), allocator = allocator )
 	result          := cast(^Array(Type)) raw_data;
-	result.data      = cast( [^]Type ) ptr_offset( result, 1 )
+	result.data      = cast( [^]Type ) (cast( [^]Array(Type)) result)[ 1:]
 	result.allocator = allocator
 	result.capacity  = capacity
 	return (result ^), result_code

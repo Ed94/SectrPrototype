@@ -75,7 +75,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 
 	rl.SetConfigFlags( {
 		rl.ConfigFlag.WINDOW_RESIZABLE,
-		rl.ConfigFlag.WINDOW_TOPMOST,
+		// rl.ConfigFlag.WINDOW_TOPMOST,
 	})
 
 	// Rough setup of window with rl stuff
@@ -108,7 +108,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
-		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
+		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" }, temp_allocator() )
 		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 
 		// font_data, read_succeded : = os.read_entire_file( path_rec_mono_semicasual_reg  )

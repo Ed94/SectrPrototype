@@ -45,14 +45,12 @@ zpl_hmap_init_reserve :: proc( $ Type : typeid, allocator : Allocator, num : u64
 	result                        : HMapZPL(Type)
 	hashes_result, entries_result : AllocatorError
 
-	hashes_size := cast(u64) (HMapZPL_HashToEntryRatio * f32(num))
-
-	result.hashes, hashes_result = array_init_reserve( i64, allocator, hashes_size )
+	result.hashes, hashes_result = array_init_reserve( i64, allocator, num )
 	if hashes_result != AllocatorError.None {
 		ensure( false, "Failed to allocate hashes array" )
 		return result, hashes_result
 	}
-	array_resize( & result.hashes, hashes_size )
+	array_resize( & result.hashes, num )
 	slice.fill( slice_ptr( result.hashes.data, cast(int) result.hashes.num), -1 )
 
 	result.entries, entries_result = array_init_reserve( HMapZPL_Entry(Type), allocator, num )
