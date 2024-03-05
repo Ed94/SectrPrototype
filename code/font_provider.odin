@@ -51,13 +51,10 @@ FontDef :: struct {
 	data         : [] u8,
 	default_size : i32,
 	size_table   : [Font_Largest_Px_Size / 2] FontGlyphsRender,
-	// TODO(Ed) : This is a rough way to do even multiplies, we are wasting half the array, I'll make a proper accessor/generation to it eventually.
 }
 
 FontProviderData :: struct {
 	font_arena : Arena,
-
-	//TODO(Ed) : There is an issue with hot-reload and map allocations that I can't figure out right now..
 	font_cache : HMapZPL(FontDef),
 }
 
@@ -170,7 +167,8 @@ font_load :: proc( path_file : string,
 
 Font_Use_Default_Size :: f32(0.0)
 
-to_rl_Font :: proc( id : FontID, size := Font_Use_Default_Size ) -> rl.Font {
+to_rl_Font :: proc( id : FontID, size := Font_Use_Default_Size ) -> rl.Font
+{
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
 	even_size := math.round(size * 0.5) * 2.0
