@@ -2,32 +2,47 @@
 // The code takes advantage of macros for the linked list interface in a way that odin doesn't really permit without a much worse interface.
 package sectr
 
+LL_Node :: struct ( $ Type : typeid ) {
+	value : ^Type,
+	next  : ^LL_Node(Type),
+}
+
 DLL_Node :: struct ( $ Type : typeid ) #raw_union {
 	using _ : struct {
-		left, right : ^ Type,
+		left, right : ^Type,
 	},
 	using _ : struct {
-		prev, next : ^ Type,
+		prev, next : ^Type,
 	},
 	using _ : struct {
-		first, last : ^ Type,
+		first, last : ^Type,
 	},
+	using _ : struct {
+		bottom, top : ^Type,
+	}
 }
 
 DLL_NodeFull :: struct ( $ Type : typeid ) {
-	first, last, prev, next : ^ Type,
-}
-
-DLL_NodeLR :: struct ( $ Type : typeid ) {
-	left, right : ^ Type,
+	using _ : DLL_NodeFL(Type),
+	prev, next : ^Type,
 }
 
 DLL_NodePN :: struct ( $ Type : typeid ) {
-	prev, next : ^ Type,
+	using _ : struct {
+		prev, next : ^Type,
+	}
+	using _ : struct {
+		left, right : ^Type,
+	}
 }
 
-DLL_NodeFL :: struct ( $ Type : typeid ) {
-	first, last : ^ Type,
+DLL_NodeFL :: struct ( $ Type : typeid ) #raw_union {
+	using _ : struct {
+		first, last : ^Type,
+	}
+	using _ : struct {
+		bottom, top: ^Type,
+	}
 }
 
 type_is_node :: #force_inline proc  "contextless" ( $ Type : typeid ) -> bool
@@ -36,7 +51,22 @@ type_is_node :: #force_inline proc  "contextless" ( $ Type : typeid ) -> bool
 	return type_has_field( type_elem_type(Type), "prev" ) && type_has_field( type_elem_type(Type), "next" )
 }
 
-dll_full_insert_raw ::  proc "contextless" ( null : ^($ Type), parent, pos, node : ^ Type )
+dll_push_back :: #force_inline proc "contextless" ( current_ptr : ^(^ ($ Type)), node : ^Type ) {
+	current := (current_ptr ^)
+
+	current.prev    = current
+	current.next    = node
+	(current_ptr ^) = node
+}
+
+dll_pop_back :: #force_inline proc "contextless" ( current_ptr : ^(^ ($ Type)), node : ^Type ) {
+	current := (current_ptr ^)
+
+	current.next    = nil
+	(current_ptr ^) = node
+}
+
+dll_full_insert_raw ::  proc "contextless" ( null : ^($ Type), parent, pos, node : ^Type )
 {
 	if parent.first == null {
 		parent.first = node
