@@ -1,3 +1,13 @@
+/* Sectr Host Executable
+Manages the client module (sectr) application & loads its required memory to operate.
+Reserves the virtual memory spaces for the following:
+* Persistent
+* Frame
+* Transient
+* FilesBuffer
+
+Currently the prototype has hot-reload always enabled, eventually there will be conditional compliation to omit if when desired.
+*/
 package host
 
 //region Grime & Dependencies
@@ -139,15 +149,13 @@ setup_memory :: proc() -> VMemChunk
 	return memory;
 }
 
-load_sectr_api :: proc( version_id : i32 ) -> sectr.ModuleAPI
+load_sectr_api :: proc( version_id : i32 ) -> (loaded_module : sectr.ModuleAPI)
 {
-	loaded_module : sectr.ModuleAPI
-
 	write_time, result := os.last_write_time_by_name("sectr.dll")
 	if result != os.ERROR_NONE {
 		log( "Could not resolve the last write time for sectr.dll", LogLevel.Warning )
 		runtime.debug_trap()
-		return {}
+		return
 	}
 
 	live_file := Path_Sectr_Live_Module
@@ -157,7 +165,7 @@ load_sectr_api :: proc( version_id : i32 ) -> sectr.ModuleAPI
 	if ! load_result {
 		log( "Failed to load the sectr module.", LogLevel.Warning )
 		runtime.debug_trap()
-		return {}
+		return
 	}
 
 	startup    := cast( type_of( sectr.startup        )) os_lib_get_proc( lib, "startup" )
@@ -174,7 +182,7 @@ load_sectr_api :: proc( version_id : i32 ) -> sectr.ModuleAPI
 	if clean_temp == nil do log("Failed to load sector.clean_temp symbol", LogLevel.Warning )
 	if missing_symbol {
 		runtime.debug_trap()
-		return {}
+		return
 	}
 
 	log("Loaded sectr API")
@@ -189,7 +197,7 @@ load_sectr_api :: proc( version_id : i32 ) -> sectr.ModuleAPI
 		tick       = tick,
 		clean_temp = clean_temp,
 	}
-	return loaded_module
+	return
 }
 
 unload_sectr_api :: proc( module : ^ sectr.ModuleAPI )

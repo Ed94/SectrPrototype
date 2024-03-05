@@ -10,10 +10,27 @@ import rl "vendor:raylib"
 
 Memory_App : Memory
 
+// TODO(Ed) : Make this obsolete
 Memory_Base_Address    :: Terabyte * 1
 Memory_Chunk_Size      :: 2 * Gigabyte
 Memory_Persistent_Size :: 256 * Megabyte
 Memory_Trans_Temp_Szie :: (Memory_Chunk_Size - Memory_Persistent_Size ) / 2
+
+Memory_Base_Address_Persistent :: Terabyte * 1
+Memory_Base_Address_Frame      :: Memory_Base_Address_Persistent + Memory_Reserve_Persistent
+
+// TODO(Ed) : This is based off of using 32 gigs of my (Ed) as a maximum.
+// Later on this has to be adjusted to be ratios based on user's system memory.
+Memory_Reserve_Persistent  :: 8  * Gigabyte
+Memory_Reserve_Frame       :: 4  * Gigabyte
+Memory_Reserve_Transient   :: 4  * Gigabyte
+Memory_Reserve_FilesBuffer :: 16 * Gigabyte
+
+// TODO(Ed) : These are high for ease of use, they eventually need to be drastically minimized.
+Memory_Commit_Initial_Persistent :: 256 * Megabyte
+Memory_Commit_Initial_Frame      :: 1   * Gigabyte
+Memory_Commit_Initial_Transient  :: 1   * Gigabyte
+Memory_Commit_Initial_Filebuffer :: 2   * Gigabyte
 
 // TODO(Ed): There is an issue with mutex locks on the tracking allocator..
 Use_TrackingAllocator :: false
@@ -84,7 +101,21 @@ load_snapshot :: proc( snapshot : [^]u8 ) {
 	mem.copy_non_overlapping( live_ptr, snapshot, Memory_Chunk_Size )
 }
 
+MemoryConfig :: struct {
+	reserve_persistent : uint,
+	reserve_frame      : uint,
+	reserve_transient  : uint,
+	reserve_filebuffer : uint,
+
+	commit_initial_persistent : uint,
+	commit_initial_frame      : uint,
+	commit_initial_transient  : uint,
+	commit_initial_filebuffer : uint,
+}
+
 AppConfig :: struct {
+	using memory : MemoryConfig,
+
 	resolution_width  : uint,
 	resolution_height : uint,
 	refresh_rate      : uint,
