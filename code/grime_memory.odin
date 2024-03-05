@@ -20,6 +20,43 @@ terabytes  :: #force_inline proc "contextless" ( tb : $ integer_type ) -> intege
 	return tb * Terabyte
 }
 
+// See: core/mem.odin, I wanted to study it an didn't like the naming.
+@(require_results)
+calc_padding_with_header :: proc "contextless" (pointer: uintptr, alignment: uintptr, header_size: int) -> int
+{
+	alignment_offset := pointer & (alignment - 1)
+
+	initial_padding := uintptr(0)
+	if alignment_offset != 0 {
+			initial_padding = alignment - alignment_offset
+	}
+
+	header_space_adjustment := uintptr(header_size)
+	if initial_padding < header_space_adjustment
+	{
+			additional_space_needed := header_space_adjustment - initial_padding
+			unaligned_extra_space   := additional_space_needed & (alignment - 1)
+
+			if unaligned_extra_space > 0 {
+					initial_padding += alignment * (1 + (additional_space_needed / alignment))
+			}
+			else {
+					initial_padding += alignment * (additional_space_needed / alignment)
+			}
+	}
+
+	return int(initial_padding)
+}
+
+// Helper to get the the beginning of memory after a slice
+memory_after :: proc( slice : []byte ) -> ( ^ byte) {
+	return ptr_offset( & slice[0], len(slice) )
+}
+
+memory_after_header :: proc( header : ^($ Type) ) -> ( [^]byte) {
+	return cast( [^]byte) (cast( [^]Type) header)[ 1:]
+}
+
 // Initialize a sub-section of our virtual memory as a sub-arena
 sub_arena_init :: proc( address : ^ byte, size : int ) -> ( ^ Arena) {
 	Arena :: mem.Arena
@@ -31,10 +68,6 @@ sub_arena_init :: proc( address : ^ byte, size : int ) -> ( ^ Arena) {
 	return sub_arena
 }
 
-// Helper to get the the beginning of memory after a slice
-memory_after :: proc( slice : []byte ) -> ( ^ byte) {
-	return ptr_offset( & slice[0], len(slice) )
-}
 
 // Since this is a prototype, all memory is always tracked. No arena is is interfaced directly.
 TrackedAllocator :: struct {
@@ -77,6 +110,19 @@ tracked_allocator_init :: proc( size, internals_size : int, allocator := context
 	return result
 }
 
+arena_allocator_init_vmem :: proc( vmem : [] byte ) -> ^ Arena
+{
+	arena_size   :: size_of( Arena)
+	backing_size := len(vmem)
+
+	result       := cast( ^ Arena) & vmem[0]
+	result_slice := slice_ptr( & vmem[0], arena_size )
+
+	backing_slice := slice_ptr( memory_after( result_slice), backing_size )
+	arena_init( result, backing_slice )
+	return result
+}
+
 tracked_allocator_init_vmem :: proc( vmem : [] byte, internals_size : int ) -> ^ TrackedAllocator
 {
 	arena_size              :: size_of( Arena)
@@ -97,18 +143,5 @@ tracked_allocator_init_vmem :: proc( vmem : [] byte, internals_size : int ) -> ^
 	arena_init( internals, internals_slice )
 
 	tracking_allocator_init( & result.tracker, arena_allocator( backing ), arena_allocator( internals ) )
-	return result
-}
-
-arena_allocator_init_vmem :: proc( vmem : [] byte ) -> ^ Arena
-{
-	arena_size   :: size_of( Arena)
-	backing_size := len(vmem)
-
-	result       := cast( ^ Arena) & vmem[0]
-	result_slice := slice_ptr( & vmem[0], arena_size )
-
-	backing_slice := slice_ptr( memory_after( result_slice), backing_size )
-	arena_init( result, backing_slice )
 	return result
 }
