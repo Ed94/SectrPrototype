@@ -29,18 +29,24 @@ import fmt_io "core:fmt"
 import "core:mem"
 	Allocator               :: mem.Allocator
 	AllocatorError          :: mem.Allocator_Error
+	AllocatorMode           :: mem.Allocator_Mode
+	AllocatorModeSet        :: mem.Allocator_Mode_Set
 	alloc                   :: mem.alloc
 	alloc_bytes             :: mem.alloc_bytes
 	Arena                   :: mem.Arena
 	arena_allocator         :: mem.arena_allocator
 	arena_init              :: mem.arena_init
+	byte_slice              :: mem.byte_slice
 	free                    :: mem.free
 	ptr_offset              :: mem.ptr_offset
+	resize                  :: mem.resize
 	slice_ptr               :: mem.slice_ptr
 	TrackingAllocator       :: mem.Tracking_Allocator
 	tracking_allocator      :: mem.tracking_allocator
 	tracking_allocator_init :: mem.tracking_allocator_init
 import "core:mem/virtual"
+import "core:odin"
+	SourceCodeLocation :: runtime.Source_Code_Location
 import "core:os"
 	FileFlag_Create    :: os.O_CREATE
 	FileFlag_ReadWrite :: os.O_RDWR
@@ -67,15 +73,43 @@ import "core:unicode/utf8"
 
 OS_Type :: type_of(ODIN_OS)
 
-// Alias Tables
+context_ext :: proc( $ Type : typeid ) -> (^Type) {
+	return cast(^Type) context.user_ptr
+}
+
+// Proc Name Overloads Alias table
+// This has to be done on a per-module basis. Most likely can be automated
+
+cm_to_pixels :: proc {
+	f32_cm_to_pixels,
+	vec2_cm_to_pixels,
+	range2_cm_to_pixels,
+}
 
 get_bounds :: proc {
-	box_get_bounds,
 	view_get_bounds,
 }
 
 is_power_of_two :: proc {
 	is_power_of_two_u32,
+}
+
+pop :: proc {
+	stack_pop,
+	stack_allocator_pop,
+}
+
+pressed :: proc {
+	btn_pressed,
+}
+
+push :: proc {
+	stack_push,
+	stack_allocator_push,
+}
+
+released :: proc {
+	btn_released,
 }
 
 to_runes :: proc {
@@ -87,6 +121,18 @@ to_string :: proc {
 	str_builder_to_string,
 }
 
-context_ext :: proc( $ Type : typeid ) -> (^Type) {
-	return cast(^Type) context.user_ptr
+pixels_to_cm :: proc {
+	f32_pixels_to_cm,
+	vec2_pixels_to_cm,
+	range2_pixels_to_cm,
+}
+
+points_to_pixels :: proc {
+	f32_points_to_pixels,
+	vec2_points_to_pixels,
+}
+
+ui_set_layout :: proc {
+	ui_style_set_layout,
+	ui_style_theme_set_layout,
 }

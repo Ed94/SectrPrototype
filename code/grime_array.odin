@@ -8,14 +8,26 @@ import "core:c/libc"
 import "core:mem"
 import "core:slice"
 
-Array :: struct ( $ Type : typeid ) {
+// Array :: struct ( $ Type : typeid ) {
+// 	allocator : Allocator,
+// 	capacity  : u64,
+// 	num       : u64,
+// 	data      : [^]Type,
+// }
+
+ArrayHeader :: struct ( $ Type : typeid ) {
 	allocator : Allocator,
 	capacity  : u64,
 	num       : u64,
 	data      : [^]Type,
 }
 
-array_underlying_slice :: proc(slice: []($ Type)) -> Array(Type) {
+Array :: struct ( $ Type : typeid ) {
+	using header : ^ArrayHeader(Type),
+}
+
+array_underlying_slice :: proc(slice: []($ Type)) -> Array(Type)
+{
 	if len(slice) == 0 {
 			return nil
 	}
@@ -41,17 +53,23 @@ array_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( Array(Type), A
 	return array_init_reserve( Type, allocator, array_grow_formula(0) )
 }
 
-array_init_reserve :: proc( $ Type : typeid, allocator : Allocator, capacity : u64 ) -> ( Array(Type), AllocatorError )
+array_init_reserve :: proc
+( $ Type : typeid, allocator : Allocator, capacity : u64 ) -> ( result : Array(Type), alloc_error : AllocatorError )
 {
-	raw_data, result_code := alloc( size_of(Array) + int(capacity) * size_of(Type), allocator = allocator )
-	result          := cast(^Array(Type)) raw_data;
-	result.data      = cast( [^]Type ) (cast( [^]Array(Type)) result)[ 1:]
+	header_size :: size_of(ArrayHeader)
+
+	raw_mem : rawptr
+	raw_mem, alloc_error = alloc( header_size + int(capacity) * size_of(Type), allocator = allocator )
+	if alloc_error != AllocatorError.None do return
+
+	result.header    = cast( ^ArrayHeader(Type)) raw_mem;
 	result.allocator = allocator
 	result.capacity  = capacity
-	return (result ^), result_code
+	result.data      = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) result.header)[ 1:]
+	return
 }
 
-array_append :: proc( using self : ^ Array( $ Type), value : Type ) -> AllocatorError
+array_append :: proc( using self : ^Array( $ Type), value : Type ) -> AllocatorError
 {
 	if num == capacity
 	{
@@ -66,7 +84,7 @@ array_append :: proc( using self : ^ Array( $ Type), value : Type ) -> Allocator
 	return AllocatorError.None
 }
 
-array_append_slice :: proc( using self : ^ Array( $ Type ), items : []Type ) -> AllocatorError
+array_append_slice :: proc( using self : ^Array( $ Type ), items : []Type ) -> AllocatorError
 {
 	if num + len(items) > capacity
 	{
@@ -87,7 +105,7 @@ array_append_slice :: proc( using self : ^ Array( $ Type ), items : []Type ) -> 
 	return AllocatorError.None
 }
 
-array_append_at :: proc( using self : ^ Array( $ Type ), item : Type, id : u64 ) -> AllocatorError
+array_append_at :: proc( using self : ^Array( $ Type ), item : Type, id : u64 ) -> AllocatorError
 {
 	id := id
 	if id >= num {
@@ -119,7 +137,7 @@ array_append_at :: proc( using self : ^ Array( $ Type ), item : Type, id : u64 )
 	return AllocatorError.None
 }
 
-array_append_at_slice :: proc( using self : ^ Array( $ Type ), items : []Type, id : u64 ) -> AllocatorError
+array_append_at_slice :: proc( using self : ^Array( $ Type ), items : []Type, id : u64 ) -> AllocatorError
 {
 	id := id
 	if id >= num {
@@ -150,18 +168,28 @@ array_append_at_slice :: proc( using self : ^ Array( $ Type ), items : []Type, i
 	return AllocatorError.None
 }
 
-array_back :: proc( using self : ^ Array( $ Type ) ) -> ^ Type {
+array_push_back :: proc( using self : Array( $ Type)) -> b32 {
+	if num == capacity {
+		return false
+	}
+
+	data[ num ] = value
+	num        += 1
+	return true
+}
+
+array_back :: proc( using self : Array( $ Type ) ) -> ( ^Type) {
 	return & data[ num - 1 ]
 }
 
-array_clear :: proc( using self : ^ Array( $ Type ), zero_data : b32 ) {
+array_clear :: proc( using self : Array( $ Type ), zero_data : b32 ) {
 	if zero_data {
 		mem.set( raw_data( data ), 0, num )
 	}
 	num = 0
 }
 
-array_fill :: proc( using self : ^ Array( $ Type ), begin, end : u64, value : Type ) -> b32
+array_fill :: proc( using self : Array( $ Type ), begin, end : u64, value : Type ) -> b32
 {
 	if begin < 0 || end >= num {
 		return false
@@ -177,12 +205,12 @@ array_fill :: proc( using self : ^ Array( $ Type ), begin, end : u64, value : Ty
 	return true
 }
 
-array_free :: proc( using self : ^ Array( $ Type ) ) {
+array_free :: proc( using self : Array( $ Type ) ) {
 	free( data, allocator )
-	data = nil
+	self.data = nil
 }
 
-array_grow :: proc( using self : ^ Array( $ Type ), min_capacity : u64 ) -> AllocatorError
+array_grow :: proc( using self : ^Array( $ Type ), min_capacity : u64 ) -> AllocatorError
 {
 	new_capacity := array_grow_formula( capacity )
 
@@ -192,12 +220,12 @@ array_grow :: proc( using self : ^ Array( $ Type ), min_capacity : u64 ) -> Allo
 	return array_set_capacity( self, new_capacity )
 }
 
-array_pop :: proc( using self : ^ Array( $ Type ) ) {
+array_pop :: proc( using self : Array( $ Type ) ) {
 	verify( num != 0, "Attempted to pop an array with no elements" )
 	num -= 1
 }
 
-array_remove_at :: proc( using self : ^ Array( $ Type ), id : u64 )
+array_remove_at :: proc( using self : Array( $ Type ), id : u64 )
 {
 	verify( id >= num, "Attempted to remove from an index larger than the array" )
 
@@ -208,7 +236,7 @@ array_remove_at :: proc( using self : ^ Array( $ Type ), id : u64 )
 	num -= 1
 }
 
-array_reserve :: proc( using self : ^ Array( $ Type ), new_capacity : u64 ) -> AllocatorError
+array_reserve :: proc( using self : ^Array( $ Type ), new_capacity : u64 ) -> AllocatorError
 {
 	if capacity < new_capacity {
 		return array_set_capacity( self, new_capacity )
@@ -216,7 +244,7 @@ array_reserve :: proc( using self : ^ Array( $ Type ), new_capacity : u64 ) -> A
 	return AllocatorError.None
 }
 
-array_resize :: proc( array : ^ Array( $ Type ), num : u64 ) -> AllocatorError
+array_resize :: proc( array : ^Array( $ Type ), num : u64 ) -> AllocatorError
 {
 	if array.capacity < num
 	{
@@ -230,23 +258,33 @@ array_resize :: proc( array : ^ Array( $ Type ), num : u64 ) -> AllocatorError
 	return AllocatorError.None
 }
 
-array_set_capacity :: proc( using self : ^ Array( $ Type ), new_capacity : u64 ) -> AllocatorError
+array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity : u64 ) -> AllocatorError
 {
-	if new_capacity == capacity {
+	if new_capacity == self.capacity {
 		return AllocatorError.None
 	}
-	if new_capacity < num {
-		num = new_capacity
+	if new_capacity < self.num {
+		self.num = new_capacity
 		return AllocatorError.None
 	}
 
-	new_data, result_code := alloc( cast(int) new_capacity * size_of(Type), allocator = allocator )
+	header_size :: size_of(ArrayHeader(Type))
+
+	new_size := header_size + cast(int) new_capacity  * size_of(Type)
+	old_size := header_size + cast(int) self.capacity * size_of(Type)
+
+	new_mem, result_code := resize( self.header, old_size, new_size, allocator = self.allocator )
 	if result_code != AllocatorError.None {
 		ensure( false, "Failed to allocate for new array capacity" )
 		return result_code
 	}
-	free( data )
-	data     = cast( [^] Type ) new_data
-	capacity = new_capacity
+
+	using new_self : Array(Type)
+	header      = cast( ^ArrayHeader(Type)) new_mem;
+	data        = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) header)[ 1:]
+	capacity    = new_capacity
+	num         = self.num
+
+	(self ^) = new_self
 	return result_code
 }

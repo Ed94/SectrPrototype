@@ -12,7 +12,8 @@ debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Co
 		return
 	}
 	runes, alloc_error := to_runes( content, context.temp_allocator )
-	verify( alloc_error == AllocatorError.None, "Failed to temp allocate runes" )
+	// runes, alloc_error := to_runes( content, context.temp_allocator )
+	// verify( alloc_error == AllocatorError.None, "Failed to temp allocate runes" )
 
 	font := font
 	if font.key == Font_Default.key {

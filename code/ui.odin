@@ -268,8 +268,8 @@ UI_State :: struct {
 	layout_dirty  : b32,
 
 	// TODO(Ed) : Look into using a build arena like Ryan does for these possibly (and thus have a linked-list stack)
-	theme_stack   : Stack( UI_StyleTheme, UI_Style_Stack_Size ),
-	parent_stack  : Stack( ^ UI_Box, UI_Parent_Stack_Size ),
+	theme_stack   : StackFixed( UI_StyleTheme, UI_Style_Stack_Size ),
+	parent_stack  : StackFixed( ^ UI_Box, UI_Parent_Stack_Size ),
 	// flag_stack    : Stack( UI_BoxFlags, UI_BoxFlags_Stack_Size ),
 
 	hot            : UI_Key,
@@ -558,11 +558,11 @@ ui_style_set_layout :: proc ( layout : UI_Layout, preset : UI_StylePreset ) {
 }
 
 ui_style_theme_push :: proc( preset : UI_StyleTheme ) {
-	stack_push( & get_state().ui_context.theme_stack, preset )
+	push( & get_state().ui_context.theme_stack, preset )
 }
 
 ui_style_theme_pop :: proc() {
-	stack_pop( & get_state().ui_context.theme_stack )
+	pop( & get_state().ui_context.theme_stack )
 }
 
 @(deferred_none = ui_style_theme_pop)
@@ -574,9 +574,4 @@ ui_style_theme_set_layout :: proc ( layout : UI_Layout ) {
 	for & preset in stack_peek_ref( & get_state().ui_context.theme_stack ).array {
 		preset.layout = layout
 	}
-}
-
-ui_set_layout :: proc {
-	ui_style_set_layout,
-	ui_style_theme_set_layout,
 }

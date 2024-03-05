@@ -4,7 +4,8 @@
 
 // This implementation uses two ZPL-Based Arrays to hold entires and the actual hash table.
 // Its algorithim isn't that great, removal of elements is very expensive.
-// To the point where if thats done quite a bit another implementation should be looked at.
+// Growing the hashtable doesn't do a resize on the original arrays properly, leading to completely discarded memory.
+// Its recommended to use something closer to raddbg's implementation for greater flexibility.
 package sectr
 
 import "core:slice"
@@ -40,7 +41,8 @@ zpl_hmap_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( HMapZPL( Ty
 	return zpl_hmap_init_reserve( Type, allocator )
 }
 
-zpl_hmap_init_reserve :: proc( $ Type : typeid, allocator : Allocator, num : u64 ) -> ( HMapZPL( Type), AllocatorError )
+zpl_hmap_init_reserve :: proc
+( $ Type : typeid, allocator : Allocator, num : u64 ) -> ( HMapZPL( Type), AllocatorError )
 {
 	result                        : HMapZPL(Type)
 	hashes_result, entries_result : AllocatorError
@@ -72,8 +74,8 @@ zpl_hmap_clear :: proc( using self : ^ HMapZPL( $ Type ) ) {
 
 zpl_hmap_destroy :: proc( using self : ^ HMapZPL( $ Type ) ) {
 	if hashes.data != nil && hashes.capacity > 0 {
-		array_free( & hashes )
-		array_free( & entries )
+		array_free( hashes )
+		array_free( entries )
 	}
 }
 
