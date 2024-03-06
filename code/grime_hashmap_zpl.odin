@@ -1,15 +1,19 @@
-// This is an alternative to Odin's default map type.
-// The only reason I may need this is due to issues with allocator callbacks or something else going on
-// with hot-reloads...
+/*
+This is an alternative to Odin's default map type.
+The only reason I may need this is due to issues with allocator callbacks or something else going on
+with hot-reloads...
 
-// This implementation uses two ZPL-Based Arrays to hold entires and the actual hash table.
-// Its algorithim isn't that great, removal of elements is very expensive.
-// Growing the hashtable doesn't do a resize on the original arrays properly, leading to completely discarded memory.
-// Its recommended to use something closer to raddbg's implementation for greater flexibility.
+This implementation uses two ZPL-Based Arrays to hold entires and the actual hash table.
+Its algorithim isn't that great, removal of elements is very expensive.
+Growing the hashtable doesn't do a resize on the original arrays properly, leading to completely discarded memory.
+Its recommended to use something closer to raddbg's implementation for greater flexibility.
+
+This should only be used if you want the hashtable to also store the values
+and an open-addressing hashtable is for some reason not desired.
+*/
 package sectr
 
 import "core:slice"
-
 
 // Note(Ed) : See core:hash for hasing procs.
 
