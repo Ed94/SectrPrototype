@@ -184,8 +184,8 @@ to_rl_Font :: proc( id : FontID, size := Font_Use_Default_Size ) -> rl.Font
 
 	rl_font : rl.Font
 	rl_font.baseSize     = px_render.size
-	rl_font.charsCount   = px_render.count
-	rl_font.charsPadding = px_render.padding
+	rl_font.glyphCount   = px_render.count
+	rl_font.glyphPadding = px_render.padding
 	rl_font.glyphs       = px_render.glyphs
 	rl_font.recs         = px_render.recs
 	rl_font.texture      = px_render.texture
