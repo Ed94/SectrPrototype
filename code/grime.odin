@@ -1,3 +1,4 @@
+
 package sectr
 // At least its less than C/C++ ...
 
@@ -45,6 +46,7 @@ import "core:mem"
 	tracking_allocator      :: mem.tracking_allocator
 	tracking_allocator_init :: mem.tracking_allocator_init
 import "core:mem/virtual"
+	VirtualProtectFlags :: virtual.Protect_Flags
 import "core:odin"
 	SourceCodeLocation :: runtime.Source_Code_Location
 import "core:os"
@@ -72,10 +74,6 @@ import "core:unicode/utf8"
 	// string_to_runes :: utf8.string_to_runes
 
 OS_Type :: type_of(ODIN_OS)
-
-context_ext :: proc( $ Type : typeid ) -> (^Type) {
-	return cast(^Type) context.user_ptr
-}
 
 // Proc Name Overloads Alias table
 // This has to be done on a per-module basis. Most likely can be automated
