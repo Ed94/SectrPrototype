@@ -19,16 +19,18 @@ string_to_runes_array :: proc( content : string, allocator := context.allocator 
 	return runes, alloc_error
 }
 
-string_to_runes :: proc "odin" (s: string, allocator := context.allocator) -> (runes: []rune, alloc_error : AllocatorError) {
-	num := str_rune_count(s)
+// Exposing the alloc_error
+@(require_results)
+string_to_runes :: proc "odin" ( content : string, allocator := context.allocator) -> (runes : []rune, alloc_error : AllocatorError) {
+	num := str_rune_count(content)
 
 	runes, alloc_error = make([]rune, num, allocator)
-	if alloc_error != AllocatorError.None {
-		return nil, alloc_error
+	if runes == nil || alloc_error != AllocatorError.None {
+		return
 	}
 
 	idx := 0
-	for codepoint in s {
+	for codepoint in content {
 		runes[idx] = codepoint
 		idx += 1
 	}
