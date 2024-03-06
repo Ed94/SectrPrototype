@@ -20,6 +20,8 @@ terabytes  :: #force_inline proc "contextless" ( tb : $ integer_type ) -> intege
 	return tb * Terabyte
 }
 
+//region Memory Math
+
 // See: core/mem.odin, I wanted to study it an didn't like the naming.
 @(require_results)
 calc_padding_with_header :: proc "contextless" (pointer: uintptr, alignment: uintptr, header_size: int) -> int
@@ -49,25 +51,21 @@ calc_padding_with_header :: proc "contextless" (pointer: uintptr, alignment: uin
 }
 
 // Helper to get the the beginning of memory after a slice
-memory_after :: proc( slice : []byte ) -> ( ^ byte) {
+memory_after :: #force_inline proc "contextless" ( slice : []byte ) -> ( ^ byte) {
 	return ptr_offset( & slice[0], len(slice) )
 }
 
-memory_after_header :: proc( header : ^($ Type) ) -> ( [^]byte) {
+memory_after_header :: #force_inline proc "contextless" ( header : ^($ Type) ) -> ( [^]byte) {
 	return cast( [^]byte) (cast( [^]Type) header)[ 1:]
 }
 
-// Initialize a sub-section of our virtual memory as a sub-arena
-sub_arena_init :: proc( address : ^ byte, size : int ) -> ( ^ Arena) {
-	Arena :: mem.Arena
-
-	arena_size :: size_of( Arena)
-	sub_arena  := cast( ^ Arena ) address
-	mem_slice  := slice_ptr( ptr_offset( address, arena_size), size )
-	arena_init( sub_arena, mem_slice )
-	return sub_arena
+@(require_results)
+memory_align_formula :: #force_inline proc "contextless" ( size, align : uint) -> uint {
+	result := size + align - 1
+	return result - result % align
 }
 
+//endregion Memory Math
 
 // Since this is a prototype, all memory is always tracked. No arena is is interfaced directly.
 TrackedAllocator :: struct {
@@ -110,6 +108,7 @@ tracked_allocator_init :: proc( size, internals_size : int, allocator := context
 	return result
 }
 
+// TODO(Ed): Remove this we're no longer using.
 arena_allocator_init_vmem :: proc( vmem : [] byte ) -> ^ Arena
 {
 	arena_size   :: size_of( Arena)

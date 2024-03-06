@@ -17,10 +17,11 @@ virtual_Platform_Memory_Block :: struct {
 }
 
 @(private="file", require_results)
-align_formula :: #force_inline proc "contextless" (size, align: uint) -> uint {
-	result := size + align-1
-	return result - result%align
+memory_align_formula :: #force_inline proc "contextless" (size, align: uint) -> uint {
+	result := size + align - 1
+	return result - result % align
 }
+
 
 @(private="file")
 win32_reserve_with_base_address :: proc "contextless" (base_address : rawptr, size: uint) -> (data: []byte, err: virtual.Allocator_Error) {
@@ -78,8 +79,8 @@ memory_block_alloc :: proc(committed, reserved: uint, base_address : rawptr,
 	committed := committed
 	reserved  := reserved
 
-	committed = align_formula(committed, page_size)
-	reserved  = align_formula(reserved, page_size)
+	committed = memory_align_formula(committed, page_size)
+	reserved  = memory_align_formula(reserved, page_size)
 	committed = clamp(committed, 0, reserved)
 
 	total_size     := uint(reserved + max(alignment, size_of( virtual_Platform_Memory_Block)))
