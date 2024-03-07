@@ -25,17 +25,6 @@ A freelist is tracked for free-blocks for each pool (provided by the underlying 
 A slab starts out with pools initialized with no buckets and grows as needed.
 When a slab is initialized the slab policy is provided to know how many size-classes there should be
 which each contain the ratio of bucket to block size.
-
-Strings Slab pool size-classes (bucket:block ratio) are as follows:
-16 mb  : 64  b  = 262,144 blocks
-8  mb  : 128 b  = 8192 blocks
-8  mb  : 256 b  = 8192 blocks
-8  mb  : 1  kb  = 8192 blocks
-16 mb  : 4  kb  = 4096 blocks
-32 mb  : 16 kb  = 4096 blocks
-32 mb  : 32 kb  = 4096 blocks
-256 mb : 64 kb  = 
-512 mb : 128 kb = 
 */
 package sectr
 
@@ -111,7 +100,7 @@ slab_alloc :: proc( using self : Slab,
 	size        : uint,
 	alignment   : uint,
 	zero_memory := true,
-	location    := #caller_location
+	loc    := #caller_location
 ) -> ( data : []byte, alloc_error : AllocatorError )
 {
 	pool : Pool
@@ -123,7 +112,7 @@ slab_alloc :: proc( using self : Slab,
 			}
 	}
 
-	verify( pool.header != nil, "Requested alloc not supported by the slab allocator", location = location )
+	verify( pool.header != nil, "Requested alloc not supported by the slab allocator", location = loc )
 
 	block : []byte
 	block, alloc_error = pool_grab(pool)
@@ -139,26 +128,26 @@ slab_alloc :: proc( using self : Slab,
 	return
 }
 
-slab_free :: proc( using self : Slab, data : []byte, location := #caller_location )
+slab_free :: proc( using self : Slab, data : []byte, loc := #caller_location )
 {
 	pool : Pool
 	for id in 0 ..< pools.idx
 	{
 		pool = pools.items[id]
 		if pool_validate_ownership( pool, data ) {
-			pool_release( pool, data )
+			pool_release( pool, data, loc )
 			return
 		}
 	}
-	verify(false, "Attempted to free a block not within a pool of this slab", location = location)
+	verify(false, "Attempted to free a block not within a pool of this slab", location = loc)
 }
 
 slab_resize :: proc( using self : Slab,
-	data       : []byte,
-	new_size   : uint,
-	alignment  : uint,
+	data        : []byte,
+	new_size    : uint,
+	alignment   : uint,
 	zero_memory := true,
-	location   := #caller_location
+	loc         := #caller_location
 ) -> ( new_data : []byte, alloc_error : AllocatorError )
 {
 	old_size := uint( len(data))
@@ -179,7 +168,7 @@ slab_resize :: proc( using self : Slab,
 			}
 	}
 
-	verify( pool_resize.header != nil, "Requested resize not supported by the slab allocator" )
+	verify( pool_resize.header != nil, "Requested resize not supported by the slab allocator", location = loc )
 
 	// Resize will keep block in the same size_class, just give it more of its already allocated block
 	if pool_old == pool_resize
@@ -208,10 +197,10 @@ slab_resize :: proc( using self : Slab,
 	return
 }
 
-slab_reset :: proc( using self : Slab )
+slab_reset :: proc( slab : Slab )
 {
-	for id in 0 ..< pools.idx {
-		pool := pools.items[id]
+	for id in 0 ..< slab.pools.idx {
+		pool := slab.pools.items[id]
 		pool_reset( pool )
 	}
 }
@@ -223,28 +212,30 @@ slab_allocator_proc :: proc(
 	alignment      : int,
 	old_memory     : rawptr,
 	old_size       : int,
-	location       := #caller_location
+	loc            := #caller_location
 ) -> ( data : []byte, alloc_error : AllocatorError)
 {
-	slab := Slab { cast( ^SlabHeader) allocator_data }
+	slab : Slab
+	slab.header = cast( ^SlabHeader) allocator_data
 
 	size      := uint(size)
 	alignment := uint(alignment)
 	old_size  := uint(old_size)
 
+	// TODO(Ed) : Compiler bug - Some of these are commented out until I finish resolving issues with the pool allocator
 	switch mode
 	{
 		case .Alloc, .Alloc_Non_Zeroed:
-			return slab_alloc( slab, size, alignment, (mode != .Alloc_Non_Zeroed), location)
+			return slab_alloc( slab, size, alignment, (mode != .Alloc_Non_Zeroed), loc)
 
 		case .Free:
-			slab_free( slab, byte_slice( old_memory, int(old_size)) )
+			slab_free( slab, byte_slice( old_memory, int(old_size)), loc )
 
 		case .Free_All:
 			slab_reset( slab )
 
 		case .Resize, .Resize_Non_Zeroed:
-			return slab_resize( slab, byte_slice(old_memory, int(old_size)), size, alignment, (mode != .Resize_Non_Zeroed), location)
+			return slab_resize( slab, byte_slice(old_memory, int(old_size)), size, alignment, (mode != .Resize_Non_Zeroed), loc)
 
 		case .Query_Features:
 			set := cast( ^AllocatorModeSet) old_memory

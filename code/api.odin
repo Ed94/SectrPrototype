@@ -197,8 +197,9 @@ reload :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VA
 	// Or as done below, correct containers using allocators on reload.
 	// Thankfully persistent dynamic allocations are rare, and thus we know exactly which ones they are.
 
-	// font_provider_data := & get_state().font_provider_data
-	// font_provider_data.font_cache.allocator = arena_allocator( & font_provider_data.font_arena )
+	font_provider_data := & get_state().font_provider_data
+	// font_provide_data.font_cache.hashes.allocator = slab_allocator()
+	// font_provide_data.font_cache.entries.allocator = slab_allocator()
 
 	ui_reload( & get_state().project.workspace.ui, persistent_allocator() )
 

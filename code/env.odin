@@ -65,8 +65,7 @@ files_buffer_allocator :: proc() -> Allocator {
 }
 
 general_slab_allocator :: proc() -> Allocator {
-	using state := get_state()
-	return slab_allocator( general_slab )
+	return slab_allocator( get_state().general_slab )
 }
 
 // TODO(Ed) : Implment host memory mapping api

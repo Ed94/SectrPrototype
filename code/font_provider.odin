@@ -8,7 +8,6 @@ import "core:os"
 
 import rl "vendor:raylib"
 
-Font_Arena_Size      :: 32 * Megabyte
 Font_Largest_Px_Size :: 96
 
 // Font_Default :: ""
@@ -54,22 +53,17 @@ FontDef :: struct {
 }
 
 FontProviderData :: struct {
-	font_arena : Arena,
 	font_cache : HMapZPL(FontDef),
 }
 
 font_provider_startup :: proc()
 {
+	state := get_state()
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
-	data, alloc_result := alloc_bytes( Font_Arena_Size, allocator = persistent_allocator() )
-	verify( alloc_result == AllocatorError.None, "Failed to allocate memory for font_arena from persistent" )
-	log("font_arena allocated from persistent memory")
-
-	arena_init( & font_arena, data )
-
 	font_cache_alloc_error : AllocatorError
-	font_cache, font_cache_alloc_error = zpl_hmap_init_reserve( FontDef, persistent_allocator(), 8 )
+
+	font_cache, font_cache_alloc_error = zpl_hmap_init_reserve( FontDef, general_slab_allocator(), 8 )
 	verify( font_cache_alloc_error == AllocatorError.None, "Failed to allocate font_cache" )
 
 	log("font_cache created")
@@ -100,7 +94,7 @@ font_load :: proc( path_file : string,
 {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
-	font_data, read_succeded : = os.read_entire_file( path_file  )
+	font_data, read_succeded : = os.read_entire_file( path_file, general_slab_allocator() )
 	verify( b32(read_succeded), str_fmt_tmp("Failed to read font file for: %v", path_file) )
 	font_data_size := cast(i32) len(font_data)
 
@@ -126,7 +120,9 @@ font_load :: proc( path_file : string,
 	def.data         = font_data
 	def.default_size = i32(points_to_pixels(default_size))
 
-	// TODO(Ed): this is extremely slow
+	// TODO(Ed): this is slow & eats quite a bit of memory early on. Setup a more on demand load for a specific size.
+	// Also, we need to eventually switch to a SDF shader for rendering
+
 	// Render all sizes at once
 	// Note(Ed) : We only generate textures for even multiples of the font.
 	for font_size : i32 = 2; font_size <= Font_Largest_Px_Size; font_size += 2

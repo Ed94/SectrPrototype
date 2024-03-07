@@ -1,6 +1,6 @@
 /*
 This is a pool allocator setup to grow incrementally via buckets.
-Buckets are stored in singly-linked lists so that allocations aren't necessrily congigous.
+Buckets are stored in singly-linked lists so that allocations aren't necessrily contigous.
 
 The pool is setup with the intention to only grab single entires from the bucket,
 not for a contigous array of them.
@@ -27,18 +27,18 @@ PoolHeader :: struct {
 	alignment       : uint,
 
 	free_list_head : ^Pool_FreeBlock,
-	bucket_list    : DLL_NodeFL( PoolBucket),
 	current_bucket : ^PoolBucket,
+	bucket_list    : DLL_NodeFL( PoolBucket)
+}
+
+PoolBucket :: struct {
+	blocks      : [^]byte,
+	next_block  : uint,
+	using nodes : DLL_NodePN( PoolBucket),
 }
 
 Pool_FreeBlock :: struct {
 	next : ^Pool_FreeBlock,
-}
-
-PoolBucket :: struct {
-	using links : DLL_NodePN( PoolBucket),
-	next_block : uint,
-	blocks     : [^]byte,
 }
 
 Pool_Check_Release_Object_Validity :: true
@@ -114,77 +114,106 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 	return alloc_error
 }
 
-pool_grab :: proc( using self : Pool ) -> ( block : []byte, alloc_error : AllocatorError )
+pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : AllocatorError )
 {
 	alloc_error = .None
 
 	// Check the free-list first for a block
 	if free_list_head != nil {
-		block = slice_ptr( cast([^]byte) ll_pop( & self.free_list_head ), int(block_size) )
+
+		head := & pool.free_list_head
+
+		// Compiler Bug? Fails to compile
+		// ll_pop( head )
+
+		last_free : ^Pool_FreeBlock = pool.free_list_head
+		// last_free := ll_pop( & pool.free_list_head )
+
+		pool.free_list_head = pool.free_list_head.next 		// ll_pop
+
+		block = slice_ptr( cast([^]byte) last_free, int(pool.block_size) )
 		return
 	}
 
-	if current_bucket == nil
+	// Compiler Fail Bug ? using current_bucket directly instead of with pool..
+	// if current_bucket == nil
+	if pool.current_bucket == nil
 	{
-		alloc_error := pool_allocate_buckets( self, 1 )
+		alloc_error = pool_allocate_buckets( pool, 1 )
 		if alloc_error != .None {
 			return
 		}
-		self.current_bucket = bucket_list.first
+		pool.current_bucket = bucket_list.first
 	}
 
-
-	next := uintptr(current_bucket.blocks) + uintptr(current_bucket.next_block)
-	end  := uintptr(current_bucket.blocks) + uintptr(bucket_capacity)
+	// Compiler Bug ? (Won't work without "pool."")
+	// next := uintptr(current_bucket.blocks) + uintptr(current_bucket.next_block)
+	// end  := uintptr(current_bucket.blocks) + uintptr(bucket_capacity)
+	next := uintptr(pool.current_bucket.blocks) + uintptr(pool.current_bucket.next_block)
+	end  := uintptr(pool.current_bucket.blocks) + uintptr(pool.bucket_capacity)
 
 	blocks_left := end - next
 	if blocks_left == 0
 	{
-		if current_bucket.next != nil {
-			self.current_bucket = current_bucket.next
+		// Compiler Bug
+		// if current_bucket.next != nil {
+		if pool.current_bucket.next != nil {
+			// current_bucket = current_bucket.next
+			pool.current_bucket = pool.current_bucket.next
 		}
 		else
 		{
-			alloc_error := pool_allocate_buckets( self, 1 )
+			alloc_error := pool_allocate_buckets( pool, 1 )
 			if alloc_error != .None {
 				return
 			}
-			self.current_bucket = current_bucket.next
+			pool.current_bucket = pool.current_bucket.next
 		}
 	}
 
-	block       = slice_ptr( current_bucket.blocks[ current_bucket.next_block:], int(block_size) )
-	self.current_bucket.next_block += block_size
+	// Compiler Bug
+	// block = slice_ptr( current_bucket.blocks[ current_bucket.next_block:], int(block_size) )
+	// self.current_bucket.next_block += block_size
+	block = slice_ptr( pool.current_bucket.blocks[ pool.current_bucket.next_block:], int(block_size) )
+	pool.current_bucket.next_block += block_size
 	return
 }
 
-pool_release :: proc( using self : Pool, block : []byte )
+pool_release :: proc( using self : Pool, block : []byte, loc := #caller_location )
 {
 	when Pool_Check_Release_Object_Validity
 	{
 		within_bucket := pool_validate_ownership( self, block )
-		verify( within_bucket, "Attempted to release data that is not within a bucket of this pool" )
+		verify( within_bucket, "Attempted to release data that is not within a bucket of this pool", location = loc )
 		return
 	}
 
-	ll_push( & self.free_list_head, cast(^Pool_FreeBlock) raw_data(block) )
+	// Compiler bug
+	// ll_push( & self.free_list_head, cast(^Pool_FreeBlock) raw_data(block) )
+
+	// ll_push:
+	new_free_block     := cast(^Pool_FreeBlock) raw_data(block)
+	new_free_block.next = self.free_list_head
+	self.free_list_head = new_free_block
 }
 
-pool_reset :: proc( using self : Pool )
+pool_reset :: proc( using pool : Pool )
 {
-	bucket := bucket_list.first
+	bucket : ^PoolBucket = bucket_list.first // TODO(Ed): Compiler bug? Build fails unless ^PoolBucket is explcitly specified.
 	for ; bucket != nil; {
 		bucket.next_block = 0
 	}
 
-	self.free_list_head = nil
-	self.current_bucket = bucket_list.first
+	pool.free_list_head = nil
+	pool.current_bucket = bucket_list.first
 }
 
 pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32
 {
 	within_bucket := b32(false)
-	bucket        := bucket_list.first
+
+	// Compiler Bug : Same as pool_reset
+	bucket        : ^PoolBucket = bucket_list.first
 	for ; bucket != nil; bucket = bucket.next
 	{
 		start         := uintptr( bucket.blocks )
