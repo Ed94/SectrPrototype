@@ -39,25 +39,215 @@ Strings Slab pool size-classes (bucket:block ratio) are as follows:
 */
 package sectr
 
+import "core:mem"
+import "core:slice"
+
 SlabSizeClass :: struct {
-	bucket : uint,
-	block  : uint,
+	bucket_capacity : uint,
+	block_size      : uint,
+	block_alignment : uint,
 }
 
-Slab_Max_Size_Classes :: 32
+Slab_Max_Size_Classes :: 64
 
-SlabPolicy :: [Slab_Max_Size_Classes]SlabSizeClass
+SlabPolicy :: StackFixed(SlabSizeClass, Slab_Max_Size_Classes)
 
 SlabHeader :: struct {
+	backing : Allocator,
+
 	policy : SlabPolicy,
-	pools  : [Slab_Max_Size_Classes]Pool,
+	pools  : StackFixed(Pool, Slab_Max_Size_Classes),
 }
 
 Slab :: struct {
-	using header : SlabHeader,
+	using header : ^SlabHeader,
 }
 
-slab_init_reserve :: proc(  ) -> ( Slab )
+slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocator : Allocator ) -> ( slab : Slab, alloc_error : AllocatorError )
 {
-	return {}
+	header_size :: size_of( SlabHeader )
+
+	raw_mem : rawptr
+	raw_mem, alloc_error = alloc( header_size, mem.DEFAULT_ALIGNMENT, allocator )
+	if alloc_error != .None do return
+
+	slab.header  = cast( ^SlabHeader) raw_mem
+	slab.backing = allocator
+	slab.policy  = (policy^)
+	alloc_error  = slab_init_pools( slab )
+	return
+}
+
+slab_init_pools :: proc ( using self : Slab, bucket_reserve_num : uint = 0 ) -> AllocatorError
+{
+	for id in 0 ..< policy.idx {
+		using size_class := policy.items[id]
+
+		pool, alloc_error := pool_init( block_size, block_alignment, bucket_capacity, bucket_reserve_num, backing )
+		if alloc_error != .None do return alloc_error
+
+		push( & self.pools, pool )
+	}
+	return .None
+}
+
+slab_destroy :: proc( using self : Slab )
+{
+	for id in 0 ..< policy.idx {
+		pool := pools.items[id]
+		pool_destroy( pool )
+	}
+
+	free( self.header, backing )
+}
+
+slab_alloc :: proc( using self : Slab,
+	size        : uint,
+	alignment   : uint,
+	zero_memory := true,
+	location    := #caller_location
+) -> ( data : []byte, alloc_error : AllocatorError )
+{
+	pool : Pool
+	for id in 0 ..< pools.idx {
+			pool = pools.items[id]
+
+			if pool.block_size >= size && pool.alignment >= alignment {
+					break
+			}
+	}
+
+	verify( pool.header != nil, "Requested alloc not supported by the slab allocator", location = location )
+
+	block : []byte
+	block, alloc_error = pool_grab(pool)
+	if alloc_error != .None {
+			return nil, alloc_error
+	}
+
+	if zero_memory {
+			slice.zero(block)
+	}
+
+	data = byte_slice(raw_data(block), size)
+	return
+}
+
+slab_free :: proc( using self : Slab, data : []byte, location := #caller_location )
+{
+	pool : Pool
+	for id in 0 ..< pools.idx
+	{
+		pool = pools.items[id]
+		if pool_validate_ownership( pool, data ) {
+			pool_release( pool, data )
+			return
+		}
+	}
+	verify(false, "Attempted to free a block not within a pool of this slab", location = location)
+}
+
+slab_resize :: proc( using self : Slab,
+	data       : []byte,
+	new_size   : uint,
+	alignment  : uint,
+	zero_memory := true,
+	location   := #caller_location
+) -> ( new_data : []byte, alloc_error : AllocatorError )
+{
+	old_size := uint( len(data))
+
+	pool_resize, pool_old : Pool
+	for id in 0 ..< pools.idx
+	{
+			pool := pools.items[id]
+
+			if pool.block_size >= new_size && pool.alignment >= alignment {
+				pool_resize = pool
+			}
+			if pool_validate_ownership( pool, data ) {
+				pool_old = pool
+			}
+			if pool_resize.header != nil && pool_old.header != nil {
+				break
+			}
+	}
+
+	verify( pool_resize.header != nil, "Requested resize not supported by the slab allocator" )
+
+	// Resize will keep block in the same size_class, just give it more of its already allocated block
+	if pool_old == pool_resize
+	{
+		new_data = byte_slice( raw_data(data), new_size )
+
+		if zero_memory && new_size > old_size {
+			to_zero := slice_ptr( memory_after(data), int(new_size - old_size) )
+			slice.zero( to_zero )
+		}
+		return
+	}
+
+	// We'll need to provide an entirely new block, so the data will need to be copied over.
+	new_block : []byte
+	new_block, alloc_error = pool_grab( pool_resize )
+	if alloc_error != .None do return
+
+	copy_non_overlapping( raw_data(new_block), raw_data(data), int(old_size) )
+	pool_release( pool_old, data )
+
+	new_data = byte_slice( raw_data(new_block), int(old_size) )
+	if zero_memory {
+		slice.zero( new_data )
+	}
+	return
+}
+
+slab_reset :: proc( using self : Slab )
+{
+	for id in 0 ..< pools.idx {
+		pool := pools.items[id]
+		pool_reset( pool )
+	}
+}
+
+slab_allocator_proc :: proc(
+	allocator_data : rawptr,
+	mode           : AllocatorMode,
+	size           : int,
+	alignment      : int,
+	old_memory     : rawptr,
+	old_size       : int,
+	location       := #caller_location
+) -> ( data : []byte, alloc_error : AllocatorError)
+{
+	slab := Slab { cast( ^SlabHeader) allocator_data }
+
+	size      := uint(size)
+	alignment := uint(alignment)
+	old_size  := uint(old_size)
+
+	switch mode
+	{
+		case .Alloc, .Alloc_Non_Zeroed:
+			return slab_alloc( slab, size, alignment, (mode != .Alloc_Non_Zeroed), location)
+
+		case .Free:
+			slab_free( slab, byte_slice( old_memory, int(old_size)) )
+
+		case .Free_All:
+			slab_reset( slab )
+
+		case .Resize, .Resize_Non_Zeroed:
+			return slab_resize( slab, byte_slice(old_memory, int(old_size)), size, alignment, (mode != .Resize_Non_Zeroed), location)
+
+		case .Query_Features:
+			set := cast( ^AllocatorModeSet) old_memory
+			if set != nil {
+				(set ^) = {.Alloc, .Alloc_Non_Zeroed, .Free_All, .Resize, .Query_Features}
+			}
+
+		case .Query_Info:
+			alloc_error = .Mode_Not_Implemented
+	}
+	return
 }

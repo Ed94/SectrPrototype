@@ -28,6 +28,7 @@ import fmt_io "core:fmt"
 	str_to_file_ln   :: fmt_io.fprintln
 	str_tmp_from_any :: fmt_io.tprint
 import "core:mem"
+	align_forward_int       :: mem.align_forward_int
 	Allocator               :: mem.Allocator
 	AllocatorError          :: mem.Allocator_Error
 	AllocatorMode           :: mem.Allocator_Mode
@@ -38,7 +39,9 @@ import "core:mem"
 	arena_allocator         :: mem.arena_allocator
 	arena_init              :: mem.arena_init
 	byte_slice              :: mem.byte_slice
+	copy_non_overlapping    :: mem.copy_non_overlapping
 	free                    :: mem.free
+	is_power_of_two_uintptr :: mem.is_power_of_two
 	ptr_offset              :: mem.ptr_offset
 	resize                  :: mem.resize
 	slice_ptr               :: mem.slice_ptr
@@ -90,6 +93,7 @@ get_bounds :: proc {
 
 is_power_of_two :: proc {
 	is_power_of_two_u32,
+	is_power_of_two_uintptr,
 }
 
 pop :: proc {

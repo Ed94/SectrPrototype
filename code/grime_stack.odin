@@ -27,12 +27,12 @@ stack_pop :: proc( using stack : ^StackFixed( $ Type, $ Size ) ) {
 }
 
 stack_peek_ref :: proc( using stack : ^StackFixed( $ Type, $ Size ) ) -> ( ^Type) {
-	last := max( 0, idx - 1 )
+	last := max( 0, idx - 1 ) if idx > 0 else 0
 	return & items[last]
 }
 
 stack_peek :: proc ( using stack : ^StackFixed( $ Type, $ Size ) ) -> Type {
-	last := max( 0, idx - 1 )
+	last := max( 0, idx - 1 ) if idx > 0 else 0
 	return items[last]
 }
 
@@ -86,8 +86,13 @@ stack_allocator_init :: proc( size : int, allocator := context.allocator ) -> ( 
 	stack.data = cast( [^]byte) (cast( [^]StackAllocatorBase) stack.base)[ 1:]
 
 	stack.top    = cast(^StackAllocatorHeader) stack.data
-	stack.bottom = stack.first
+	stack.bottom = stack.top
 	return
+}
+
+stack_allocator_destroy :: proc( using self : StackAllocator )
+{
+	free( self.base, backing )
 }
 
 stack_allocator_init_via_memory :: proc( memory : []byte ) -> ( stack : StackAllocator )
@@ -104,7 +109,7 @@ stack_allocator_init_via_memory :: proc( memory : []byte ) -> ( stack : StackAll
 	stack.data = cast( [^]byte ) (cast( [^]StackAllocatorBase) stack.base)[ 1:]
 
 	stack.top    = cast( ^StackAllocatorHeader) stack.data
-	stack.bottom = stack.first
+	stack.bottom = stack.top
 	return
 }
 
@@ -213,12 +218,11 @@ stack_allocator_proc :: proc(
 			dll_pop_back( & stack.last, stack.last )
 		}
 		case .Free_All:
-		{
 			// TODO(Ed) : Review that we don't have any header issues with the reset.
-			stack.last             = stack.first
-			stack.first.next       = nil
-			stack.first.block_size = 0
-		}
+			stack.bottom         = stack.top
+			stack.top.next       = nil
+			stack.top.block_size = 0
+
 		case .Resize, .Resize_Non_Zeroed:
 		{
 			// Check if old_memory is at the first on the stack, if it is, just grow its size

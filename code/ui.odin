@@ -325,7 +325,7 @@ ui_box_equal :: proc( a, b : ^ UI_Box ) -> b32 {
 
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 {
-	using get_state().ui_context
+	using ui := get_state().ui_context
 
 	key := ui_key_from_string( label )
 

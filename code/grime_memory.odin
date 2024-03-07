@@ -65,6 +65,27 @@ memory_align_formula :: #force_inline proc "contextless" ( size, align : uint) -
 	return result - result % align
 }
 
+// This is here just for docs
+memory_misalignment :: #force_inline proc ( address, alignment  : uintptr) -> uint {
+	// address % alignment
+	assert(is_power_of_two(alignment))
+	return uint( address & (alignment - 1) )
+}
+
+// This is here just for docs
+@(require_results)
+memory_aign_forward :: #force_inline proc( address, alignment : uintptr) -> uintptr
+{
+	assert(is_power_of_two(alignment))
+
+	aligned_address := address
+	misalignment    := cast(uintptr) memory_misalignment( address, alignment )
+	if misalignment != 0 {
+		aligned_address += alignment - misalignment
+	}
+	return aligned_address
+}
+
 //endregion Memory Math
 
 // Since this is a prototype, all memory is always tracked. No arena is is interfaced directly.
