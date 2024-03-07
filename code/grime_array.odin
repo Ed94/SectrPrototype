@@ -1,7 +1,6 @@
 // Based on gencpp's and thus zpl's Array implementation
 // Made becasue of the map issue with fonts during hot-reload.
 // I didn't want to make the HMapZPL impl with the [dynamic] array for now to isolate
-// what in the world is going on with the memory...
 package sectr
 
 import "core:c/libc"
@@ -195,7 +194,6 @@ array_fill :: proc( using self : Array( $ Type ), begin, end : u64, value : Type
 		return false
 	}
 
-	// TODO(Ed) : Bench this?
 	// data_slice := slice_ptr( ptr_offset( data, begin ), end - begin )
 	// slice.fill( data_slice, cast(int) value )
 

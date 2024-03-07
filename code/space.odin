@@ -2,11 +2,9 @@ package sectr
 
 import rl "vendor:raylib"
 
-// TODO(Ed) : Do we want to have distinct types for cm/pixels/points ? This will make mistakes with unit conversion happen less.
-
 // The points to pixels and pixels to points are our only reference to accurately converting
 // an object from world space to screen-space.
-// This prototype engine will have all its spacial unit base for distances in centimetres.
+// This prototype engine will have all its spacial unit base for distances in pixels.
 
 Inches_To_CM  :: cast(f32) 2.54
 Points_Per_CM :: cast(f32) 28.3465
@@ -132,7 +130,7 @@ screen_size :: proc "contextless" () -> AreaSize {
 }
 
 screen_get_corners :: proc() -> BoundsCorners2 {
-	state         := get_state();using state
+	state         := get_state(); using state
 	screen_extent := state.app_window.extent
 	top_left     := Vec2 { -screen_extent.x,  screen_extent.y }
 	top_right    := Vec2 {  screen_extent.x,  screen_extent.y }

@@ -1,5 +1,3 @@
-// I'm not sure about this, it was created to figure out Ryan's linked-list usage in the UI module of the RAD Debugger.
-// The code takes advantage of macros for the linked list interface in a way that odin doesn't really permit without a much worse interface.
 package sectr
 
 LL_Node :: struct ( $ Type : typeid ) {

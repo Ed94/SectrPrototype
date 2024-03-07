@@ -1,5 +1,6 @@
 /*
-Odin's virtual arena allocator doesn't do what I ideally want for allocation resizing or growing from a large vmem reserve.
+Odin's virtual arena allocator doesn't do what I ideally want for allocation resizing.
+(It was also a nice exercise along with making the other allocators)
 
 So this is a virtual memory backed arena allocator designed
 to take advantage of one large contigous reserve of memory.

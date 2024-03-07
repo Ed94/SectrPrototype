@@ -42,7 +42,7 @@ stack_peek :: proc ( using stack : ^StackFixed( $ Type, $ Size ) ) -> Type {
 
 /* Growing Stack allocator
 	This implementation can support growing if the backing allocator supports
-	it without fragmenting the back allocator.
+	it without fragmenting the backing allocator.
 
 	Each block in the stack is tracked with a doubly-linked list to have debug stats.
 	(It could be removed for non-debug builds)

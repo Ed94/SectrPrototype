@@ -1,4 +1,4 @@
-// TODO(Ed) : Make your own hashmap implementation (open-addressing, round-robin possibly)
+// TODO(Ed) : Roll own hashmap implementation (open-addressing, round-robin possibly)
 package sectr
 
 
