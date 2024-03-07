@@ -3,9 +3,22 @@
 package sectr
 
 LL_Node :: struct ( $ Type : typeid ) {
-	value : ^Type,
-	next  : ^LL_Node(Type),
+	next  : ^Type,
 }
+
+ll_push :: #force_inline proc "contextless" ( list_ptr : ^(^ ($ Type)), node : ^Type ) {
+	list       := (list_ptr^)
+	node.next   = list
+	(list_ptr^) = node
+}
+
+ll_pop :: #force_inline proc "contextless" ( list_ptr : ^(^ ($ Type)) ) -> ( node : ^Type ) {
+	list       := (list_ptr^)
+	(list_ptr^) = list.next
+	return list
+}
+
+//region Intrusive Doubly-Linked-List
 
 DLL_Node :: struct ( $ Type : typeid ) #raw_union {
 	using _ : struct {
@@ -102,3 +115,5 @@ dll_full_insert_raw ::  proc "contextless" ( null : ^($ Type), parent, pos, node
 dll_full_push_back :: proc "contextless" ( null : ^($ Type), parent, node : ^ Type ) {
 	dll_full_insert_raw( null, parent, parent.last, node )
 }
+
+//endregion Intrusive Doubly-Linked-List
