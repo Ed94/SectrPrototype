@@ -10,12 +10,6 @@ import rl "vendor:raylib"
 
 Memory_App : Memory
 
-// TODO(Ed) : Make this obsolete
-Memory_Base_Address    :: Terabyte * 1
-Memory_Chunk_Size      :: 2 * Gigabyte
-Memory_Persistent_Size :: 256 * Megabyte
-Memory_Trans_Temp_Szie :: (Memory_Chunk_Size - Memory_Persistent_Size ) / 2
-
 Memory_Base_Address_Persistent   :: Terabyte * 1
 Memory_Base_Address_Frame        :: Memory_Base_Address_Persistent + Memory_Reserve_Persistent * 2
 Memory_Base_Address_Transient    :: Memory_Base_Address_Frame      + Memory_Reserve_Frame * 2
@@ -28,7 +22,6 @@ Memory_Reserve_Frame       :: 16 * Gigabyte
 Memory_Reserve_Transient   :: 16 * Gigabyte
 Memory_Reserve_FilesBuffer :: 64 * Gigabyte
 
-// TODO(Ed) : These are high for ease of use, they eventually need to be drastically minimized.
 Memory_Commit_Initial_Persistent :: 4 * Kilobyte
 Memory_Commit_Initial_Frame      :: 4 * Kilobyte
 Memory_Commit_Initial_Transient  :: 4 * Kilobyte
@@ -72,7 +65,8 @@ files_buffer_allocator :: proc() -> Allocator {
 }
 
 general_slab_allocator :: proc() -> Allocator {
-	return slab_allocator( get_state().general_slab )
+	using state := get_state()
+	return slab_allocator( general_slab )
 }
 
 // TODO(Ed) : Implment host memory mapping api
