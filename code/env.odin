@@ -16,91 +16,97 @@ Memory_Chunk_Size      :: 2 * Gigabyte
 Memory_Persistent_Size :: 256 * Megabyte
 Memory_Trans_Temp_Szie :: (Memory_Chunk_Size - Memory_Persistent_Size ) / 2
 
-Memory_Base_Address_Persistent :: Terabyte * 1
-Memory_Base_Address_Frame      :: Memory_Base_Address_Persistent + Memory_Reserve_Persistent
+Memory_Base_Address_Persistent   :: Terabyte * 1
+Memory_Base_Address_Frame        :: Memory_Base_Address_Persistent + Memory_Reserve_Persistent * 2
+Memory_Base_Address_Transient    :: Memory_Base_Address_Frame      + Memory_Reserve_Frame * 2
+Memory_Base_Address_Files_Buffer :: Memory_Base_Address_Transient  + Memory_Reserve_Transient * 2
 
-// TODO(Ed) : This is based off of using 32 gigs of my ram(Ed) as a maximum.
-// Later on this has to be adjusted to be ratios based on user's system memory.
-Memory_Reserve_Persistent  :: 8  * Gigabyte
-Memory_Reserve_Frame       :: 4  * Gigabyte
-Memory_Reserve_Transient   :: 4  * Gigabyte
-Memory_Reserve_FilesBuffer :: 16 * Gigabyte
+// This reserve goes beyond the typical amount of ram the user has,
+// TODO(Ed): Setup warnings when the amount is heading toward half the ram size
+Memory_Reserve_Persistent  :: 32 * Gigabyte
+Memory_Reserve_Frame       :: 16 * Gigabyte
+Memory_Reserve_Transient   :: 16 * Gigabyte
+Memory_Reserve_FilesBuffer :: 64 * Gigabyte
 
 // TODO(Ed) : These are high for ease of use, they eventually need to be drastically minimized.
-Memory_Commit_Initial_Persistent :: 256 * Megabyte
-Memory_Commit_Initial_Frame      :: 1   * Gigabyte
-Memory_Commit_Initial_Transient  :: 1   * Gigabyte
-Memory_Commit_Initial_Filebuffer :: 2   * Gigabyte
+Memory_Commit_Initial_Persistent :: 4 * Kilobyte
+Memory_Commit_Initial_Frame      :: 4 * Kilobyte
+Memory_Commit_Initial_Transient  :: 4 * Kilobyte
+Memory_Commit_Initial_Filebuffer :: 4 * Kilobyte
 
-// TODO(Ed): There is an issue with mutex locks on the tracking allocator..
-Use_TrackingAllocator :: false
-
-when Use_TrackingAllocator
-{
-	Memory :: struct {
-		live       : virtual.Arena,
-		snapshot   : []u8,
-
-		persistent : ^ TrackedAllocator,
-		transient  : ^ TrackedAllocator,
-		temp       : ^ TrackedAllocator,
-
-		replay : ReplayState,
-		logger : Logger,
-	}
+MemorySnapshot :: struct {
+	persistent   : []u8,
+	frame        : []u8,
+	transient    : []u8,
+	// files_buffer cannot be restored from snapshot
 }
-else
-{
-	Memory :: struct {
-		live       : virtual.Arena,
-		snapshot   : []u8,
 
-		persistent : ^ Arena,
-		transient  : ^ Arena,
-		temp       : ^ Arena,
+Memory :: struct {
+	persistent   : ^VArena,
+	frame        : ^VArena,
+	transient    : ^VArena,
+	files_buffer : ^VArena,
 
-		replay : ReplayState,
-		logger : Logger,
-	}
+	// Should only be used for small memory allocation iterations
+	// Not for large memory env states
+	snapshot : MemorySnapshot,
+
+	replay : ReplayState,
+	logger : Logger,
 }
 
 persistent_allocator :: proc() -> Allocator {
-	when Use_TrackingAllocator {
-		return tracked_allocator( Memory_App.persistent )
-	}
-	else {
-		return arena_allocator( Memory_App.persistent )
-	}
+	return varena_allocator( Memory_App.persistent )
+}
+
+frame_allocator :: proc() -> Allocator {
+	return varena_allocator( Memory_App.frame )
 }
 
 transient_allocator :: proc() -> Allocator {
-	when Use_TrackingAllocator {
-		return tracked_allocator( Memory_App.transient )
-	}
-	else {
-		return arena_allocator( Memory_App.transient )
-	}
+	return varena_allocator( Memory_App.transient )
 }
 
-temp_allocator :: proc() -> Allocator {
-	when Use_TrackingAllocator {
-		return tracked_allocator( Memory_App.temp )
+files_buffer_allocator :: proc() -> Allocator {
+	return varena_allocator( Memory_App.files_buffer )
+}
+
+general_slab_allocator :: proc() -> Allocator {
+	return slab_allocator( get_state().general_slab )
+}
+
+// TODO(Ed) : Implment host memory mapping api
+save_snapshot :: proc( snapshot : ^MemorySnapshot )
+{
+	// Make sure the snapshot size is able to hold the current size of the arenas
+	// Grow the files & mapping otherwise
+	{
+		// TODO(Ed) : Implement eventually
 	}
-	else {
-		return arena_allocator( Memory_App.temp )
-	}
+
+	persistent := Memory_App.persistent
+	mem.copy_non_overlapping( & snapshot.persistent[0], persistent.reserve_start, int(persistent.commit_used) )
+
+	frame := Memory_App.frame
+	mem.copy_non_overlapping( & snapshot.frame[0], frame.reserve_start, int(frame.commit_used) )
+
+	transient := Memory_App.transient
+	mem.copy_non_overlapping( & snapshot.transient[0], transient.reserve_start, int(transient.commit_used) )
 }
 
-save_snapshot :: proc( snapshot : [^]u8 ) {
-	live_ptr := cast( ^ rawptr ) Memory_App.live.curr_block.base
-	mem.copy_non_overlapping( & snapshot[0], live_ptr, Memory_Chunk_Size )
+// TODO(Ed) : Implment host memory mapping api
+load_snapshot :: proc( snapshot : ^MemorySnapshot ) {
+	persistent := Memory_App.persistent
+	mem.copy_non_overlapping( persistent.reserve_start, & snapshot.persistent[0], int(persistent.commit_used) )
+
+	frame := Memory_App.frame
+	mem.copy_non_overlapping( frame.reserve_start, & snapshot.frame[0], int(frame.commit_used) )
+
+	transient := Memory_App.transient
+	mem.copy_non_overlapping( transient.reserve_start, & snapshot.transient[0], int(transient.commit_used) )
 }
 
-load_snapshot :: proc( snapshot : [^]u8 ) {
-	live_ptr := cast( ^ rawptr ) Memory_App.live.curr_block.base
-	mem.copy_non_overlapping( live_ptr, snapshot, Memory_Chunk_Size )
-}
-
+// TODO(Ed) : Implement usage of this
 MemoryConfig :: struct {
 	reserve_persistent : uint,
 	reserve_frame      : uint,
@@ -124,6 +130,8 @@ AppConfig :: struct {
 }
 
 State :: struct {
+	general_slab : Slab,
+
 	font_provider_data : FontProviderData,
 
 	input_data : [2]InputState,
@@ -157,12 +165,7 @@ State :: struct {
 }
 
 get_state :: proc "contextless" () -> ^ State {
-	when Use_TrackingAllocator {
-		return cast( ^ State ) raw_data( Memory_App.persistent.backing.data )
-	}
-	else {
-		return cast( ^ State ) raw_data( Memory_App.persistent. data )
-	}
+	return cast( ^ State ) Memory_App.persistent.reserve_start
 }
 
 AppWindow :: struct {

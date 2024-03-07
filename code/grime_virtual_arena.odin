@@ -41,8 +41,8 @@ VArena :: struct {
 
 varena_default_growth_policy :: proc( commit_used, committed, reserved, requested_size : uint ) -> uint
 {
-	@static commit_limit := uint(2 * Megabyte)
-	@static increment    := uint(Megabyte)
+	@static commit_limit := uint(1  * Megabyte)
+	@static increment    := uint(16 * Kilobyte)
 	page_size := uint(virtual_get_page_size())
 
 	if increment < Gigabyte && committed > commit_limit {
@@ -72,8 +72,8 @@ varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
 {
 	page_size := uint(virtual_get_page_size())
 	verify( page_size > size_of(VirtualMemoryRegion), "Make sure page size is not smaller than a VirtualMemoryRegion?")
-	verify( to_reserve > page_size,  "Attempted to reserve less than a page size" )
-	verify( to_commit  > page_size,  "Attempted to commit less than a page size")
+	verify( to_reserve >= page_size, "Attempted to reserve less than a page size" )
+	verify( to_commit  >= page_size, "Attempted to commit less than a page size")
 	verify( to_reserve >= to_commit, "Attempted to commit more than there is to reserve" )
 
 	vmem : VirtualMemoryRegion
@@ -114,7 +114,7 @@ varena_alloc :: proc( using self : ^VArena,
 	sync.mutex_guard( & mutex )
 
 	alignment_offset := uint(0)
-	current_offset   := cast(uintptr) reserve_start[ committed:]
+	current_offset   := cast(uintptr) reserve_start[ commit_used:]
 	mask             := uintptr(alignment - 1)
 
 	if current_offset & mask != 0 {
@@ -128,24 +128,30 @@ varena_alloc :: proc( using self : ^VArena,
 	}
 
 	to_be_used : uint
-	to_be_used, overflow_signal = intrinsics.overflow_add( commit_used, requested_size )
+	to_be_used, overflow_signal = intrinsics.overflow_add( commit_used, size_to_allocate )
 	if overflow_signal || to_be_used > reserved {
 		alloc_error = .Out_Of_Memory
 		return
 	}
 
-	if needs_more_committed := committed - commit_used < size; needs_more_committed
+	header_offset := uint( uintptr(reserve_start) - uintptr(base_address) )
+
+	commit_left          := committed - commit_used - header_offset
+	needs_more_committed := commit_left < size_to_allocate
+	if needs_more_committed
 	{
-		next_commit_size := growth_policy( commit_used, committed, reserved, requested_size )
+		next_commit_size := growth_policy( commit_used, committed, reserved, size_to_allocate )
 		alloc_error       = virtual_commit( vmem, next_commit_size )
 		if alloc_error != .None {
 			return
 		}
 	}
 
-	data         = slice_ptr( reserve_start[ commit_used:], int(requested_size) )
-	commit_used += requested_size
-	alloc_error  = .None
+	aligned_start := uintptr(self.commit_used + alignment_offset)
+	data_ptr      := rawptr(uintptr( reserve_start ) + aligned_start)
+	data           = byte_slice( data_ptr, int(requested_size) )
+	commit_used   += size_to_allocate
+	alloc_error    = .None
 
 	if zero_memory {
 		slice.zero( data )

@@ -86,11 +86,13 @@ update :: proc( delta_time : f64 ) -> b32
 	}
 
 	//region Input Replay
+	// TODO(Ed) : Implment host memory mapping api
+	when false
 	{
 		if debug_actions.record_replay { #partial switch replay.mode
 		{
 			case ReplayMode.Off : {
-				save_snapshot( & Memory_App.snapshot[0] )
+				save_snapshot( & Memory_App.snapshot )
 				replay_recording_begin( Path_Input_Replay )
 			}
 			case ReplayMode.Record : {
@@ -102,21 +104,21 @@ update :: proc( delta_time : f64 ) -> b32
 		{
 			case ReplayMode.Off : {
 				if ! file_exists( Path_Input_Replay ) {
-					save_snapshot( & Memory_App.snapshot[0] )
+					save_snapshot( & Memory_App.snapshot )
 					replay_recording_begin( Path_Input_Replay )
 				}
 				else {
-					load_snapshot( & Memory_App.snapshot[0] )
+					load_snapshot( & Memory_App.snapshot )
 					replay_playback_begin( Path_Input_Replay )
 				}
 			}
 			case ReplayMode.Playback : {
 				replay_playback_end()
-				load_snapshot( & Memory_App.snapshot[0] )
+				load_snapshot( & Memory_App.snapshot )
 			}
 			case ReplayMode.Record : {
 				replay_recording_end()
-				load_snapshot( & Memory_App.snapshot[0] )
+				load_snapshot( & Memory_App.snapshot )
 				replay_playback_begin( Path_Input_Replay )
 			}
 		}}

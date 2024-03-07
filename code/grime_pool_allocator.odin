@@ -67,7 +67,9 @@ pool_init :: proc (
 	pool.block_size       = block_size
 	pool.alignment        = alignment
 
-	alloc_error = pool_allocate_buckets( pool, bucket_reserve_num )
+	if bucket_reserve_num > 0 {
+		alloc_error = pool_allocate_buckets( pool, bucket_reserve_num )
+	}
 	pool.current_bucket = pool.bucket_list.first
 	return
 }

@@ -63,6 +63,12 @@ Slab :: struct {
 	using header : ^SlabHeader,
 }
 
+slab_allocator :: proc( slab : Slab ) -> ( allocator : Allocator ) {
+	allocator.procedure = slab_allocator_proc
+	allocator.data      = slab.header
+	return
+}
+
 slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocator : Allocator ) -> ( slab : Slab, alloc_error : AllocatorError )
 {
 	header_size :: size_of( SlabHeader )
@@ -83,7 +89,7 @@ slab_init_pools :: proc ( using self : Slab, bucket_reserve_num : uint = 0 ) -> 
 	for id in 0 ..< policy.idx {
 		using size_class := policy.items[id]
 
-		pool, alloc_error := pool_init( block_size, block_alignment, bucket_capacity, bucket_reserve_num, backing )
+		pool, alloc_error := pool_init( block_size, bucket_capacity, bucket_reserve_num, block_alignment, backing )
 		if alloc_error != .None do return alloc_error
 
 		push( & self.pools, pool )

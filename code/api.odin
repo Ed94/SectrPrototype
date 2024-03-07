@@ -18,53 +18,62 @@ ModuleAPI :: struct {
 	write_time  : FileTime,
 	lib_version : i32,
 
-	startup    : type_of( startup ),
-	shutdown   : type_of( sectr_shutdown ),
-	reload     : type_of( reload ),
-	tick       : type_of( tick ),
-	clean_temp : type_of( clean_temp ),
+	startup     : type_of( startup ),
+	shutdown    : type_of( sectr_shutdown ),
+	reload      : type_of( reload ),
+	tick        : type_of( tick ),
+	clean_frame : type_of( clean_frame ),
 }
 
 @export
-startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ Logger )
+startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
 {
 	logger_init( & Memory_App.logger, "Sectr", host_logger.file_path, host_logger.file )
 	context.logger = to_odin_logger( & Memory_App.logger )
 
 	// Setup memory for the first time
 	{
-		arena_size     :: size_of( Arena)
-		internals_size :: 4 * Megabyte
-
 		using Memory_App;
-		block := live_mem.curr_block
+		persistent   = persistent_mem
+		frame        = frame_mem
+		transient    = transient_mem
+		files_buffer = files_buffer_mem
 
-		live     = live_mem
-		snapshot = snapshot_mem
-
-		persistent_slice := slice_ptr( block.base, Memory_Persistent_Size )
-		transient_slice  := slice_ptr( memory_after( persistent_slice), Memory_Trans_Temp_Szie )
-		temp_slice       := slice_ptr( memory_after( transient_slice),  Memory_Trans_Temp_Szie )
-
-		when Use_TrackingAllocator {
-			// We assign the beginning of the block to be the host's persistent memory's arena.
-			// Then we offset past the arena and determine its slice to be the amount left after for the size of host's persistent.
-			persistent = tracked_allocator_init_vmem( persistent_slice, internals_size )
-			transient  = tracked_allocator_init_vmem( transient_slice,  internals_size )
-			temp       = tracked_allocator_init_vmem( temp_slice ,      internals_size )
-		}
-		else {
-			persistent = arena_allocator_init_vmem( persistent_slice )
-			transient  = arena_allocator_init_vmem( transient_slice )
-			temp       = arena_allocator_init_vmem( temp_slice )
-		}
-
-		context.allocator      = transient_allocator()
-		context.temp_allocator = temp_allocator()
+		context.allocator      = persistent_allocator()
+		context.temp_allocator = transient_allocator()
 	}
 
 	state := new( State, persistent_allocator() )
 	using state
+
+	// Setup General Slab
+	{
+		alignment := uint(mem.DEFAULT_ALIGNMENT)
+
+		policy     : SlabPolicy
+		policy_ptr := & policy
+		push( policy_ptr, SlabSizeClass {  16 * Megabyte,   4 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {  32 * Megabyte,  16 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte,  32 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte,  64 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte, 128 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte, 256 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte, 512 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte,   1 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte,   2 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte,   4 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte,   8 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte,  16 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {  64 * Megabyte,  32 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 256 * Megabyte,  64 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 256 * Megabyte, 128 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 512 * Megabyte, 256 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
+
+		alloc_error : AllocatorError
+		general_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator() )
+		verify( alloc_error == .None, "Failed to allocate the general slab allocator" )
+	}
 
 	context.user_ptr = state
 
@@ -108,7 +117,7 @@ startup :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ 
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
-		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" }, temp_allocator() )
+		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" }, frame_allocator() )
 		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 
 		// font_data, read_succeded : = os.read_entire_file( path_rec_mono_semicasual_reg  )
@@ -162,7 +171,7 @@ sectr_shutdown :: proc()
 
 	// Replay
 	{
-		os.close( Memory_App.replay.active_file )
+		file_close( Memory_App.replay.active_file )
 	}
 
 	font_provider_shutdown()
@@ -171,34 +180,17 @@ sectr_shutdown :: proc()
 }
 
 @export
-reload :: proc( live_mem : virtual.Arena, snapshot_mem : []u8, host_logger : ^ Logger )
+reload :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
 {
 	using Memory_App;
-	block := live_mem.curr_block
 
-	live     = live_mem
-	snapshot = snapshot_mem
+	persistent   = persistent_mem
+	frame        = frame_mem
+	transient    = transient_mem
+	files_buffer = files_buffer_mem
 
-	// This is no longer necessary as we have proper base address setting
-	when true
-	{
-		persistent_slice := slice_ptr( block.base, Memory_Persistent_Size )
-		transient_slice  := slice_ptr( memory_after( persistent_slice), Memory_Trans_Temp_Szie )
-		temp_slice       := slice_ptr( memory_after( transient_slice),  Memory_Trans_Temp_Szie )
-
-		when Use_TrackingAllocator {
-			persistent = cast( ^ TrackedAllocator ) & persistent_slice[0]
-			transient  = cast( ^ TrackedAllocator ) & transient_slice[0]
-			temp       = cast( ^ TrackedAllocator ) & temp_slice[0]
-		}
-		else {
-			persistent = cast( ^ Arena ) & persistent_slice[0]
-			transient  = cast( ^ Arena ) & transient_slice[0]
-			temp       = cast( ^ Arena ) & temp_slice[0]
-		}
-	}
-	context.allocator      = transient_allocator()
-	context.temp_allocator = temp_allocator()
+	context.allocator      = persistent_allocator()
+	context.temp_allocator = transient_allocator()
 
 	// Procedure Addresses are not preserved on hot-reload. They must be restored for persistent data.
 	// The only way to alleviate this is to either do custom handles to allocators
@@ -221,8 +213,8 @@ swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 @export
 tick :: proc( delta_time : f64, delta_ns : Duration ) -> b32
 {
-	context.allocator      = transient_allocator()
-	context.temp_allocator = temp_allocator()
+	context.allocator      = frame_allocator()
+	context.temp_allocator = transient_allocator()
 
 	get_state().frametime_delta_ns = delta_ns
 
@@ -232,11 +224,6 @@ tick :: proc( delta_time : f64, delta_ns : Duration ) -> b32
 }
 
 @export
-clean_temp :: proc() {
-	when Use_TrackingAllocator {
-		mem.tracking_allocator_clear( & Memory_App.temp.tracker )
-	}
-	else {
-		free_all( temp_allocator() )
-	}
+clean_frame :: proc() {
+	free_all( frame_allocator() )
 }

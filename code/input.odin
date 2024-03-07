@@ -354,7 +354,7 @@ play_input :: proc( replay_file : os.Handle, input : ^ InputState ) {
 	total_read, result_code := file_read( replay_file, raw_data )
 	if result_code == os.ERROR_HANDLE_EOF {
 		file_rewind( replay_file )
-		load_snapshot( & Memory_App.snapshot[0] )
+		load_snapshot( & Memory_App.snapshot )
 	}
 }
 

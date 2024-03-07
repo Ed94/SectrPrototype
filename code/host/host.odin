@@ -31,6 +31,7 @@ import fmt_io "core:fmt"
 import "core:log"
 import "core:mem"
 	Allocator         :: mem.Allocator
+	AllocatorError    :: mem.Allocator_Error
 	TrackingAllocator :: mem.Tracking_Allocator
 import "core:mem/virtual"
 	Arena        :: virtual.Arena
@@ -59,6 +60,8 @@ import "core:time"
 	thread_sleep     :: time.sleep
 import rl    "vendor:raylib"
 import sectr "../."
+	VArena                 :: sectr.VArena
+	varena_init            :: sectr.varena_init
 	fatal                  :: sectr.fatal
 	file_is_locked         :: sectr.file_is_locked
 	file_copy_sync         :: sectr.file_copy_sync
@@ -92,39 +95,41 @@ when ODIN_OS == runtime.Odin_OS_Type.Windows
 }
 
 RuntimeState :: struct {
-	running   : b32,
-	memory    : VMemChunk,
-	sectr_api : sectr.ModuleAPI,
+	running       : b32,
+	client_memory : ClientMemory,
+	sectr_api     : sectr.ModuleAPI,
 }
 
-VMemChunk :: struct {
-	og_allocator            : Allocator,
-	og_temp_allocator       : Allocator,
-	host_persistent         : TrackedAllocator,
-	host_transient          : TrackedAllocator,
-	sectr_live              : Arena,
-	sectr_snapshot          : []u8
+ClientMemory :: struct {
+	persistent        : VArena,
+	frame             : VArena,
+	transient         : VArena,
+	files_buffer      : VArena,
 }
 
-setup_memory :: proc() -> VMemChunk
+setup_memory :: proc() -> ClientMemory
 {
-	memory : VMemChunk; using memory
-
-	Host_Persistent_Size :: 32 * Megabyte
-	Host_Transient_Size  :: 96 * Megabyte
-	Internals_Size       :: 4  * Megabyte
-
-	host_persistent = tracked_allocator_init( Host_Persistent_Size, Internals_Size )
-	host_transient  = tracked_allocator_init( Host_Transient_Size,  Internals_Size )
+	memory : ClientMemory; using memory
 
 	// Setup the static arena for the entire application
 	{
-		base_address : rawptr = transmute( rawptr) u64(sectr.Memory_Base_Address)
-		result       := arena_init_static( & sectr_live, base_address, sectr.Memory_Chunk_Size, sectr.Memory_Chunk_Size )
-		verify( result == runtime.Allocator_Error.None, "Failed to allocate live memory for the sectr module" )
+		alloc_error : AllocatorError
+		persistent, alloc_error = varena_init( sectr.Memory_Base_Address_Persistent, sectr.Memory_Reserve_Persistent, sectr.Memory_Commit_Initial_Persistent, nil )
+		verify( alloc_error == .None, "Failed to allocate persistent virtual arena for the sectr module")
+
+		frame, alloc_error = varena_init( sectr.Memory_Base_Address_Frame, sectr.Memory_Reserve_Frame, sectr.Memory_Commit_Initial_Frame, nil )
+		verify( alloc_error == .None, "Failed to allocate frame virtual arena for the sectr module")
+
+		transient, alloc_error = varena_init( sectr.Memory_Base_Address_Transient, sectr.Memory_Reserve_Transient, sectr.Memory_Commit_Initial_Transient, nil )
+		verify( alloc_error == .None, "Failed to allocate transient virtual arena for the sectr module")
+
+		files_buffer, alloc_error = varena_init( sectr.Memory_Base_Address_Files_Buffer, sectr.Memory_Reserve_FilesBuffer, sectr.Memory_Commit_Initial_Filebuffer, nil )
+		verify( alloc_error == .None, "Failed to allocate files buffer virtual arena for the sectr module")
 	}
 
 	// Setup memory mapped io for snapshots
+	// TODO(Ed) : We cannot do this with our growing arenas. Instead we need to map on demand for saving and loading
+	when false
 	{
 		snapshot_file, open_error := file_open( Path_Snapshot, FileFlag_ReadWrite | FileFlag_Create )
 		verify( open_error == os.ERROR_NONE, "Failed to open snapshot file for the sectr module" )
@@ -142,9 +147,6 @@ setup_memory :: proc() -> VMemChunk
 		file_close(snapshot_file)
 	}
 
-	// Reassign default allocators for host
-	memory.og_allocator      = context.allocator
-	memory.og_temp_allocator = context.temp_allocator
 	log("Memory setup")
 	return memory;
 }
@@ -168,18 +170,18 @@ load_sectr_api :: proc( version_id : i32 ) -> (loaded_module : sectr.ModuleAPI)
 		return
 	}
 
-	startup    := cast( type_of( sectr.startup        )) os_lib_get_proc( lib, "startup" )
-	shutdown   := cast( type_of( sectr.sectr_shutdown )) os_lib_get_proc( lib, "sectr_shutdown" )
-	reload     := cast( type_of( sectr.reload         )) os_lib_get_proc( lib, "reload" )
-	tick       := cast( type_of( sectr.tick           )) os_lib_get_proc( lib, "tick" )
-	clean_temp := cast( type_of( sectr.clean_temp     )) os_lib_get_proc( lib, "clean_temp" )
+	startup     := cast( type_of( sectr.startup        )) os_lib_get_proc( lib, "startup" )
+	shutdown    := cast( type_of( sectr.sectr_shutdown )) os_lib_get_proc( lib, "sectr_shutdown" )
+	reload      := cast( type_of( sectr.reload         )) os_lib_get_proc( lib, "reload" )
+	tick        := cast( type_of( sectr.tick           )) os_lib_get_proc( lib, "tick" )
+	clean_frame := cast( type_of( sectr.clean_frame    )) os_lib_get_proc( lib, "clean_frame" )
 
 	missing_symbol : b32 = false
-	if startup    == nil do log("Failed to load sectr.startup symbol", LogLevel.Warning )
-	if shutdown   == nil do log("Failed to load sectr.shutdown symbol", LogLevel.Warning )
-	if reload     == nil do log("Failed to load sectr.reload symbol", LogLevel.Warning )
-	if tick       == nil do log("Failed to load sectr.tick symbol", LogLevel.Warning )
-	if clean_temp == nil do log("Failed to load sector.clean_temp symbol", LogLevel.Warning )
+	if startup     == nil do log("Failed to load sectr.startup symbol",      LogLevel.Warning )
+	if shutdown    == nil do log("Failed to load sectr.shutdown symbol",     LogLevel.Warning )
+	if reload      == nil do log("Failed to load sectr.reload symbol",       LogLevel.Warning )
+	if tick        == nil do log("Failed to load sectr.tick symbol",         LogLevel.Warning )
+	if clean_frame == nil do log("Failed to load sector.clean_frame symbol", LogLevel.Warning )
 	if missing_symbol {
 		runtime.debug_trap()
 		return
@@ -191,11 +193,11 @@ load_sectr_api :: proc( version_id : i32 ) -> (loaded_module : sectr.ModuleAPI)
 		write_time  = write_time,
 		lib_version = version_id,
 
-		startup    = startup,
-		shutdown   = shutdown,
-		reload     = reload,
-		tick       = tick,
-		clean_temp = clean_temp,
+		startup     = startup,
+		shutdown    = shutdown,
+		reload      = reload,
+		tick        = tick,
+		clean_frame = clean_frame,
 	}
 	return
 }
@@ -208,7 +210,7 @@ unload_sectr_api :: proc( module : ^ sectr.ModuleAPI )
 	log("Unloaded sectr API")
 }
 
-sync_sectr_api :: proc( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk, logger : ^ Logger )
+sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, logger : ^Logger )
 {
 	if write_time, result := os.last_write_time_by_name( Path_Sectr_Module );
 	result == os.ERROR_NONE && sectr_api.write_time != write_time
@@ -223,7 +225,12 @@ sync_sectr_api :: proc( sectr_api : ^ sectr.ModuleAPI, memory : ^ VMemChunk, log
 		sectr_api ^ = load_sectr_api( version_id )
 		verify( sectr_api.lib_version != 0, "Failed to hot-reload the sectr module" )
 
-		sectr_api.reload( memory.sectr_live, memory.sectr_snapshot, logger )
+		sectr_api.reload(
+			& memory.persistent,
+			& memory.frame,
+			& memory.transient,
+			& memory.files_buffer,
+			logger )
 	}
 }
 
@@ -260,16 +267,10 @@ main :: proc()
 		log( to_str(builder) )
 	}
 
-	// Basic Giant VMem Block
-	{
-		// By default odin uses a growing arena for the runtime context
-		// We're going to make it static for the prototype and separate it from the 'project' memory.
-		// Then shove the context allocator for the engine to it.
-		// The project's context will use its own subsection arena allocator.
-		memory = setup_memory()
-	}
+	memory := setup_memory()
 
 	// TODO(Ed): Cannot use the manually created allocators for the host. Not sure why
+	// Something is wrong with the tracked_allocator init
 	// context.allocator        = tracked_allocator( & memory.host_persistent )
 	// context.temp_allocator   = tracked_allocator( & memory.host_transient )
 
@@ -281,7 +282,12 @@ main :: proc()
 
 	running   = true;
 	sectr_api = sectr_api
-	sectr_api.startup( memory.sectr_live, memory.sectr_snapshot, & logger )
+	sectr_api.startup(
+		& memory.persistent,
+		& memory.frame,
+		& memory.transient,
+		& memory.files_buffer,
+		& logger )
 
 	delta_ns : Duration
 
@@ -294,7 +300,7 @@ main :: proc()
 		sync_sectr_api( & sectr_api, & memory, & logger )
 
 		running = sectr_api.tick( duration_seconds( delta_ns ), delta_ns )
-		sectr_api.clean_temp()
+		sectr_api.clean_frame()
 
 		delta_ns = time.tick_lap_time( & start_tick )
 	}

@@ -36,8 +36,9 @@ virtual_commit :: proc "contextless" ( using vmem : VirtualMemoryRegion, size : 
 		return .None
 	}
 
-	page_size := uint(virtual_get_page_size())
-	to_commit := memory_align_formula( size, page_size )
+	header_size := size_of(VirtualMemoryRegionHeader)
+	page_size   := uint(virtual_get_page_size())
+	to_commit   := memory_align_formula( size, page_size )
 
 	alloc_error = core_virtual.commit( base_address, to_commit )
 	if alloc_error != .None {
@@ -98,14 +99,17 @@ when ODIN_OS != OS_Type.Windows {
 
 virtual__reserve :: proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMemoryRegion, alloc_error : AllocatorError )
 {
+	header_size := size_of(VirtualMemoryRegionHeader)
+
 	// Ignoring the base address, add an os specific impl if you want it.
 	data : []byte
-	data, alloc_error := core_virtual.reserve( size ) or_return
+	data, alloc_error := core_virtual.reserve( header_size + size ) or_return
+	alloc_error := core_virtual.commit( header_size )
 
 	vmem.base_address  := cast( ^VirtualMemoryRegionHeader ) raw_data(data)
 	vmem.reserve_start  = memory_after_header(vmem.base_address)
 	vmem.reserved       = len(data)
-	vmem.committed      = 0
+	vmem.committed      = header_size
 	return
 }
 
