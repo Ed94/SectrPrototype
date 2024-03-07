@@ -4,6 +4,21 @@ This is an alternative to alleviates that.
 */
 package sectr
 
+import "core:mem"
+
+// Initialize a sub-section of our virtual memory as a sub-arena
+sub_arena_init :: proc( address : ^ byte, size : int ) -> ( ^ Arena) {
+	Arena :: mem.Arena
+
+	arena_size :: size_of( Arena)
+	sub_arena  := cast( ^ Arena ) address
+	mem_slice  := slice_ptr( ptr_offset( address, arena_size), size )
+	arena_init( sub_arena, mem_slice )
+	return sub_arena
+}
+
+// TODO(Ed) : Once this is done (ArenaFixed), rename to just Arena as we're not going to use the core implementation
+
 ArenaFixedHeader :: struct {
 	data      : []byte,
 	offset    : uint,
