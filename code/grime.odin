@@ -1,6 +1,5 @@
 
 package sectr
-// At least its less than C/C++ ...
 
 import "base:builtin"
 	copy :: builtin.copy
@@ -79,7 +78,7 @@ import "core:unicode/utf8"
 OS_Type :: type_of(ODIN_OS)
 
 // Proc Name Overloads Alias table
-// This has to be done on a per-module basis. Most likely can be automated
+// This has to be done on a per-module basis.
 
 cm_to_pixels :: proc {
 	f32_cm_to_pixels,
