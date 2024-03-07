@@ -245,7 +245,7 @@ zpl_hmap_find :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> HMapZPL_F
 		result.hash_index  = cast(i64)( key % hashes.num )
 		result.entry_index = hashes.data[ result.hash_index ]
 
-		for ; result.entry_index >= 0;                     {
+		for ; result.entry_index >= 0; {
 			entry := & entries.data[ result.entry_index ]
 			if entry.key == key {
 				break

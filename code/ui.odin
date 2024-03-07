@@ -269,7 +269,7 @@ UI_State :: struct {
 
 	// TODO(Ed) : Look into using a build arena like Ryan does for these possibly (and thus have a linked-list stack)
 	theme_stack   : StackFixed( UI_StyleTheme, UI_Style_Stack_Size ),
-	parent_stack  : StackFixed( ^ UI_Box, UI_Parent_Stack_Size ),
+	parent_stack  : StackFixed( ^UI_Box, UI_Parent_Stack_Size ),
 	// flag_stack    : Stack( UI_BoxFlags, UI_BoxFlags_Stack_Size ),
 
 	hot            : UI_Key,

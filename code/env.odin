@@ -19,7 +19,7 @@ Memory_Trans_Temp_Szie :: (Memory_Chunk_Size - Memory_Persistent_Size ) / 2
 Memory_Base_Address_Persistent :: Terabyte * 1
 Memory_Base_Address_Frame      :: Memory_Base_Address_Persistent + Memory_Reserve_Persistent
 
-// TODO(Ed) : This is based off of using 32 gigs of my (Ed) as a maximum.
+// TODO(Ed) : This is based off of using 32 gigs of my ram(Ed) as a maximum.
 // Later on this has to be adjusted to be ratios based on user's system memory.
 Memory_Reserve_Persistent  :: 8  * Gigabyte
 Memory_Reserve_Frame       :: 4  * Gigabyte
@@ -126,9 +126,9 @@ AppConfig :: struct {
 State :: struct {
 	font_provider_data : FontProviderData,
 
-	input_data : [2] InputState,
-	input_prev : ^   InputState,
-	input      : ^   InputState,
+	input_data : [2]InputState,
+	input_prev : ^InputState,
+	input      : ^InputState,
 
 	debug  : DebugData,
 
