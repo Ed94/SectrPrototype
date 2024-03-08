@@ -64,7 +64,9 @@ pool_init :: proc (
 	if alloc_error != .None do return
 
 	pool.header           = cast( ^PoolHeader) raw_mem
+	pool.backing          = allocator
 	pool.block_size       = block_size
+	pool.bucket_capacity  = bucket_capacity
 	pool.alignment        = alignment
 
 	if bucket_reserve_num > 0 {
@@ -93,8 +95,7 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 		return .Invalid_Argument
 	}
 	header_size := cast(uint) align_forward_int( size_of(PoolBucket), int(alignment))
-	bucket_size := block_size * bucket_capacity
-	to_allocate := cast(int) (header_size + bucket_size * num_buckets)
+	to_allocate := cast(int) (header_size + bucket_capacity * num_buckets)
 
 	bucket_memory, alloc_error := alloc( to_allocate, int(alignment), backing )
 	if alloc_error != .None {
@@ -107,9 +108,16 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 		bucket           := cast( ^PoolBucket) next_bucket_ptr
 		bucket.blocks     = memory_after_header(bucket)
 		bucket.next_block = 0
-		dll_push_back( & self.bucket_list.last, bucket )
 
-		next_bucket_ptr = next_bucket_ptr[ bucket_size: ]
+		if self.bucket_list.first == nil {
+			self.bucket_list.first = bucket
+			self.bucket_list.last  = bucket
+		}
+		else {
+			dll_push_back( & self.bucket_list.last, bucket )
+		}
+
+		next_bucket_ptr = next_bucket_ptr[ bucket_capacity: ]
 	}
 	return alloc_error
 }

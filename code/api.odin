@@ -155,7 +155,7 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 			// }
 
 			// Setup workspace UI state
-			ui_startup( & workspace.ui, persistent_allocator() )
+			ui_startup( & workspace.ui, cache_allocator =  general_slab_allocator() )
 		}
 	}
 }
@@ -201,7 +201,7 @@ reload :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VA
 	// font_provide_data.font_cache.hashes.allocator = slab_allocator()
 	// font_provide_data.font_cache.entries.allocator = slab_allocator()
 
-	ui_reload( & get_state().project.workspace.ui, persistent_allocator() )
+	ui_reload( & get_state().project.workspace.ui, cache_allocator =  general_slab_allocator() )
 
 	log("Module reloaded")
 }

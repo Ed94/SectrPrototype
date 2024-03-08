@@ -5,11 +5,11 @@ import "core:fmt"
 import "core:os"
 import "core:runtime"
 
-file_copy_sync :: proc( path_src, path_dst: string ) -> b32
+file_copy_sync :: proc( path_src, path_dst: string, allocator := context.temp_allocator ) -> b32
 {
   file_size : i64
 	{
-		path_info, result := file_status( path_src, context.temp_allocator )
+		path_info, result := file_status( path_src, allocator )
 		if result != os.ERROR_NONE {
 			logf("Could not get file info: %v", result, LogLevel.Error )
 			return false
@@ -17,7 +17,7 @@ file_copy_sync :: proc( path_src, path_dst: string ) -> b32
 		file_size = path_info.size
 	}
 
-	src_content, result := os.read_entire_file( path_src, context.temp_allocator )
+	src_content, result := os.read_entire_file( path_src, allocator )
 	if ! result {
 		logf( "Failed to read file to copy: %v", path_src, LogLevel.Error )
 		runtime.debug_trap()
@@ -34,7 +34,7 @@ file_copy_sync :: proc( path_src, path_dst: string ) -> b32
 }
 
 file_exists :: proc( file_path : string ) -> b32 {
-	path_info, result := file_status( file_path, context.temp_allocator )
+	path_info, result := file_status( file_path, frame_allocator() )
 	if result != os.ERROR_NONE {
 		return false
 	}
