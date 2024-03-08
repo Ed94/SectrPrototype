@@ -293,18 +293,19 @@ main :: proc()
 
 	delta_ns : Duration
 
+	host_tick := time.tick_now()
+
 	// TODO(Ed) : This should have an end status so that we know the reason the engine stopped.
 	for ; running ;
 	{
-		start_tick := time.tick_now()
-
 		// Hot-Reload
 		sync_sectr_api( & sectr_api, & memory, & logger )
 
 		running = sectr_api.tick( duration_seconds( delta_ns ), delta_ns )
 		sectr_api.clean_frame()
 
-		delta_ns = time.tick_lap_time( & start_tick )
+		delta_ns   = time.tick_lap_time( & host_tick )
+		host_tick  = time.tick_now()
 	}
 
 	// Determine how the run_cyle completed, if it failed due to an error,
@@ -318,5 +319,7 @@ main :: proc()
 
 	log("Succesfuly closed")
 	file_close( logger.file )
-	file_rename( logger.file_path, path_logger_finalized )
+	// TODO(Ed) : Add string interning!!!!!!!!!
+	// file_rename( logger.file_path, path_logger_finalized )
+	file_rename( str_fmt_tmp( "%s/sectr.log",  Path_Logs), path_logger_finalized )
 }

@@ -8,6 +8,7 @@ import    "core:mem/virtual"
 import    "core:os"
 import    "core:slice"
 import    "core:strings"
+import    "core:time"
 import rl "vendor:raylib"
 
 Path_Assets       :: "../assets/"
@@ -28,6 +29,8 @@ ModuleAPI :: struct {
 @export
 startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
 {
+	startup_tick := time.tick_now()
+
 	logger_init( & Memory_App.logger, "Sectr", host_logger.file_path, host_logger.file )
 	context.logger = to_odin_logger( & Memory_App.logger )
 
@@ -41,6 +44,7 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 
 		context.allocator      = persistent_allocator()
 		context.temp_allocator = transient_allocator()
+		// TODO(Ed) : Put on the transient allocator a slab allocator (transient slab)
 	}
 
 	state := new( State, persistent_allocator() )
@@ -94,8 +98,13 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 		cam_zoom_sensitivity_digital = 0.2
 		cam_zoom_sensitivity_smooth  = 4.0
 
+		engine_refresh_hz = 30
+
 		ui_resize_border_width = 20
 	}
+
+	Desired_OS_Scheduler_MS :: 1
+	sleep_is_granular = set__scheduler_granularity( Desired_OS_Scheduler_MS )
 
 	// rl.Odin_SetMalloc( RL_MALLOC )
 
@@ -122,7 +131,7 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 	// Determining current monitor and setting the target frametime based on it..
 	monitor_id         = rl.GetCurrentMonitor()
 	monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
-	rl.SetTargetFPS( monitor_refresh_hz )
+	rl.SetTargetFPS( 60 * 24 )
 	log( str_fmt_tmp( "Set target FPS to: %v", monitor_refresh_hz ) )
 
 	// Basic Font Setup
@@ -166,6 +175,14 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 			ui_startup( & workspace.ui, cache_allocator =  general_slab_allocator() )
 		}
 	}
+
+	startup_ms := duration_ms( time.tick_lap_time( & startup_tick))
+	log( str_fmt_tmp("Startup time: %v ms", startup_ms) )
+
+	// Make sure to cleanup transient before continuing...
+	// From here on, tarnsinet usage has to be done with care.
+	// For most cases, the frame allocator should be more than enough.
+	free_all( transient_allocator() )
 }
 
 // For some reason odin's symbols conflict with native foreign symbols...
@@ -220,17 +237,60 @@ swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 }
 
 @export
-tick :: proc( delta_time : f64, delta_ns : Duration ) -> b32
+tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 {
+	client_tick := time.tick_now()
+
 	context.allocator      = frame_allocator()
 	context.temp_allocator = transient_allocator()
+	state := get_state(); using state
 
-	state := get_state()
-	state.frametime_delta_ns      = delta_ns
-	state.frametime_delta_seconds = delta_time
+	rl.PollInputEvents()
 
-	result := update( delta_time )
+	result := update( host_delta_time )
 	render()
+
+	rl.SwapScreenBuffer()
+
+	config.engine_refresh_hz = uint(monitor_refresh_hz)
+	frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
+	sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
+
+	frametime_delta_ns      = time.tick_lap_time( & client_tick )
+	frametime_delta_ms      = duration_ms( frametime_delta_ns )
+	frametime_delta_seconds = duration_seconds( frametime_delta_ns )
+	frametime_elapsed_ms    = frametime_delta_ms + host_delta_time
+
+	if frametime_elapsed_ms < frametime_target_ms
+	{
+		sleep_ms       := frametime_target_ms - frametime_elapsed_ms
+		pre_sleep_tick := time.tick_now()
+
+		if sleep_ms > 0 {
+			thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
+			// thread__highres_wait( sleep_ms )
+		}
+
+		sleep_delta_ns := time.tick_lap_time( & pre_sleep_tick)
+		sleep_delta_ms := duration_ms( sleep_delta_ns )
+
+		if sleep_delta_ms < sleep_ms {
+			// log( str_fmt_tmp("frametime sleep was off by: %v ms", sleep_delta_ms - sleep_ms ))
+		}
+
+		frametime_elapsed_ms += sleep_delta_ms
+		for ; frametime_elapsed_ms < frametime_target_ms; {
+			sleep_delta_ns = time.tick_lap_time( & pre_sleep_tick)
+			sleep_delta_ms = duration_ms( sleep_delta_ns )
+
+			frametime_elapsed_ms += sleep_delta_ms
+		}
+	}
+
+	if frametime_elapsed_ms > 60.0 {
+		log( str_fmt_tmp("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
+	}
+
 	return result
 }
 

@@ -219,7 +219,7 @@ varena_allocator_proc :: proc(
 
 			old_memory_offset := uintptr(old_memory)    + uintptr(old_size)
 			current_offset    := uintptr(arena.reserve_start) + uintptr(arena.commit_used)
-			verify( old_memory_offset != current_offset, "Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
+			verify( old_memory_offset == current_offset, "Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
 
 			new_region : []byte
 			new_region, alloc_error = varena_alloc( arena, size - old_size, alignment, (mode != .Resize_Non_Zeroed), location )
@@ -228,7 +228,7 @@ varena_allocator_proc :: proc(
 				return
 			}
 
-			data := byte_slice( old_memory, size )
+			data = byte_slice( old_memory, size )
 			return
 
 		case .Query_Features:

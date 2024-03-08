@@ -126,6 +126,8 @@ AppConfig :: struct {
 	cam_zoom_sensitivity_smooth  : f32,
 	cam_zoom_sensitivity_digital : f32,
 
+	engine_refresh_hz : uint,
+
 	ui_resize_border_width : uint,
 }
 
@@ -148,11 +150,14 @@ State :: struct {
 	monitor_id         : i32,
 	monitor_refresh_hz : i32,
 
-	engine_refresh_hz     : i32,
-	engine_refresh_target : i32,
+	sleep_is_granular : b32,
 
-	frametime_delta_seconds : f64,
-	frametime_delta_ns      : Duration,
+	frametime_delta_seconds   : f64,
+	frametime_delta_ms        : f64,
+	frametime_delta_ns        : Duration,
+	frametime_target_ms       : f64,
+
+	frametime_elapsed_ms  : f64,
 
 	font_firacode                : FontID,
 	font_squidgy_slimes          : FontID,
@@ -195,11 +200,23 @@ Project :: struct {
 	workspace : Workspace,
 }
 
+Frame :: struct
+{
+	pos  : Vec2,
+	size : Vec2,
+
+	ui : ^UI_Box,
+}
+
 Workspace :: struct {
 	name : string,
 
 	cam         : Camera,
 	zoom_target : f32,
+
+	frames : Array(Frame),
+
+	test_frame : Frame,
 
 	// TODO(Ed) : The workspace is mainly a 'UI' conceptually...
 	ui : UI_State,
@@ -223,8 +240,4 @@ DebugData :: struct {
 	draggable_box_pos  : Vec2,
 	draggable_box_size : Vec2,
 	box_original_size  : Vec2,
-	box_resize_started : b32,
-
-	ui_drag_delta      : Vec2,
-	ui_drag_start      : Vec2,
 }

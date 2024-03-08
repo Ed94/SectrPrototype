@@ -22,6 +22,7 @@ import "core:hash"
 import fmt_io "core:fmt"
 	str_fmt          :: fmt_io.printf
 	str_fmt_tmp      :: fmt_io.tprintf
+	str_fmt_alloc    :: fmt_io.aprintf
 	str_fmt_builder  :: fmt_io.sbprintf
 	str_fmt_buffer   :: fmt_io.bprintf
 	str_to_file_ln   :: fmt_io.fprintln
@@ -67,7 +68,10 @@ import "core:path/filepath"
 import str "core:strings"
 	str_builder_to_string  :: str.to_string
 import "core:time"
-	Duration :: time.Duration
+	Duration         :: time.Duration
+	duration_seconds :: time.duration_seconds
+	duration_ms      :: time.duration_milliseconds
+	thread_sleep     :: time.sleep
 import "core:unicode"
 	is_white_space  :: unicode.is_white_space
 import "core:unicode/utf8"
