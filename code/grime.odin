@@ -80,6 +80,10 @@ OS_Type :: type_of(ODIN_OS)
 // Proc Name Overloads Alias table
 // This has to be done on a per-module basis.
 
+add :: proc {
+	add_range2,
+}
+
 cm_to_pixels :: proc {
 	f32_cm_to_pixels,
 	vec2_cm_to_pixels,

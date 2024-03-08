@@ -118,8 +118,15 @@ AppConfig :: struct {
 	resolution_width  : uint,
 	resolution_height : uint,
 	refresh_rate      : uint,
-	min_zoom          : uint,
-	max_zoom          : uint,
+
+	cam_min_zoom                 : f32,
+	cam_max_zoom                 : f32,
+	cam_zoom_mode                : CameraZoomMode,
+	cam_zoom_smooth_snappiness   : f32,
+	cam_zoom_sensitivity_smooth  : f32,
+	cam_zoom_sensitivity_digital : f32,
+
+	ui_resize_border_width : uint,
 }
 
 State :: struct {
@@ -144,7 +151,8 @@ State :: struct {
 	engine_refresh_hz     : i32,
 	engine_refresh_target : i32,
 
-	frametime_delta_ns : Duration,
+	frametime_delta_seconds : f64,
+	frametime_delta_ns      : Duration,
 
 	font_firacode                : FontID,
 	font_squidgy_slimes          : FontID,
@@ -190,7 +198,8 @@ Project :: struct {
 Workspace :: struct {
 	name : string,
 
-	cam     : Camera,
+	cam         : Camera,
+	zoom_target : f32,
 
 	// TODO(Ed) : The workspace is mainly a 'UI' conceptually...
 	ui : UI_State,
@@ -207,7 +216,15 @@ DebugData :: struct {
 	mouse_vis         : b32,
 	last_mouse_pos    : Vec2,
 
-	zoom_target : f32,
-
+	// Test First
 	frame_2_created : b32,
+
+	// Test Draggable
+	draggable_box_pos  : Vec2,
+	draggable_box_size : Vec2,
+	box_original_size  : Vec2,
+	box_resize_started : b32,
+
+	ui_drag_delta      : Vec2,
+	ui_drag_start      : Vec2,
 }

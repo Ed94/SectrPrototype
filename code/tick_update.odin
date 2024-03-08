@@ -2,6 +2,7 @@ package sectr
 
 import "base:runtime"
 import "core:math"
+import "core:math/linalg"
 
 import rl "vendor:raylib"
 
@@ -56,10 +57,16 @@ poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 	cam_mouse_pan = mouse.right.ended_down && ! pressed(mouse.right)
 }
 
+frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
+	return cast(f32) get_state().frametime_delta_seconds
+}
+
 update :: proc( delta_time : f64 ) -> b32
 {
 	state  := get_state(); using state
 	replay := & Memory_App.replay
+	workspace := & project.workspace
+	cam       := & workspace.cam
 
 	if rl.IsWindowResized() {
 		window := & state.app_window
@@ -138,25 +145,30 @@ update :: proc( delta_time : f64 ) -> b32
 
 	//region Camera Manual Nav
 	{
-		cam := & project.workspace.cam
-
 		digital_move_speed : f32 = 200.0
-		// zoom_sensitivity   : f32 = 0.2 // Digital
-		zoom_sensitivity   : f32 = 4.0  // Smooth
 
-		if debug.zoom_target == 0.0 {
-			debug.zoom_target = cam.zoom
+		if workspace.zoom_target == 0.0 {
+			workspace.zoom_target = cam.zoom
 		}
 
-		// Adjust zoom_target based on input, not the actual zoom
-		zoom_delta        := input.mouse.vertical_wheel * zoom_sensitivity
-		debug.zoom_target *= 1 + zoom_delta * f32(delta_time)
-		debug.zoom_target  = clamp(debug.zoom_target, 0.25, 10.0)
+		config.cam_zoom_smooth_snappiness = 10.0
+		config.cam_zoom_mode = .Smooth
+		switch config.cam_zoom_mode
+		{
+			case .Smooth:
+				zoom_delta            := input.mouse.vertical_wheel * config.cam_zoom_sensitivity_smooth
+				workspace.zoom_target *= 1 + zoom_delta * f32(delta_time)
+				workspace.zoom_target  = clamp(workspace.zoom_target, 0.25, 10.0)
 
-		// Linearly interpolate cam.zoom towards zoom_target
-		lerp_factor := cast(f32) 4.0 // Adjust this value to control the interpolation speed
-		cam.zoom    += (debug.zoom_target - cam.zoom) * lerp_factor * f32(delta_time)
-		cam.zoom     = clamp(cam.zoom, 0.25, 10.0) // Ensure cam.zoom stays within bounds
+				// Linearly interpolate cam.zoom towards zoom_target
+				lerp_factor := config.cam_zoom_smooth_snappiness // Adjust this value to control the interpolation speed
+				cam.zoom    += (workspace.zoom_target - cam.zoom) * lerp_factor * f32(delta_time)
+				cam.zoom     = clamp(cam.zoom, 0.25, 10.0) // Ensure cam.zoom stays within bounds
+			case .Digital:
+				zoom_delta            := input.mouse.vertical_wheel * config.cam_zoom_sensitivity_digital
+				workspace.zoom_target  = clamp(workspace.zoom_target + zoom_delta, 0.25, 10.0)
+				cam.zoom = workspace.zoom_target
+		}
 
 		move_velocity : Vec2 = {
 			- cast(f32) i32(debug_actions.cam_move_left) + cast(f32) i32(debug_actions.cam_move_right),
@@ -168,7 +180,7 @@ update :: proc( delta_time : f64 ) -> b32
 		if debug_actions.cam_mouse_pan
 		{
 			if is_within_screenspace(input.mouse.pos) {
-				pan_velocity := input.mouse.delta * (1/cam.zoom)
+				pan_velocity := input.mouse.delta * ( 1 / cam.zoom )
 				cam.target   -= pan_velocity
 			}
 		}
@@ -208,7 +220,7 @@ update :: proc( delta_time : f64 ) -> b32
 		}}
 		ui_style_theme( frame_theme )
 
-		first_layout := UI_Layout {
+		default_layout := UI_Layout {
 			anchor    = {},
 			// alignment = { 0.0, 0.0 },
 			alignment = { 0.5, 0.5 },
@@ -216,25 +228,70 @@ update :: proc( delta_time : f64 ) -> b32
 			pos       = { 0, 0 },
 			size      = { 200, 200 },
 		}
-		ui_set_layout( first_layout )
+		ui_set_layout( default_layout )
 
 		// First Demo
-		when true
+		Test_HoverNClick :: false
+		Test_Draggable   :: true
+
+		when Test_HoverNClick
 		{
 			first_flags : UI_BoxFlags = { .Mouse_Clickable, .Focusable, .Click_To_Focus  }
-			first_box := ui_box_make( first_flags, "FIRST BOX BOIS" )
+			first_box := ui_box_make( first_flags, "FIRST BOX!" )
 			signal    := ui_signal_from_box( first_box )
 
 			if signal.left_clicked || debug.frame_2_created {
-				second_layout := first_layout
+				second_layout := default_layout
 				second_layout.pos = { 250, 0 }
 				ui_set_layout( second_layout )
 
-				second_box := ui_box_make( first_flags, "SECOND BOX BOIS" )
+				second_box := ui_box_make( first_flags, "SECOND BOX!" )
 				signal     := ui_signal_from_box( second_box )
 
 				debug.frame_2_created = true
 			}
+		}
+
+		config.ui_resize_border_width = 50
+		when Test_Draggable
+		{
+			draggable_flags := UI_BoxFlags { .Mouse_Clickable, .Focusable, .Click_To_Focus }
+			draggable_box   := ui_box_make( draggable_flags, "Draggable Box!" )
+			signal          := ui_signal_from_box( draggable_box )
+
+			if draggable_box.first_frame {
+				debug.draggable_box_pos  = draggable_box.style.layout.pos
+				debug.draggable_box_size = draggable_box.style.layout.size
+			}
+
+			// Dragging
+			if signal.dragging {
+				debug.draggable_box_pos += mouse_world_delta()
+			}
+
+			// Resize
+			if signal.resizing
+			{
+				if ! debug.box_resize_started {
+					debug.box_original_size = debug.draggable_box_size
+				}
+				center            := debug.draggable_box_pos
+				original_distance := linalg.distance(ui_context.cursor_active_start, center)
+				cursor_distance   := linalg.distance(signal.cursor_pos, center)
+
+				scale_factor := cursor_distance * (1 / original_distance)
+
+				debug.draggable_box_size = debug.box_original_size * scale_factor
+			}
+			debug.box_resize_started = cast(b32) signal.resizing
+
+			if workspace.ui.hot_resizable || workspace.ui.active_resizing {
+				draggable_box.style.bg_color = Color_Blue
+			}
+
+			// Note(Ed): Don't necessarily need a layout if its simple...
+			draggable_box.style.pos         = debug.draggable_box_pos
+			draggable_box.style.layout.size = debug.draggable_box_size
 		}
 	}
 	//endregion Imgui Tick

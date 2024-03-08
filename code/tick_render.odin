@@ -60,12 +60,20 @@ render :: proc()
 			}
 		}
 
+		debug_text("Zoom Target: %v", project.workspace.zoom_target)
+
 		if debug.mouse_vis {
+			debug_text( "Mouse Vertical Wheel: %v", input.mouse.vertical_wheel )
 			debug_text( "Mouse Position (Screen): %v", input.mouse.pos )
 			debug_text("Mouse Position (World): %v", screen_to_world(input.mouse.pos) )
 			cursor_pos :=  transmute(Vec2) state.app_window.extent + input.mouse.pos
 			rl.DrawCircleV( cursor_pos, 10, Color_White_A125 )
 		}
+
+		debug_text( "ui_drag_start    : %v", debug.ui_drag_start )
+		debug_text( "ui_drag_delta    : %v", debug.ui_drag_delta )
+		debug_text( "Draggable Box Pos: %v", debug.draggable_box_pos )
+
 		debug.draw_debug_text_y = 50
 	}
 	//endregion Render Screenspace
@@ -80,6 +88,8 @@ render_mode_2d :: proc()
 	win_extent := state.app_window.extent
 
 	rl.BeginMode2D( project.workspace.cam )
+
+	debug_draw_text_world( "This is text in world space", { 0, 200 }, 16.0  )
 
 	ImguiRender:
 	{
@@ -118,7 +128,6 @@ render_mode_2d :: proc()
 	}
 	//endregion Imgui Render
 
-	debug_draw_text_world( "This is text in world space", { 0, 200 }, 16.0  )
 
 	if debug.mouse_vis {
 		cursor_world_pos := screen_to_world(input.mouse.pos)

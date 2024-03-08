@@ -162,6 +162,7 @@ UI_Signal :: struct {
 	pressed     : b8,
 	released    : b8,
 	dragging    : b8,
+	resizing    : b8,
 	hovering    : b8,
 	cursor_over : b8,
 	commit      : b8,
@@ -202,7 +203,7 @@ UI_Style :: struct {
 
 	cursor : UI_Cursor,
 
-	layout : UI_Layout,
+	using layout : UI_Layout,
 
 	transition_time : f32,
 }
@@ -228,16 +229,20 @@ UI_Box :: struct {
 
 	// Regenerated per frame.
 	using links  : DLL_NodeFull( UI_Box ), // first, last, prev, next
-	parent       : ^ UI_Box,
+	parent       : ^UI_Box,
 	num_children : i32,
 
 	flags    : UI_BoxFlags,
 	computed : UI_Computed,
 	theme    : UI_StyleTheme,
-	style    : ^ UI_Style,
+
+	style : ^UI_Style,
 
 	// Persistent Data
-	style_delta : f32,
+	first_frame  : b8,
+	hot_delta    : f32,
+	active_delta : f32,
+	style_delta  : f32,
 	// prev_computed : UI_Computed,
 	// prev_style    : UI_Style,v
 	mouse         : UI_InteractState,
@@ -248,7 +253,7 @@ UI_Box :: struct {
 UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
 UI_Parent_Stack_Size      :: 1024
-UI_Built_Boxes_Array_Size :: 128
+UI_Built_Boxes_Array_Size :: 1024
 
 UI_State :: struct {
 	// TODO(Ed) : Use these
@@ -258,11 +263,11 @@ UI_State :: struct {
 	built_box_count : i32,
 
 	caches     : [2] HMapZPL( UI_Box ),
-	prev_cache : ^ HMapZPL( UI_Box ),
-	curr_cache : ^ HMapZPL( UI_Box ),
+	prev_cache : ^HMapZPL( UI_Box ),
+	curr_cache : ^HMapZPL( UI_Box ),
 
-	null_box : ^ UI_Box, // Ryan had this, I don't know why yet.
-	root     : ^ UI_Box,
+	null_box : ^UI_Box, // Ryan had this, I don't know why yet.
+	root     : ^UI_Box,
 
 	// Do we need to recompute the layout?
 	layout_dirty  : b32,
@@ -272,13 +277,17 @@ UI_State :: struct {
 	parent_stack  : StackFixed( ^UI_Box, UI_Parent_Stack_Size ),
 	// flag_stack    : Stack( UI_BoxFlags, UI_BoxFlags_Stack_Size ),
 
-	hot            : UI_Key,
-	active_mouse   : [MouseBtn.count] UI_Key,
-	active         : UI_Key,
+	hot             : UI_Key,
+	active_mouse    : [MouseBtn.count] UI_Key,
+	active          : UI_Key,
+	hot_resizable   : b32,
+	active_resizing : b32, // Locks the user into a resizing state for the active box until they release the active key
+
 	clipboard_copy : UI_Key,
 	last_clicked   : UI_Key,
 
-	drag_start_mouse : Vec2,
+	cursor_active_start : Vec2,
+	// cursor_resize_start : Vec2,
 	// drag_state_arena : ^ Arena,
 	// drag_state data  : string,
 
@@ -347,6 +356,8 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 		verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
 		curr_box = set_result
+
+		curr_box.first_frame = prev_box == nil
 	}
 
 	// TODO(Ed) : Review this when we learn layouts more...
@@ -394,6 +405,21 @@ ui_box_tranverse_next :: proc( box : ^ UI_Box ) -> (^ UI_Box) {
 	}
 
 	return box.next
+}
+
+ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
+	using state := get_state()
+	if ui_context == & state.project.workspace.ui {
+		return screen_to_world( input.mouse.pos )
+	}
+	else {
+		return input.mouse.pos
+	}
+}
+
+ui_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
+	using state := get_state()
+	return ui_cursor_pos() - state.ui_context.cursor_active_start
 }
 
 ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
@@ -457,15 +483,21 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	ui    := get_state().ui_context
 	input := get_state().input
 
+	frame_delta := frametime_delta32()
+
 	signal := UI_Signal { box = box }
 
-	if ui == & get_state().project.workspace.ui {
-		signal.cursor_pos = screen_to_world( input.mouse.pos )
-	}
-	else {
-		signal.cursor_pos = input.mouse.pos
-	}
-	signal.cursor_over = cast(b8) pos_within_range2( signal.cursor_pos, box.computed.bounds )
+	// Cursor Collision
+		signal.cursor_pos  = ui_cursor_pos()
+		signal.cursor_over = cast(b8) pos_within_range2( signal.cursor_pos, box.computed.bounds )
+
+		resize_border_width     := cast(f32) get_state().config.ui_resize_border_width
+		resize_border_non_range := add(box.computed.bounds, range2(
+				{  resize_border_width, -resize_border_width },
+				{ -resize_border_width,  resize_border_width }))
+
+		within_resize_range := cast(b8) ! pos_within_range2( signal.cursor_pos, resize_border_non_range )
+		within_resize_range &= signal.cursor_over
 
 	left_pressed  := pressed( input.mouse.left )
 	left_released := released( input.mouse.left )
@@ -478,7 +510,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		ui.hot                         = box.key
 		ui.active                      = box.key
 		ui.active_mouse[MouseBtn.Left] = box.key
-		ui.drag_start_mouse            = signal.cursor_pos
+		ui.cursor_active_start        = signal.cursor_pos
 		ui.last_pressed_key            = box.key
 
 		signal.pressed = true
@@ -487,18 +519,24 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 
 	if mouse_clickable && signal.cursor_over && left_released
 	{
-		ui.active                      = UI_Key(0)
+		box.active_delta = 0
+		ui.active        = UI_Key(0)
 		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
+
 		signal.released     = true
 		signal.left_clicked = true
 
 		ui.last_clicked = box.key
 	}
 
-	if mouse_clickable && ! signal.cursor_over && left_released {
+	if mouse_clickable && ! signal.cursor_over && left_released
+	{
+		box.hot_delta = 0
+
 		ui.hot    = UI_Key(0)
 		ui.active = UI_Key(0)
 		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
+
 		signal.released     = true
 		signal.left_clicked = false
 	}
@@ -523,22 +561,45 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 
 	}
 
+	is_hot    := ui.hot    == box.key
+	is_active := ui.active == box.key
+
 	if signal.cursor_over &&
-		ui.hot    == UI_Key(0) || ui.hot    == box.key &&
-		ui.active == UI_Key(0) || ui.active == box.key
+		ui.hot    == UI_Key(0) || is_hot &&
+		ui.active == UI_Key(0) || is_active
 	{
 		ui.hot = box.key
+		is_hot = true
 	}
 
+	if ! is_active {
+		ui.hot_resizable = cast(b32) within_resize_range
+	}
+	signal.resizing = cast(b8) is_active && (within_resize_range || ui.active_resizing)
+
+	if is_hot {
+		box.hot_delta += frame_delta
+	}
+	if is_active {
+		box.active_delta += frame_delta
+	}
+	ui.active_resizing = cast(b32) is_active && signal.resizing
+
+	signal.dragging = cast(b8) is_active && ( ! within_resize_range && ! ui.active_resizing)
+
 	style_preset := UI_StylePreset.Default
+	// box.style = stack_peek( & ui.them_stack ).default
 	if box.key == ui.hot {
 		style_preset = UI_StylePreset.Hovered
+		// box.stye = stack_peek( & ui.theme_stack ).hovered
 	}
 	if box.key == ui.active {
 		style_preset = UI_StylePreset.Focused
+		// box.stye = stack_peek( & ui.theme_stack ).focused
 	}
 	if UI_BoxFlag.Disabled in box.flags {
 		style_preset = UI_StylePreset.Disabled
+		// box.style = stack_peek( & ui.theme.stack ).disabled
 	}
 	box.style = & box.theme.array[style_preset]
 

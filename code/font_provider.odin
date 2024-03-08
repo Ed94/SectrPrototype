@@ -47,7 +47,10 @@ FontGlyphsRender :: struct {
 
 FontDef :: struct {
 	path_file    : string,
-	data         : [] u8,
+
+	// TODO(Ed) : you may have to store font data in the future if we render on demand
+	// data         : []u8,
+
 	default_size : i32,
 	size_table   : [Font_Largest_Px_Size / 2] FontGlyphsRender,
 }
@@ -62,8 +65,7 @@ font_provider_startup :: proc()
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
 	font_cache_alloc_error : AllocatorError
-
-	font_cache, font_cache_alloc_error = zpl_hmap_init_reserve( FontDef, general_slab_allocator(), 8 )
+	font_cache, font_cache_alloc_error = zpl_hmap_init_reserve( FontDef, general_slab_allocator(), 2 )
 	verify( font_cache_alloc_error == AllocatorError.None, "Failed to allocate font_cache" )
 
 	log("font_cache created")
@@ -94,7 +96,7 @@ font_load :: proc( path_file : string,
 {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
-	font_data, read_succeded : = os.read_entire_file( path_file, general_slab_allocator() )
+	font_data, read_succeded : = os.read_entire_file( path_file, context.temp_allocator )
 	verify( b32(read_succeded), str_fmt_tmp("Failed to read font file for: %v", path_file) )
 	font_data_size := cast(i32) len(font_data)
 
@@ -117,7 +119,7 @@ font_load :: proc( path_file : string,
 	verify( set_error == AllocatorError.None, "Failed to add new font entry to cache" )
 
 	def.path_file    = path_file
-	def.data         = font_data
+	// def.data         = font_data
 	def.default_size = i32(points_to_pixels(default_size))
 
 	// TODO(Ed): this is slow & eats quite a bit of memory early on. Setup a more on demand load for a specific size.

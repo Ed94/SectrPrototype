@@ -95,6 +95,11 @@ range2_pixels_to_cm :: proc( range : Range2 ) -> Range2 {
 
 Camera :: rl.Camera2D
 
+CameraZoomMode :: enum u32 {
+	Digital,
+	Smooth,
+}
+
 // TODO(Ed) : I'm not sure making the size and extent types distinct has made things easier or more difficult in Odin..
 // The lack of operator overloads is going to make any sort of nice typesystem
 // for doing lots of math or phyiscs more error prone or filled with proc wrappers
@@ -160,7 +165,7 @@ view_get_corners :: proc() -> BoundsCorners2 {
 	return { top_left, top_right, bottom_left, bottom_right }
 }
 
-screen_to_world :: proc(pos: Vec2) -> Vec2 {
+screen_to_world :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
 	state := get_state(); using state
 	cam   := & project.workspace.cam
 	result := Vec2 { cam.target.x, -cam.target.y}  + Vec2 { pos.x, -pos.y } * (1 / cam.zoom)

@@ -80,6 +80,23 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 	input      = & input_data[1]
 	input_prev = & input_data[0]
 
+	// Configuration Load
+	{
+		using config
+		resolution_width  = 1000
+		resolution_height =  600
+		refresh_rate      =    0
+
+		cam_min_zoom                 = 0.25
+		cam_max_zoom                 = 10.0
+		cam_zoom_mode                = .Smooth
+		cam_zoom_smooth_snappiness   = 4.0
+		cam_zoom_sensitivity_digital = 0.2
+		cam_zoom_sensitivity_smooth  = 4.0
+
+		ui_resize_border_width = 20
+	}
+
 	// rl.Odin_SetMalloc( RL_MALLOC )
 
 	rl.SetConfigFlags( {
@@ -119,15 +136,6 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 
 		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" }, frame_allocator() )
 		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
-
-		// font_data, read_succeded : = os.read_entire_file( path_rec_mono_semicasual_reg  )
-		// verify( read_succeded, fmt.tprintf("Failed to read font file for: %v", path_rec_mono_semicasual_reg) )
-
-		// cstr                         := strings.clone_to_cstring( path_rec_mono_semicasual_reg )
-		// font_rec_mono_semicasual_reg  = rl.LoadFontEx( cstr, cast(i32) points_to_pixels(24.0), nil, 0 )
-		// delete( cstr)
-
-		// rl.GuiSetFont( font_rec_mono_semicasual_reg ) // TODO(Ed) : Does this do anything?
 		default_font = font_firacode
 		log( "Default font loaded" )
 	}
@@ -198,8 +206,8 @@ reload :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VA
 	// Thankfully persistent dynamic allocations are rare, and thus we know exactly which ones they are.
 
 	font_provider_data := & get_state().font_provider_data
-	// font_provide_data.font_cache.hashes.allocator = slab_allocator()
-	// font_provide_data.font_cache.entries.allocator = slab_allocator()
+	font_provider_data.font_cache.hashes.allocator  = general_slab_allocator()
+	font_provider_data.font_cache.entries.allocator = general_slab_allocator()
 
 	ui_reload( & get_state().project.workspace.ui, cache_allocator =  general_slab_allocator() )
 
@@ -217,7 +225,9 @@ tick :: proc( delta_time : f64, delta_ns : Duration ) -> b32
 	context.allocator      = frame_allocator()
 	context.temp_allocator = transient_allocator()
 
-	get_state().frametime_delta_ns = delta_ns
+	state := get_state()
+	state.frametime_delta_ns      = delta_ns
+	state.frametime_delta_seconds = delta_time
 
 	result := update( delta_time )
 	render()

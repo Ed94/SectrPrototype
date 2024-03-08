@@ -280,6 +280,8 @@ main :: proc()
 		verify( sectr_api.lib_version != 0, "Failed to initially load the sectr module" )
 	}
 
+	free_all( context.temp_allocator )
+
 	running   = true;
 	sectr_api = sectr_api
 	sectr_api.startup(

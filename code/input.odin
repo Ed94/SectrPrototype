@@ -273,6 +273,12 @@ MouseState :: struct {
 	vertical_wheel, horizontal_wheel : AnalogAxis
 }
 
+mouse_world_delta :: #force_inline proc "contextless" () -> Vec2 {
+	using state := get_state()
+	cam := & state.project.workspace.cam
+	return { input.mouse.delta.x, -input.mouse.delta.y } * ( 1 / cam.zoom )
+}
+
 InputState :: struct {
 	keyboard : KeyboardState,
 	mouse    : MouseState

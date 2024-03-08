@@ -212,7 +212,8 @@ zpl_hmap_set :: proc( using self : ^ HMapZPL( $ Type), key : u64, value : Type )
 	entries.data[id].value = value
 
 	if zpl_hmap_full( self ) {
-		return & entries.data[id].value, zpl_hmap_grow( self )
+		alloc_error := zpl_hmap_grow( self )
+		return & entries.data[id].value, alloc_error
 	}
 
 	return & entries.data[id].value, AllocatorError.None
