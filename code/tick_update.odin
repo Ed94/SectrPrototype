@@ -252,9 +252,14 @@ update :: proc( delta_time : f64 ) -> b32
 			}
 		}
 
-		config.ui_resize_border_width = 50
+		config.ui_resize_border_width = 10
 		when Test_Draggable
 		{
+			// draggable_box_layout := default_layout
+			// draggable_box_layout.pos  = debug.draggable_box_pos
+			// draggable_box_layout.size = debug.draggable_box_size
+			// ui_set_layout(draggable_box_layout)
+
 			draggable_flags := UI_BoxFlags { .Mouse_Clickable, .Focusable, .Click_To_Focus }
 			draggable_box   := ui_box_make( draggable_flags, "Draggable Box!" )
 			signal          := ui_signal_from_box( draggable_box )
@@ -272,25 +277,22 @@ update :: proc( delta_time : f64 ) -> b32
 			// Resize
 			if signal.resizing
 			{
-				if ! debug.box_resize_started {
+				if signal.pressed {
 					debug.box_original_size = debug.draggable_box_size
 				}
 				center            := debug.draggable_box_pos
 				original_distance := linalg.distance(ui_context.cursor_active_start, center)
 				cursor_distance   := linalg.distance(signal.cursor_pos, center)
-
-				scale_factor := cursor_distance * (1 / original_distance)
+				scale_factor      := cursor_distance * (1 / original_distance)
 
 				debug.draggable_box_size = debug.box_original_size * scale_factor
 			}
-			debug.box_resize_started = cast(b32) signal.resizing
 
 			if workspace.ui.hot_resizable || workspace.ui.active_resizing {
 				draggable_box.style.bg_color = Color_Blue
 			}
 
-			// Note(Ed): Don't necessarily need a layout if its simple...
-			draggable_box.style.pos         = debug.draggable_box_pos
+			draggable_box.style.layout.pos  = debug.draggable_box_pos
 			draggable_box.style.layout.size = debug.draggable_box_size
 		}
 	}

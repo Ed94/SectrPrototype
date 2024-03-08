@@ -232,17 +232,18 @@ UI_Box :: struct {
 	parent       : ^UI_Box,
 	num_children : i32,
 
-	flags    : UI_BoxFlags,
-	computed : UI_Computed,
-	theme    : UI_StyleTheme,
-
-	style : ^UI_Style,
+	flags      : UI_BoxFlags,
+	computed   : UI_Computed,
+	prev_style : UI_Style,
+	style      : UI_Style,
 
 	// Persistent Data
-	first_frame  : b8,
-	hot_delta    : f32,
-	active_delta : f32,
-	style_delta  : f32,
+	first_frame    : b8,
+	hot_delta      : f32,
+	active_delta   : f32,
+	disabled_delta : f32,
+	style_delta    : f32,
+
 	// prev_computed : UI_Computed,
 	// prev_style    : UI_Style,v
 	mouse         : UI_InteractState,
@@ -286,10 +287,10 @@ UI_State :: struct {
 	clipboard_copy : UI_Key,
 	last_clicked   : UI_Key,
 
-	cursor_active_start : Vec2,
-	// cursor_resize_start : Vec2,
-	// drag_state_arena : ^ Arena,
-	// drag_state data  : string,
+	cursor_active_start  : Vec2,
+
+	hot_start_style    : UI_Style,
+	active_start_style : UI_Style,
 
 	last_pressed_key    : [MouseBtn.count] UI_Key,
 	last_pressed_key_us : [MouseBtn.count] f32,
@@ -360,16 +361,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 		curr_box.first_frame = prev_box == nil
 	}
 
-	// TODO(Ed) : Review this when we learn layouts more...
-	if prev_box != nil {
-		layout_dirty &= ! ui_box_equal( curr_box, prev_box )
-	}
-	else {
-		layout_dirty = true
-	}
-
 	curr_box.flags  = flags
-	curr_box.theme  = stack_peek( & theme_stack )
 	curr_box.parent = stack_peek( & parent_stack )
 
 	// Clear old links
@@ -434,7 +426,6 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	}
 
 	root = ui_box_make( {}, "root#001" )
-	root.style = & root.theme.default
 	ui_parent_push(root)
 }
 
@@ -476,134 +467,6 @@ ui_parent_pop :: proc() {
 @(deferred_none = ui_parent_pop)
 ui_parent :: proc( ui : ^ UI_Box) {
 	ui_parent_push( ui )
-}
-
-ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
-{
-	ui    := get_state().ui_context
-	input := get_state().input
-
-	frame_delta := frametime_delta32()
-
-	signal := UI_Signal { box = box }
-
-	// Cursor Collision
-		signal.cursor_pos  = ui_cursor_pos()
-		signal.cursor_over = cast(b8) pos_within_range2( signal.cursor_pos, box.computed.bounds )
-
-		resize_border_width     := cast(f32) get_state().config.ui_resize_border_width
-		resize_border_non_range := add(box.computed.bounds, range2(
-				{  resize_border_width, -resize_border_width },
-				{ -resize_border_width,  resize_border_width }))
-
-		within_resize_range := cast(b8) ! pos_within_range2( signal.cursor_pos, resize_border_non_range )
-		within_resize_range &= signal.cursor_over
-
-	left_pressed  := pressed( input.mouse.left )
-	left_released := released( input.mouse.left )
-
-	mouse_clickable    := UI_BoxFlag.Mouse_Clickable    in box.flags
-	keyboard_clickable := UI_BoxFlag.Keyboard_Clickable in box.flags
-
-	if mouse_clickable && signal.cursor_over && left_pressed
-	{
-		ui.hot                         = box.key
-		ui.active                      = box.key
-		ui.active_mouse[MouseBtn.Left] = box.key
-		ui.cursor_active_start        = signal.cursor_pos
-		ui.last_pressed_key            = box.key
-
-		signal.pressed = true
-		// TODO(Ed) : Support double-click detection
-	}
-
-	if mouse_clickable && signal.cursor_over && left_released
-	{
-		box.active_delta = 0
-		ui.active        = UI_Key(0)
-		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
-
-		signal.released     = true
-		signal.left_clicked = true
-
-		ui.last_clicked = box.key
-	}
-
-	if mouse_clickable && ! signal.cursor_over && left_released
-	{
-		box.hot_delta = 0
-
-		ui.hot    = UI_Key(0)
-		ui.active = UI_Key(0)
-		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
-
-		signal.released     = true
-		signal.left_clicked = false
-	}
-
-	if keyboard_clickable
-	{
-		// TODO(Ed) : Add keyboard interaction support
-	}
-
-	// TODO(Ed) : Add scrolling support
-	if UI_BoxFlag.Scroll_X in box.flags {
-
-	}
-	if UI_BoxFlag.Scroll_Y in box.flags {
-
-	}
-	// TODO(Ed) : Add panning support
-	if UI_BoxFlag.Pan_X in box.flags {
-
-	}
-	if UI_BoxFlag.Pan_Y in box.flags {
-
-	}
-
-	is_hot    := ui.hot    == box.key
-	is_active := ui.active == box.key
-
-	if signal.cursor_over &&
-		ui.hot    == UI_Key(0) || is_hot &&
-		ui.active == UI_Key(0) || is_active
-	{
-		ui.hot = box.key
-		is_hot = true
-	}
-
-	if ! is_active {
-		ui.hot_resizable = cast(b32) within_resize_range
-	}
-	signal.resizing = cast(b8) is_active && (within_resize_range || ui.active_resizing)
-
-	if is_hot {
-		box.hot_delta += frame_delta
-	}
-	if is_active {
-		box.active_delta += frame_delta
-	}
-	ui.active_resizing = cast(b32) is_active && signal.resizing
-
-	signal.dragging = cast(b8) is_active && ( ! within_resize_range && ! ui.active_resizing)
-
-	style_preset := UI_StylePreset.Default
-	// box.style = stack_peek( & ui.them_stack ).default
-	if box.key == ui.hot {
-		style_preset = UI_StylePreset.Hovered
-		// box.stye = stack_peek( & ui.theme_stack ).hovered
-	}
-	if box.key == ui.active {
-		style_preset = UI_StylePreset.Focused
-		// box.stye = stack_peek( & ui.theme_stack ).focused
-	}
-	if UI_BoxFlag.Disabled in box.flags {
-		style_preset = UI_StylePreset.Disabled
-		// box.style = stack_peek( & ui.theme.stack ).disabled
-	}
-	box.style = & box.theme.array[style_preset]
-
-	return signal
 }
 
 ui_style_ref :: proc( box_state : UI_StylePreset ) -> (^ UI_Style) {
