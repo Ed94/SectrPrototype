@@ -102,6 +102,8 @@ render_mode_2d :: proc()
 
 	draw_text( "This is text in world space", { 0, 200 }, 16.0  )
 
+	cam_zoom_ratio := 1.0 / cam.zoom
+
 	ImguiRender:
 	{
 		ui   := & state.project.workspace.ui
@@ -156,7 +158,7 @@ render_mode_2d :: proc()
 
 			rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )
 
-			line_thickness := 1 * (1 / cam.zoom)
+			line_thickness := 1 * cam_zoom_ratio
 
 			rl.DrawRectangleRoundedLines( rect_padding, style.layout.corner_radii[0], 9, line_thickness, Color_Debug_UI_Padding_Bounds )
 			rl.DrawRectangleRoundedLines( rect_content, style.layout.corner_radii[0], 9, line_thickness, Color_Debug_UI_Content_Bounds )
@@ -181,7 +183,7 @@ render_mode_2d :: proc()
 				rl.DrawRectangleRoundedLines( rect_resize, style.layout.corner_radii[0], 9, line_thickness, Color_Red )
 			}
 
-			point_radius := 3 * (1 / cam.zoom)
+			point_radius := 3 * cam_zoom_ratio
 			rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
 			rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
 
@@ -200,7 +202,7 @@ render_mode_2d :: proc()
 		rl.DrawCircleV( world_to_screen_pos(cursor_world_pos), 5, Color_GreyRed )
 	}
 
-	rl.DrawCircleV( { 0, 0 }, 1 * (1 / cam.zoom), Color_White )
+	rl.DrawCircleV( { 0, 0 }, 1 * cam_zoom_ratio, Color_White )
 
 	rl.EndMode2D()
 }
