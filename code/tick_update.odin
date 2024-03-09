@@ -191,6 +191,7 @@ update :: proc( delta_time : f64 ) -> b32
 	{
 		// Creates the root box node, set its as the first parent.
 		ui_graph_build( & state.project.workspace.ui )
+		ui := ui_context
 
 		frame_style_flags : UI_StyleFlags = {
 			.Fixed_Position_X, .Fixed_Position_Y,
@@ -201,15 +202,15 @@ update :: proc( delta_time : f64 ) -> b32
 			bg_color = Color_BG_TextBox,
 		}
 		frame_style_disabled := UI_Style {
-			flags = frame_style_flags,
+			flags    = frame_style_flags,
 			bg_color = Color_Frame_Disabled,
 		}
 		frame_style_hovered := UI_Style {
-			flags = frame_style_flags,
+			flags    = frame_style_flags,
 			bg_color = Color_Frame_Hover,
 		}
 		frame_style_select := UI_Style {
-			flags = frame_style_flags,
+			flags    = frame_style_flags,
 			bg_color = Color_Frame_Select,
 		}
 		frame_theme := UI_StyleTheme { styles = {
@@ -234,67 +235,10 @@ update :: proc( delta_time : f64 ) -> b32
 		Test_HoverNClick :: false
 		Test_Draggable   :: true
 
-		when Test_HoverNClick
-		{
-			first_flags : UI_BoxFlags = { .Mouse_Clickable, .Focusable, .Click_To_Focus  }
-			first_box := ui_box_make( first_flags, "FIRST BOX!" )
-			signal    := ui_signal_from_box( first_box )
+		// test_hover_n_click()
+		// test_draggable()
 
-			if signal.left_clicked || debug.frame_2_created {
-				second_layout := default_layout
-				second_layout.pos = { 250, 0 }
-				ui_set_layout( second_layout )
-
-				second_box := ui_box_make( first_flags, "SECOND BOX!" )
-				signal     := ui_signal_from_box( second_box )
-
-				debug.frame_2_created = true
-			}
-		}
-
-		config.ui_resize_border_width = 10
-		when Test_Draggable
-		{
-			// draggable_box_layout := default_layout
-			// draggable_box_layout.pos  = debug.draggable_box_pos
-			// draggable_box_layout.size = debug.draggable_box_size
-			// ui_set_layout(draggable_box_layout)
-
-			draggable_flags := UI_BoxFlags { .Mouse_Clickable, .Focusable, .Click_To_Focus }
-			draggable_box   := ui_box_make( draggable_flags, "Draggable Box!" )
-			signal          := ui_signal_from_box( draggable_box )
-
-			if draggable_box.first_frame {
-				debug.draggable_box_pos  = draggable_box.style.layout.pos
-				debug.draggable_box_size = draggable_box.style.layout.size
-			}
-
-			// Dragging
-			if signal.dragging {
-				debug.draggable_box_pos += mouse_world_delta()
-			}
-
-			// Resize
-			if signal.resizing
-			{
-				if signal.pressed {
-					debug.box_original_size = debug.draggable_box_size
-				}
-				center            := debug.draggable_box_pos
-				original_distance := linalg.distance(ui_context.cursor_active_start, center)
-				cursor_distance   := linalg.distance(signal.cursor_pos, center)
-				scale_factor      := cursor_distance * (1 / original_distance)
-
-				debug.draggable_box_size = debug.box_original_size * scale_factor
-			}
-
-			if workspace.ui.hot_resizable || workspace.ui.active_resizing {
-				draggable_box.style.bg_color = Color_Blue
-			}
-
-			draggable_box.style.layout.pos  = debug.draggable_box_pos
-			draggable_box.style.layout.size = debug.draggable_box_size
-		}
+		
 	}
 	//endregion Imgui Tick
 

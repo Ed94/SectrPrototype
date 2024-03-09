@@ -100,7 +100,7 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 
 		engine_refresh_hz = 30
 
-		ui_resize_border_width = 20
+		ui_resize_border_width = 10
 	}
 
 	Desired_OS_Scheduler_MS :: 1

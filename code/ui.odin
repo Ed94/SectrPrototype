@@ -148,8 +148,6 @@ UI_Layout :: struct {
 }
 
 UI_Signal :: struct {
-	box : ^ UI_Box,
-
 	cursor_pos : Vec2,
 	drag_delta : Vec2,
 	scroll     : Vec2,
@@ -274,8 +272,8 @@ UI_State :: struct {
 	layout_dirty  : b32,
 
 	// TODO(Ed) : Look into using a build arena like Ryan does for these possibly (and thus have a linked-list stack)
-	theme_stack   : StackFixed( UI_StyleTheme, UI_Style_Stack_Size ),
-	parent_stack  : StackFixed( ^UI_Box, UI_Parent_Stack_Size ),
+	theme_stack  : StackFixed( UI_StyleTheme, UI_Style_Stack_Size ),
+	parent_stack : StackFixed( ^UI_Box, UI_Parent_Stack_Size ),
 	// flag_stack    : Stack( UI_BoxFlags, UI_BoxFlags_Stack_Size ),
 
 	hot             : UI_Key,
@@ -331,6 +329,11 @@ ui_box_equal :: proc( a, b : ^ UI_Box ) -> b32 {
 	result &= a.key   == b.key   // We assume for now the label is the same as the key, if not something is terribly wrong.
 	result &= a.flags == b.flags
 	return result
+}
+
+UI_Widget :: struct {
+	using box    : ^UI_Box,
+	using signal : UI_Signal,
 }
 
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)

@@ -105,6 +105,8 @@ render_mode_2d :: proc()
 			style    := current.style
 			computed := & current.computed
 
+			// bg_color := 
+
 			// TODO(Ed) : Render Borders
 
 			render_bounds := Range2 { pts = {

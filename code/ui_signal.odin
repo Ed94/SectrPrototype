@@ -7,7 +7,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 
 	frame_delta := frametime_delta32()
 
-	signal := UI_Signal { box = box }
+	signal := UI_Signal {}
 
 	// Cursor Collision
 		signal.cursor_pos  = ui_cursor_pos()
@@ -36,9 +36,11 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		ui.hot                         = box.key
 		ui.active                      = box.key
 		ui.active_mouse[MouseBtn.Left] = box.key
-		ui.last_pressed_key            = box.key
+
+		ui.last_pressed_key = box.key
 
 		ui.cursor_active_start = signal.cursor_pos
+		ui.active_start_style  = box.style
 
 		signal.pressed = true
 		// TODO(Ed) : Support double-click detection
@@ -99,6 +101,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	{
 		ui.hot = box.key
 		is_hot = true
+
+		ui.hot_start_style = box.style
 	}
 
 	if ! is_active {
