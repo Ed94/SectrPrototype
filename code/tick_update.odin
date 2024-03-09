@@ -231,14 +231,10 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 		ui_set_layout( default_layout )
 
-		// First Demo
-		Test_HoverNClick :: false
-		Test_Draggable   :: true
-
 		// test_hover_n_click()
 		// test_draggable()
 
-		
+
 	}
 	//endregion Imgui Tick
 

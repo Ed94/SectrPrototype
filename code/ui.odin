@@ -223,7 +223,9 @@ UI_TextAlign :: enum u32 {
 UI_Box :: struct {
 	// Cache ID
 	key   : UI_Key,
-	label : string,
+	// label : string,
+	label : StringCached,
+	text  : StringCached,
 
 	// Regenerated per frame.
 	using links  : DLL_NodeFull( UI_Box ), // first, last, prev, next
@@ -354,7 +356,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 		else {
 			box : UI_Box
 			box.key    = key
-			box.label  = label
+			box.label  = str_intern( label )
 			set_result, set_error = zpl_hmap_set( curr_cache, cast(u64) key, box )
 		}
 

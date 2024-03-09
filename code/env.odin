@@ -133,6 +133,7 @@ AppConfig :: struct {
 
 State :: struct {
 	general_slab : Slab,
+	string_cache : StringCache,
 
 	font_provider_data : FontProviderData,
 
@@ -190,8 +191,8 @@ ProjectConfig :: struct {
 }
 
 Project :: struct {
-	path : string,
-	name : string,
+	path : StringCached,
+	name : StringCached,
 
 	config   : ProjectConfig,
 	codebase : CodeBase,
@@ -209,7 +210,7 @@ Frame :: struct
 }
 
 Workspace :: struct {
-	name : string,
+	name : StringCached,
 
 	cam         : Camera,
 	zoom_target : f32,

@@ -24,7 +24,6 @@ test_draggable :: proc()
 	ui    := ui_context
 
 	draggable := ui_widget( "Draggable Box!", UI_BoxFlags { .Mouse_Clickable, .Focusable, .Click_To_Focus } )
-
 	if draggable.first_frame {
 		debug.draggable_box_pos  = draggable.style.layout.pos
 		debug.draggable_box_size = draggable.style.layout.size

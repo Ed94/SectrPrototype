@@ -88,7 +88,7 @@ render_mode_2d :: proc()
 
 	rl.BeginMode2D( project.workspace.cam )
 
-	debug_draw_text_world( "This is text in world space", { 0, 200 }, 16.0  )
+	draw_text( "This is text in world space", { 0, 200 }, 16.0  )
 
 	ImguiRender:
 	{

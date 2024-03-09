@@ -26,6 +26,7 @@ import "core:dynlib"
 import "core:io"
 import fmt_io "core:fmt"
 	str_fmt         :: fmt_io.printf
+	str_fmt_alloc   :: fmt_io.aprintf
 	str_fmt_tmp     :: fmt_io.tprintf
 	str_fmt_builder :: fmt_io.sbprintf
 import "core:log"
@@ -251,11 +252,11 @@ main :: proc()
 		}
 
 		timestamp            := str_fmt_tmp("%04d-%02d-%02d_%02d-%02d-%02d", year, month, day, hour, min, sec)
-		path_logger_finalized = str_clone( str_fmt_tmp( "%s/sectr_%v.log", Path_Logs, timestamp) )
+		path_logger_finalized = str_fmt_alloc( "%s/sectr_%v.log", Path_Logs, timestamp)
 	}
 
 	logger :  sectr.Logger
-	logger_init( & logger, "Sectr Host", str_fmt_tmp( "%s/sectr.log", Path_Logs ) )
+	logger_init( & logger, "Sectr Host", str_fmt_alloc( "%s/sectr.log", Path_Logs ) )
 	context.logger = to_odin_logger( & logger )
 	{
 		// Log System Context

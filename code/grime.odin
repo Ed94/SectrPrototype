@@ -94,6 +94,11 @@ cm_to_pixels :: proc {
 	range2_cm_to_pixels,
 }
 
+draw_text :: proc {
+	draw_text_string,
+	draw_text_string_cached,
+}
+
 get_bounds :: proc {
 	view_get_bounds,
 }

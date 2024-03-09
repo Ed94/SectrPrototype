@@ -79,6 +79,8 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 		verify( alloc_error == .None, "Failed to allocate the general slab allocator" )
 	}
 
+	string_cache = str_cache_init()
+
 	context.user_ptr = state
 
 	input      = & input_data[1]
@@ -143,7 +145,7 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
-		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" }, frame_allocator() )
+		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" }, transient_allocator() )
 		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 		default_font = font_firacode
 		log( "Default font loaded" )
@@ -152,9 +154,9 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 	// Demo project setup
 	{
 		using project
-		path           = "./"
-		name           = "First Project"
-		workspace.name = "First Workspace"
+		path           = str_intern("./")
+		name           = str_intern( "First Project" )
+		workspace.name = str_intern( "First Workspace" )
 		{
 			using project.workspace
 			cam = {

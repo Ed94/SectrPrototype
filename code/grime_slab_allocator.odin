@@ -44,7 +44,7 @@ SlabPolicy :: StackFixed(SlabSizeClass, Slab_Max_Size_Classes)
 SlabHeader :: struct {
 	backing : Allocator,
 
-	policy : SlabPolicy,
+	policy : SlabPolicy, // TODO(Ed) : Remove this, the policy can't be changed after its been set so its meaningless to have...
 	pools  : StackFixed(Pool, Slab_Max_Size_Classes),
 }
 
@@ -222,7 +222,6 @@ slab_allocator_proc :: proc(
 	alignment := uint(alignment)
 	old_size  := uint(old_size)
 
-	// TODO(Ed) : Compiler bug - Some of these are commented out until I finish resolving issues with the pool allocator
 	switch mode
 	{
 		case .Alloc, .Alloc_Non_Zeroed:

@@ -160,6 +160,7 @@ font_load :: proc( path_file : string,
 		rl.UnloadImage( atlas )
 	}
 
+	free_all( context.temp_allocator )
 	return { key, desired_id }
 }
 
