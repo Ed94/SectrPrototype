@@ -89,7 +89,7 @@ draw_text_string_cached :: proc( content : StringCached, pos : Vec2, size : f32,
 
 // Raylib's equivalent doesn't take a length for the string (making it a pain in the ass)
 // So this is a 1:1 copy except it takes Odin strings
-measure_text_size :: proc( text : string, font : FontID, font_size := Font_Use_Default_Size, spacing : f32 ) -> AreaSize
+measure_text_size :: proc( text : string, font : FontID, font_size := Font_Use_Default_Size, spacing : f32 ) -> Vec2
 {
 	px_size := math.round( points_to_pixels( font_size ) )
 	rl_font := to_rl_Font( font, font_size )
@@ -98,7 +98,7 @@ measure_text_size :: proc( text : string, font : FontID, font_size := Font_Use_D
 	// Note(Ed) : raylib font size is in pixels so this is also.
 	@static text_line_spacing : f32 = 15
 
-	text_size : AreaSize
+	text_size : Vec2
 
 	if rl_font.texture.id == 0 || len(text) == 0 {
 		return text_size

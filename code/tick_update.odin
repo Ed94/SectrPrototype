@@ -197,87 +197,55 @@ update :: proc( delta_time : f64 ) -> b32
 			.Fixed_Position_X, .Fixed_Position_Y,
 			.Fixed_Width, .Fixed_Height,
 		}
+		default_layout := UI_Layout {
+			anchor    = {},
+			// alignment = { 0.0, 0.5 },
+			alignment = { 0.5, 0.5 },
+			text_alignment = { 0.5, 0.5 },
+			// alignment = { 1.0, 1.0 },
+			// corner_radii = { 0.3, 0.3, 0.3, 0.3 },
+			pos       = { 0, 0 },
+			size      = { 200, 200 },
+		}
+
 		frame_style_default := UI_Style {
 			flags    = frame_style_flags,
 			bg_color = Color_BG_TextBox,
 			font = default_font,
 			font_size = 30,
 			text_color = Color_White,
+			layout = default_layout,
 		}
-		frame_style_disabled := UI_Style {
-			flags    = frame_style_flags,
-			bg_color = Color_Frame_Disabled,
-			font = default_font,
-			font_size = 30,
-			text_color = Color_White,
-		}
-		frame_style_hovered := UI_Style {
-			flags    = frame_style_flags,
-			bg_color = Color_Frame_Hover,
-			font = default_font,
-			font_size = 30,
-			text_color = Color_White,
-		}
-		frame_style_select := UI_Style {
-			flags    = frame_style_flags,
-			bg_color = Color_Frame_Select,
-			font = default_font,
-			font_size = 30,
-			text_color = Color_White,
-		}
+
 		frame_theme := UI_StyleTheme { styles = {
 			frame_style_default,
-			frame_style_disabled,
-			frame_style_hovered,
-			frame_style_select,
+			frame_style_default,
+			frame_style_default,
+			frame_style_default,
 		}}
+		frame_theme.disabled.bg_color = Color_Frame_Disabled
+		frame_theme.hovered.bg_color = Color_Frame_Hover
+		frame_theme.focused.bg_color = Color_Frame_Select
 		ui_style_theme( frame_theme )
 
-		default_layout := UI_Layout {
-			anchor    = {},
-			// alignment = { 0.0, 0.5 },
-			alignment = { 0.5, 0.5 },
-			text_alignment = { 1.0, 1.0 },
-			// alignment = { 1.0, 1.0 },
-			corner_radii = { 0.3, 0.3, 0.3, 0.3 },
-			pos       = { 0, 0 },
-			size      = { 200, 200 },
-		}
-		ui_set_layout( default_layout )
-
 		// test_hover_n_click()
-		// test_draggable()
 
-		config.ui_resize_border_width = 2
+		test_draggable()
+
+		config.ui_resize_border_width = 20
 		// First box with text!!!!
+		when true
 		{
 			@static pos : Vec2
+			style := ui_style_peek( .Default )
+			ui_style_theme( { styles = { style, style, style, style, }} )
 
 			text := str_intern( "Lorem ipsum dolor sit amet")
+			font_size := 30
 
-			text_size := measure_text_size( text.str, default_font, 30, 0 )
-
-			ui_style_theme( { styles = {
-				frame_style_default,
-				frame_style_default,
-				frame_style_default,
-				frame_style_default,
-			}})
-
-			layout        := default_layout
-			layout.size    = cast(Vec2) text_size
-			layout.size.y *= 4
-			layout.size.x *= 1.5
-			// layout.size.y *= 3.248
-			// layout.size.x *= 1.348
-			// layout.size.x *= 1.348
-			layout.padding = ui_layout_padding( 30 )
-			ui_set_layout( layout )
-
-			text_box := ui_widget( "TEXT BOX!", UI_BoxFlags { .Mouse_Clickable, .Focusable, .Click_To_Focus } )
+			text_box := ui_text("TEXT BOX!", text, 30, flags = { .Mouse_Clickable })
 			if text_box.first_frame {
 				pos = text_box.style.layout.pos
-				text_box.text = text
 			}
 
 			if text_box.dragging {
@@ -286,6 +254,8 @@ update :: proc( delta_time : f64 ) -> b32
 
 			text_box.style.layout.pos = pos
 		}
+
+		// test_draggable()
 	}
 	//endregion Imgui Tick
 

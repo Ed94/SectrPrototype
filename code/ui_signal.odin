@@ -13,13 +13,15 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		signal.cursor_pos  = ui_cursor_pos()
 		signal.cursor_over = cast(b8) pos_within_range2( signal.cursor_pos, box.computed.bounds )
 
-		resize_border_width     := cast(f32) get_state().config.ui_resize_border_width
+		resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
+		resize_percent_width := box.style.size * (1.0 / resize_border_width)
 		resize_border_non_range := add(box.computed.bounds, range2(
-				{  resize_border_width, -resize_border_width },
-				{ -resize_border_width,  resize_border_width }))
+				{  resize_percent_width.x, -resize_percent_width.x },
+				{ -resize_percent_width.x,  resize_percent_width.x }))
 
 		within_resize_range := cast(b8) ! pos_within_range2( signal.cursor_pos, resize_border_non_range )
 		within_resize_range &= signal.cursor_over
+		within_resize_range &= .Mouse_Resizable in box.flags
 
 	left_pressed  := pressed( input.mouse.left )
 	left_released := released( input.mouse.left )
@@ -38,8 +40,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		ui.active_mouse[MouseBtn.Left] = box.key
 
 		ui.last_pressed_key = box.key
-
-		ui.cursor_active_start = signal.cursor_pos
 		ui.active_start_style  = box.style
 
 		signal.pressed = true
@@ -48,7 +48,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 
 	if mouse_clickable && signal.cursor_over && left_released
 	{
-		box.active_delta = 0
 		ui.active        = UI_Key(0)
 		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
 
@@ -95,20 +94,33 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	is_hot      := ui.hot    == box.key
 	is_active   := ui.active == box.key
 
-	if signal.cursor_over &&
-		ui.hot    == UI_Key(0) || is_hot &&
-		ui.active == UI_Key(0) || is_active
+	if signal.cursor_over
 	{
-		ui.hot = box.key
-		is_hot = true
+		hot_vacant    := ui.hot    == UI_Key(0)
+		active_vacant := ui.active == UI_Key(0)
 
-		ui.hot_start_style = box.style
+		if (hot_vacant    || is_hot) &&
+			 (active_vacant || is_active)
+		{
+			// prev_hot := zpl_hmap_get( ui.prev_cache, u64(ui.hot) )
+			// prev_hot_label := prev_hot != nil ? prev_hot.label.str : ""
+			// log( str_fmt_tmp("Detected HOT via CURSOR OVER: %v is_hot: %v is_active: %v prev_hot: %v", box.label.str, is_hot, is_active, prev_hot_label ))
+			ui.hot = box.key
+			is_hot = true
+
+			ui.hot_start_style = box.style
+		}
+	}
+	else
+	{
+		is_hot = false
+		if ui.hot == box.key {
+			ui.hot = UI_Key(0)
+		}
 	}
 
-	if ! is_active {
-		ui.hot_resizable = cast(b32) within_resize_range
-	}
-	signal.resizing = cast(b8) is_active && (within_resize_range || ui.active_resizing)
+	signal.resizing  = cast(b8)  is_active && (within_resize_range || ui.active_start_signal.resizing)
+	ui.hot_resizable = cast(b32) (is_hot && within_resize_range) || signal.resizing
 
 	// State Deltas update
 	if is_hot
@@ -142,8 +154,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		box.disabled_delta = 0
 	}
 
-	ui.active_resizing = cast(b32) is_active && signal.resizing
-	signal.dragging    = cast(b8) is_active && ( ! within_resize_range && ! ui.active_resizing)
+	signal.dragging = cast(b8)  is_active && ( ! within_resize_range && ! ui.active_start_signal.resizing)
 
 	// Update style if not in default state
 	{
@@ -160,6 +171,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 			if ! was_active {
 				box.prev_style  = box.style
 				box.style_delta = 0
+				log( str_fmt_tmp("NEW ACTIVE: %v", box.label.str))
 			}
 			box.style = stack_peek( & ui.theme_stack ).focused
 		}
@@ -184,5 +196,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		}
 	}
 
+	if is_active && ! was_active {
+		ui.active_start_signal = signal
+	}
 	return signal
 }

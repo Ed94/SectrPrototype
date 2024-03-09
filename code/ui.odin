@@ -55,10 +55,12 @@ UI_AnchorPresets :: enum u32 {
 UI_BoxFlag :: enum u64 {
 	Disabled,
 	Focusable,
+	Click_To_Focus,
 
 	Mouse_Clickable,
+	Mouse_Resizable,
+
 	Keyboard_Clickable,
-	Click_To_Focus,
 
 	Scroll_X,
 	Scroll_Y,
@@ -164,7 +166,6 @@ UI_Signal :: struct {
 	released    : b8,
 	dragging    : b8,
 	resizing    : b8,
-	hovering    : b8,
 	cursor_over : b8,
 	commit      : b8,
 }
@@ -281,17 +282,16 @@ UI_State :: struct {
 	// flag_stack    : Stack( UI_BoxFlags, UI_BoxFlags_Stack_Size ),
 
 	hot             : UI_Key,
-	active_mouse    : [MouseBtn.count] UI_Key,
-	active          : UI_Key,
 	hot_resizable   : b32,
-	active_resizing : b32, // Locks the user into a resizing state for the active box until they release the active key
+	hot_start_style : UI_Style,
+
+	active_mouse        : [MouseBtn.count] UI_Key,
+	active              : UI_Key,
+	active_start_signal : UI_Signal,
 
 	clipboard_copy : UI_Key,
 	last_clicked   : UI_Key,
 
-	cursor_active_start  : Vec2,
-
-	hot_start_style    : UI_Style,
 	active_start_style : UI_Style,
 
 	last_pressed_key    : [MouseBtn.count] UI_Key,
@@ -413,7 +413,7 @@ ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
 
 ui_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
 	using state := get_state()
-	return ui_cursor_pos() - state.ui_context.cursor_active_start
+	return ui_cursor_pos() - state.ui_context.active_start_signal.cursor_pos
 }
 
 ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
@@ -424,7 +424,11 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	curr_cache, prev_cache = swap( curr_cache, prev_cache )
 
 	if ui.active == UI_Key(0) {
-		ui.hot = UI_Key(0)
+		//ui.hot = UI_Key(0)
+		ui.active_start_signal = {}
+	}
+	if ui.hot == UI_Key(0) {
+		ui.hot_resizable = false
 	}
 
 	root = ui_box_make( {}, "root#001" )
@@ -473,6 +477,10 @@ ui_parent_pop :: proc() {
 @(deferred_none = ui_parent_pop)
 ui_parent :: proc( ui : ^ UI_Box) {
 	ui_parent_push( ui )
+}
+
+ui_style_peek :: proc( box_state : UI_StylePreset ) -> UI_Style {
+	return stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state]
 }
 
 ui_style_ref :: proc( box_state : UI_StylePreset ) -> (^ UI_Style) {

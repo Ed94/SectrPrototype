@@ -73,6 +73,18 @@ render :: proc()
 			rl.DrawCircleV( cursor_pos, 10, Color_White_A125 )
 		}
 
+		ui := project.workspace.ui
+
+		hot_box    := zpl_hmap_get( ui.curr_cache, u64(ui.hot) )
+		active_box := zpl_hmap_get( ui.curr_cache, u64(ui.active) )
+		if hot_box != nil {
+			debug_text("Hot    Box: %v", hot_box.label.str )
+		}
+		if active_box != nil{
+			debug_text("Active Box: %v", active_box.label.str )
+		}
+		debug_text("Active Resizing: %v", ui.active_start_signal.resizing)
+
 		debug.draw_debug_text_y = 50
 	}
 	//endregion Render Screenspace
@@ -143,10 +155,36 @@ render_mode_2d :: proc()
 			}
 
 			rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )
-			rl.DrawRectangleRoundedLines( rect_padding, style.layout.corner_radii[0], 9, 2, Color_Debug_UI_Padding_Bounds )
-			rl.DrawRectangleRoundedLines( rect_content, style.layout.corner_radii[0], 9, 2, Color_Debug_UI_Content_Bounds )
-			rl.DrawCircleV( render_bounds.p0, 5, Color_Red )
-			rl.DrawCircleV( render_bounds.p1, 5, Color_Blue )
+
+			line_thickness := 1 * (1 / cam.zoom)
+
+			rl.DrawRectangleRoundedLines( rect_padding, style.layout.corner_radii[0], 9, line_thickness, Color_Debug_UI_Padding_Bounds )
+			rl.DrawRectangleRoundedLines( rect_content, style.layout.corner_radii[0], 9, line_thickness, Color_Debug_UI_Content_Bounds )
+			if .Mouse_Resizable in current.flags {
+				resize_border_width     := cast(f32) get_state().config.ui_resize_border_width
+
+				resize_percent_width := style.size * (1.0 / resize_border_width)
+				resize_border_non_range := add(current.computed.bounds, range2(
+						{  resize_percent_width.x, -resize_percent_width.x },
+						{ -resize_percent_width.x,  resize_percent_width.x }))
+
+				render_resize := range2(
+					world_to_screen_pos(resize_border_non_range.min),
+					world_to_screen_pos(resize_border_non_range.max),
+				)
+				rect_resize := rl.Rectangle {
+					render_resize.min.x,
+					render_resize.min.y,
+					render_resize.max.x - render_resize.min.x,
+					render_resize.max.y - render_resize.min.y,
+				}
+				rl.DrawRectangleRoundedLines( rect_resize, style.layout.corner_radii[0], 9, line_thickness, Color_Red )
+			}
+
+			// if current
+
+			// rl.DrawCircleV( render_bounds.p0, 5, Color_Red )
+			// rl.DrawCircleV( render_bounds.p1, 5, Color_Blue )
 
 			if len(current.text.str) > 0 {
 				draw_text_string_cached( current.text, world_to_screen_pos(computed.text_pos), style.font_size, style.text_color )
@@ -163,7 +201,7 @@ render_mode_2d :: proc()
 		rl.DrawCircleV( world_to_screen_pos(cursor_world_pos), 5, Color_GreyRed )
 	}
 
-	rl.DrawCircleV( { 0, 0 }, 1, Color_White )
+	rl.DrawCircleV( { 0, 0 }, 1 * (1 / cam.zoom), Color_White )
 
 	rl.EndMode2D()
 }

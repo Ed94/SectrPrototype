@@ -23,7 +23,7 @@ test_draggable :: proc()
 	state := get_state(); using state
 	ui    := ui_context
 
-	draggable := ui_widget( "Draggable Box!", UI_BoxFlags { .Mouse_Clickable, .Focusable, .Click_To_Focus } )
+	draggable := ui_widget( "Draggable Box!", UI_BoxFlags { .Mouse_Clickable, .Mouse_Resizable } )
 	if draggable.first_frame {
 		debug.draggable_box_pos  = draggable.style.layout.pos
 		debug.draggable_box_size = draggable.style.layout.size
@@ -40,14 +40,14 @@ test_draggable :: proc()
 		og_layout := ui_context.active_start_style.layout
 
 		center            := debug.draggable_box_pos
-		original_distance := linalg.distance(ui.cursor_active_start, center)
+		original_distance := linalg.distance(ui.active_start_signal.cursor_pos, center)
 		cursor_distance   := linalg.distance(draggable.cursor_pos, center)
 		scale_factor      := cursor_distance * (1 / original_distance)
 
 		debug.draggable_box_size = og_layout.size * scale_factor
 	}
 
-	if ui.hot_resizable || ui.active_resizing {
+	if (ui.hot == draggable.key) && (ui.hot_resizable || ui.active_start_signal.resizing) {
 		draggable.style.bg_color = Color_Blue
 	}
 
