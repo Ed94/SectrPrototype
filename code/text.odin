@@ -70,17 +70,15 @@ draw_text_string_cached :: proc( content : StringCached, pos : Vec2, size : f32,
 	}
 	font := font
 	if  font.key == Font_Default.key {
-	// if len(font) == 0 {
 		font = default_font
 	}
 	pos := world_to_screen_pos(pos)
 
 	px_size     := size
 	zoom_adjust := px_size * project.workspace.cam.zoom
+	rl_font     := to_rl_Font(font, zoom_adjust )
+	runes       := content.runes
 
-	runes := content.runes
-
-	rl_font := to_rl_Font(font, zoom_adjust )
 	rl.DrawTextCodepoints( rl_font,
 		raw_data(runes), cast(i32) len(runes),
 		position = transmute(rl.Vector2) pos,

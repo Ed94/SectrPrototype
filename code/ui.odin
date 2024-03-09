@@ -74,16 +74,18 @@ UI_BoxFlag_Scroll :: UI_BoxFlags { .Scroll_X, .Scroll_Y }
 // The UI_Box's actual positioning and sizing
 // There is an excess of rectangles here for debug puproses.
 UI_Computed :: struct {
-	bounds  : Range2,
-	padding : Range2,
-	content : Range2,
+	bounds     : Range2,
+	padding    : Range2,
+	content    : Range2,
+	text_pos   : Vec2,
+	text_size  : Vec2,
 }
 
-UI_LayoutSide :: struct #raw_union {
-	using _ :  struct {
+UI_LayoutSide :: struct {
+	// using _ :  struct {
 		top, bottom : UI_Scalar,
 		left, right : UI_Scalar,
-	}
+	// }
 }
 
 UI_Cursor :: struct {
@@ -124,8 +126,9 @@ UI_Layout :: struct {
 	// flags : UI_LayoutFlags
 
 	// TODO(Ed) : Make sure this is all we need to represent an anchor.
-	anchor    : Range2,
-	alignment : Vec2,
+	anchor         : Range2,
+	alignment      : Vec2,
+	text_alignment : Vec2,
 
 	border_width : UI_Scalar,
 
@@ -197,7 +200,6 @@ UI_Style :: struct {
 	font           : FontID,
 	font_size      : f32,
 	text_color     : Color,
-	text_alignment : UI_TextAlign,
 
 	cursor : UI_Cursor,
 
@@ -333,11 +335,6 @@ ui_box_equal :: proc( a, b : ^ UI_Box ) -> b32 {
 	return result
 }
 
-UI_Widget :: struct {
-	using box    : ^UI_Box,
-	using signal : UI_Signal,
-}
-
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 {
 	using ui := get_state().ui_context
@@ -451,8 +448,12 @@ ui_graph_build :: proc( ui : ^ UI_State ) {
 }
 
 ui_key_from_string :: proc( value : string ) -> UI_Key {
-	key := cast(UI_Key) crc32( transmute([]byte) value )
+	key := cast(UI_Key) xxh32( transmute([]byte) value )
 	return key
+}
+
+ui_layout_padding :: proc( pixels : f32 ) -> UI_LayoutSide {
+	return { pixels, pixels, pixels, pixels }
 }
 
 ui_parent_push :: proc( ui : ^ UI_Box ) {

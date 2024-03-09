@@ -114,7 +114,7 @@ font_load :: proc( path_file : string,
 		default_size = Font_Default_Point_Size
 	}
 
-	key            := cast(u64) crc32( transmute([]byte) desired_id )
+	key            := cast(u64) xxh32( transmute([]byte) desired_id )
 	def, set_error := zpl_hmap_set( & font_cache, key,FontDef {} )
 	verify( set_error == AllocatorError.None, "Failed to add new font entry to cache" )
 

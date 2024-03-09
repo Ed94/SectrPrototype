@@ -112,7 +112,7 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 
 	rl.SetConfigFlags( {
 		rl.ConfigFlag.WINDOW_RESIZABLE,
-		// rl.ConfigFlag.WINDOW_TOPMOST,
+		rl.ConfigFlag.WINDOW_TOPMOST,
 	})
 
 	// Rough setup of window with rl stuff

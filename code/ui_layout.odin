@@ -28,10 +28,10 @@ ui_compute_layout :: proc()
 		style  := current.style
 		layout := & style.layout
 
-		margins := Range2 { pts = {
+		margins := range2(
 			parent_content.p0 + { layout.margins.left,  layout.margins.top },
 			parent_content.p1 - { layout.margins.right, layout.margins.bottom },
-		}}
+		)
 
 		anchor := & layout.anchor
 		pos    : Vec2
@@ -61,35 +61,53 @@ ui_compute_layout :: proc()
 		}
 
 		half_size   := size * 0.5
-		size_bounds := Range2 { pts = {
+		size_bounds := range2(
 			Vec2 {},
 			{ size.x, -size.y },
-		}}
+		)
 
-		aligned_bounds := Range2 { pts = {
+		aligned_bounds := range2(
 			size_bounds.p0 + size * { -layout.alignment.x,  layout.alignment.y },
 			size_bounds.p1 - size * {  layout.alignment.x, -layout.alignment.y },
-		}}
+		)
 
 		bounds := & computed.bounds
 		(bounds^) = aligned_bounds
-		(bounds^) = { pts = {
+		(bounds^) = range2(
 			pos + aligned_bounds.p0,
 			pos + aligned_bounds.p1,
-		}}
+		)
 
 		border_offset := Vec2 { layout.border_width, layout.border_width }
 		padding    := & computed.padding
-		(padding^)  = { pts = {
+		(padding^)  = range2(
 			bounds.p0 + border_offset,
-			bounds.p1 - border_offset,
-		}}
+			bounds.p1 + border_offset,
+		)
 
 		content   := & computed.content
-		(content^) = { pts = {
-			bounds.p0 + { layout.padding.left,  layout.padding.top },
-			bounds.p1 - { layout.padding.right, layout.padding.bottom },
-		}}
+		(content^) = range2(
+			bounds.p0 + {  layout.padding.left,  -layout.padding.top },
+			bounds.p1 + { -layout.padding.right,  layout.padding.bottom },
+		)
+
+		// Text
+		if len(current.text.str) > 0
+		{
+			top_left     := content.p0
+			bottom_right := content.p1
+
+			content_size := Vec2 { top_left.x - bottom_right.x, top_left.y - bottom_right.y }
+			text_size    := cast(Vec2) measure_text_size( current.text.str, style.font, style.font_size, 0 )
+
+			text_pos : Vec2
+			text_pos = top_left
+			text_pos.x += (-content_size.x - text_size.x) * layout.text_alignment.x
+			text_pos.y += (-content_size.y + text_size.y) * layout.text_alignment.y
+
+			computed.text_size = text_size
+			computed.text_pos  = { text_pos.x, -text_pos.y }
+		}
 
 		current = ui_box_tranverse_next( current )
 	}

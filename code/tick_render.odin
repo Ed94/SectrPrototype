@@ -114,15 +114,43 @@ render_mode_2d :: proc()
 				world_to_screen_pos(computed.bounds.max),
 			}}
 
-			rect := rl.Rectangle {
+			render_padding := range2(
+				world_to_screen_pos(computed.padding.min),
+				world_to_screen_pos(computed.padding.max),
+			)
+			render_content := range2(
+				world_to_screen_pos(computed.content.min),
+				world_to_screen_pos(computed.content.max),
+			)
+
+			rect_bounds := rl.Rectangle {
 				render_bounds.min.x,
 				render_bounds.min.y,
 				render_bounds.max.x - render_bounds.min.x,
 				render_bounds.max.y - render_bounds.min.y,
 			}
-			rl.DrawRectangleRec( rect, style.bg_color )
+			rect_padding := rl.Rectangle {
+				render_padding.min.x,
+				render_padding.min.y,
+				render_padding.max.x - render_padding.min.x,
+				render_padding.max.y - render_padding.min.y,
+			}
+			rect_content := rl.Rectangle {
+				render_content.min.x,
+				render_content.min.y,
+				render_content.max.x - render_content.min.x,
+				render_content.max.y - render_content.min.y,
+			}
+
+			rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )
+			rl.DrawRectangleRoundedLines( rect_padding, style.layout.corner_radii[0], 9, 2, Color_Debug_UI_Padding_Bounds )
+			rl.DrawRectangleRoundedLines( rect_content, style.layout.corner_radii[0], 9, 2, Color_Debug_UI_Content_Bounds )
 			rl.DrawCircleV( render_bounds.p0, 5, Color_Red )
 			rl.DrawCircleV( render_bounds.p1, 5, Color_Blue )
+
+			if len(current.text.str) > 0 {
+				draw_text_string_cached( current.text, world_to_screen_pos(computed.text_pos), style.font_size, style.text_color )
+			}
 
 			current = ui_box_tranverse_next( current )
 		}

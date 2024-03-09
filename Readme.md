@@ -1,5 +1,7 @@
 # Sectr Prototype
 
+![img](docs/assets/sectr_host_2024-03-09_04-30-27.png)
+
 This prototype aims to flesh out ideas I've wanted to explore futher when it came to code editing and tools for code in general.
 
 The things to explore:

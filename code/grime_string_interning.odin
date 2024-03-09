@@ -64,7 +64,7 @@ str_intern :: proc(
 {
 	cache := get_state().string_cache
 
-	key    := u64( crc32( transmute([]byte) content ))
+	key    := u64( xxh32( transmute([]byte) content ))
 	result := zpl_hmap_get( & cache.table, key )
 	if result != nil {
 		return (result ^)
