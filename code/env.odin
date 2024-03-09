@@ -128,7 +128,7 @@ AppConfig :: struct {
 
 	engine_refresh_hz : uint,
 
-	ui_resize_border_width : uint,
+	ui_resize_border_width : f32,
 }
 
 State :: struct {

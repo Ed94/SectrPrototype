@@ -228,34 +228,9 @@ update :: proc( delta_time : f64 ) -> b32
 		frame_theme.focused.bg_color = Color_Frame_Select
 		ui_style_theme( frame_theme )
 
-		// test_hover_n_click()
-
+		config.ui_resize_border_width = 2.5
 		test_draggable()
-
-		config.ui_resize_border_width = 20
-		// First box with text!!!!
-		when true
-		{
-			@static pos : Vec2
-			style := ui_style_peek( .Default )
-			ui_style_theme( { styles = { style, style, style, style, }} )
-
-			text := str_intern( "Lorem ipsum dolor sit amet")
-			font_size := 30
-
-			text_box := ui_text("TEXT BOX!", text, 30, flags = { .Mouse_Clickable })
-			if text_box.first_frame {
-				pos = text_box.style.layout.pos
-			}
-
-			if text_box.dragging {
-				pos += mouse_world_delta()
-			}
-
-			text_box.style.layout.pos = pos
-		}
-
-		// test_draggable()
+		test_text_box()
 	}
 	//endregion Imgui Tick
 

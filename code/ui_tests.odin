@@ -54,3 +54,27 @@ test_draggable :: proc()
 	draggable.style.layout.pos  = debug.draggable_box_pos
 	draggable.style.layout.size = debug.draggable_box_size
 }
+
+test_text_box :: proc()
+{
+	state := get_state(); using state
+	ui    := ui_context
+
+	@static pos : Vec2
+	style := ui_style_peek( .Default )
+	ui_style_theme( { styles = { style, style, style, style, }} )
+
+	text := str_intern( "Lorem ipsum dolor sit amet")
+	font_size := 30
+
+	text_box := ui_text("TEXT BOX!", text, 30, flags = { .Mouse_Clickable })
+	if text_box.first_frame {
+		pos = text_box.style.layout.pos
+	}
+
+	if text_box.dragging {
+		pos += mouse_world_delta()
+	}
+
+	text_box.style.layout.pos = pos
+}

@@ -160,10 +160,10 @@ render_mode_2d :: proc()
 
 			rl.DrawRectangleRoundedLines( rect_padding, style.layout.corner_radii[0], 9, line_thickness, Color_Debug_UI_Padding_Bounds )
 			rl.DrawRectangleRoundedLines( rect_content, style.layout.corner_radii[0], 9, line_thickness, Color_Debug_UI_Content_Bounds )
-			if .Mouse_Resizable in current.flags {
-				resize_border_width     := cast(f32) get_state().config.ui_resize_border_width
-
-				resize_percent_width := style.size * (1.0 / resize_border_width)
+			if .Mouse_Resizable in current.flags
+			{
+				resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
+				resize_percent_width := style.size * (resize_border_width * 1.0/ 200.0)
 				resize_border_non_range := add(current.computed.bounds, range2(
 						{  resize_percent_width.x, -resize_percent_width.x },
 						{ -resize_percent_width.x,  resize_percent_width.x }))
@@ -181,10 +181,9 @@ render_mode_2d :: proc()
 				rl.DrawRectangleRoundedLines( rect_resize, style.layout.corner_radii[0], 9, line_thickness, Color_Red )
 			}
 
-			// if current
-
-			// rl.DrawCircleV( render_bounds.p0, 5, Color_Red )
-			// rl.DrawCircleV( render_bounds.p1, 5, Color_Blue )
+			point_radius := 3 * (1 / cam.zoom)
+			rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
+			rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
 
 			if len(current.text.str) > 0 {
 				draw_text_string_cached( current.text, world_to_screen_pos(computed.text_pos), style.font_size, style.text_color )
