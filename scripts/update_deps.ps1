@@ -27,12 +27,13 @@ if (Test-Path -Path $path_odin)
 	# Get the latest local and remote commit hashes for the current branch
 	$localCommit  = git -C $path_odin rev-parse HEAD
 	$remoteCommit = git -C $path_odin rev-parse '@{u}'
-	if ($localCommit -ne $remoteCommit)
+	# if ( $true -or $localCommit -ne $remoteCommit)
+	if ( $localCommit -ne $remoteCommit)
 	{
 		Write-Host "Odin repository is out-of-date. Pulling changes and rebuilding..."
 		git -C $path_odin pull
 		push-location $path_odin
-		& .\build.bat
+		& .\build.bat debug
 		pop-location
 
 		$binaries_dirty = $true

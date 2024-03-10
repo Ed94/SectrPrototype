@@ -200,8 +200,8 @@ update :: proc( delta_time : f64 ) -> b32
 		default_layout := UI_Layout {
 			anchor    = {},
 			// alignment = { 0.0, 0.5 },
-			alignment = { 0.5, 0.5 },
-			text_alignment = { 0.5, 0.5 },
+			alignment = { 0.0, 0.0 },
+			text_alignment = { 0.0, 0.0 },
 			// alignment = { 1.0, 1.0 },
 			// corner_radii = { 0.3, 0.3, 0.3, 0.3 },
 			pos       = { 0, 0 },
@@ -230,7 +230,78 @@ update :: proc( delta_time : f64 ) -> b32
 
 		config.ui_resize_border_width = 2.5
 		test_draggable()
-		test_text_box()
+		// test_text_box()
+
+		// Whitespace AST test
+		when true
+		{
+			alloc_error : AllocatorError
+			text := str_intern( "Lorem ipsum dolor sit amet")
+			debug.lorem_parse, alloc_error = pws_parser_parse( text.str, frame_allocator() )
+			verify( alloc_error == .None, "Faield to parse due to allocation failure" )
+
+			text_space := str_intern( " " )
+			text_tab   := str_intern( "\t")
+
+			layout_text := default_layout
+
+			// index := 0
+			widgets : Array(UI_Widget)
+			widgets, alloc_error = array_init( UI_Widget, frame_allocator() )
+			widget_ptr := & widgets
+
+			label_id := 0
+
+			for line in array_to_slice_num( debug.lorem_parse.lines )
+			{
+				head := line.first
+				for ; head != nil;
+				{
+					ui_style_theme_set_layout( layout_text )
+					widget : UI_Widget
+
+					// We're assumping PWS_Token for now...
+					// Eventually I'm going to flatten this, its not worth doing it the way I am...
+					#partial switch head.type
+					{
+						case .Visible:
+							label  := str_intern( str_fmt_alloc( "%v %v", head.content.str, label_id, label_id ))
+							widget = ui_text( head.content.str, head.content )
+							label_id += 1
+
+							layout_text.pos.x += widget.style.layout.size.x
+
+						case .Spaces:
+							label  := str_intern( str_fmt_alloc( "%v %v%v", "space", label_id, label_id ))
+							widget := ui_text( label.str, text_space, {} )
+							widget.style.layout.size = Vec2 { 20, 30 }
+							label_id += 1
+
+							for idx in 0 ..< len( head.content.runes )
+							{
+								widget.style.layout.size.x += widget.style.layout.size.x
+							}
+							layout_text.pos.x += widget.style.layout.size.x
+
+						case .Tabs:
+							label  := str_intern( str_fmt_alloc( "%v %v%v", "tab", label_id, label_id ))
+							widget := ui_text( label.str, text_tab, {} )
+							label_id += 1
+
+							for idx in 0 ..< len( head.content.runes )
+							{
+								widget.style.layout.size.x += widget.style.layout.size.x
+							}
+							layout_text.pos.x += widget.style.layout.size.x
+					}
+
+					array_append( widget_ptr, widget )
+					head = head.next
+				}
+			}
+
+			// runtime.trap()
+		}
 	}
 	//endregion Imgui Tick
 

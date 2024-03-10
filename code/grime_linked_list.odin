@@ -51,6 +51,8 @@ DLL_NodeFL :: struct ( $ Type : typeid ) #raw_union {
 	using _ : struct {
 		first, last : ^Type,
 	},
+
+	// TODO(Ed): Review this
 	using _ : struct {
 		bottom, top: ^Type,
 	},
@@ -62,19 +64,51 @@ type_is_node :: #force_inline proc  "contextless" ( $ Type : typeid ) -> bool
 	return type_has_field( type_elem_type(Type), "prev" ) && type_has_field( type_elem_type(Type), "next" )
 }
 
-dll_push_back :: #force_inline proc "contextless" ( current_ptr : ^(^ ($ Type)), node : ^Type ) {
-	current := (current_ptr ^)
-
-	current.prev    = current
-	current.next    = node
-	(current_ptr ^) = node
+// First/Last append
+dll_fl_append :: proc ( list : ^( $TypeList), node : ^( $TypeNode) )
+{
+	if list.first == nil {
+		list.first = node
+		list.last  = node
+	}
+	else {
+		list.last = node
+	}
 }
 
-dll_pop_back :: #force_inline proc "contextless" ( current_ptr : ^(^ ($ Type)), node : ^Type ) {
+dll_push_back :: proc "contextless" ( current_ptr : ^(^ ($ TypeCurr)), node : ^$TypeNode )
+{
 	current := (current_ptr ^)
 
-	current.next    = nil
-	(current_ptr ^) = node
+	if current == nil
+	{
+		(current_ptr ^) = node
+		node.prev       = nil
+	}
+	else
+	{
+		node.prev      = current
+		(current_ptr^) = node
+		current.next   = node
+	}
+
+	node.next = nil
+}
+
+dll_pop_back :: #force_inline proc "contextless" ( current_ptr : ^(^ ($ Type)) )
+{
+	to_remove := (current_ptr ^)
+	if to_remove == nil {
+		return
+	}
+
+	if to_remove.prev == nil {
+		(current_ptr ^) = nil
+	}
+	else {
+		(current_ptr ^)      = to_remove.prev
+		(current_ptr ^).next = nil
+	}
 }
 
 dll_full_insert_raw ::  proc "contextless" ( null : ^($ Type), parent, pos, node : ^Type )

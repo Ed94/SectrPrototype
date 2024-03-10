@@ -19,8 +19,6 @@ when ODIN_OS == OS_Type.Windows {
 	// 1 inch = 2.54 cm, 96 inch * 2.54 = 243.84 DPCM
 }
 
-
-
 //region Unit Conversion Impl
 
 // cm_to_points :: proc( cm : f32 ) -> f32 {

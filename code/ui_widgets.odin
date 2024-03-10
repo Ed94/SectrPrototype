@@ -20,7 +20,7 @@ ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widge
 	return
 }
 
-ui_text :: proc( label : string, content : StringCached, font_size : f32 = 24, font := Font_Default, flags : UI_BoxFlags ) -> UI_Widget
+ui_text :: proc( label : string, content : StringCached, font_size : f32 = 30, font := Font_Default, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	state := get_state(); using state
 
@@ -30,7 +30,7 @@ ui_text :: proc( label : string, content : StringCached, font_size : f32 = 24, f
 	}
 	text_size := measure_text_size( content.str, font, font_size, 0 )
 
-	box    := ui_box_make( flags, "TEXT BOX!" )
+	box    := ui_box_make( flags, label )
 	signal := ui_signal_from_box( box )
 
 	box.text              = content

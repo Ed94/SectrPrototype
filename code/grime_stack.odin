@@ -215,7 +215,7 @@ stack_allocator_proc :: proc(
 				return nil, .None
 			}
 
-			dll_pop_back( & stack.last, stack.last )
+			dll_pop_back( & stack.last )
 		}
 		case .Free_All:
 			// TODO(Ed) : Review that we don't have any header issues with the reset.

@@ -50,11 +50,11 @@ render :: proc()
 
 		// Debug Text
 		{
-			debug_text( "Screen Width : %v", rl.GetScreenWidth () )
-			debug_text( "Screen Height: %v", rl.GetScreenHeight() )
+			// debug_text( "Screen Width : %v", rl.GetScreenWidth () )
+			// debug_text( "Screen Height: %v", rl.GetScreenHeight() )
 			debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
 			debug_text( "frametime                 : %f ms", frametime_delta_ms )
-			debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
+			// debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
 			if replay.mode == ReplayMode.Record {
 				debug_text( "Recording Input")
 			}
@@ -83,7 +83,7 @@ render :: proc()
 		if active_box != nil{
 			debug_text("Active Box: %v", active_box.label.str )
 		}
-		debug_text("Active Resizing: %v", ui.active_start_signal.resizing)
+		// debug_text("Active Resizing: %v", ui.active_start_signal.resizing)
 
 		debug.draw_debug_text_y = 50
 	}
@@ -100,7 +100,7 @@ render_mode_2d :: proc()
 
 	rl.BeginMode2D( project.workspace.cam )
 
-	draw_text( "This is text in world space", { 0, 200 }, 16.0  )
+	// draw_text( "This is text in world space", { 0, 200 }, 16.0  )
 
 	cam_zoom_ratio := 1.0 / cam.zoom
 

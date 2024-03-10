@@ -50,12 +50,11 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 	state := new( State, persistent_allocator() )
 	using state
 
-	// Setup General Slab
+	// Setup Persistent Slab
 	{
 		alignment := uint(mem.DEFAULT_ALIGNMENT)
 
-		policy     : SlabPolicy
-		policy_ptr := & policy
+		policy_ptr := & default_slab_policy
 		push( policy_ptr, SlabSizeClass {  16 * Megabyte,   4 * Kilobyte, alignment })
 		push( policy_ptr, SlabSizeClass {  32 * Megabyte,  16 * Kilobyte, alignment })
 		push( policy_ptr, SlabSizeClass {  64 * Megabyte,  32 * Kilobyte, alignment })
@@ -75,7 +74,7 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 		push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
 
 		alloc_error : AllocatorError
-		general_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator() )
+		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator() )
 		verify( alloc_error == .None, "Failed to allocate the general slab allocator" )
 	}
 
@@ -112,7 +111,7 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 
 	rl.SetConfigFlags( {
 		rl.ConfigFlag.WINDOW_RESIZABLE,
-		rl.ConfigFlag.WINDOW_TOPMOST,
+		// rl.ConfigFlag.WINDOW_TOPMOST,
 	})
 
 	// Rough setup of window with rl stuff
@@ -174,8 +173,9 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 			// }
 
 			// Setup workspace UI state
-			ui_startup( & workspace.ui, cache_allocator =  general_slab_allocator() )
+			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
 		}
+
 	}
 
 	startup_ms := duration_ms( time.tick_lap_time( & startup_tick))
@@ -225,10 +225,10 @@ reload :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VA
 	// Thankfully persistent dynamic allocations are rare, and thus we know exactly which ones they are.
 
 	font_provider_data := & get_state().font_provider_data
-	font_provider_data.font_cache.hashes.allocator  = general_slab_allocator()
-	font_provider_data.font_cache.entries.allocator = general_slab_allocator()
+	font_provider_data.font_cache.hashes.allocator  = persistent_slab_allocator()
+	font_provider_data.font_cache.entries.allocator = persistent_slab_allocator()
 
-	ui_reload( & get_state().project.workspace.ui, cache_allocator =  general_slab_allocator() )
+	ui_reload( & get_state().project.workspace.ui, cache_allocator =  persistent_slab_allocator() )
 
 	log("Module reloaded")
 }
@@ -243,9 +243,17 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 {
 	client_tick := time.tick_now()
 
+	state := get_state(); using state
+
+	// Setup Frame Slab
+	{
+		alloc_error : AllocatorError
+		frame_slab, alloc_error = slab_init( & default_slab_policy, allocator = frame_allocator() )
+		verify( alloc_error == .None, "Failed to allocate frame slab" )
+	}
+
 	context.allocator      = frame_allocator()
 	context.temp_allocator = transient_allocator()
-	state := get_state(); using state
 
 	rl.PollInputEvents()
 

@@ -1,6 +1,6 @@
 /* Parser: Whitespace
 This is a prototype parser meant to only parse whitespace from visible blocks of code.
-Its meant to be the most minimal useful AST for boostrapping an AST Editor.
+Its meant to be the most minimal useful AST with coupling to traditional text file formatting.
 
 All symbols related directly to the parser are prefixed with the PWS_ namespace.
 
@@ -40,69 +40,47 @@ import "core:os"
 
 Rune_Space           :: ' '
 Rune_Tab             :: '\t'
-Rune_Carriage_Return :: 'r'
-Rune_New_Line        :: '\n'
+Rune_Carriage_Return :: '\r'
+Rune_Line_Feed       :: '\n'
 // Rune_Tab_Vertical :: '\v'
 
 PWS_TokenType :: enum u32 {
 	Invalid,
 	Visible,
-	Space,
-	Tab,
+	Spaces,
+	Tabs,
 	New_Line,
+	End_Of_File,
 	Count,
 }
 
 // TODO(Ed) : The runes and token arrays should be handled by a slab allocator
 // This can grow in undeterministic ways, persistent will get very polluted otherwise.
 PWS_LexResult :: struct {
-	allocator : Allocator,
-	content   : string,
-	runes     : []rune,
 	tokens    : Array(PWS_Token),
 }
 
 PWS_Token :: struct {
 	type         : PWS_TokenType,
 	line, column : u32,
-	ptr          : ^rune,
+	content      : StringCached,
 }
 
-PWS_AST_Content :: union #no_nil {
-	^PWS_Token,
-	[] rune,
+PWS_AST_Type :: enum u32 {
+	Invalid,
+	Visible,
+	Spaces,
+	Tabs,
+	Line,
+	Count,
 }
 
-PWS_AST_Spaces :: struct {
-	content : PWS_AST_Content,
+PWS_AST :: struct {
+	using links : DLL_NodeFull(PWS_AST),
+	type        : PWS_AST_Type,
 
-	using links : DLL_NodePN(PWS_AST),
-}
-
-PWS_AST_Tabs :: struct {
-	content : PWS_AST_Content,
-
-	using links : DLL_NodePN(PWS_AST),
-}
-
-PWS_AST_Visible :: struct {
-	content : PWS_AST_Content,
-
-	using links : DLL_NodePN(PWS_AST),
-}
-
-PWS_AST_Line :: struct {
-	using content : DLL_NodeFL(PWS_AST),
-	end_token     : ^ PWS_Token,
-
-	using links : DLL_NodePN(PWS_AST),
-}
-
-PWS_AST :: union #no_nil {
-	PWS_AST_Visible,
-	PWS_AST_Spaces,
-	PWS_AST_Tabs,
-	PWS_AST_Line,
+	line, column : u32,
+	content      : StringCached,
 }
 
 PWS_ParseError :: struct {
@@ -118,53 +96,60 @@ PWS_LineArray_RserveSize  :: Kilobyte
 // This can grow in undeterministic ways, persistent will get very polluted otherwise.
 PWS_ParseResult :: struct {
 	content   : string,
-	runes     : []rune,
 	tokens    : Array(PWS_Token),
-	nodes     : Array(PWS_AST),
-	lines     : Array( ^PWS_AST_Line),
+	nodes     : Array(PWS_AST), // Nodes should be dumped in a pool.
+	lines     : Array( ^PWS_AST),
 	errors    : [PWS_ParseError_Max] PWS_ParseError,
 }
 
-// @(private="file")
-// AST :: PWS_AST
+PWS_LexerData :: struct {
+	using result : PWS_LexResult,
 
-pws_parser_lex :: proc ( content : string, allocator : Allocator ) -> ( PWS_LexResult, AllocatorError )
+	content       : string,
+	previous_rune : rune,
+	previous      : PWS_TokenType,
+	line          : u32,
+	column        : u32,
+	start  : int,
+	length : int,
+	current : PWS_Token,
+}
+
+pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResult, AllocatorError )
 {
-	LexerData :: struct {
-		using result : PWS_LexResult,
-
-		head   : [^] rune,
-		left   : i32,
-		line   : u32,
-		column : u32,
-	}
-	using lexer : LexerData
+	using lexer : PWS_LexerData
 	context.user_ptr = & lexer
+	content = text
 
-	rune_type :: proc() -> PWS_TokenType
+	if len(text) == 0 {
+		ensure( false, "Attempted to lex nothing")
+		return result, .None
+	}
+
+	rune_type :: proc( codepoint : rune ) -> PWS_TokenType
 	{
-		using self := context_ext( LexerData)
+		using self := context_ext( PWS_LexerData)
 
-		switch (head[0])
+		switch codepoint
 		{
 			case Rune_Space:
-				return PWS_TokenType.Space
+				return PWS_TokenType.Spaces
 
 			case Rune_Tab:
-				return PWS_TokenType.Tab
+				return PWS_TokenType.Tabs
 
-			case Rune_New_Line:
+			case Rune_Line_Feed:
 				return PWS_TokenType.New_Line
 
 			// Support for CRLF format
 			case Rune_Carriage_Return:
 			{
-				if left - 1 ==  0 {
+				if previous_rune == 0 {
 					return PWS_TokenType.Invalid
 				}
-				if head[1] == Rune_New_Line {
-					return PWS_TokenType.New_Line
-				}
+
+				// Assume for now its a new line
+				return PWS_TokenType.New_Line
 			}
 		}
 
@@ -173,28 +158,8 @@ pws_parser_lex :: proc ( content : string, allocator : Allocator ) -> ( PWS_LexR
 		return PWS_TokenType.Visible
 	}
 
-	advance :: proc() -> PWS_TokenType {
-		using self := context_ext( LexerData)
-
-		head    = head[1:]
-		left   -= 1
-		column += 1
-		type   := rune_type()
-		line   += u32(type == PWS_TokenType.New_Line)
-		return type
-	}
-
 	alloc_error : AllocatorError
-	runes, alloc_error = to_runes( content, allocator )
-	if alloc_error != AllocatorError.None {
-		ensure(false, "Failed to allocate runes from content")
-		return result, alloc_error
-	}
-
-	left = cast(i32) len(runes)
-	head = & runes[0]
-
-	tokens, alloc_error = array_init_reserve( PWS_Token, allocator, u64(left / 2) )
+	tokens, alloc_error = array_init_reserve( PWS_Token, allocator, u64( len(text)) )
 	if alloc_error != AllocatorError.None {
 		ensure(false, "Failed to allocate token's array")
 		return result, alloc_error
@@ -203,153 +168,193 @@ pws_parser_lex :: proc ( content : string, allocator : Allocator ) -> ( PWS_LexR
 	line   = 0
 	column = 0
 
-	for ; left > 0;
+	make_token :: proc ( codepoint : rune, byte_offset : int ) -> AllocatorError
 	{
-		current       : PWS_Token
-		current.type   = rune_type()
+		self := context_ext( PWS_LexerData); using self
+
+		if previous_rune == Rune_Carriage_Return && codepoint != Rune_Line_Feed {
+			ensure(false, "Rouge Carriage Return")
+		}
+
+		start_ptr   := uintptr( raw_data(content)) + uintptr(start)
+		token_slice := transmute(string) byte_slice( rawptr(start_ptr), length )
+
+		current.content = str_intern( token_slice )
+
+		start   = byte_offset
+		length  = 0
+		line   += cast(u32) (current.type == .New_Line)
+		column  = 0
+
+		return array_append( & tokens, current )
+	}
+
+	last_rune : rune
+	last_byte_offset : int
+	for codepoint, byte_offset in text
+	{
+		type := rune_type( codepoint )
+
+		if (current.type != type && previous != .Invalid) || current.type == .New_Line
+		{
+			alloc_error = make_token( previous_rune, byte_offset )
+			if alloc_error != AllocatorError.None {
+				ensure(false, "Failed to append token to token array")
+				return lexer, alloc_error
+			}
+		}
+
+		current.type   = type
 		current.line   = line
 		current.column = column
 
-		for ; advance() == current.type; {
-		}
-
-		alloc_error = array_append( & tokens, current )
-		if alloc_error != AllocatorError.None {
-			ensure(false, "Failed to append token to token array")
-			return lexer, alloc_error
-		}
+		column += 1
+		length += 1
+		previous      = current.type
+		previous_rune = codepoint
+		last_byte_offset = byte_offset
 	}
+
+	make_token( previous_rune, last_byte_offset )
 
 	return result, alloc_error
 }
 
-pws_parser_parse :: proc( content : string, allocator : Allocator ) -> ( PWS_ParseResult, AllocatorError )
+PWS_ParseData :: struct {
+	using result :  PWS_ParseResult,
+
+	left      : u32,
+	head      : [^]PWS_Token,
+	line      : PWS_AST,
+	prev_line : ^PWS_AST,
+}
+
+pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseResult, AllocatorError )
 {
-	ParseData :: struct {
-		using result :  PWS_ParseResult,
-
-		left  : u32,
-		head  : [^]PWS_Token,
-		line  : PWS_AST_Line,
-	}
-
-	using parser : ParseData
+	using parser : PWS_ParseData
 	context.user_ptr = & result
 
-	//region Helper procs
-	peek_next :: proc() -> ( ^PWS_Token)
-	{
-		using self := context_ext( ParseData)
-		if left - 1 ==  0 {
-			return nil
-		}
-
-		return head[ 1: ]
+	if len(text) == 0 {
+		ensure( false, "Attempted to lex nothing")
+		return result, .None
 	}
 
-	check_next :: proc(  expected : PWS_TokenType ) -> b32 {
-		using self := context_ext( ParseData)
+	lex, alloc_error := pws_parser_lex( text, allocator = allocator )
+	verify( alloc_error == nil, "Allocation faiure in lex")
 
-		next := peek_next()
-		return next != nil && next.type == expected
-	}
-
-	advance :: proc( expected : PWS_TokenType ) -> (^PWS_Token)
-	{
-		using self := context_ext( ParseData)
-		next := peek_next()
-		if next == nil {
-			return nil
-		}
-		if next.type != expected {
-			ensure( false, "Didn't get expected token type from next in lexed" )
-			return nil
-		}
-		head = next
-		return head
-	}
-	//endregion Helper procs
-
-	lex, alloc_error := pws_parser_lex( content, allocator )
-	if alloc_error != AllocatorError.None {
-
-	}
-
-	runes  = lex.runes
 	tokens = lex.tokens
 
 	nodes, alloc_error = array_init_reserve( PWS_AST, allocator, PWS_NodeArray_ReserveSize )
-	if alloc_error != AllocatorError.None {
+	verify( alloc_error == nil, "Allocation failure creating nodes array")
 
+	lines, alloc_error = array_init_reserve( ^PWS_AST, allocator, PWS_LineArray_RserveSize )
+	verify( alloc_error == nil, "Allocation failure creating line array")
+
+	//region Helper procs
+	eat_line :: proc()
+	{
+		self := context_ext( PWS_ParseData); using self
+		tok := cast( ^PWS_Token) head
+
+		ast : PWS_AST
+		ast.type    = .Line
+		ast.line    = tok.line
+		ast.column  = tok.column
+		ast.content = tok.content
+
+		alloc_error := array_append( & nodes, line )
+		verify( alloc_error == nil, "Allocation failure appending node")
+		node := & nodes.data[ nodes.num - 1 ]
+
+		// TODO(Ed): Review this with multiple line test
+		dll_push_back( & prev_line, node )
+		prev_line = node
+
+		// Debug build compile error
+			// alloc_error = array_append( & lines, prev_line )
+			// verify( alloc_error == nil, "Allocation failure appending node")
+
+		line = {}
 	}
-
-	lines, alloc_error = array_init_reserve( ^PWS_AST_Line, allocator, PWS_LineArray_RserveSize )
-	if alloc_error != AllocatorError.None {
-
-	}
+	//endregion
 
 	head = & tokens.data[0]
+	left = u32(tokens.num)
 
 	// Parse Line
 	for ; left > 0;
 	{
-		parse_content :: proc( $ Type : typeid, tok_type : PWS_TokenType ) -> Type
-		{
-			using self := context_ext( ParseData)
-
-			ast : Type
-			ast.content = cast( ^PWS_Token) head
-			advance( tok_type )
-			return ast
-		}
-
-		add_node :: proc( ast : PWS_AST ) //-> ( should_return : b32 )
-		{
-			using self := context_ext( ParseData)
-
-			// TODO(Ed) : Harden this
-			array_append( & nodes, ast )
-
-			if line.first == nil {
-				line.first = array_back( nodes )
-			}
-			else
-			{
-				line.last = array_back( nodes)
-			}
-		}
-
-		// TODO(Ed) : Harden this
+		type : PWS_AST_Type
 		#partial switch head[0].type
 		{
-			case PWS_TokenType.Visible:
-			{
-				ast := parse_content( PWS_AST_Visible, PWS_TokenType.Visible )
-				add_node( ast )
-			}
-			case PWS_TokenType.Space:
-			{
-				ast := parse_content( PWS_AST_Visible, PWS_TokenType.Space )
-				add_node( ast )
-			}
-			case PWS_TokenType.Tab:
-			{
-				ast := parse_content( PWS_AST_Tabs, PWS_TokenType.Tab )
-				add_node( ast )
-			}
-			case PWS_TokenType.New_Line:
-			{
-				line.end_token = head
+			case .Tabs:
+				type = .Tabs
 
-				ast : PWS_AST
-				ast = line
+			case .Spaces:
+				type = .Spaces
 
-				// TODO(Ed) : Harden This
-				array_append( & nodes, ast )
-				array_append( & lines, & array_back(nodes).(PWS_AST_Line) )
-				line = {}
+			case .Visible:
+				type = .Visible
+
+			case .New_Line:
+			{
+				eat_line()
+
+				alloc_error = array_append( & lines, prev_line )
+				verify( alloc_error == nil, "Allocation failure appending node")
+			}
+			case PWS_TokenType.End_Of_File:
+		}
+
+		if type != .Line
+		{
+			tok := cast( ^PWS_Token) head
+			ast : PWS_AST
+			ast.type    = type
+			ast.line    = tok.line
+			ast.column  = tok.column
+			ast.content = tok.content
+
+			// Compiler Error (-Debug)
+			// prev_node = array_back( nodes )
+			prev_node : ^PWS_AST = nil
+			if nodes.num > 0 {
+				prev_node = & nodes.data[ nodes.num - 1 ]
+			}
+
+			alloc_error := array_append( & nodes, ast )
+			verify( alloc_error == nil, "Allocation failure appending node")
+
+			node := & nodes.data[ nodes.num - 1 ]
+
+			// dll_push_back( & prev_node, last_node )
+			{
+				if prev_node != nil
+				{
+					node.prev      = prev_node
+					prev_node.next = node
+				}
+			}
+
+			// dll_fl_append( & line, last_node )
+			if line.first == nil {
+				line.first = node
+				line.last  = node
+			}
+			else {
+				line.last = node
 			}
 		}
+
+		head  = head[ 1:]
+		left -= 1
+	}
+
+	if line.first != nil {
+		eat_line()
+
+		alloc_error = array_append( & lines, prev_line )
+		verify( alloc_error == nil, "Allocation failure appending node")
 	}
 
 	return result, alloc_error

@@ -64,8 +64,16 @@ files_buffer_allocator :: proc() -> Allocator {
 	return varena_allocator( Memory_App.files_buffer )
 }
 
-general_slab_allocator :: proc() -> Allocator {
-	return slab_allocator( get_state().general_slab )
+persistent_slab_allocator :: proc() -> Allocator {
+	return slab_allocator( get_state().persistent_slab )
+}
+
+frame_slab_allocator :: proc() -> Allocator {
+	return slab_allocator( get_state().frame_slab )
+}
+
+transient_slab_allocator :: proc() -> Allocator {
+	return slab_allocator( get_state().transient_slab )
 }
 
 // TODO(Ed) : Implment host memory mapping api
@@ -132,7 +140,11 @@ AppConfig :: struct {
 }
 
 State :: struct {
-	general_slab : Slab,
+	default_slab_policy : SlabPolicy,
+
+	persistent_slab : Slab,
+	frame_slab      : Slab,
+	transient_slab  : Slab, // TODO(Ed): This needs to be recreated per transient wipe
 	string_cache : StringCache,
 
 	font_provider_data : FontProviderData,
@@ -241,4 +253,6 @@ DebugData :: struct {
 	draggable_box_pos  : Vec2,
 	draggable_box_size : Vec2,
 	box_original_size  : Vec2,
+
+	lorem_parse : PWS_ParseResult,
 }

@@ -68,18 +68,18 @@ array_init_reserve :: proc
 	return
 }
 
-array_append :: proc( using self : ^Array( $ Type), value : Type ) -> AllocatorError
+array_append :: proc( self : ^Array( $ Type), value : Type ) -> AllocatorError
 {
-	if num == capacity
+	if self.header.num == self.header.capacity
 	{
-		grow_result := array_grow( self, capacity )
+		grow_result := array_grow( self, self.header.capacity )
 		if grow_result != AllocatorError.None {
 			return grow_result
 		}
 	}
 
-	data[ num ] = value
-	num        += 1
+	self.header.data[ self.header.num ] = value
+	self.header.num        += 1
 	return AllocatorError.None
 }
 
@@ -175,10 +175,6 @@ array_push_back :: proc( using self : Array( $ Type)) -> b32 {
 	data[ num ] = value
 	num        += 1
 	return true
-}
-
-array_back :: proc( using self : Array( $ Type ) ) -> ( ^Type) {
-	return & data[ num - 1 ]
 }
 
 array_clear :: proc( using self : Array( $ Type ), zero_data : b32 ) {

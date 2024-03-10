@@ -20,24 +20,14 @@ import "core:os"
 import "core:slice"
 import "core:sync"
 
-VArena_GrowthPolicyEntry :: struct {
-	// The upper limit until this policy is no longer valid
-	// set to 0 if its desired to be always valid)
-	commit_limit   : uint,
-
-	// How much to increment by if the next allocation
-	// If the upcoming allocation size is larger than this,
-  // then the allocation size is used instead.
-	increment : uint,
-}
-
 VArena_GrowthPolicyProc :: #type proc( commit_used, committed, reserved, requested_size : uint ) -> uint
 
 VArena :: struct {
-	using vmem    : VirtualMemoryRegion,
-	commit_used   : uint,
-	growth_policy : VArena_GrowthPolicyProc,
-	mutex         : sync.Mutex,
+	using vmem      : VirtualMemoryRegion,
+	commit_used     : uint,
+	growth_policy   : VArena_GrowthPolicyProc,
+	allow_any_reize : b32,
+	mutex           : sync.Mutex,
 }
 
 varena_default_growth_policy :: proc( commit_used, committed, reserved, requested_size : uint ) -> uint
@@ -68,7 +58,7 @@ varena_allocator :: proc( arena : ^VArena ) -> ( allocator : Allocator ) {
 
 // Default growth_policy is nil
 varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
-	growth_policy : VArena_GrowthPolicyProc
+	growth_policy : VArena_GrowthPolicyProc, allow_any_reize : b32 = false
 ) -> ( arena : VArena, alloc_error : AllocatorError)
 {
 	page_size := uint(virtual_get_page_size())
@@ -93,6 +83,7 @@ varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
 	else {
 		arena.growth_policy = growth_policy
 	}
+	arena.allow_any_reize = allow_any_reize
 	return
 }
 
@@ -219,7 +210,22 @@ varena_allocator_proc :: proc(
 
 			old_memory_offset := uintptr(old_memory)    + uintptr(old_size)
 			current_offset    := uintptr(arena.reserve_start) + uintptr(arena.commit_used)
-			verify( old_memory_offset == current_offset, "Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
+			verify( old_memory_offset == current_offset || arena.allow_any_reize, "Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
+
+			if old_memory_offset == current_offset && arena.allow_any_reize
+			{
+				// Give it new memory and copy the old over. Old memory is unrecoverable until clear.
+				new_region : []byte
+				new_region, alloc_error = varena_alloc( arena, size, alignment, (mode != .Resize_Non_Zeroed), location )
+				if new_region == nil || alloc_error != .None {
+					data = byte_slice( old_memory, old_size )
+					return
+				}
+
+				copy_non_overlapping( raw_data(new_region), old_memory, int(old_size) )
+				data = new_region
+				return
+			}
 
 			new_region : []byte
 			new_region, alloc_error = varena_alloc( arena, size - old_size, alignment, (mode != .Resize_Non_Zeroed), location )

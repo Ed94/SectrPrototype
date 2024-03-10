@@ -118,10 +118,10 @@ setup_memory :: proc() -> ClientMemory
 		persistent, alloc_error = varena_init( sectr.Memory_Base_Address_Persistent, sectr.Memory_Reserve_Persistent, sectr.Memory_Commit_Initial_Persistent, nil )
 		verify( alloc_error == .None, "Failed to allocate persistent virtual arena for the sectr module")
 
-		frame, alloc_error = varena_init( sectr.Memory_Base_Address_Frame, sectr.Memory_Reserve_Frame, sectr.Memory_Commit_Initial_Frame, nil )
+		frame, alloc_error = varena_init( sectr.Memory_Base_Address_Frame, sectr.Memory_Reserve_Frame, sectr.Memory_Commit_Initial_Frame, nil, allow_any_reize = true )
 		verify( alloc_error == .None, "Failed to allocate frame virtual arena for the sectr module")
 
-		transient, alloc_error = varena_init( sectr.Memory_Base_Address_Transient, sectr.Memory_Reserve_Transient, sectr.Memory_Commit_Initial_Transient, nil )
+		transient, alloc_error = varena_init( sectr.Memory_Base_Address_Transient, sectr.Memory_Reserve_Transient, sectr.Memory_Commit_Initial_Transient, nil, allow_any_reize = true )
 		verify( alloc_error == .None, "Failed to allocate transient virtual arena for the sectr module")
 
 		files_buffer, alloc_error = varena_init( sectr.Memory_Base_Address_Files_Buffer, sectr.Memory_Reserve_FilesBuffer, sectr.Memory_Commit_Initial_Filebuffer, nil )

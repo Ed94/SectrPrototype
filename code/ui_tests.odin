@@ -23,9 +23,21 @@ test_draggable :: proc()
 	state := get_state(); using state
 	ui    := ui_context
 
+	draggable_layout := UI_Layout {
+		anchor    = {},
+		// alignment = { 0.0, 0.5 },
+		alignment = { 0.5, 0.5 },
+		text_alignment = { 0.0, 0.0 },
+		// alignment = { 1.0, 1.0 },
+		// corner_radii = { 0.3, 0.3, 0.3, 0.3 },
+		pos       = { 0, 0 },
+		size      = { 200, 200 },
+	}
+	ui_style_theme_set_layout( draggable_layout )
+
 	draggable := ui_widget( "Draggable Box!", UI_BoxFlags { .Mouse_Clickable, .Mouse_Resizable } )
 	if draggable.first_frame {
-		debug.draggable_box_pos  = draggable.style.layout.pos
+		debug.draggable_box_pos  = draggable.style.layout.pos + { 0, -100 }
 		debug.draggable_box_size = draggable.style.layout.size
 	}
 

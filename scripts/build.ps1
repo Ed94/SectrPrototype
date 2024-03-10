@@ -93,6 +93,7 @@ $msvc_link_default_base_address = 0x180000000
 push-location $path_root
 	$update_deps   = join-path $path_scripts 'update_deps.ps1'
 	$odin_compiler = join-path $path_odin    'odin.exe'
+	$raddbg        = "C:/dev/raddbg/raddbg.exe"
 
 	function Invoke-WithColorCodedOutput { param( [scriptblock] $command )
 		& $command 2>&1 | ForEach-Object {
@@ -152,22 +153,30 @@ push-location $path_root
 			$build_args += '.'
 			$build_args += $flag_build_mode_dll
 			$build_args += $flag_output_path + $module_dll
-			$build_args += ($flag_collection + $pkg_collection_thirdparty)
-			$build_args += $flag_use_separate_modules
-			$build_args += $flag_thread_count + $CoreCount_Physical
+			# $build_args += ($flag_collection + $pkg_collection_thirdparty)
+			# $build_args += $flag_use_separate_modules
+			# $build_args += $flag_thread_count + $CoreCount_Physical
 			$build_args += $flag_optimize_none
+			# $build_args += $flag_optimize_minimal
 			$build_args += $flag_debug
 			$build_args += $flag_pdb_name + $pdb
 			$build_args += $flag_subsystem + 'windows'
 			# $build_args += $flag_show_system_calls
 			$build_args += $flag_show_timings
-			$build_args += ($flag_extra_linker_flags + $linker_args )
+			# $build_args += ($flag_extra_linker_flags + $linker_args )
+
+			$raddbg_args = @()
+			$raddbg_args += $odin_compiler
+			$raddbg_args += $build_args
 
 			if ( Test-Path $module_dll) {
 				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
 			}
 
+			# write-host $build_args
+
 			Invoke-WithColorCodedOutput -command { & $odin_compiler $build_args }
+			# Invoke-WithColorCodedOutput -command { & $raddbg "$odin_compiler" "$build_args" }
 
 			if ( Test-Path $module_dll ) {
 				$module_dll_post_build_hash = get-filehash -path $module_dll -Algorithm MD5
@@ -213,14 +222,14 @@ push-location $path_root
 			$build_args += $command_build
 			$build_args += './host'
 			$build_args += $flag_output_path + $executable
-			$build_args += ($flag_collection + $pkg_collection_thirdparty)
-			$build_args += $flag_use_separate_modules
-			$build_args += $flag_thread_count + $CoreCount_Physical
+			# $build_args += ($flag_collection + $pkg_collection_thirdparty)
+			# $build_args += $flag_use_separate_modules
+			# $build_args += $flag_thread_count + $CoreCount_Physical
 			$build_args += $flag_optimize_none
 			$build_args += $flag_debug
 			$build_args += $flag_pdb_name + $pdb
 			$build_args += $flag_subsystem + 'windows'
-			$build_args += ($flag_extra_linker_flags + $linker_args )
+			# $build_args += ($flag_extra_linker_flags + $linker_args )
 			$build_args += $flag_show_timings
 			# $build_args += $flag_show_system_call
 
