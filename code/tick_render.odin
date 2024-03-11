@@ -82,12 +82,16 @@ render :: proc()
 		hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
 		active_box := ui_box_from_key( ui.curr_cache, ui.active )
 		if hot_box != nil {
-			debug_text("Hot    Box: %v", hot_box.label.str )
+			debug_text("Hot    Box   : %v", hot_box.label.str )
+			debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
 		}
 		if active_box != nil{
 			debug_text("Active Box: %v", active_box.label.str )
 		}
 		// debug_text("Active Resizing: %v", ui.active_start_signal.resizing)
+
+		view := view_get_bounds()
+		debug_text("View Bounds (World): %v", view.pts )
 
 		debug.draw_debug_text_y = 50
 	}
@@ -109,6 +113,22 @@ render_mode_2d :: proc()
 
 	cam_zoom_ratio := 1.0 / cam.zoom
 
+	view_bounds := view_get_bounds()
+	when false
+	{
+		render_view := Range2 { pts = {
+			world_to_screen_pos(view_bounds.min),
+			world_to_screen_pos(view_bounds.max),
+		}}
+		view_rect := rl.Rectangle {
+			render_view.min.x,
+			render_view.min.y,
+			render_view.max.x - render_view.min.x,
+			render_view.max.y - render_view.min.y,
+		}
+		rl.DrawRectangleRounded( view_rect, 0.3, 9, { 255, 0, 0, 20 } )
+	}
+
 	ImguiRender:
 	{
 		profile("Imgui Render")
@@ -119,7 +139,7 @@ render_mode_2d :: proc()
 		}
 
 		current := root.first
-		for ; current != nil;
+		for ; current != nil; current = ui_box_tranverse_next( current )
 		{
 			profile("Box")
 			parent := current.parent
@@ -127,9 +147,11 @@ render_mode_2d :: proc()
 			style    := current.style
 			computed := & current.computed
 
-			// bg_color := 
+			if ! within_range2( view_bounds, computed.bounds ) {
+				continue
+			}
 
-			// TODO(Ed) : Render Borders
+		// TODO(Ed) : Render Borders
 
 		// profile_begin("Calculating Raylib rectangles")
 			render_bounds := Range2 { pts = {
@@ -195,14 +217,14 @@ render_mode_2d :: proc()
 
 		// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
 		if equal_range2(computed.content, computed.padding) {
-			// draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
+			draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
 		}
 		else {
-			// draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Content_Bounds, line_thickness )
+			draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Content_Bounds, line_thickness )
 		}
 		// profile_end()
 
-			if .Mouse_Resizable in current.flags && false
+			if .Mouse_Resizable in current.flags
 			{
 				// profile("Resize Bounds")
 				resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
@@ -221,11 +243,10 @@ render_mode_2d :: proc()
 					render_resize.max.x - render_resize.min.x,
 					render_resize.max.y - render_resize.min.y,
 				}
-				// rl.DrawRectangleRoundedLines( rect_resize, style.layout.corner_radii[0], 9, line_thickness, Color_Red )
 				draw_rectangle_lines( rect_padding, style, Color_Red, line_thickness )
 			}
 
-			point_radius := 2 * cam_zoom_ratio
+			point_radius := 3 * cam_zoom_ratio
 
 		// profile_begin("circles")
 			// rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
@@ -235,8 +256,6 @@ render_mode_2d :: proc()
 			if len(current.text.str) > 0 {
 				draw_text_string_cached( current.text, world_to_screen_pos(computed.text_pos), style.font_size, style.text_color )
 			}
-
-			current = ui_box_tranverse_next( current )
 		}
 	}
 	//endregion Imgui Render

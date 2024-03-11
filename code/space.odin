@@ -142,13 +142,13 @@ screen_get_corners :: proc() -> BoundsCorners2 {
 	return { top_left, top_right, bottom_left, bottom_right }
 }
 
-view_get_bounds :: proc() -> Bounds2 {
+view_get_bounds :: proc() -> Range2 {
 	state         := get_state(); using state
 	cam           := & project.workspace.cam
 	screen_extent := state.app_window.extent
-	top_left     := cam.target + Vec2 { -screen_extent.x, screen_extent.y}
-	bottom_right := cam.target + Vec2 { screen_extent.x, -screen_extent.y}
-	return { top_left, bottom_right }
+	top_left     := Vec2 { cam.target.x, -cam.target.y } + Vec2 { -screen_extent.x,  screen_extent.y} * (1/cam.zoom)
+	bottom_right := Vec2 { cam.target.x, -cam.target.y } + Vec2 {  screen_extent.x, -screen_extent.y} * (1/cam.zoom)
+	return range2(top_left, bottom_right)
 }
 
 view_get_corners :: proc() -> BoundsCorners2 {

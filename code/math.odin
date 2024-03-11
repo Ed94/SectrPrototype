@@ -55,6 +55,19 @@ equal_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> b32 {
 	return b32(result)
 }
 
+
+// // Translated intersect_2f32 function
+// intersect_2f32 :: proc(a, b: Rng2F32) -> Rng2F32 {
+// 	c: Rng2F32
+// 	c.min.x = Max(a.min.x, b.min.x)
+// 	c.min.y = Max(a.min.y, b.min.y)
+// 	c.max.x = Min(a.max.x, b.max.x)
+// 	c.max.y = Min(a.max.y, b.max.y)
+// 	return c
+// }
+
+
+
 size_range2 :: #force_inline proc "contextless" ( value : Range2 ) -> Vec2 {
 	return { value.p1.x - value.p0.x, value.p0.y - value.p1.y }
 }
