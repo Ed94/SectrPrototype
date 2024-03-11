@@ -187,22 +187,25 @@ pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : Alloca
 	return
 }
 
-pool_release :: proc( using self : Pool, block : []byte, loc := #caller_location )
+pool_release :: proc( self : Pool, block : []byte, loc := #caller_location )
 {
-	when Pool_Check_Release_Object_Validity
-	{
+	if Pool_Check_Release_Object_Validity {
 		within_bucket := pool_validate_ownership( self, block )
 		verify( within_bucket, "Attempted to release data that is not within a bucket of this pool", location = loc )
-		return
 	}
 
 	// Compiler bug
 	// ll_push( & self.free_list_head, cast(^Pool_FreeBlock) raw_data(block) )
 
+	pool_watch := self
+	head_watch := & self.free_list_head
+
 	// ll_push:
 	new_free_block     := cast(^Pool_FreeBlock) raw_data(block)
 	new_free_block.next = self.free_list_head
 	self.free_list_head = new_free_block
+
+	new_free_block = new_free_block
 }
 
 pool_reset :: proc( using pool : Pool )

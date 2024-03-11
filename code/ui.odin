@@ -256,8 +256,8 @@ UI_Box :: struct {
 // UI_BoxFlags_Stack_Size    :: 512
 UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
-UI_Parent_Stack_Size      :: 1024
-UI_Built_Boxes_Array_Size :: 1024
+UI_Parent_Stack_Size      :: 1024 * 10
+UI_Built_Boxes_Array_Size :: 1024 * 10
 
 UI_State :: struct {
 	// TODO(Ed) : Use these
@@ -335,6 +335,10 @@ ui_box_equal :: proc( a, b : ^ UI_Box ) -> b32 {
 	return result
 }
 
+ui_box_from_key :: proc( cache : ^HMapZPL(UI_Box), key : UI_Key ) -> (^UI_Box) {
+	return zpl_hmap_get( cache, cast(u64) key )
+}
+
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 {
 	using ui := get_state().ui_context
@@ -380,6 +384,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 		curr_box.parent      = parent
 	}
 
+	ui.built_box_count += 1
 	return curr_box
 }
 
@@ -431,6 +436,7 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 		ui.hot_resizable = false
 	}
 
+	ui.built_box_count = 0
 	root = ui_box_make( {}, "root#001" )
 	ui_parent_push(root)
 }

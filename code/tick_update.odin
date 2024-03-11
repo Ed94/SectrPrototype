@@ -3,6 +3,7 @@ package sectr
 import "base:runtime"
 import "core:math"
 import "core:math/linalg"
+import "core:os"
 
 import rl "vendor:raylib"
 
@@ -158,15 +159,15 @@ update :: proc( delta_time : f64 ) -> b32
 			case .Smooth:
 				zoom_delta            := input.mouse.vertical_wheel * config.cam_zoom_sensitivity_smooth
 				workspace.zoom_target *= 1 + zoom_delta * f32(delta_time)
-				workspace.zoom_target  = clamp(workspace.zoom_target, 0.25, 10.0)
+				workspace.zoom_target  = clamp(workspace.zoom_target, 0.05, 10.0)
 
 				// Linearly interpolate cam.zoom towards zoom_target
 				lerp_factor := config.cam_zoom_smooth_snappiness // Adjust this value to control the interpolation speed
 				cam.zoom    += (workspace.zoom_target - cam.zoom) * lerp_factor * f32(delta_time)
-				cam.zoom     = clamp(cam.zoom, 0.25, 10.0) // Ensure cam.zoom stays within bounds
+				cam.zoom     = clamp(cam.zoom, 0.05, 10.0) // Ensure cam.zoom stays within bounds
 			case .Digital:
 				zoom_delta            := input.mouse.vertical_wheel * config.cam_zoom_sensitivity_digital
-				workspace.zoom_target  = clamp(workspace.zoom_target + zoom_delta, 0.25, 10.0)
+				workspace.zoom_target  = clamp(workspace.zoom_target + zoom_delta, 0.05, 10.0)
 				cam.zoom = workspace.zoom_target
 		}
 
@@ -235,20 +236,32 @@ update :: proc( delta_time : f64 ) -> b32
 		// Whitespace AST test
 		when true
 		{
-			alloc_error : AllocatorError
-			text := str_intern( "Lorem ipsum dolor sit amet")
-			debug.lorem_parse, alloc_error = pws_parser_parse( text.str, frame_allocator() )
-			verify( alloc_error == .None, "Faield to parse due to allocation failure" )
+			text_theme := UI_StyleTheme { styles = {
+				frame_style_default,
+				frame_style_default,
+				frame_style_default,
+				frame_style_default,
+			}}
+			text_theme.default.bg_color = Color_Transparent
+			text_theme.disabled.bg_color = Color_Frame_Disabled
+			text_theme.hovered.bg_color = Color_Frame_Hover
+			text_theme.focused.bg_color = Color_Frame_Select
+			layout_text := default_layout
+			ui_style_theme( text_theme )
+
+			alloc_error : AllocatorError; success : bool
+			// debug.lorem_content, success = os.read_entire_file( debug.path_lorem, frame_allocator() )
+
+			// debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) debug.lorem_content, frame_allocator() )
+			// verify( alloc_error == .None, "Faield to parse due to allocation failure" )
 
 			text_space := str_intern( " " )
 			text_tab   := str_intern( "\t")
 
-			layout_text := default_layout
-
 			// index := 0
 			widgets : Array(UI_Widget)
 			widgets, alloc_error = array_init( UI_Widget, frame_allocator() )
-			widget_ptr := & widgets
+			widgets_ptr := & widgets
 
 			label_id := 0
 
@@ -265,42 +278,47 @@ update :: proc( delta_time : f64 ) -> b32
 					#partial switch head.type
 					{
 						case .Visible:
-							label  := str_intern( str_fmt_alloc( "%v %v", head.content.str, label_id, label_id ))
-							widget = ui_text( head.content.str, head.content )
+							label := str_intern( str_fmt_alloc( "%v %v", head.content.str, label_id ))
+							widget = ui_text( label.str, head.content )
 							label_id += 1
 
 							layout_text.pos.x += widget.style.layout.size.x
 
 						case .Spaces:
-							label  := str_intern( str_fmt_alloc( "%v %v%v", "space", label_id, label_id ))
-							widget := ui_text( label.str, text_space, {} )
-							widget.style.layout.size = Vec2 { 20, 30 }
+							label := str_intern( str_fmt_alloc( "%v %v", "space", label_id ))
+							// widget = ui_text( label.str, text_space, {} )
+							// widget.style.layout.size = Vec2 { 1, 16 }
+							widget = ui_space( label.str )
 							label_id += 1
 
-							for idx in 0 ..< len( head.content.runes )
+							for idx in 1 ..< len( head.content.runes )
 							{
 								widget.style.layout.size.x += widget.style.layout.size.x
 							}
 							layout_text.pos.x += widget.style.layout.size.x
 
 						case .Tabs:
-							label  := str_intern( str_fmt_alloc( "%v %v%v", "tab", label_id, label_id ))
-							widget := ui_text( label.str, text_tab, {} )
+							label := str_intern( str_fmt_alloc( "%v %v", "tab", label_id ))
+							// widget = ui_text( label.str, text_tab, {} )
+							widget = ui_tab( label.str )
 							label_id += 1
 
-							for idx in 0 ..< len( head.content.runes )
+							for idx in 1 ..< len( head.content.runes )
 							{
 								widget.style.layout.size.x += widget.style.layout.size.x
 							}
 							layout_text.pos.x += widget.style.layout.size.x
 					}
 
-					array_append( widget_ptr, widget )
+					array_append( widgets_ptr, widget )
 					head = head.next
 				}
+
+				layout_text.pos.x = default_layout.pos.x
+				layout_text.pos.y -= 30
 			}
 
-			// runtime.trap()
+			label_id += 1
 		}
 	}
 	//endregion Imgui Tick

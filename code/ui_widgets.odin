@@ -20,20 +20,46 @@ ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widge
 	return
 }
 
-ui_text :: proc( label : string, content : StringCached, font_size : f32 = 30, font := Font_Default, flags : UI_BoxFlags = {} ) -> UI_Widget
+ui_text :: proc( label : string, content : StringCached, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	state := get_state(); using state
-
-	font := font
-	if font == Font_Default {
-		font = default_font
-	}
-	text_size := measure_text_size( content.str, font, font_size, 0 )
 
 	box    := ui_box_make( flags, label )
 	signal := ui_signal_from_box( box )
 
+	text_size := measure_text_size( content.str, box.style.font, box.style.font_size, 0 )
+
 	box.text              = content
+	box.style.layout.size = text_size
+	return { box, signal }
+}
+
+ui_space :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
+{
+	space_str := str_intern( " " )
+
+	state := get_state(); using state
+
+	box    := ui_box_make( flags, label )
+	signal := ui_signal_from_box( box )
+
+	text_size := measure_text_size( space_str.str, box.style.font, box.style.font_size, 0 )
+	box.text              = space_str
+	box.style.layout.size = text_size
+	return { box, signal }
+}
+
+ui_tab :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
+{
+	tab_str := str_intern( "\t" )
+
+	state := get_state(); using state
+
+	box    := ui_box_make( flags, label )
+	signal := ui_signal_from_box( box )
+
+	text_size := measure_text_size( tab_str.str, box.style.font, box.style.font_size, 0 )
+	box.text              = tab_str
 	box.style.layout.size = text_size
 	return { box, signal }
 }

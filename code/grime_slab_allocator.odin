@@ -69,7 +69,7 @@ slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocato
 	slab.header  = cast( ^SlabHeader) raw_mem
 	slab.backing = allocator
 	slab.policy  = (policy^)
-	alloc_error  = slab_init_pools( slab )
+	alloc_error  = slab_init_pools( slab, bucket_reserve_num )
 	return
 }
 
@@ -186,14 +186,16 @@ slab_resize :: proc( using self : Slab,
 	new_block : []byte
 	new_block, alloc_error = pool_grab( pool_resize )
 	if alloc_error != .None do return
+	if zero_memory {
+		slice.zero( new_block )
+	}
 
-	copy_non_overlapping( raw_data(new_block), raw_data(data), int(old_size) )
-	pool_release( pool_old, data )
+	if raw_data(data) != raw_data(new_block) {
+		copy_non_overlapping( raw_data(new_block), raw_data(data), int(old_size) )
+		pool_release( pool_old, data )
+	}
 
 	new_data = byte_slice( raw_data(new_block), int(old_size) )
-	if zero_memory {
-		slice.zero( new_data )
-	}
 	return
 }
 

@@ -34,7 +34,8 @@ DLL_Node :: struct ( $ Type : typeid ) #raw_union {
 }
 
 DLL_NodeFull :: struct ( $ Type : typeid ) {
-	using _ : DLL_NodeFL(Type),
+	// using _ : DLL_NodeFL(Type),
+	first, last : ^Type,
 	prev, next : ^Type,
 }
 

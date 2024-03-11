@@ -140,11 +140,14 @@ AppConfig :: struct {
 }
 
 State :: struct {
-	default_slab_policy : SlabPolicy,
+	default_slab_policy     : SlabPolicy,
+	persistent_slab         : Slab,
+	frame_slab              : Slab,
+	transient_slab          : Slab, // TODO(Ed): This needs to be recreated per transient wipe
+	transinet_clear_lock    : b32,  // Pravents auto-free of transient at designated intervals
+	transient_clear_time    : f32,  // Time in seconds for the usual period to clear transient
+	transient_clear_elapsed : f32,  // Time since last clear
 
-	persistent_slab : Slab,
-	frame_slab      : Slab,
-	transient_slab  : Slab, // TODO(Ed): This needs to be recreated per transient wipe
 	string_cache : StringCache,
 
 	font_provider_data : FontProviderData,
@@ -180,7 +183,7 @@ State :: struct {
 	// There are two potential UI contextes for this prototype so far,
 	// the screen-space UI and the current workspace UI.
 	// This is used so that the ui api doesn't need to have the user pass the context every single time.
-	ui_context : ^ UI_State,
+	ui_context : ^UI_State,
 }
 
 get_state :: proc "contextless" () -> ^ State {
@@ -254,5 +257,8 @@ DebugData :: struct {
 	draggable_box_size : Vec2,
 	box_original_size  : Vec2,
 
-	lorem_parse : PWS_ParseResult,
+	// Test parsing
+	path_lorem    : string,
+	lorem_content : []byte,
+	lorem_parse   : PWS_ParseResult,
 }

@@ -273,12 +273,9 @@ array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity : u64 ) -> All
 		return result_code
 	}
 
-	using new_self : Array(Type)
-	header      = cast( ^ArrayHeader(Type)) new_mem;
-	data        = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) header)[ 1:]
-	capacity    = new_capacity
-	num         = self.num
-
-	(self ^) = new_self
+	self.header      = cast( ^ArrayHeader(Type)) new_mem;
+	self.data        = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) self.header)[ 1:]
+	self.capacity    = new_capacity
+	self.num         = self.num
 	return result_code
 }

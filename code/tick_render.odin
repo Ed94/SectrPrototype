@@ -75,8 +75,10 @@ render :: proc()
 
 		ui := project.workspace.ui
 
-		hot_box    := zpl_hmap_get( ui.curr_cache, u64(ui.hot) )
-		active_box := zpl_hmap_get( ui.curr_cache, u64(ui.active) )
+		debug_text("Box Count: %v", ui.built_box_count )
+
+		hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
+		active_box := ui_box_from_key( ui.curr_cache, ui.active )
 		if hot_box != nil {
 			debug_text("Hot    Box: %v", hot_box.label.str )
 		}

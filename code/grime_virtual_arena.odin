@@ -210,7 +210,8 @@ varena_allocator_proc :: proc(
 
 			old_memory_offset := uintptr(old_memory)    + uintptr(old_size)
 			current_offset    := uintptr(arena.reserve_start) + uintptr(arena.commit_used)
-			verify( old_memory_offset == current_offset || arena.allow_any_reize, "Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
+			verify( old_memory_offset == current_offset || arena.allow_any_reize,
+				"Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
 
 			if old_memory_offset == current_offset && arena.allow_any_reize
 			{

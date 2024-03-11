@@ -107,6 +107,7 @@ PWS_LexerData :: struct {
 
 	content       : string,
 	previous_rune : rune,
+	current_rune  : rune,
 	previous      : PWS_TokenType,
 	line          : u32,
 	column        : u32,
@@ -159,7 +160,7 @@ pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResu
 	}
 
 	alloc_error : AllocatorError
-	tokens, alloc_error = array_init_reserve( PWS_Token, allocator, u64( len(text)) )
+	tokens, alloc_error = array_init_reserve( PWS_Token, allocator, 8 )
 	if alloc_error != AllocatorError.None {
 		ensure(false, "Failed to allocate token's array")
 		return result, alloc_error
@@ -168,11 +169,11 @@ pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResu
 	line   = 0
 	column = 0
 
-	make_token :: proc ( codepoint : rune, byte_offset : int ) -> AllocatorError
+	make_token :: proc ( byte_offset : int ) -> AllocatorError
 	{
 		self := context_ext( PWS_LexerData); using self
 
-		if previous_rune == Rune_Carriage_Return && codepoint != Rune_Line_Feed {
+		if previous_rune == Rune_Carriage_Return && current_rune != Rune_Line_Feed {
 			ensure(false, "Rouge Carriage Return")
 		}
 
@@ -194,10 +195,12 @@ pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResu
 	for codepoint, byte_offset in text
 	{
 		type := rune_type( codepoint )
+		current_rune = codepoint
 
-		if (current.type != type && previous != .Invalid) || current.type == .New_Line
+		if (current.type != type && previous != .Invalid) ||
+			 ( previous_rune != Rune_Carriage_Return && current.type == .New_Line )
 		{
-			alloc_error = make_token( previous_rune, byte_offset )
+			alloc_error = make_token( byte_offset )
 			if alloc_error != AllocatorError.None {
 				ensure(false, "Failed to append token to token array")
 				return lexer, alloc_error
@@ -215,7 +218,7 @@ pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResu
 		last_byte_offset = byte_offset
 	}
 
-	make_token( previous_rune, last_byte_offset )
+	make_token( last_byte_offset )
 
 	return result, alloc_error
 }
@@ -244,23 +247,22 @@ pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseR
 
 	tokens = lex.tokens
 
-	nodes, alloc_error = array_init_reserve( PWS_AST, allocator, PWS_NodeArray_ReserveSize )
+	nodes, alloc_error = array_init_reserve( PWS_AST, allocator, 8 )
 	verify( alloc_error == nil, "Allocation failure creating nodes array")
 
-	lines, alloc_error = array_init_reserve( ^PWS_AST, allocator, PWS_LineArray_RserveSize )
+	lines, alloc_error = array_init_reserve( ^PWS_AST, allocator, 8 )
 	verify( alloc_error == nil, "Allocation failure creating line array")
 
 	//region Helper procs
-	eat_line :: proc()
+	eat_line :: #force_inline proc()
 	{
 		self := context_ext( PWS_ParseData); using self
 		tok := cast( ^PWS_Token) head
 
-		ast : PWS_AST
-		ast.type    = .Line
-		ast.line    = tok.line
-		ast.column  = tok.column
-		ast.content = tok.content
+		line.type    = .Line
+		line.line    = tok.line
+		line.column  = tok.column
+		line.content = tok.content
 
 		alloc_error := array_append( & nodes, line )
 		verify( alloc_error == nil, "Allocation failure appending node")

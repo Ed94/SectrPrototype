@@ -75,7 +75,12 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 
 		alloc_error : AllocatorError
 		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator() )
-		verify( alloc_error == .None, "Failed to allocate the general slab allocator" )
+		verify( alloc_error == .None, "Failed to allocate the persistent slab" )
+
+		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator() )
+		verify( alloc_error == .None, "Failed to allocate transient slab" )
+
+		transient_clear_time = 120 // Seconds, 2 Minutes
 	}
 
 	string_cache = str_cache_init()
@@ -176,6 +181,13 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
 		}
 
+		debug.path_lorem = str_fmt_alloc("C:/projects/SectrPrototype/examples/Lorem Ipsum.txt", allocator = persistent_allocator())
+
+		alloc_error : AllocatorError; success : bool
+		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
+
+		debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) 	debug.lorem_content, persistent_slab_allocator() )
+		verify( alloc_error == .None, "Faield to parse due to allocation failure" )
 	}
 
 	startup_ms := duration_ms( time.tick_lap_time( & startup_tick))
@@ -191,6 +203,8 @@ startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^V
 @export
 sectr_shutdown :: proc()
 {
+	context.logger = to_odin_logger( & Memory_App.logger )
+
 	if Memory_App.persistent == nil {
 		return
 	}
@@ -209,6 +223,7 @@ sectr_shutdown :: proc()
 @export
 reload :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
 {
+	context.logger = to_odin_logger( & Memory_App.logger )
 	using Memory_App;
 
 	persistent   = persistent_mem
@@ -218,6 +233,7 @@ reload :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VA
 
 	context.allocator      = persistent_allocator()
 	context.temp_allocator = transient_allocator()
+
 
 	// Procedure Addresses are not preserved on hot-reload. They must be restored for persistent data.
 	// The only way to alleviate this is to either do custom handles to allocators
@@ -241,14 +257,15 @@ swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 @export
 tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 {
-	client_tick := time.tick_now()
-
+	context.logger = to_odin_logger( & Memory_App.logger )
 	state := get_state(); using state
+
+	client_tick := time.tick_now()
 
 	// Setup Frame Slab
 	{
 		alloc_error : AllocatorError
-		frame_slab, alloc_error = slab_init( & default_slab_policy, allocator = frame_allocator() )
+		frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0, allocator = frame_allocator() )
 		verify( alloc_error == .None, "Failed to allocate frame slab" )
 	}
 
@@ -305,6 +322,21 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 }
 
 @export
-clean_frame :: proc() {
+clean_frame :: proc()
+{
+	state := get_state(); using state
+	context.logger = to_odin_logger( & Memory_App.logger )
+
 	free_all( frame_allocator() )
+
+	transient_clear_elapsed += frametime_delta32()
+	if transient_clear_elapsed >= transient_clear_time && ! transinet_clear_lock
+	{
+		transient_clear_elapsed = 0
+		free_all( transient_allocator() )
+
+		alloc_error : AllocatorError
+		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator() )
+		verify( alloc_error == .None, "Failed to allocate transient slab" )
+	}
 }

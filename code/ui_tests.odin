@@ -79,7 +79,7 @@ test_text_box :: proc()
 	text := str_intern( "Lorem ipsum dolor sit amet")
 	font_size := 30
 
-	text_box := ui_text("TEXT BOX!", text, 30, flags = { .Mouse_Clickable })
+	text_box := ui_text("TEXT BOX!", text, flags = { .Mouse_Clickable })
 	if text_box.first_frame {
 		pos = text_box.style.layout.pos
 	}
