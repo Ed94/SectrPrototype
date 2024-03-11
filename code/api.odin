@@ -9,6 +9,7 @@ import    "core:os"
 import    "core:slice"
 import    "core:strings"
 import    "core:time"
+import    "core:prof/spall"
 import rl "vendor:raylib"
 
 Path_Assets       :: "../assets/"
@@ -27,8 +28,11 @@ ModuleAPI :: struct {
 }
 
 @export
-startup :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
+startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
 {
+	spall.SCOPED_EVENT( & prof.ctx, & prof.buffer, #procedure )
+	Memory_App.profiler = prof
+
 	startup_tick := time.tick_now()
 
 	logger_init( & Memory_App.logger, "Sectr", host_logger.file_path, host_logger.file )
@@ -221,8 +225,11 @@ sectr_shutdown :: proc()
 }
 
 @export
-reload :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
+reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
 {
+	spall.SCOPED_EVENT( & prof.ctx, & prof.buffer, #procedure )
+	Memory_App.profiler = prof
+
 	context.logger = to_odin_logger( & Memory_App.logger )
 	using Memory_App;
 
@@ -234,13 +241,14 @@ reload :: proc( persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VA
 	context.allocator      = persistent_allocator()
 	context.temp_allocator = transient_allocator()
 
+	state := get_state()
 
 	// Procedure Addresses are not preserved on hot-reload. They must be restored for persistent data.
 	// The only way to alleviate this is to either do custom handles to allocators
 	// Or as done below, correct containers using allocators on reload.
 	// Thankfully persistent dynamic allocations are rare, and thus we know exactly which ones they are.
 
-	font_provider_data := & get_state().font_provider_data
+	font_provider_data := & state.font_provider_data
 	font_provider_data.font_cache.hashes.allocator  = persistent_slab_allocator()
 	font_provider_data.font_cache.entries.allocator = persistent_slab_allocator()
 
@@ -257,73 +265,83 @@ swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 @export
 tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 {
+	profile( "Client Tick" )
 	context.logger = to_odin_logger( & Memory_App.logger )
 	state := get_state(); using state
 
-	client_tick := time.tick_now()
+	should_close : b32
 
-	// Setup Frame Slab
+	client_tick := time.tick_now()
 	{
-		alloc_error : AllocatorError
-		frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0, allocator = frame_allocator() )
-		verify( alloc_error == .None, "Failed to allocate frame slab" )
+		profile("Work frame")
+
+		// Setup Frame Slab
+		{
+			alloc_error : AllocatorError
+			frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0, allocator = frame_allocator() )
+			verify( alloc_error == .None, "Failed to allocate frame slab" )
+		}
+
+		context.allocator      = frame_allocator()
+		context.temp_allocator = transient_allocator()
+
+		rl.PollInputEvents()
+
+		should_close = update( host_delta_time )
+		render()
+
+		rl.SwapScreenBuffer()
 	}
 
-	context.allocator      = frame_allocator()
-	context.temp_allocator = transient_allocator()
-
-	rl.PollInputEvents()
-
-	result := update( host_delta_time )
-	render()
-
-	rl.SwapScreenBuffer()
-
-	config.engine_refresh_hz = uint(monitor_refresh_hz)
-	frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
-	sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
-
-	frametime_delta_ns      = time.tick_lap_time( & client_tick )
-	frametime_delta_ms      = duration_ms( frametime_delta_ns )
-	frametime_delta_seconds = duration_seconds( frametime_delta_ns )
-	frametime_elapsed_ms    = frametime_delta_ms + host_delta_time
-
-	if frametime_elapsed_ms < frametime_target_ms
+	// Timing
 	{
-		sleep_ms       := frametime_target_ms - frametime_elapsed_ms
-		pre_sleep_tick := time.tick_now()
+		// profile("Client tick timing processing")
+		config.engine_refresh_hz = uint(monitor_refresh_hz)
+		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
+		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
 
-		if sleep_ms > 0 {
-			thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
-			// thread__highres_wait( sleep_ms )
-		}
+		frametime_delta_ns      = time.tick_lap_time( & client_tick )
+		frametime_delta_ms      = duration_ms( frametime_delta_ns )
+		frametime_delta_seconds = duration_seconds( frametime_delta_ns )
+		frametime_elapsed_ms    = frametime_delta_ms + host_delta_time
 
-		sleep_delta_ns := time.tick_lap_time( & pre_sleep_tick)
-		sleep_delta_ms := duration_ms( sleep_delta_ns )
+		if frametime_elapsed_ms < frametime_target_ms
+		{
+			sleep_ms       := frametime_target_ms - frametime_elapsed_ms
+			pre_sleep_tick := time.tick_now()
 
-		if sleep_delta_ms < sleep_ms {
-			// log( str_fmt_tmp("frametime sleep was off by: %v ms", sleep_delta_ms - sleep_ms ))
-		}
+			if sleep_ms > 0 {
+				thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
+				// thread__highres_wait( sleep_ms )
+			}
 
-		frametime_elapsed_ms += sleep_delta_ms
-		for ; frametime_elapsed_ms < frametime_target_ms; {
-			sleep_delta_ns = time.tick_lap_time( & pre_sleep_tick)
-			sleep_delta_ms = duration_ms( sleep_delta_ns )
+			sleep_delta_ns := time.tick_lap_time( & pre_sleep_tick)
+			sleep_delta_ms := duration_ms( sleep_delta_ns )
+
+			if sleep_delta_ms < sleep_ms {
+				// log( str_fmt_tmp("frametime sleep was off by: %v ms", sleep_delta_ms - sleep_ms ))
+			}
 
 			frametime_elapsed_ms += sleep_delta_ms
+			for ; frametime_elapsed_ms < frametime_target_ms; {
+				sleep_delta_ns = time.tick_lap_time( & pre_sleep_tick)
+				sleep_delta_ms = duration_ms( sleep_delta_ns )
+
+				frametime_elapsed_ms += sleep_delta_ms
+			}
+		}
+
+		if frametime_elapsed_ms > 60.0 {
+			log( str_fmt_tmp("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
 		}
 	}
-
-	if frametime_elapsed_ms > 60.0 {
-		log( str_fmt_tmp("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
-	}
-
-	return result
+	return should_close
 }
 
 @export
 clean_frame :: proc()
 {
+	// profile( #procedure)
 	state := get_state(); using state
 	context.logger = to_odin_logger( & Memory_App.logger )
 

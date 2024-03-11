@@ -118,6 +118,7 @@ PWS_LexerData :: struct {
 
 pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResult, AllocatorError )
 {
+	profile(#procedure)
 	using lexer : PWS_LexerData
 	context.user_ptr = & lexer
 	content = text
@@ -234,6 +235,7 @@ PWS_ParseData :: struct {
 
 pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseResult, AllocatorError )
 {
+	profile(#procedure)
 	using parser : PWS_ParseData
 	context.user_ptr = & result
 

@@ -2,6 +2,7 @@ package sectr
 
 ui_compute_layout :: proc()
 {
+	profile(#procedure)
 	state := get_state()
 
 	root := state.project.workspace.ui.root
@@ -21,6 +22,7 @@ ui_compute_layout :: proc()
 	current := root.first
 	for ; current != nil;
 	{
+		profile("Layout Box")
 		parent         := current.parent
 		parent_content := parent.computed.content
 		computed       := & current.computed
@@ -46,6 +48,15 @@ ui_compute_layout :: proc()
 			pos.y += margins.p1.y * anchor.y1
 		}
 
+		text_size : Vec2
+		// If the computed matches, we alreayd have the size, don't bother.
+		// if computed.text_size.y == style.font_size {
+		if current.first_frame || ! style.size_to_text || computed.text_size.y != size_range2(computed.bounds).y {
+			text_size = cast(Vec2) measure_text_size( current.text.str, style.font, style.font_size, 0 )
+		} else {
+			text_size = computed.text_size
+		}
+
 		size : Vec2
 		if UI_StyleFlag.Fixed_Width in style.flags {
 			size.x = layout.size.x
@@ -53,11 +64,16 @@ ui_compute_layout :: proc()
 		else {
 			// TODO(Ed) : Not sure what todo here...
 		}
+
 		if UI_StyleFlag.Fixed_Height in style.flags {
 			size.y = layout.size.y
 		}
 		else {
 			// TODO(Ed) : Not sure what todo here...
+		}
+
+		if style.size_to_text {
+			size = text_size
 		}
 
 		half_size   := size * 0.5
@@ -94,12 +110,11 @@ ui_compute_layout :: proc()
 		// Text
 		if len(current.text.str) > 0
 		{
+			// profile("Text")
 			top_left     := content.p0
 			bottom_right := content.p1
 
 			content_size := Vec2 { top_left.x - bottom_right.x, top_left.y - bottom_right.y }
-			text_size    := cast(Vec2) measure_text_size( current.text.str, style.font, style.font_size, 0 )
-
 			text_pos : Vec2
 			text_pos = top_left
 			text_pos.x += (-content_size.x - text_size.x) * layout.text_alignment.x

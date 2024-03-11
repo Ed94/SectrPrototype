@@ -18,7 +18,7 @@ import "base:runtime"
 import c "core:c/libc"
 import "core:dynlib"
 import "core:hash"
-	// crc32 :: hash.crc32
+	crc32 :: hash.crc32
 import "core:hash/xxhash"
 	xxh32 :: xxhash.XXH32
 import fmt_io "core:fmt"

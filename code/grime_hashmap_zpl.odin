@@ -84,6 +84,7 @@ zpl_hmap_destroy :: proc( using self : ^ HMapZPL( $ Type ) ) {
 
 zpl_hmap_get :: proc( using self : ^ HMapZPL( $ Type ), key : u64 ) -> ^ Type
 {
+	// profile(#procedure)
 	id := zpl_hmap_find( self, key ).entry_index
 	if id >= 0 {
 		return & entries.data[id].value
@@ -113,6 +114,7 @@ zpl_hmap_grow :: proc( using self : ^ HMapZPL( $ Type ) ) -> AllocatorError {
 
 zpl_hmap_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorError
 {
+	profile(#procedure)
 	// For now the prototype should never allow this to happen.
 	ensure( false, "ZPL HMAP IS REHASHING" )
 	last_added_index : i64
@@ -183,6 +185,7 @@ zpl_hmap_remove_entry :: proc( using self : ^ HMapZPL( $ Type ), id : i64 ) {
 
 zpl_hmap_set :: proc( using self : ^ HMapZPL( $ Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
 {
+	// profile(#procedure)
 	id          : i64 = 0
 	find_result : HMapZPL_FindResult
 
@@ -237,6 +240,7 @@ zpl_hmap_add_entry :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> i64 
 
 zpl_hmap_find :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> HMapZPL_FindResult
 {
+	// profile(#procedure)
 	result : HMapZPL_FindResult = { -1, -1, -1 }
 
 	if hashes.num > 0 {

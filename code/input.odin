@@ -290,6 +290,7 @@ import rl "vendor:raylib"
 
 poll_input :: proc( old, new : ^ InputState )
 {
+	profile(#procedure)
 	input_process_digital_btn :: proc( old_state, new_state : ^ DigitalBtn, is_down : b32 )
 	{
 		new_state.ended_down = is_down
@@ -304,6 +305,7 @@ poll_input :: proc( old, new : ^ InputState )
 
 	// Keyboard
 	{
+		// profile("Keyboard")
 		check_range :: proc( old, new : ^ InputState, start, end : i32 )
 		{
 			for id := start; id < end; id += 1
@@ -332,6 +334,7 @@ poll_input :: proc( old, new : ^ InputState )
 
 	// Mouse
 	{
+		// profile("Mouse")
 		// Process Buttons
 		for id : i32 = 0; id < i32(MouseBtn.count); id += 1
 		{

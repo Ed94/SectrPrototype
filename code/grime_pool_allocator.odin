@@ -91,6 +91,7 @@ pool_destroy :: proc ( using self : Pool )
 
 pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> AllocatorError
 {
+	profile(#procedure)
 	if num_buckets == 0 {
 		return .Invalid_Argument
 	}
@@ -124,6 +125,7 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 
 pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : AllocatorError )
 {
+	// profile(#procedure)
 	alloc_error = .None
 
 	// Check the free-list first for a block
@@ -189,6 +191,7 @@ pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : Alloca
 
 pool_release :: proc( self : Pool, block : []byte, loc := #caller_location )
 {
+	// profile(#procedure)
 	if Pool_Check_Release_Object_Validity {
 		within_bucket := pool_validate_ownership( self, block )
 		verify( within_bucket, "Attempted to release data that is not within a bucket of this pool", location = loc )
@@ -221,6 +224,7 @@ pool_reset :: proc( using pool : Pool )
 
 pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32
 {
+	profile(#procedure)
 	within_bucket := b32(false)
 
 	// Compiler Bug : Same as pool_reset

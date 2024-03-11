@@ -132,6 +132,7 @@ varena_alloc :: proc( using self : ^VArena,
 	needs_more_committed := commit_left < size_to_allocate
 	if needs_more_committed
 	{
+		profile("VArena Growing")
 		next_commit_size := growth_policy( commit_used, committed, reserved, size_to_allocate )
 		alloc_error       = virtual_commit( vmem, next_commit_size )
 		if alloc_error != .None {

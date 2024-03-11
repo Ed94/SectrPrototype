@@ -49,3 +49,12 @@ add_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> Range2 {
 	}}
 	return result
 }
+
+equal_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> b32 {
+	result := a.p0 == b.p0 && a.p1 == b.p1
+	return b32(result)
+}
+
+size_range2 :: #force_inline proc "contextless" ( value : Range2 ) -> Vec2 {
+	return { value.p1.x - value.p0.x, value.p0.y - value.p1.y }
+}

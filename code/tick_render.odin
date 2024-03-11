@@ -6,6 +6,7 @@ import rl "vendor:raylib"
 
 render :: proc()
 {
+	profile(#procedure)
 	state  := get_state(); using state
 	replay := & Memory_App.replay
 	cam    := & project.workspace.cam
@@ -21,6 +22,7 @@ render :: proc()
 	render_mode_2d()
 	//region Render Screenspace
 	{
+		profile("Render Screenspace")
 		fps_msg       := str_fmt_tmp( "FPS: %f", 1 / (frametime_elapsed_ms * MS_To_S) )
 		fps_msg_width := measure_text_size( fps_msg, default_font, 16.0, 0.0 ).x
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 }
@@ -95,6 +97,7 @@ render :: proc()
 
 render_mode_2d :: proc()
 {
+	profile(#procedure)
 	state  := get_state(); using state
 	cam    := & project.workspace.cam
 
@@ -108,6 +111,7 @@ render_mode_2d :: proc()
 
 	ImguiRender:
 	{
+		profile("Imgui Render")
 		ui   := & state.project.workspace.ui
 		root := ui.root
 		if root.num_children == 0 {
@@ -115,7 +119,9 @@ render_mode_2d :: proc()
 		}
 
 		current := root.first
-		for ; current != nil; {
+		for ; current != nil;
+		{
+			profile("Box")
 			parent := current.parent
 
 			style    := current.style
@@ -125,6 +131,7 @@ render_mode_2d :: proc()
 
 			// TODO(Ed) : Render Borders
 
+		// profile_begin("Calculating Raylib rectangles")
 			render_bounds := Range2 { pts = {
 				world_to_screen_pos(computed.bounds.min),
 				world_to_screen_pos(computed.bounds.max),
@@ -157,15 +164,47 @@ render_mode_2d :: proc()
 				render_content.max.x - render_content.min.x,
 				render_content.max.y - render_content.min.y,
 			}
+		// profile_end()
 
-			rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )
+		draw_rectangle :: #force_inline proc "contextless" ( rect : rl.Rectangle, style : UI_Style ) {
+			if style.layout.corner_radii[0] > 0 {
+				rl.DrawRectangleRounded( rect, style.layout.corner_radii[0], 9, style.bg_color )
+			}
+			else {
+				rl.DrawRectangleRec( rect, style.bg_color )
+			}
+		}
+
+		draw_rectangle_lines :: #force_inline proc "contextless" ( rect : rl.Rectangle, style : UI_Style, color : Color, thickness : f32 ) {
+			if style.layout.corner_radii[0] > 0 {
+				rl.DrawRectangleRoundedLines( rect, style.layout.corner_radii[0], 9, thickness, color )
+			}
+			else {
+				rl.DrawRectangleLinesEx( rect, thickness, color )
+			}
+		}
+
+		// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
+		if style.bg_color.a != 0
+		{
+			draw_rectangle( rect_bounds, style )
+		}
+		// profile_end()
 
 			line_thickness := 1 * cam_zoom_ratio
 
-			rl.DrawRectangleRoundedLines( rect_padding, style.layout.corner_radii[0], 9, line_thickness, Color_Debug_UI_Padding_Bounds )
-			rl.DrawRectangleRoundedLines( rect_content, style.layout.corner_radii[0], 9, line_thickness, Color_Debug_UI_Content_Bounds )
-			if .Mouse_Resizable in current.flags
+		// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
+		if equal_range2(computed.content, computed.padding) {
+			// draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
+		}
+		else {
+			// draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Content_Bounds, line_thickness )
+		}
+		// profile_end()
+
+			if .Mouse_Resizable in current.flags && false
 			{
+				// profile("Resize Bounds")
 				resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
 				resize_percent_width := style.size * (resize_border_width * 1.0/ 200.0)
 				resize_border_non_range := add(current.computed.bounds, range2(
@@ -182,12 +221,16 @@ render_mode_2d :: proc()
 					render_resize.max.x - render_resize.min.x,
 					render_resize.max.y - render_resize.min.y,
 				}
-				rl.DrawRectangleRoundedLines( rect_resize, style.layout.corner_radii[0], 9, line_thickness, Color_Red )
+				// rl.DrawRectangleRoundedLines( rect_resize, style.layout.corner_radii[0], 9, line_thickness, Color_Red )
+				draw_rectangle_lines( rect_padding, style, Color_Red, line_thickness )
 			}
 
-			point_radius := 3 * cam_zoom_ratio
-			rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
-			rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
+			point_radius := 2 * cam_zoom_ratio
+
+		// profile_begin("circles")
+			// rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
+			// rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
+		// profile_end()
 
 			if len(current.text.str) > 0 {
 				draw_text_string_cached( current.text, world_to_screen_pos(computed.text_pos), style.font_size, style.text_color )

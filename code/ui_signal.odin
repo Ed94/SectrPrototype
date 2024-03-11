@@ -2,6 +2,7 @@ package sectr
 
 ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 {
+	// profile(#procedure)
 	ui    := get_state().ui_context
 	input := get_state().input
 
@@ -10,6 +11,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	signal := UI_Signal {}
 
 	// Cursor Collision
+	// profile_begin( "Cursor collision")
 		signal.cursor_pos  = ui_cursor_pos()
 		signal.cursor_over = cast(b8) pos_within_range2( signal.cursor_pos, box.computed.bounds )
 
@@ -22,7 +24,9 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		within_resize_range := cast(b8) ! pos_within_range2( signal.cursor_pos, resize_border_non_range )
 		within_resize_range &= signal.cursor_over
 		within_resize_range &= .Mouse_Resizable in box.flags
+	// profile_end()
 
+	// profile_begin("misc")
 	left_pressed  := pressed( input.mouse.left )
 	left_released := released( input.mouse.left )
 
@@ -118,11 +122,13 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 			ui.hot = UI_Key(0)
 		}
 	}
+	// profile_end()
 
 	signal.resizing  = cast(b8)  is_active && (within_resize_range || ui.active_start_signal.resizing)
 	ui.hot_resizable = cast(b32) (is_hot && within_resize_range) || signal.resizing
 
 	// State Deltas update
+	// profile_begin( "state deltas upate")
 	if is_hot
 	{
 		box.hot_delta += frame_delta
@@ -153,11 +159,14 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	else {
 		box.disabled_delta = 0
 	}
+	// profile_end()
 
 	signal.dragging = cast(b8)  is_active && ( ! within_resize_range && ! ui.active_start_signal.resizing)
 
 	// Update style if not in default state
 	{
+		// profile("Update style")
+
 		if is_hot
 		{
 			if ! was_hot  {

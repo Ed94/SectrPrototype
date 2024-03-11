@@ -59,6 +59,7 @@ import "core:time"
 	Duration         :: time.Duration
 	duration_seconds :: time.duration_seconds
 	thread_sleep     :: time.sleep
+import "core:prof/spall"
 import rl    "vendor:raylib"
 import sectr "../."
 	VArena                 :: sectr.VArena
@@ -70,6 +71,7 @@ import sectr "../."
 	logger_init            :: sectr.logger_init
 	LogLevel               :: sectr.LogLevel
 	log                    :: sectr.log
+	SpallProfiler          :: sectr.SpallProfiler
 	to_odin_logger         :: sectr.to_odin_logger
 	TrackedAllocator       :: sectr.TrackedAllocator
 	tracked_allocator      :: sectr.tracked_allocator
@@ -108,8 +110,9 @@ ClientMemory :: struct {
 	files_buffer      : VArena,
 }
 
-setup_memory :: proc() -> ClientMemory
+setup_memory :: proc( profiler : ^SpallProfiler ) -> ClientMemory
 {
+	spall.SCOPED_EVENT( & profiler.ctx, & profiler.buffer, #procedure )
 	memory : ClientMemory; using memory
 
 	// Setup the static arena for the entire application
@@ -211,8 +214,10 @@ unload_sectr_api :: proc( module : ^ sectr.ModuleAPI )
 	log("Unloaded sectr API")
 }
 
-sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, logger : ^Logger )
+sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, logger : ^Logger, profiler : ^SpallProfiler )
 {
+	spall.SCOPED_EVENT( & profiler.ctx, & profiler.buffer, #procedure )
+
 	if write_time, result := os.last_write_time_by_name( Path_Sectr_Module );
 	result == os.ERROR_NONE && sectr_api.write_time != write_time
 	{
@@ -223,10 +228,11 @@ sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, lo
 		for ; file_is_locked( Path_Sectr_Debug_Symbols ) && file_is_locked( Path_Sectr_Live_Module ); {}
 		thread_sleep( Millisecond * 100 )
 
-		sectr_api ^ = load_sectr_api( version_id )
+		(sectr_api ^) = load_sectr_api( version_id )
 		verify( sectr_api.lib_version != 0, "Failed to hot-reload the sectr module" )
 
 		sectr_api.reload(
+			profiler,
 			& memory.persistent,
 			& memory.frame,
 			& memory.transient,
@@ -239,6 +245,15 @@ main :: proc()
 {
 	state : RuntimeState
 	using state
+
+	// Setup profiling
+	profiler : SpallProfiler
+	{
+		buffer_backing := make([]u8, spall.BUFFER_DEFAULT_SIZE)
+		profiler.ctx    = spall.context_create("sectr.spall")
+		profiler.buffer = spall.buffer_create(buffer_backing)
+	}
+	spall.SCOPED_EVENT( & profiler.ctx, & profiler.buffer, #procedure )
 
 	// Generating the logger's name, it will be used when the app is shutting down.
 	path_logger_finalized : string
@@ -268,7 +283,7 @@ main :: proc()
 		log( to_str(builder) )
 	}
 
-	memory := setup_memory()
+	memory := setup_memory( & profiler )
 
 	// TODO(Ed): Cannot use the manually created allocators for the host. Not sure why
 	// Something is wrong with the tracked_allocator init
@@ -286,6 +301,7 @@ main :: proc()
 	running   = true;
 	sectr_api = sectr_api
 	sectr_api.startup(
+		& profiler,
 		& memory.persistent,
 		& memory.frame,
 		& memory.transient,
@@ -299,8 +315,10 @@ main :: proc()
 	// TODO(Ed) : This should have an end status so that we know the reason the engine stopped.
 	for ; running ;
 	{
+		spall.SCOPED_EVENT( & profiler.ctx, & profiler.buffer, "Host Tick" )
+
 		// Hot-Reload
-		sync_sectr_api( & sectr_api, & memory, & logger )
+		sync_sectr_api( & sectr_api, & memory, & logger, & profiler )
 
 		running = sectr_api.tick( duration_seconds( delta_ns ), delta_ns )
 		sectr_api.clean_frame()
@@ -317,6 +335,9 @@ main :: proc()
 
 	sectr_api.shutdown()
 	unload_sectr_api( & sectr_api )
+
+	spall.buffer_destroy( & profiler.ctx, & profiler.buffer )
+	spall.context_destroy( & profiler.ctx )
 
 	log("Succesfuly closed")
 	file_close( logger.file )

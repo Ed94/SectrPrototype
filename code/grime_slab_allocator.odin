@@ -103,6 +103,7 @@ slab_alloc :: proc( using self : Slab,
 	loc    := #caller_location
 ) -> ( data : []byte, alloc_error : AllocatorError )
 {
+	// profile(#procedure)
 	pool : Pool
 	for id in 0 ..< pools.idx {
 			pool = pools.items[id]
@@ -130,6 +131,7 @@ slab_alloc :: proc( using self : Slab,
 
 slab_free :: proc( using self : Slab, data : []byte, loc := #caller_location )
 {
+	// profile(#procedure)
 	pool : Pool
 	for id in 0 ..< pools.idx
 	{
@@ -150,6 +152,7 @@ slab_resize :: proc( using self : Slab,
 	loc         := #caller_location
 ) -> ( new_data : []byte, alloc_error : AllocatorError )
 {
+	// profile(#procedure)
 	old_size := uint( len(data))
 
 	pool_resize, pool_old : Pool

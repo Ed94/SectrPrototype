@@ -70,6 +70,7 @@ array_init_reserve :: proc
 
 array_append :: proc( self : ^Array( $ Type), value : Type ) -> AllocatorError
 {
+	// profile(#procedure)
 	if self.header.num == self.header.capacity
 	{
 		grow_result := array_grow( self, self.header.capacity )
@@ -206,6 +207,7 @@ array_free :: proc( using self : Array( $ Type ) ) {
 
 array_grow :: proc( using self : ^Array( $ Type ), min_capacity : u64 ) -> AllocatorError
 {
+	profile(#procedure)
 	new_capacity := array_grow_formula( capacity )
 
 	if new_capacity < min_capacity {

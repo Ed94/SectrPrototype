@@ -29,6 +29,7 @@ DebugActions :: struct {
 
 poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 {
+	// profile(#procedure)
 	using actions
 	using input
 
@@ -64,6 +65,7 @@ frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
 
 update :: proc( delta_time : f64 ) -> b32
 {
+	profile(#procedure)
 	state  := get_state(); using state
 	replay := & Memory_App.replay
 	workspace := & project.workspace
@@ -146,6 +148,7 @@ update :: proc( delta_time : f64 ) -> b32
 
 	//region Camera Manual Nav
 	{
+		// profile("Camera Manual Nav")
 		digital_move_speed : f32 = 200.0
 
 		if workspace.zoom_target == 0.0 {
@@ -190,6 +193,8 @@ update :: proc( delta_time : f64 ) -> b32
 
 	//region Imgui Tick
 	{
+		profile("Imgui Tick")
+
 		// Creates the root box node, set its as the first parent.
 		ui_graph_build( & state.project.workspace.ui )
 		ui := ui_context
@@ -236,17 +241,27 @@ update :: proc( delta_time : f64 ) -> b32
 		// Whitespace AST test
 		when true
 		{
+			profile("Whitespace AST test")
+
+			text_style := frame_style_default
+			text_style.flags = {
+				.Fixed_Position_X, .Fixed_Position_Y,
+				// .Fixed_Width, .Fixed_Height,
+			}
+
 			text_theme := UI_StyleTheme { styles = {
-				frame_style_default,
-				frame_style_default,
-				frame_style_default,
-				frame_style_default,
+				text_style,
+				text_style,
+				text_style,
+				text_style,
 			}}
 			text_theme.default.bg_color = Color_Transparent
 			text_theme.disabled.bg_color = Color_Frame_Disabled
 			text_theme.hovered.bg_color = Color_Frame_Hover
 			text_theme.focused.bg_color = Color_Frame_Select
+
 			layout_text := default_layout
+
 			ui_style_theme( text_theme )
 
 			alloc_error : AllocatorError; success : bool
@@ -267,6 +282,8 @@ update :: proc( delta_time : f64 ) -> b32
 
 			for line in array_to_slice_num( debug.lorem_parse.lines )
 			{
+				profile("WS AST Line")
+
 				head := line.first
 				for ; head != nil;
 				{
@@ -282,32 +299,30 @@ update :: proc( delta_time : f64 ) -> b32
 							widget = ui_text( label.str, head.content )
 							label_id += 1
 
-							layout_text.pos.x += widget.style.layout.size.x
+							layout_text.pos.x += size_range2( widget.computed.bounds ).x
 
 						case .Spaces:
 							label := str_intern( str_fmt_alloc( "%v %v", "space", label_id ))
-							// widget = ui_text( label.str, text_space, {} )
-							// widget.style.layout.size = Vec2 { 1, 16 }
 							widget = ui_space( label.str )
 							label_id += 1
 
 							for idx in 1 ..< len( head.content.runes )
 							{
-								widget.style.layout.size.x += widget.style.layout.size.x
+								// TODO(Ed): VIRTUAL WHITESPACE
+								// widget.style.layout.size.x += range2_size( widget.computed.bounds )
 							}
-							layout_text.pos.x += widget.style.layout.size.x
+							layout_text.pos.x += size_range2( widget.computed.bounds ).x
 
 						case .Tabs:
 							label := str_intern( str_fmt_alloc( "%v %v", "tab", label_id ))
-							// widget = ui_text( label.str, text_tab, {} )
 							widget = ui_tab( label.str )
 							label_id += 1
 
 							for idx in 1 ..< len( head.content.runes )
 							{
-								widget.style.layout.size.x += widget.style.layout.size.x
+								// widget.style.layout.size.x += range2_size( widget.computed.bounds )
 							}
-							layout_text.pos.x += widget.style.layout.size.x
+							layout_text.pos.x += size_range2( widget.computed.bounds ).x
 					}
 
 					array_append( widgets_ptr, widget )

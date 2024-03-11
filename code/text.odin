@@ -6,6 +6,7 @@ import rl "vendor:raylib"
 
 debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
 {
+	// profile(#procedure)
 	state := get_state(); using state
 
 	if len( content ) == 0 {
@@ -35,6 +36,7 @@ debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Co
 
 draw_text_string :: proc( content : string, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
 {
+	// profile(#procedure)
 	state := get_state(); using state
 
 	if len( content ) == 0 {
@@ -62,7 +64,9 @@ draw_text_string :: proc( content : string, pos : Vec2, size : f32, color : rl.C
 		tint     = color );
 }
 
-draw_text_string_cached :: proc( content : StringCached, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default ) {
+draw_text_string_cached :: proc( content : StringCached, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
+{
+	// profile(#procedure)
 	state := get_state(); using state
 
 	if len( content.str ) == 0 {
@@ -91,6 +95,7 @@ draw_text_string_cached :: proc( content : StringCached, pos : Vec2, size : f32,
 // So this is a 1:1 copy except it takes Odin strings
 measure_text_size :: proc( text : string, font : FontID, font_size := Font_Use_Default_Size, spacing : f32 ) -> Vec2
 {
+	// profile(#procedure)
 	px_size := math.round( points_to_pixels( font_size ) )
 	rl_font := to_rl_Font( font, font_size )
 

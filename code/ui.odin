@@ -144,12 +144,14 @@ UI_Layout :: struct {
 	pos : Vec2,
 	// TODO(Ed) : Should everything no matter what its parent is use a WS_Pos instead of a raw vector pos?
 
+	size : Vec2,
+
 	// If the box is a child of the root parent, its automatically in world space and thus will use the tile_pos.
 	tile_pos : WS_Pos,
 
 	// TODO(Ed) : Add support for size_to_content?
-	// size_to_content : b32,
-	size : Vec2,
+	size_to_text : b8,
+	// size_to_content : b8,
 }
 
 UI_Signal :: struct {
@@ -341,6 +343,8 @@ ui_box_from_key :: proc( cache : ^HMapZPL(UI_Box), key : UI_Key ) -> (^UI_Box) {
 
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 {
+	// profile(#procedure)
+
 	using ui := get_state().ui_context
 
 	key := ui_key_from_string( label )
@@ -348,6 +352,8 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	curr_box : (^ UI_Box)
 	prev_box := zpl_hmap_get( prev_cache, cast(u64) key )
 	{
+		// profile("Assigning current box")
+
 		set_result : ^ UI_Box
 		set_error  : AllocatorError
 		if prev_box != nil {
@@ -388,7 +394,8 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	return curr_box
 }
 
-ui_box_tranverse_next :: proc( box : ^ UI_Box ) -> (^ UI_Box) {
+ui_box_tranverse_next :: #force_inline proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
+{
 	// If current has children, do them first
 	if box.first != nil {
 		return box.first
@@ -423,6 +430,8 @@ ui_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
 
 ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 {
+	profile(#procedure)
+
 	get_state().ui_context = ui
 	using get_state().ui_context
 
@@ -444,6 +453,8 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 // TODO(Ed) :: Is this even needed?
 ui_graph_build_end :: proc()
 {
+	profile(#procedure)
+
 	ui_parent_pop() // Should be ui_context.root
 
 	// Regenerate the computed layout if dirty
@@ -457,8 +468,25 @@ ui_graph_build :: proc( ui : ^ UI_State ) {
 	ui_graph_build_begin( ui )
 }
 
-ui_key_from_string :: proc( value : string ) -> UI_Key {
-	key := cast(UI_Key) xxh32( transmute([]byte) value )
+ui_key_from_string :: proc( value : string ) -> UI_Key
+{
+	// profile(#procedure)
+	USE_RAD_DEBUGGERS_METHOD :: true
+
+	key : UI_Key
+
+	when USE_RAD_DEBUGGERS_METHOD {
+		hash : u64
+		for str_byte in transmute([]byte) value {
+			hash = ((hash << 5) + hash) + u64(str_byte)
+		}
+		key = cast(UI_Key) hash
+	}
+
+	when ! USE_RAD_DEBUGGERS_METHOD {
+		key = cast(UI_Key) crc32( transmute([]byte) value )
+	}
+
 	return key
 }
 

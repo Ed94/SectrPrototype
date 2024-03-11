@@ -44,8 +44,9 @@ Memory :: struct {
 	// Not for large memory env states
 	snapshot : MemorySnapshot,
 
-	replay : ReplayState,
-	logger : Logger,
+	replay   : ReplayState,
+	logger   : Logger,
+	profiler : ^SpallProfiler
 }
 
 persistent_allocator :: proc() -> Allocator {

@@ -62,30 +62,35 @@ str_intern :: proc(
 	content : string
 ) -> StringCached
 {
+	// profile(#procedure)
 	cache := get_state().string_cache
 
-	key    := u64( xxh32( transmute([]byte) content ))
+	key    := u64( crc32( transmute([]byte) content ))
 	result := zpl_hmap_get( & cache.table, key )
 	if result != nil {
 		return (result ^)
 	}
 
-	length := len(content)
-	// str_mem, alloc_error := alloc( length, mem.DEFAULT_ALIGNMENT )
-	str_mem, alloc_error := slab_alloc( cache.slab, uint(length), uint(mem.DEFAULT_ALIGNMENT) )
-	verify( alloc_error == .None, "String cache had a backing allocator error" )
+	// profile_begin("new entry")
+	{
+		length := len(content)
+		// str_mem, alloc_error := alloc( length, mem.DEFAULT_ALIGNMENT )
+		str_mem, alloc_error := slab_alloc( cache.slab, uint(length), uint(mem.DEFAULT_ALIGNMENT) )
+		verify( alloc_error == .None, "String cache had a backing allocator error" )
 
-	// copy_non_overlapping( str_mem, raw_data(content), length )
-	copy_non_overlapping( raw_data(str_mem), raw_data(content), length )
+		// copy_non_overlapping( str_mem, raw_data(content), length )
+		copy_non_overlapping( raw_data(str_mem), raw_data(content), length )
 
-	runes : []rune
-	// runes, alloc_error = to_runes( content, persistent_allocator() )
-	runes, alloc_error = to_runes( content, slab_allocator(cache.slab) )
-	verify( alloc_error == .None, "String cache had a backing allocator error" )
+		runes : []rune
+		// runes, alloc_error = to_runes( content, persistent_allocator() )
+		runes, alloc_error = to_runes( content, slab_allocator(cache.slab) )
+		verify( alloc_error == .None, "String cache had a backing allocator error" )
 
-	// result, alloc_error = zpl_hmap_set( & cache.table, key, StringCached { transmute(string) byte_slice(str_mem, length), runes } )
-	result, alloc_error = zpl_hmap_set( & cache.table, key, StringCached { transmute(string) str_mem, runes } )
-	verify( alloc_error == .None, "String cache had a backing allocator error" )
+		// result, alloc_error = zpl_hmap_set( & cache.table, key, StringCached { transmute(string) byte_slice(str_mem, length), runes } )
+		result, alloc_error = zpl_hmap_set( & cache.table, key, StringCached { transmute(string) str_mem, runes } )
+		verify( alloc_error == .None, "String cache had a backing allocator error" )
+	}
+	// profile_end()
 
 	return (result ^)
 }
