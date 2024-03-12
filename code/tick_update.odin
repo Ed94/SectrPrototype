@@ -238,8 +238,11 @@ update :: proc( delta_time : f64 ) -> b32
 		test_draggable()
 		// test_text_box()
 
+		// Test Parenting
+		
+
 		// Whitespace AST test
-		when true
+		when false
 		{
 			profile("Whitespace AST test")
 
@@ -267,7 +270,7 @@ update :: proc( delta_time : f64 ) -> b32
 			alloc_error : AllocatorError; success : bool
 			// debug.lorem_content, success = os.read_entire_file( debug.path_lorem, frame_allocator() )
 
-			// debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) debug.lorem_content, frame_allocator() )
+			// debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) debug.lorem_content, frame_slab_allocator() )
 			// verify( alloc_error == .None, "Faield to parse due to allocation failure" )
 
 			text_space := str_intern( " " )
@@ -275,7 +278,7 @@ update :: proc( delta_time : f64 ) -> b32
 
 			// index := 0
 			widgets : Array(UI_Widget)
-			widgets, alloc_error = array_init( UI_Widget, frame_allocator() )
+			widgets, alloc_error = array_init( UI_Widget, frame_slab_allocator() )
 			widgets_ptr := & widgets
 
 			label_id := 0

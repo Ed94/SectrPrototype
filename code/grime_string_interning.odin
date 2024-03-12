@@ -75,7 +75,7 @@ str_intern :: proc(
 	{
 		length := len(content)
 		// str_mem, alloc_error := alloc( length, mem.DEFAULT_ALIGNMENT )
-		str_mem, alloc_error := slab_alloc( cache.slab, uint(length), uint(mem.DEFAULT_ALIGNMENT) )
+		str_mem, alloc_error := slab_alloc( cache.slab, uint(length), uint(mem.DEFAULT_ALIGNMENT), zero_memory = false )
 		verify( alloc_error == .None, "String cache had a backing allocator error" )
 
 		// copy_non_overlapping( str_mem, raw_data(content), length )

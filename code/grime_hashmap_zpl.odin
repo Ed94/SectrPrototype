@@ -119,7 +119,7 @@ zpl_hmap_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 	ensure( false, "ZPL HMAP IS REHASHING" )
 	last_added_index : i64
 
-	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.hashes.allocator, new_num )
+	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.hashes.backing, new_num )
 	if init_result != AllocatorError.None {
 		ensure( false, "New zpl_hmap failed to allocate" )
 		return init_result

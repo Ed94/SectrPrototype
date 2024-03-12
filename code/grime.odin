@@ -37,6 +37,7 @@ import "core:mem"
 	AllocatorModeSet        :: mem.Allocator_Mode_Set
 	alloc                   :: mem.alloc
 	alloc_bytes             :: mem.alloc_bytes
+	alloc_bytes_non_zeroed  :: mem.alloc_bytes_non_zeroed
 	Arena                   :: mem.Arena
 	arena_allocator         :: mem.arena_allocator
 	arena_init              :: mem.arena_init
@@ -46,6 +47,7 @@ import "core:mem"
 	is_power_of_two_uintptr :: mem.is_power_of_two
 	ptr_offset              :: mem.ptr_offset
 	resize                  :: mem.resize
+	reisze_non_zeroed       :: mem.default_resize_bytes_align_non_zeroed
 	slice_ptr               :: mem.slice_ptr
 	TrackingAllocator       :: mem.Tracking_Allocator
 	tracking_allocator      :: mem.tracking_allocator

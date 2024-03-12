@@ -75,6 +75,7 @@ slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocato
 
 slab_init_pools :: proc ( using self : Slab, bucket_reserve_num : uint = 0 ) -> AllocatorError
 {
+	profile(#procedure)
 	for id in 0 ..< policy.idx {
 		using size_class := policy.items[id]
 

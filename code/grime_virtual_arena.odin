@@ -100,13 +100,16 @@ varena_alloc :: proc( using self : ^VArena,
 
 	requested_size := size
 	if requested_size == 0 {
+		ensure(false, "Requested 0 size")
 		return nil, .Invalid_Argument
 	}
+	// ensure( requested_size > page_size, "Requested less than a page size, going to allocate a page size")
+	// requested_size = max(requested_size, page_size)
 
 	sync.mutex_guard( & mutex )
 
 	alignment_offset := uint(0)
-	current_offset   := cast(uintptr) reserve_start[ commit_used:]
+	current_offset   := uintptr(self.reserve_start) + uintptr(commit_used)
 	mask             := uintptr(alignment - 1)
 
 	if current_offset & mask != 0 {
@@ -140,10 +143,9 @@ varena_alloc :: proc( using self : ^VArena,
 		}
 	}
 
-	aligned_start := uintptr(self.commit_used + alignment_offset)
-	data_ptr      := rawptr(uintptr( reserve_start ) + aligned_start)
+	data_ptr      := rawptr(current_offset + uintptr(alignment_offset))
 	data           = byte_slice( data_ptr, int(requested_size) )
-	commit_used   += size_to_allocate
+	self.commit_used   += size_to_allocate
 	alloc_error    = .None
 
 	if zero_memory {
@@ -182,6 +184,8 @@ varena_allocator_proc :: proc(
 	alignment := uint(alignment)
 	old_size  := uint(old_size)
 
+	page_size := uint(virtual_get_page_size())
+
 	switch mode
 	{
 		case .Alloc, .Alloc_Non_Zeroed:
@@ -195,31 +199,43 @@ varena_allocator_proc :: proc(
 
 		case .Resize, .Resize_Non_Zeroed:
 			if old_memory == nil {
+				ensure(false, "Resizing without old_memory?")
 				return varena_alloc( arena, size, alignment, (mode != .Resize_Non_Zeroed), location )
 			}
 
 			if size == old_size {
+				ensure(false, "Requested resize when none needed")
 				data = byte_slice( old_memory, old_size )
 				return
 			}
 
 			alignment_offset := uintptr(old_memory) & uintptr(alignment - 1)
 			if alignment_offset == 0 && size < old_size {
+				ensure(false, "Requested a shrink from a virtual arena")
 				data = byte_slice( old_memory, size )
 				return
 			}
 
 			old_memory_offset := uintptr(old_memory)    + uintptr(old_size)
 			current_offset    := uintptr(arena.reserve_start) + uintptr(arena.commit_used)
+
+			// if old_size < page_size {
+				// // We're dealing with an allocation that requested less than the minimum allocated on vmem.
+				// // Provide them more of their actual memory
+				// data = byte_slice( old_memory, size )
+				// return
+			// }
+
 			verify( old_memory_offset == current_offset || arena.allow_any_reize,
 				"Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
 
-			if old_memory_offset == current_offset && arena.allow_any_reize
+			if old_memory_offset != current_offset && arena.allow_any_reize
 			{
 				// Give it new memory and copy the old over. Old memory is unrecoverable until clear.
 				new_region : []byte
 				new_region, alloc_error = varena_alloc( arena, size, alignment, (mode != .Resize_Non_Zeroed), location )
 				if new_region == nil || alloc_error != .None {
+					ensure(false, "Failed to grab new region")
 					data = byte_slice( old_memory, old_size )
 					return
 				}
@@ -232,6 +248,7 @@ varena_allocator_proc :: proc(
 			new_region : []byte
 			new_region, alloc_error = varena_alloc( arena, size - old_size, alignment, (mode != .Resize_Non_Zeroed), location )
 			if new_region == nil || alloc_error != .None {
+				ensure(false, "Failed to grab new region")
 				data = byte_slice( old_memory, old_size )
 				return
 			}

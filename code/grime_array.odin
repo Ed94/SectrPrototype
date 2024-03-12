@@ -8,14 +8,14 @@ import "core:mem"
 import "core:slice"
 
 // Array :: struct ( $ Type : typeid ) {
-// 	allocator : Allocator,
+// 	bakcing : Allocator,
 // 	capacity  : u64,
 // 	num       : u64,
 // 	data      : [^]Type,
 // }
 
 ArrayHeader :: struct ( $ Type : typeid ) {
-	allocator : Allocator,
+	backing   : Allocator,
 	capacity  : u64,
 	num       : u64,
 	data      : [^]Type,
@@ -62,7 +62,7 @@ array_init_reserve :: proc
 	if alloc_error != AllocatorError.None do return
 
 	result.header    = cast( ^ArrayHeader(Type)) raw_mem;
-	result.allocator = allocator
+	result.backing   = allocator
 	result.capacity  = capacity
 	result.data      = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) result.header)[ 1:]
 	return
@@ -201,13 +201,13 @@ array_fill :: proc( using self : Array( $ Type ), begin, end : u64, value : Type
 }
 
 array_free :: proc( using self : Array( $ Type ) ) {
-	free( data, allocator )
+	free( data, backing )
 	self.data = nil
 }
 
 array_grow :: proc( using self : ^Array( $ Type ), min_capacity : u64 ) -> AllocatorError
 {
-	profile(#procedure)
+	// profile(#procedure)
 	new_capacity := array_grow_formula( capacity )
 
 	if new_capacity < min_capacity {
@@ -269,13 +269,19 @@ array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity : u64 ) -> All
 	new_size := header_size + cast(int) new_capacity  * size_of(Type)
 	old_size := header_size + cast(int) self.capacity * size_of(Type)
 
-	new_mem, result_code := resize( self.header, old_size, new_size, allocator = self.allocator )
+	// new_mem, result_code := resize( self.header, old_size, new_size, allocator = self.backing )
+	new_mem, result_code := reisze_non_zeroed( byte_slice( self.header, old_size), new_size, mem.DEFAULT_ALIGNMENT, allocator = self.backing )
+
 	if result_code != AllocatorError.None {
 		ensure( false, "Failed to allocate for new array capacity" )
 		return result_code
 	}
+	if new_mem == nil {
+		ensure(false, "new_mem is nil but no allocation error")
+		return result_code
+	}
 
-	self.header      = cast( ^ArrayHeader(Type)) new_mem;
+	self.header      = cast( ^ArrayHeader(Type)) raw_data(new_mem);
 	self.data        = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) self.header)[ 1:]
 	self.capacity    = new_capacity
 	self.num         = self.num

@@ -249,8 +249,8 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	// Thankfully persistent dynamic allocations are rare, and thus we know exactly which ones they are.
 
 	font_provider_data := & state.font_provider_data
-	font_provider_data.font_cache.hashes.allocator  = persistent_slab_allocator()
-	font_provider_data.font_cache.entries.allocator = persistent_slab_allocator()
+	font_provider_data.font_cache.hashes.backing  = persistent_slab_allocator()
+	font_provider_data.font_cache.entries.backing = persistent_slab_allocator()
 
 	ui_reload( & get_state().project.workspace.ui, cache_allocator =  persistent_slab_allocator() )
 

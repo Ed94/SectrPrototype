@@ -252,7 +252,7 @@ pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseR
 	nodes, alloc_error = array_init_reserve( PWS_AST, allocator, 8 )
 	verify( alloc_error == nil, "Allocation failure creating nodes array")
 
-	lines, alloc_error = array_init_reserve( ^PWS_AST, allocator, 8 )
+	parser.lines, alloc_error = array_init_reserve( ^PWS_AST, allocator, 8 )
 	verify( alloc_error == nil, "Allocation failure creating line array")
 
 	//region Helper procs
@@ -301,12 +301,11 @@ pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseR
 				type = .Visible
 
 			case .New_Line:
-			{
 				eat_line()
 
-				alloc_error = array_append( & lines, prev_line )
+				alloc_error = array_append( & parser.lines, prev_line )
 				verify( alloc_error == nil, "Allocation failure appending node")
-			}
+
 			case PWS_TokenType.End_Of_File:
 		}
 
@@ -357,7 +356,7 @@ pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseR
 	if line.first != nil {
 		eat_line()
 
-		alloc_error = array_append( & lines, prev_line )
+		alloc_error = array_append( & parser.lines, prev_line )
 		verify( alloc_error == nil, "Allocation failure appending node")
 	}
 

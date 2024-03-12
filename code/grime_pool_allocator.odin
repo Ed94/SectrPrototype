@@ -43,12 +43,6 @@ Pool_FreeBlock :: struct {
 
 Pool_Check_Release_Object_Validity :: true
 
-pool_allocator :: proc ( using self : Pool ) -> (allocator : Allocator) {
-	allocator.procedure = pool_allocator_proc
-	allocator.data      = self.header
-	return
-}
-
 pool_init :: proc (
 	block_size         : uint,
 	bucket_capacity    : uint,
@@ -98,12 +92,12 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 	header_size := cast(uint) align_forward_int( size_of(PoolBucket), int(alignment))
 	to_allocate := cast(int) (header_size + bucket_capacity * num_buckets)
 
-	bucket_memory, alloc_error := alloc( to_allocate, int(alignment), backing )
+	bucket_memory, alloc_error := alloc_bytes_non_zeroed( to_allocate, int(alignment), backing )
 	if alloc_error != .None {
 		return alloc_error
 	}
 
-	next_bucket_ptr := cast( [^]byte) bucket_memory
+	next_bucket_ptr := cast( [^]byte) raw_data(bucket_memory)
 	for index in 0 ..< num_buckets
 	{
 		bucket           := cast( ^PoolBucket) next_bucket_ptr
@@ -151,6 +145,7 @@ pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : Alloca
 	{
 		alloc_error = pool_allocate_buckets( pool, 1 )
 		if alloc_error != .None {
+			ensure(false, "Failed to allocate bucket")
 			return
 		}
 		pool.current_bucket = bucket_list.first
@@ -175,6 +170,7 @@ pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : Alloca
 		{
 			alloc_error := pool_allocate_buckets( pool, 1 )
 			if alloc_error != .None {
+				ensure(false, "Failed to allocate bucket")
 				return
 			}
 			pool.current_bucket = pool.current_bucket.next
@@ -242,34 +238,4 @@ pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32
 	}
 
 	return within_bucket
-}
-
-// This interface should really not be used for a pool allocator... But fk it its here.
-// TODO(Ed): Implement this eventaully..
-pool_allocator_proc :: proc(
-	allocator_data : rawptr,
-	mode           : AllocatorMode,
-	size           : int,
-	alignment      : int,
-	old_memory     : rawptr,
-	old_size       : int,
-	loc            := #caller_location
-) -> ([]byte, AllocatorError)
-{
-	switch mode
-	{
-		case .Alloc, .Alloc_Non_Zeroed:
-			fallthrough
-		case .Free:
-			fallthrough
-		case .Free_All:
-			fallthrough
-		case .Resize, .Resize_Non_Zeroed:
-			fallthrough
-		case .Query_Features:
-			fallthrough
-		case .Query_Info:
-			fallthrough
-	}
-	return nil, AllocatorError.Mode_Not_Implemented
 }

@@ -319,8 +319,8 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 {
 	// We need to repopulate Allocator references
 	for cache in & ui.caches {
-		cache.entries.allocator = cache_allocator
-		cache.hashes.allocator  = cache_allocator
+		cache.entries.backing = cache_allocator
+		cache.hashes.backing  = cache_allocator
 	}
 }
 
