@@ -9,6 +9,7 @@ $url_odin_repo   = 'https://github.com/Ed94/Odin.git'
 $url_ini_parser  = 'https://github.com/laytan/odin-ini-parser.git'
 $path_odin       = join-path $path_thirdparty 'Odin'
 $path_ini_parser = join-path $path_thirdparty 'ini'
+$path_ols        = join-path $path_thirdparty 'ols'
 
 $incremental_checks = Join-Path $PSScriptRoot 'helpers/incremental_checks.ps1'
 . $incremental_checks
@@ -19,11 +20,25 @@ if ( -not(Test-Path $path_thirdparty) ) {
 
 push-location $path_thirdparty
 
+if ((Test-Path -Path $path_ols) -and $false)
+{
+	Write-Host "Updating ols"
+	push-location $path_ols
+	$env:odin = join-path $path_odin 'odin.exe'
+
+	& .\build.bat
+	remove-item env:odin
+	pop-location
+
+	write-host
+}
+
 if (Test-Path -Path $path_odin)
 {
 	Write-Host "Checking for updates in the Odin repository..."
 	git -C $path_odin fetch
 
+	# TODO(Ed) : This is no longer a valid way to detect changes since I update a personal repo myself (within this local instance)
 	# Get the latest local and remote commit hashes for the current branch
 	$localCommit  = git -C $path_odin rev-parse HEAD
 	$remoteCommit = git -C $path_odin rev-parse '@{u}'
