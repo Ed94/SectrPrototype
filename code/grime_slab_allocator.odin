@@ -106,27 +106,34 @@ slab_alloc :: proc( using self : Slab,
 {
 	// profile(#procedure)
 	pool : Pool
-	for id in 0 ..< pools.idx {
+	id : u32 = 0
+	for ; id < pools.idx; id += 1 {
 			pool = pools.items[id]
 
 			if pool.block_size >= size && pool.alignment >= alignment {
 					break
 			}
 	}
+	verify( id < pools.idx, "There is not a size class in the slab's policy to satisfy the requested allocation" )
 
 	verify( pool.header != nil, "Requested alloc not supported by the slab allocator", location = loc )
 
 	block : []byte
 	block, alloc_error = pool_grab(pool)
 	if alloc_error != .None {
+			ensure(false, "Bad block from pool")
 			return nil, alloc_error
 	}
+	log( str_fmt_tmp("Retrieved block: %p %d", raw_data(block), len(block) ))
 
-	if zero_memory {
-			slice.zero(block)
-	}
+	// if zero_memory {
+	// 	slice.zero(block)
+	// }
 
 	data = byte_slice(raw_data(block), size)
+	if zero_memory {
+		slice.zero(data)
+	}
 	return
 }
 
@@ -177,11 +184,14 @@ slab_resize :: proc( using self : Slab,
 	// Resize will keep block in the same size_class, just give it more of its already allocated block
 	if pool_old == pool_resize
 	{
-		new_data = byte_slice( raw_data(data), new_size )
+		new_data_ptr := memory_after(data)
+		new_data      = byte_slice( raw_data(data), new_size )
+		log( str_fmt_tmp("Resize via expanding block space allocation %p %d", new_data_ptr, int(new_size - old_size)))
 
 		if zero_memory && new_size > old_size {
-			to_zero := slice_ptr( memory_after(data), int(new_size - old_size) )
+			to_zero := byte_slice( memory_after(data), int(new_size - old_size) )
 			slice.zero( to_zero )
+			log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", new_data_ptr, int(new_size - old_size)))
 		}
 		return
 	}
@@ -189,10 +199,17 @@ slab_resize :: proc( using self : Slab,
 	// We'll need to provide an entirely new block, so the data will need to be copied over.
 	new_block : []byte
 	new_block, alloc_error = pool_grab( pool_resize )
-	if alloc_error != .None do return
-	if zero_memory {
-		slice.zero( new_block )
+	if new_block == nil {
+		ensure(false, "Retreived a null block")
+		return
 	}
+
+	if alloc_error != .None do return
+	// if zero_memory {
+	// 	slice.zero( new_block )
+	// }
+
+	log( str_fmt_tmp("Resize via new block: %p %d (old : %p $d )", raw_data(new_block), len(new_block), raw_data(data), old_size ))
 
 	if raw_data(data) != raw_data(new_block) {
 		copy_non_overlapping( raw_data(new_block), raw_data(data), int(old_size) )

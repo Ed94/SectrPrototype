@@ -4,6 +4,7 @@ package sectr
 import "base:builtin"
 	copy :: builtin.copy
 import "base:intrinsics"
+	mem_zero       :: intrinsics.mem_zero
 	ptr_sub        :: intrinsics.ptr_sub
 	type_has_field :: intrinsics.type_has_field
 	type_elem_type :: intrinsics.type_elem_type

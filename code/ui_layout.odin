@@ -31,21 +31,36 @@ ui_compute_layout :: proc()
 		layout := & style.layout
 
 		margins := range2(
-			parent_content.p0 + { layout.margins.left,  layout.margins.top },
-			parent_content.p1 - { layout.margins.right, layout.margins.bottom },
+			{  layout.margins.left,  -layout.margins.top },
+			{ -layout.margins.right,  layout.margins.bottom },
 		)
+
+		margined_bounds := range2(
+			parent_content.p0 + margins.p0,
+			parent_content.p1 + margins.p1,
+		)
+
+		margined_size := margined_bounds.p1 - margined_bounds.p0
+
+		anchored_bounds := range2(
+			margined_bounds.p0 + margined_size * layout.anchor.p0,
+			margined_bounds.p0 + margined_size * layout.anchor.p1,
+		)
+
+		anchored_size := Vec2 {
+			anchored_bounds.max.x - anchored_bounds.min.x,
+			anchored_bounds.max.y - anchored_bounds.min.y,
+		}
 
 		anchor := & layout.anchor
 		pos    : Vec2
 		if UI_StyleFlag.Fixed_Position_X in style.flags {
 			pos.x  = layout.pos.x
-			pos.x -= margins.p0.x * anchor.x0
-			pos.x += margins.p0.x * anchor.x1
+			pos.x += anchored_bounds.p0.x
 		}
 		if UI_StyleFlag.Fixed_Position_Y in style.flags {
 			pos.y  = layout.pos.y
-			pos.y -= margins.p1.y * anchor.y0
-			pos.y += margins.p1.y * anchor.y1
+			pos.y += anchored_bounds.p0.y
 		}
 
 		text_size : Vec2
@@ -53,7 +68,8 @@ ui_compute_layout :: proc()
 		// if computed.text_size.y == style.font_size {
 		if current.first_frame || ! style.size_to_text || computed.text_size.y != size_range2(computed.bounds).y {
 			text_size = cast(Vec2) measure_text_size( current.text.str, style.font, style.font_size, 0 )
-		} else {
+		}
+		else {
 			text_size = computed.text_size
 		}
 
@@ -62,14 +78,14 @@ ui_compute_layout :: proc()
 			size.x = layout.size.x
 		}
 		else {
-			// TODO(Ed) : Not sure what todo here...
+			size.x = anchored_size.x
 		}
 
 		if UI_StyleFlag.Fixed_Height in style.flags {
 			size.y = layout.size.y
 		}
 		else {
-			// TODO(Ed) : Not sure what todo here...
+			size.y = anchored_size.y
 		}
 
 		if style.size_to_text {

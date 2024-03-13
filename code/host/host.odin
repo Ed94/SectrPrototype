@@ -97,6 +97,7 @@ when ODIN_OS == runtime.Odin_OS_Type.Windows
 	Path_Sectr_Debug_Symbols :: "sectr.pdb"
 }
 
+// TODO(Ed): Disable the default allocators for the host, we'll be handling it instead.
 RuntimeState :: struct {
 	running       : b32,
 	client_memory : ClientMemory,

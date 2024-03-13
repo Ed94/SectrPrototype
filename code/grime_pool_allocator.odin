@@ -14,6 +14,7 @@ The pool doesn't allocate any buckets on initialization unless the user specifes
 package sectr
 
 import "core:mem"
+import "core:slice"
 
 Pool :: struct {
 	using header : ^PoolHeader,
@@ -32,9 +33,9 @@ PoolHeader :: struct {
 }
 
 PoolBucket :: struct {
-	blocks      : [^]byte,
-	next_block  : uint,
 	using nodes : DLL_NodePN( PoolBucket),
+	next_block  : uint,
+	blocks      : [^]byte
 }
 
 Pool_FreeBlock :: struct {
@@ -86,6 +87,7 @@ pool_destroy :: proc ( using self : Pool )
 pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> AllocatorError
 {
 	profile(#procedure)
+	pool := self
 	if num_buckets == 0 {
 		return .Invalid_Argument
 	}
@@ -103,6 +105,8 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 		bucket           := cast( ^PoolBucket) next_bucket_ptr
 		bucket.blocks     = memory_after_header(bucket)
 		bucket.next_block = 0
+		log( str_fmt_tmp("Pool allocated block: %p capacity: %d", raw_data(bucket_memory), bucket_capacity))
+
 
 		if self.bucket_list.first == nil {
 			self.bucket_list.first = bucket
@@ -111,20 +115,22 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 		else {
 			dll_push_back( & self.bucket_list.last, bucket )
 		}
+		log( str_fmt_tmp("Bucket List First: %p", self.bucket_list.first))
 
 		next_bucket_ptr = next_bucket_ptr[ bucket_capacity: ]
 	}
 	return alloc_error
 }
 
-pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : AllocatorError )
+pool_grab :: proc( using pool : Pool, zero_memory := false ) -> ( block : []byte, alloc_error : AllocatorError )
 {
+	pool := pool
 	// profile(#procedure)
 	alloc_error = .None
 
 	// Check the free-list first for a block
-	if free_list_head != nil {
-
+	if free_list_head != nil
+	{
 		head := & pool.free_list_head
 
 		// Compiler Bug? Fails to compile
@@ -135,7 +141,8 @@ pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : Alloca
 
 		pool.free_list_head = pool.free_list_head.next 		// ll_pop
 
-		block = slice_ptr( cast([^]byte) last_free, int(pool.block_size) )
+		block = byte_slice( cast([^]byte) last_free, int(pool.block_size) )
+		log( str_fmt_tmp("Returning free block: %p %d", raw_data(block), pool.block_size))
 		return
 	}
 
@@ -164,10 +171,12 @@ pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : Alloca
 		// if current_bucket.next != nil {
 		if pool.current_bucket.next != nil {
 			// current_bucket = current_bucket.next
+			log( str_fmt_tmp("Bucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
 			pool.current_bucket = pool.current_bucket.next
 		}
 		else
 		{
+			log( "All previous buckets exhausted, allocating new bucket")
 			alloc_error := pool_allocate_buckets( pool, 1 )
 			if alloc_error != .None {
 				ensure(false, "Failed to allocate bucket")
@@ -180,8 +189,12 @@ pool_grab :: proc( using pool : Pool ) -> ( block : []byte, alloc_error : Alloca
 	// Compiler Bug
 	// block = slice_ptr( current_bucket.blocks[ current_bucket.next_block:], int(block_size) )
 	// self.current_bucket.next_block += block_size
-	block = slice_ptr( pool.current_bucket.blocks[ pool.current_bucket.next_block:], int(block_size) )
+	block = byte_slice( pool.current_bucket.blocks[ pool.current_bucket.next_block:], int(block_size) )
 	pool.current_bucket.next_block += block_size
+
+	if zero_memory {
+		slice.zero(block)
+	}
 	return
 }
 

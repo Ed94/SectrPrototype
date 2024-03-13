@@ -144,13 +144,15 @@ UI_Layout :: struct {
 	pos : Vec2,
 	// TODO(Ed) : Should everything no matter what its parent is use a WS_Pos instead of a raw vector pos?
 
+	// TODO(Ed): Support a min/max range for the size of a box
 	size : Vec2,
+	// size : Range2
 
 	// If the box is a child of the root parent, its automatically in world space and thus will use the tile_pos.
 	tile_pos : WS_Pos,
 
-	// TODO(Ed) : Add support for size_to_content?
 	size_to_text : b8,
+	// TODO(Ed) : Add support for size_to_content?
 	// size_to_content : b8,
 }
 
@@ -187,8 +189,8 @@ UI_StyleFlags :: bit_set[UI_StyleFlag; u32]
 UI_StylePreset :: enum u32 {
 	Default,
 	Disabled,
-	Hovered,
-	Focused,
+	Hot,
+	Active,
 	Count,
 }
 
@@ -214,7 +216,7 @@ UI_Style :: struct {
 UI_StyleTheme :: struct #raw_union {
 	array : [UI_StylePreset.Count] UI_Style,
 	using styles : struct {
-		default, disabled, hovered, focused : UI_Style,
+		default, disabled, hot, active : UI_Style,
 	}
 }
 
@@ -258,8 +260,8 @@ UI_Box :: struct {
 // UI_BoxFlags_Stack_Size    :: 512
 UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
-UI_Parent_Stack_Size      :: 1024 * 10
-UI_Built_Boxes_Array_Size :: 1024 * 10
+UI_Parent_Stack_Size      :: 512
+UI_Built_Boxes_Array_Size :: Kilobyte * 5
 
 UI_State :: struct {
 	// TODO(Ed) : Use these
@@ -313,6 +315,7 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 
 	ui.curr_cache = & ui.caches[1]
 	ui.prev_cache = & ui.caches[0]
+	log("ui_startup completed")
 }
 
 ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
@@ -374,7 +377,6 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	}
 
 	curr_box.flags  = flags
-	curr_box.parent = stack_peek( & parent_stack )
 
 	// Clear old links
 	curr_box.parent = nil
@@ -394,7 +396,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	return curr_box
 }
 
-ui_box_tranverse_next :: #force_inline proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
+ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 {
 	// If current has children, do them first
 	if box.first != nil {
@@ -509,7 +511,7 @@ ui_parent_pop :: proc() {
 }
 
 @(deferred_none = ui_parent_pop)
-ui_parent :: proc( ui : ^ UI_Box) {
+ui_parent :: proc( ui : ^UI_Box) {
 	ui_parent_push( ui )
 }
 
@@ -540,6 +542,11 @@ ui_style_theme_pop :: proc() {
 @(deferred_none = ui_style_theme_pop)
 ui_style_theme :: proc( preset : UI_StyleTheme ) {
 	ui_style_theme_push( preset )
+}
+
+@(deferred_none = ui_style_theme_pop)
+ui_theme_via_style :: proc ( style : UI_Style ) {
+	ui_style_theme_push( UI_StyleTheme { styles = { style, style, style, style } })
 }
 
 ui_style_theme_set_layout :: proc ( layout : UI_Layout ) {

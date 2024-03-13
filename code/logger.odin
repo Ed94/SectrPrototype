@@ -8,7 +8,7 @@ import str "core:strings"
 import "core:time"
 import core_log "core:log"
 
-Max_Logger_Message_Width :: 300
+Max_Logger_Message_Width :: 180
 
 LogLevel :: core_log.Level
 

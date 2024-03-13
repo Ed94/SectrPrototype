@@ -118,6 +118,9 @@ PWS_LexerData :: struct {
 
 pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResult, AllocatorError )
 {
+	bytes := transmute([]byte) text
+	log( str_fmt_tmp( "lexing: %v ...", (len(text) > 30 ? transmute(string) bytes[ :30] : text) ))
+
 	profile(#procedure)
 	using lexer : PWS_LexerData
 	context.user_ptr = & lexer
@@ -235,6 +238,9 @@ PWS_ParseData :: struct {
 
 pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseResult, AllocatorError )
 {
+	bytes := transmute([]byte) text
+	log( str_fmt_tmp( "parsing: %v ...", (len(text) > 30 ? transmute(string) bytes[ :30] : text) ))
+
 	profile(#procedure)
 	using parser : PWS_ParseData
 	context.user_ptr = & result

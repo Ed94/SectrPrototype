@@ -173,7 +173,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 				box.prev_style  = box.style
 				box.style_delta = 0
 			}
-			box.style = stack_peek( & ui.theme_stack ).hovered
+			box.style = stack_peek( & ui.theme_stack ).hot
 		}
 		if is_active
 		{
@@ -182,7 +182,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 				box.style_delta = 0
 				log( str_fmt_tmp("NEW ACTIVE: %v", box.label.str))
 			}
-			box.style = stack_peek( & ui.theme_stack ).focused
+			box.style = stack_peek( & ui.theme_stack ).active
 		}
 		if is_disabled
 		{

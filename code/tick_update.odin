@@ -204,22 +204,22 @@ update :: proc( delta_time : f64 ) -> b32
 			.Fixed_Width, .Fixed_Height,
 		}
 		default_layout := UI_Layout {
-			anchor    = {},
-			// alignment = { 0.0, 0.5 },
-			alignment = { 0.0, 0.0 },
+			anchor         = {},
+			alignment      = { 0.0, 0.0 },
 			text_alignment = { 0.0, 0.0 },
-			// alignment = { 1.0, 1.0 },
-			// corner_radii = { 0.3, 0.3, 0.3, 0.3 },
-			pos       = { 0, 0 },
-			size      = { 200, 200 },
+			corner_radii   = { 0.2, 0.2, 0.2, 0.2 },
+			pos            = { 0, 0 },
+			size           = { 200, 200 },
 		}
 
 		frame_style_default := UI_Style {
 			flags    = frame_style_flags,
 			bg_color = Color_BG_TextBox,
-			font = default_font,
-			font_size = 30,
+
+			font       = default_font,
+			font_size  = 30,
 			text_color = Color_White,
+
 			layout = default_layout,
 		}
 
@@ -230,19 +230,53 @@ update :: proc( delta_time : f64 ) -> b32
 			frame_style_default,
 		}}
 		frame_theme.disabled.bg_color = Color_Frame_Disabled
-		frame_theme.hovered.bg_color = Color_Frame_Hover
-		frame_theme.focused.bg_color = Color_Frame_Select
+		frame_theme.hot.bg_color = Color_Frame_Hover
+		frame_theme.active.bg_color = Color_Frame_Select
 		ui_style_theme( frame_theme )
 
 		config.ui_resize_border_width = 2.5
-		test_draggable()
+		// test_draggable()
 		// test_text_box()
 
-		// Test Parenting
-		
+		// test_parenting()
+		if true
+		{
+			parent_layout := default_layout
+			parent_layout.size      = { 300, 300 }
+			parent_layout.alignment = { 0.0, 0.0 }
+
+
+			ui_style_theme_set_layout( parent_layout )
+			parent :=	ui_widget( "Parent", { .Mouse_Clickable })
+			ui_parent(parent)
+			{
+				if parent.first_frame {
+					debug.draggable_box_pos  = parent.style.layout.pos + { 0, -100 }
+					debug.draggable_box_size = parent.style.layout.size
+				}
+
+				if parent.dragging {
+					debug.draggable_box_pos += mouse_world_delta()
+				}
+
+				parent.style.layout.pos  = debug.draggable_box_pos
+			}
+
+			child_layout := default_layout
+			child_layout.size      = { 100, 100 }
+			child_layout.alignment = { 0.5, 0.5 }
+			child_layout.margins   = { 20, 20, 20, 20 }
+			child_layout.anchor    = range2( { 0.5, 0.5 }, { 0.5, 0.5 })
+
+			child_theme := frame_style_default
+			// child_theme.flags = {}
+			child_theme.layout = child_layout
+			ui_theme_via_style(child_theme)
+			child  := ui_widget( "Child", { .Mouse_Clickable })
+		}
 
 		// Whitespace AST test
-		when false
+		if true
 		{
 			profile("Whitespace AST test")
 
@@ -260,8 +294,8 @@ update :: proc( delta_time : f64 ) -> b32
 			}}
 			text_theme.default.bg_color = Color_Transparent
 			text_theme.disabled.bg_color = Color_Frame_Disabled
-			text_theme.hovered.bg_color = Color_Frame_Hover
-			text_theme.focused.bg_color = Color_Frame_Select
+			text_theme.hot.bg_color = Color_Frame_Hover
+			text_theme.active.bg_color = Color_Frame_Select
 
 			layout_text := default_layout
 

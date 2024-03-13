@@ -8,6 +8,7 @@ pos_within_range2 :: proc( pos : Vec2, range : Range2 ) -> b32 {
 	return b32(within_x && within_y)
 }
 
+// TODO(Ed): Do we need this? Also does it even work (looks unfinished)?
 is_within_screenspace :: proc( pos : Vec2 ) -> b32 {
 	state         := get_state(); using state
 	screen_extent := state.app_window.extent

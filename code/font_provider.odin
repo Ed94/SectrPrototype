@@ -98,6 +98,7 @@ font_load :: proc( path_file : string,
 ) -> FontID
 {
 	profile(#procedure)
+	log( str_fmt_tmp("Loading font: %v", path_file))
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
 	font_data, read_succeded : = os.read_entire_file( path_file, context.temp_allocator )

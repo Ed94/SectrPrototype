@@ -23,11 +23,11 @@ import "core:sync"
 VArena_GrowthPolicyProc :: #type proc( commit_used, committed, reserved, requested_size : uint ) -> uint
 
 VArena :: struct {
-	using vmem      : VirtualMemoryRegion,
-	commit_used     : uint,
-	growth_policy   : VArena_GrowthPolicyProc,
-	allow_any_reize : b32,
-	mutex           : sync.Mutex,
+	using vmem       : VirtualMemoryRegion,
+	commit_used      : uint,
+	growth_policy    : VArena_GrowthPolicyProc,
+	allow_any_reize  : b32,
+	mutex            : sync.Mutex,
 }
 
 varena_default_growth_policy :: proc( commit_used, committed, reserved, requested_size : uint ) -> uint
@@ -74,8 +74,8 @@ varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
 		return
 	}
 
-	arena.vmem        = vmem
-	arena.commit_used = 0
+	arena.vmem             = vmem
+	arena.commit_used      = 0
 
 	if growth_policy == nil {
 		arena.growth_policy = varena_default_growth_policy
@@ -145,12 +145,21 @@ varena_alloc :: proc( using self : ^VArena,
 
 	data_ptr      := rawptr(current_offset + uintptr(alignment_offset))
 	data           = byte_slice( data_ptr, int(requested_size) )
-	self.commit_used   += size_to_allocate
+	self.commit_used += size_to_allocate
 	alloc_error    = .None
 
-	if zero_memory {
-		slice.zero( data )
+	log_backing : [Kilobyte * 16]byte
+	backing_slice := byte_slice( & log_backing[0], len(log_backing))
+
+	// log( str_fmt_buffer( backing_slice, "varena alloc - BASE: %p PTR: %X, SIZE: %d", cast(rawptr) self.base_address, & data[0], requested_size) )
+
+	if zero_memory
+	{
+		// log( str_fmt_buffer( backing_slice, "Zeroring data (Range: %p to %p)", raw_data(data), cast(rawptr) (uintptr(raw_data(data)) + uintptr(requested_size))))
+		// slice.zero( data )
+		mem_zero( data_ptr, int(requested_size) )
 	}
+
 	return
 }
 
@@ -229,6 +238,9 @@ varena_allocator_proc :: proc(
 			verify( old_memory_offset == current_offset || arena.allow_any_reize,
 				"Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
 
+			log_backing : [Kilobyte * 16]byte
+			backing_slice := byte_slice( & log_backing[0], len(log_backing))
+
 			if old_memory_offset != current_offset && arena.allow_any_reize
 			{
 				// Give it new memory and copy the old over. Old memory is unrecoverable until clear.
@@ -242,6 +254,7 @@ varena_allocator_proc :: proc(
 
 				copy_non_overlapping( raw_data(new_region), old_memory, int(old_size) )
 				data = new_region
+				// log( str_fmt_tmp("varena resize (new): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size))
 				return
 			}
 
@@ -254,6 +267,7 @@ varena_allocator_proc :: proc(
 			}
 
 			data = byte_slice( old_memory, size )
+			// log( str_fmt_tmp("varena resize (expanded): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size))
 			return
 
 		case .Query_Features:
