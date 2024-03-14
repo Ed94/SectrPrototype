@@ -15,8 +15,10 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		signal.cursor_pos  = ui_cursor_pos()
 		signal.cursor_over = cast(b8) pos_within_range2( signal.cursor_pos, box.computed.bounds )
 
+		computed_size := box.computed.bounds.p1 - box.computed.bounds.p0
+
 		resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
-		resize_percent_width := box.style.size * (resize_border_width * 1.0/ 200.0)
+		resize_percent_width := computed_size * (resize_border_width * 1.0/ 200.0)
 		resize_border_non_range := add(box.computed.bounds, range2(
 				{  resize_percent_width.x, -resize_percent_width.x },
 				{ -resize_percent_width.x,  resize_percent_width.x }))

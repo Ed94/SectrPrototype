@@ -27,46 +27,41 @@ ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widge
 ui_text :: proc( label : string, content : StringCached, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	// profile(#procedure)
-
 	state := get_state(); using state
 
 	box    := ui_box_make( flags, label )
 	signal := ui_signal_from_box( box )
 
 	box.text = content
-	box.style.layout.size_to_text = true
 	return { box, signal }
 }
 
 ui_space :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	// profile(#procedure)
-
-	space_str := str_intern( " " )
-
 	state := get_state(); using state
+
+	// TODO(Ed) : Move this somwhere in state.
+	space_str := str_intern( " " )
 
 	box    := ui_box_make( flags, label )
 	signal := ui_signal_from_box( box )
 
 	box.text = space_str
-	box.style.layout.size_to_text = true
 	return { box, signal }
 }
 
 ui_tab :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	// profile(#procedure)
+	state   := get_state(); using state
 
+	// TODO(Ed) : Move this somwhere in state.
 	tab_str := str_intern( "\t" )
-
-	state := get_state(); using state
 
 	box    := ui_box_make( flags, label )
 	signal := ui_signal_from_box( box )
 
 	box.text = tab_str
-
-	box.style.layout.size_to_text = true
 	return { box, signal }
 }

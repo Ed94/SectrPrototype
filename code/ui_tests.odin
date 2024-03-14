@@ -31,14 +31,14 @@ test_draggable :: proc()
 		// alignment = { 1.0, 1.0 },
 		// corner_radii = { 0.3, 0.3, 0.3, 0.3 },
 		pos       = { 0, 0 },
-		size      = { 200, 200 },
+		size      = range2({ 200, 200 }, {}),
 	}
 	ui_style_theme_set_layout( draggable_layout )
 
 	draggable := ui_widget( "Draggable Box!", UI_BoxFlags { .Mouse_Clickable, .Mouse_Resizable } )
 	if draggable.first_frame {
 		debug.draggable_box_pos  = draggable.style.layout.pos + { 0, -100 }
-		debug.draggable_box_size = draggable.style.layout.size
+		debug.draggable_box_size = draggable.style.layout.size.min
 	}
 
 	// Dragging
@@ -56,7 +56,7 @@ test_draggable :: proc()
 		cursor_distance   := linalg.distance(draggable.cursor_pos, center)
 		scale_factor      := cursor_distance * (1 / original_distance)
 
-		debug.draggable_box_size = og_layout.size * scale_factor
+		debug.draggable_box_size = og_layout.size.min * scale_factor
 	}
 
 	if (ui.hot == draggable.key) && (ui.hot_resizable || ui.active_start_signal.resizing) {
@@ -64,7 +64,7 @@ test_draggable :: proc()
 	}
 
 	draggable.style.layout.pos  = debug.draggable_box_pos
-	draggable.style.layout.size = debug.draggable_box_size
+	draggable.style.layout.size.min = debug.draggable_box_size
 }
 
 test_text_box :: proc()

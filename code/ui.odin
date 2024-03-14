@@ -54,6 +54,7 @@ UI_AnchorPresets :: enum u32 {
 
 UI_BoxFlag :: enum u64 {
 	Disabled,
+
 	Focusable,
 	Click_To_Focus,
 
@@ -137,23 +138,20 @@ UI_Layout :: struct {
 	margins : UI_LayoutSide,
 	padding : UI_LayoutSide,
 
+	// TODO(Ed): We cannot support individual corners unless we add it to raylib (or finally change the rendering backend)
 	corner_radii : [Corner.Count]f32,
 
 	// Position in relative coordinate space.
 	// If the box's flags has Fixed_Position, then this will be its aboslute position in the relative coordinate space
 	pos : Vec2,
-	// TODO(Ed) : Should everything no matter what its parent is use a WS_Pos instead of a raw vector pos?
 
 	// TODO(Ed): Support a min/max range for the size of a box
-	size : Vec2,
-	// size : Range2
+	size : Range2,
 
+	// TODO(Ed) :  Should thsi just always be WS_Pos for workspace UI?
+	// (We can union either varient and just know based on checking if its the screenspace UI)
 	// If the box is a child of the root parent, its automatically in world space and thus will use the tile_pos.
-	tile_pos : WS_Pos,
-
-	size_to_text : b8,
-	// TODO(Ed) : Add support for size_to_content?
-	// size_to_content : b8,
+	// tile_pos : WS_Pos,
 }
 
 UI_Signal :: struct {
@@ -175,11 +173,22 @@ UI_Signal :: struct {
 }
 
 UI_StyleFlag :: enum u32 {
+
+	// Will perform scissor pass on children to their parent's bounds
+	// (Specified in the parent)
+	Clip_Children_To_Bounds,
+
+	// Enforces the widget will always remain in a specific position relative to the parent.
+	// Overriding the anchors and margins.
 	Fixed_Position_X,
 	Fixed_Position_Y,
+
+	// Enroces the widget will maintain its size reguardless of any constraints
+	// Will override parent constraints
 	Fixed_Width,
 	Fixed_Height,
 
+	Size_To_Text,
 	Text_Wrap,
 
 	Count,
@@ -200,9 +209,11 @@ UI_Style :: struct {
 	bg_color     : Color,
 	border_color : Color,
 
+	// TODO(Ed) : Add support for this eventually
 	blur_size : f32,
 
 	font           : FontID,
+	// TODO(Ed): Should this get moved to the layout struct? Techncially font-size is mainly
 	font_size      : f32,
 	text_color     : Color,
 
@@ -210,6 +221,8 @@ UI_Style :: struct {
 
 	using layout : UI_Layout,
 
+	 // Used with style, prev_style, and style_delta to produce a simple interpolated animation
+	 // Applied in the layout pass & the rendering pass for their associated fields.
 	transition_time : f32,
 }
 

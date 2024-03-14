@@ -147,6 +147,8 @@ render_mode_2d :: proc()
 			style    := current.style
 			computed := & current.computed
 
+			computed_size := computed.bounds.p1 - computed.bounds.p0
+
 			if ! within_range2( view_bounds, computed.bounds ) {
 				continue
 			}
@@ -228,7 +230,7 @@ render_mode_2d :: proc()
 			{
 				// profile("Resize Bounds")
 				resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
-				resize_percent_width := style.size * (resize_border_width * 1.0/ 200.0)
+				resize_percent_width := computed_size * (resize_border_width * 1.0/ 200.0)
 				resize_border_non_range := add(current.computed.bounds, range2(
 						{  resize_percent_width.x, -resize_percent_width.x },
 						{ -resize_percent_width.x,  resize_percent_width.x }))
@@ -249,8 +251,14 @@ render_mode_2d :: proc()
 			point_radius := 3 * cam_zoom_ratio
 
 		// profile_begin("circles")
-			// rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
-			// rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
+			// center := Vec2 {
+			// 	render_bounds.p0.x + computed_size.x * 0.5,
+			// 	render_bounds.p0.y - computed_size.y * 0.5,
+			// }
+			// rl.DrawCircleV( center, point_radius, Color_White )
+
+			rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
+			rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
 		// profile_end()
 
 			if len(current.text.str) > 0 {

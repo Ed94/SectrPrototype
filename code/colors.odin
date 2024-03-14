@@ -15,8 +15,8 @@ Color_BG_TextBox_Green :: Color { 102, 102, 110, 255 }
 Color_Frame_Disabled   :: Color {  22,  22,  22, 120 }
 Color_Frame_Hover      :: Color { 122, 122, 125, 200 }
 Color_Frame_Select     :: Color { 188, 188, 188, 220 }
-Color_GreyRed          :: Color { 220, 100, 100, 125 }
-Color_White_A125       :: Color { 255, 255, 255, 125 }
+Color_GreyRed          :: Color { 220, 100, 100, 165 }
+Color_White_A125       :: Color { 255, 255, 255, 165 }
 
-Color_Debug_UI_Padding_Bounds :: Color { 40, 195, 170, 125 }
-Color_Debug_UI_Content_Bounds :: Color { 195, 40, 170, 125 }
+Color_Debug_UI_Padding_Bounds :: Color {  40, 195, 170, 160 }
+Color_Debug_UI_Content_Bounds :: Color { 170, 120, 240, 160 }

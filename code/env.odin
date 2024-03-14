@@ -250,6 +250,13 @@ DebugData :: struct {
 	mouse_vis         : b32,
 	last_mouse_pos    : Vec2,
 
+	// UI Vis
+	draw_ui_box_bounds_points : bool,
+	draw_ui_margin_bounds     : bool,
+	draw_ui_anchor_bounds     : bool,
+	draw_UI_padding_bounds    : bool,
+	draw_ui_content_bounds    : bool,
+
 	// Test First
 	frame_2_created : b32,
 
