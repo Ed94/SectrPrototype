@@ -150,16 +150,16 @@ render_mode_2d :: proc()
 			computed_size := computed.bounds.p1 - computed.bounds.p0
 
 			if ! within_range2( view_bounds, computed.bounds ) {
-				continue
+				// continue
 			}
 
 		// TODO(Ed) : Render Borders
 
 		// profile_begin("Calculating Raylib rectangles")
-			render_bounds := Range2 { pts = {
+			render_bounds := range2(
 				world_to_screen_pos(computed.bounds.min),
 				world_to_screen_pos(computed.bounds.max),
-			}}
+			)
 
 			render_padding := range2(
 				world_to_screen_pos(computed.padding.min),
@@ -172,21 +172,21 @@ render_mode_2d :: proc()
 
 			rect_bounds := rl.Rectangle {
 				render_bounds.min.x,
-				render_bounds.min.y,
-				render_bounds.max.x - render_bounds.min.x,
-				render_bounds.max.y - render_bounds.min.y,
+				render_bounds.max.y,
+				abs(render_bounds.max.x - render_bounds.min.x),
+				abs(render_bounds.max.y - render_bounds.min.y),
 			}
 			rect_padding := rl.Rectangle {
 				render_padding.min.x,
-				render_padding.min.y,
-				render_padding.max.x - render_padding.min.x,
-				render_padding.max.y - render_padding.min.y,
+				render_padding.max.y,
+				abs(render_padding.max.x - render_padding.min.x),
+				abs(render_padding.max.y - render_padding.min.y),
 			}
 			rect_content := rl.Rectangle {
 				render_content.min.x,
-				render_content.min.y,
-				render_content.max.x - render_content.min.x,
-				render_content.max.y - render_content.min.y,
+				render_content.max.y,
+				abs(render_content.max.x - render_content.min.x),
+				abs(render_content.max.y - render_content.min.y),
 			}
 		// profile_end()
 
@@ -222,7 +222,7 @@ render_mode_2d :: proc()
 			draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
 		}
 		else {
-			draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Content_Bounds, line_thickness )
+			draw_rectangle_lines( rect_content, style, Color_Debug_UI_Content_Bounds, line_thickness )
 		}
 		// profile_end()
 

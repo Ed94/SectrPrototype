@@ -11,28 +11,18 @@ ui_compute_layout :: proc()
 	root := state.project.workspace.ui.root
 	{
 		computed := & root.computed
-		bounds   := & computed.bounds
 		style    := root.style
 		layout   := & style.layout
-
-		bounds.min = layout.pos
-		bounds.max = layout.size.min
-
-		computed.content = bounds^
-		computed.padding = {}
+		computed.bounds.min = layout.pos
+		computed.bounds.max = layout.size.min
+		computed.content    = computed.bounds
 	}
 
 	current := root.first
 	for ; current != nil;
 	{
 		profile("Layout Box")
-		parent         := current.parent
-		parent_content := parent.computed.content
-		computed       := & current.computed
-
 		style  := current.style
-		layout := & style.layout
-
 
 		// These are used to choose via multiplication weather to apply
 		// position & size constraints of the parent.
@@ -46,50 +36,22 @@ ui_compute_layout :: proc()
 
 		size_to_text : bool = .Size_To_Text in style.flags
 
+		parent         := current.parent
+		computed       := & current.computed
 
-		margins := range2(
-			{  layout.margins.left,  -layout.margins.top },
-			{ -layout.margins.right,  layout.margins.bottom },
-		)
-		margined_bounds := range2(
-			parent_content.p0 + margins.p0,
-			parent_content.p1 + margins.p1,
-		)
-		margined_size := linalg.abs(margined_bounds.p1 - margined_bounds.p0)
+		parent_content      := parent.computed.content
+		parent_content_size := parent_content.max - parent_content.min
+		parent_center       := parent_content.min + parent_content_size * 0.5
 
-		anchor := & layout.anchor
-		// Margins + Anchors Applied
-		adjusted_bounds := range2(
-			{  margined_bounds.p0.x + margined_size.x * anchor.p0.x, margined_bounds.p0.y + margined_size.y * anchor.p0.y },
-			{  margined_bounds.p1.x + margined_size.x * anchor.p1.x, margined_bounds.p1.y + margined_size.y * anchor.p1.y },
-		)
-		adjusted_bounds_size := linalg.abs(adjusted_bounds.p1 - adjusted_bounds.p0)
-
-		// Resolves final constrained bounds of the parent for the child box
-		// Will be applied to the box after the child's positon is resolved.
-
-		fixed_pos := Vec2 { fixed_pos_x, fixed_pos_y }
-		constraint_min := adjusted_bounds.min //* (1 - fixed_pos) + parent_content.min * fixed_pos
-		constraint_max := adjusted_bounds.max //* (1 - fixed_pos) + parent_content.max * fixed_pos
-
-		// constraint_min_x := adjusted_bounds.min.x //* (1 - fixed_pos_x) + parent_content.min.x * fixed_pos_x
-		// constraint_min_y := adjusted_bounds.min.y //* (1 - fixed_pos_y) + parent_content.min.y * fixed_pos_y
-		// constraint_max_x := adjusted_bounds.max.x //* (1 - fixed_pos_x) + parent_content.max.x * fixed_pos_x
-		// constraint_max_y := adjusted_bounds.max.y //* (1 - fixed_pos_y) + parent_content.max.y * fixed_pos_y
-
-		constrained_bounds := range2(
-			constraint_min,
-			constraint_max,
-			// { constraint_min_x, constraint_min_y },
-			// { constraint_max_x, constraint_max_y },
-		)
-		constrained_size := linalg.abs(constrained_bounds.p1 - constrained_bounds.p0)
-
+		layout := & style.layout
 
 		/*
 		If fixed position (X or Y):
 		* Ignore Margins
 		* Ignore Anchors
+
+		If clampped position (X or Y):
+		* Positon cannot exceed the anchors/margins bounds.
 
 		If fixed size (X or Y):
 		* Ignore Parent constraints (can only be clipped)
@@ -102,117 +64,52 @@ ui_compute_layout :: proc()
 		If size.min is not 0:
 		* Ignore parent constraints if the bounds go below that value.
 
-		If size.max is not 0:
-		* Allow the child box to spread to entire adjusted content bounds.
+		If size.max is 0:
+		* Allow the child box to spread to entire adjusted content bounds, otherwise clampped to max size.
 		*/
 
-		size_unit_bounds := range2(
-			{  0.0,  0.0 },
-			{  1.0, -1.0 },
+		// 1. Anchors
+		anchor := & layout.anchor
+		// anchored_pos  := parent_content.min + parent_content_size * anchor.min
+		// anchored_size := parent_content_size * linalg.abs( anchor.p1 - anchor.p0 )
+		anchored_bounds := range2(
+			{
+				parent_content.min.x + parent_content_size.x * anchor.min.x,
+				parent_content.min.y + parent_content_size.y * anchor.min.y,
+			},
+			{
+				parent_content.max.x - parent_content_size.x * anchor.max.x,
+				parent_content.max.y - parent_content_size.y * anchor.max.y,
+			}
 		)
+		anchored_bounds_origin := (anchored_bounds.min + anchored_bounds.max) * 0.5
 
-		alignment := layout.alignment
-		aligned_unit_bounds := range2(
-			size_unit_bounds.p0 + { -alignment.x,  alignment.y },
-			size_unit_bounds.p1 - {  alignment.x, -alignment.y },
+		// 2. Apply Margins
+		margins := range2(
+			{ layout.margins.left,  layout.margins.bottom },
+			{ layout.margins.right, layout.margins.top },
 		)
-
-		wtf := range2(
-			{  constrained_bounds.p0.x,  constrained_bounds.p0.y },
-			{  constrained_bounds.p1.x,  constrained_bounds.p1.y },
+		margined_bounds := range2(
+			anchored_bounds.min + margins.min,
+			anchored_bounds.max - margins.max,
 		)
+		margined_bounds_origin := (margined_bounds.min + margined_bounds.max) * 0.5
+		margined_size          :=  margined_bounds.max - margined_bounds.min
 
-		// projected_bounds := range2(
-		// 	aligned_unit_bounds.p0 * wtf.p0,
-		// 	aligned_unit_bounds.p1 * wtf.p1,
-		// )
+		// 3. Enforce Min/Max Size Constraints
+		adjusted_max_size_x := layout.size.max.x > 0 ? min( margined_size.x, layout.size.max.x ) : margined_size.x
+		adjusted_max_size_y := layout.size.max.y > 0 ? min( margined_size.y, layout.size.max.y ) : margined_size.y
 
+		adjusted_size : Vec2
+		adjusted_size.x = max( adjusted_max_size_x, layout.size.min.x)
+		adjusted_size.y = max( adjusted_max_size_y, layout.size.min.y)
 
-		constrained_half_size := constrained_size * 0.5
-		min_half_size         := layout.size.min  * 0.5
-		max_half_size         := layout.size.max  * 0.5
-		half_size             := linalg.max( constrained_half_size, min_half_size )
-		half_size              = linalg.min( half_size, max_half_size )
-
-		projected_bounds := range2(
-			aligned_unit_bounds.p0 * half_size,
-			aligned_unit_bounds.p1 * half_size,
-		)
-
-		rel_projected_bounds := range2(
-			layout.pos + projected_bounds.p0,
-			layout.pos + projected_bounds.p1,
-		)
-
-		bounds : Range2
-
-		// Resolve and apply the size constraint based off of positon of box and the constrained bounds
-
-		// Check to see if left or right side is over
-		if ! (.Fixed_Width in style.flags)
-		{
-			bounds.p0.x = rel_projected_bounds.p0.x < constrained_bounds.p0.x ? constrained_bounds.p0.x : rel_projected_bounds.p0.x
-			bounds.p1.x = rel_projected_bounds.p1.x > constrained_bounds.p1.x ? constrained_bounds.p1.x : rel_projected_bounds.p1.x
+		if .Fixed_Width in style.flags {
+			adjusted_size.x = layout.size.min.x
 		}
-		else {
-			size_unit_bounds := range2(
-				{  0.0,  0.0 },
-				{  1.0, -1.0 },
-			)
-
-			alignment := layout.alignment
-			aligned_unit_bounds := range2(
-				size_unit_bounds.p0 + { -alignment.x,  alignment.y },
-				size_unit_bounds.p1 - {  alignment.x, -alignment.y },
-			)
-
-			// Apply size.p0.x directly
-			bounds.p0.x = aligned_unit_bounds.p0.x * layout.size.min.x
-			bounds.p1.x = aligned_unit_bounds.p1.x * layout.size.min.x
-
-			bounds.p0.x += constrained_bounds.p0.x
-			bounds.p1.x += constrained_bounds.p0.x
-
-			bounds.p0.x += layout.pos.x
-			bounds.p1.x += layout.pos.x
+		if .Fixed_Height in style.flags {
+			adjusted_size.y = layout.size.min.y
 		}
-
-		if ! (.Fixed_Height in style.flags)
-		{
-			bounds.p0.y = rel_projected_bounds.p0.y > constrained_bounds.p0.y ? constrained_bounds.p0.y : rel_projected_bounds.p0.y
-			bounds.p1.y = rel_projected_bounds.p1.y < constrained_bounds.p1.y ? constrained_bounds.p1.y : rel_projected_bounds.p1.y
-		}
-		else {
-			size_unit_bounds := range2(
-				{  0.0,  0.0 },
-				{  1.0, -1.0 },
-			)
-
-			alignment := layout.alignment
-			aligned_unit_bounds := range2(
-				size_unit_bounds.p0 + { -alignment.x,  alignment.y },
-				size_unit_bounds.p1 - {  alignment.x, -alignment.y },
-			)
-
-			// Apply size.p0.y directly
-			bounds.p0.y = aligned_unit_bounds.p0.y * layout.size.min.y
-			bounds.p1.y = aligned_unit_bounds.p1.y * layout.size.min.y
-
-			bounds.p0.y += constrained_bounds.p0.y //+ aligned_unit_bounds
-			bounds.p1.y += constrained_bounds.p0.y //+ aligned_unit_bounds
-
-			bounds.p0.y += layout.pos.y
-			bounds.p1.y += layout.pos.y
-		}
-
-		// Enforce the min/max size
-		bounds_size := bounds.p1 - bounds.p0
-		// if bounds_size > layout.size.max {
-			// Enforce max
-
-
-		// }
-
 
 		text_size : Vec2
 		// If the computed matches, we already have the size, don't bother.
@@ -222,36 +119,65 @@ ui_compute_layout :: proc()
 		else {
 			text_size = computed.text_size
 		}
-		if size_to_text {
-			// size = text_size
+
+		// 4. Adjust Alignment of pivot position
+		alignment := layout.alignment
+		alignment_offset := Vec2 {
+			// adjusted_size.x * (alignment.x - 0.5),
+			// adjusted_size.y * (alignment.y - 0.5),
 		}
 
+		// 5. Determine relative position
 
-		computed.bounds = bounds
+		// TODO(Ed): Let the user determine the coordinate space origin?
+		// rel_pos := margined_bounds_origin + alignment_offset + layout.pos
+		rel_pos := margined_bounds_origin + layout.pos
 
-		border_offset := Vec2 { layout.border_width, layout.border_width }
-		padding    := & computed.padding
-		(padding^)  = range2(
-			bounds.p0 + border_offset,
-			bounds.p1 + border_offset,
+		if .Fixed_Position_X in style.flags {
+			rel_pos.x = parent_center.x + layout.pos.x
+		}
+		if .Fixed_Position_Y in style.flags {
+			rel_pos.y = parent_center.y + layout.pos.y
+		}
+
+		vec2_one := Vec2 { 1, 1 }
+
+		// Determine the box bounds
+		bounds := range2(
+			rel_pos - adjusted_size * alignment,
+			rel_pos + adjusted_size * (vec2_one - alignment),
 		)
 
-		content   := & computed.content
-		(content^) = range2(
-			bounds.p0 + {  layout.padding.left,  -layout.padding.top },
-			bounds.p1 + { -layout.padding.right,  layout.padding.bottom },
+		// Determine Padding's outer bounds
+		border_offset := Vec2	{ layout.border_width, layout.border_width }
+
+		padding_bounds := range2(
+			bounds.min + border_offset,
+			bounds.min - border_offset,
 		)
 
-		// Text
+		// Determine Content Bounds
+		content_bounds := range2(
+			bounds.min + { layout.padding.left,  layout.padding.bottom },
+			bounds.max - { layout.padding.right, layout.padding.top },
+		)
+
+		computed.anchors = anchored_bounds
+		computed.margins = margined_bounds
+		computed.bounds  = bounds
+		computed.padding = padding_bounds
+		computed.content = content_bounds
+
+		// TODO(Ed): Needs a rework based on changes to rest of layout above being changed
+		// Text 
 		if len(current.text.str) > 0
 		{
-			// profile("Text")
-			top_left     := content.p0
-			bottom_right := content.p1
+			bottom_left := content_bounds.min
+			top_right   := content_bounds.max
 
-			content_size := Vec2 { top_left.x - bottom_right.x, top_left.y - bottom_right.y }
+			content_size := Vec2 { top_right.x - bottom_left.x, top_right.y - bottom_left.y }
 			text_pos : Vec2
-			text_pos = top_left
+			text_pos = top_right
 			text_pos.x += (-content_size.x - text_size.x) * layout.text_alignment.x
 			text_pos.y += (-content_size.y + text_size.y) * layout.text_alignment.y
 

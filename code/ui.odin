@@ -77,11 +77,13 @@ UI_BoxFlag_Scroll :: UI_BoxFlags { .Scroll_X, .Scroll_Y }
 // The UI_Box's actual positioning and sizing
 // There is an excess of rectangles here for debug puproses.
 UI_Computed :: struct {
-	bounds     : Range2,
-	padding    : Range2,
-	content    : Range2,
-	text_pos   : Vec2,
-	text_size  : Vec2,
+	anchors    : Range2, // Bounds for anchors within parent
+	margins    : Range2, // Bounds for margins within parent
+	bounds     : Range2, // Bounds for box itself
+	padding    : Range2, // Bounds for padding's starting bounds (will be offset by border if there is one)
+	content    : Range2, // Bounds for content (text or children)
+	text_pos   : Vec2,   // Position of text within content
+	text_size  : Vec2,   // Size of text within content
 }
 
 UI_LayoutSide :: struct {
@@ -111,12 +113,6 @@ UI_Key :: distinct u64
 
 UI_Scalar :: f32
 
-// TODO(Ed): I'm not sure if Percentage is needed or if this would over complicate things...
-// UI_Scalar :: struct {
-// 	VPixels    : f32,
-// 	Percentage : f32,
-// }
-
 UI_ScalarConstraint :: struct {
 	min, max : UI_Scalar,
 }
@@ -125,10 +121,6 @@ UI_Scalar2 :: [Axis2.Count]UI_Scalar
 
 // Desiered constraints on the UI_Box.
 UI_Layout :: struct {
-	// TODO(Ed) : Should layout have its own flags (separate from the style flags)
-	// flags : UI_LayoutFlags
-
-	// TODO(Ed) : Make sure this is all we need to represent an anchor.
 	anchor         : Range2,
 	alignment      : Vec2,
 	text_alignment : Vec2,
@@ -145,7 +137,6 @@ UI_Layout :: struct {
 	// If the box's flags has Fixed_Position, then this will be its aboslute position in the relative coordinate space
 	pos : Vec2,
 
-	// TODO(Ed): Support a min/max range for the size of a box
 	size : Range2,
 
 	// TODO(Ed) :  Should thsi just always be WS_Pos for workspace UI?
@@ -178,16 +169,21 @@ UI_StyleFlag :: enum u32 {
 	// (Specified in the parent)
 	Clip_Children_To_Bounds,
 
-	// Enforces the widget will always remain in a specific position relative to the parent.
+	// Enforces the box will always remain in a specific position relative to the parent.
 	// Overriding the anchors and margins.
 	Fixed_Position_X,
 	Fixed_Position_Y,
+
+	// Enforces box will always be within the bounds of the parent box.
+	Clamp_Position_X,
+	Clamp_Position_Y,
 
 	// Enroces the widget will maintain its size reguardless of any constraints
 	// Will override parent constraints
 	Fixed_Width,
 	Fixed_Height,
 
+	// Will size the box to its text. (Padding & Margins will thicken )
 	Size_To_Text,
 	Text_Wrap,
 
@@ -266,8 +262,8 @@ UI_Box :: struct {
 
 	// prev_computed : UI_Computed,
 	// prev_style    : UI_Style,v
-	mouse         : UI_InteractState,
-	keyboard      : UI_InteractState,
+	// mouse         : UI_InteractState,
+	// keyboard      : UI_InteractState,
 }
 
 // UI_BoxFlags_Stack_Size    :: 512

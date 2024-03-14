@@ -231,7 +231,7 @@ update :: proc( delta_time : f64 ) -> b32
 			frame_style_default,
 		}}
 		frame_theme.disabled.bg_color = Color_Frame_Disabled
-		// frame_theme.hot.bg_color      = Color_Frame_Hover
+		frame_theme.hot.bg_color      = Color_Frame_Hover
 		frame_theme.active.bg_color   = Color_Frame_Select
 		ui_style_theme( frame_theme )
 
@@ -240,20 +240,22 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_text_box()
 
 		// test_parenting()
-		if true
+		if false
 		{
 			frame := ui_widget( "Frame", {} )
 			ui_parent(frame)
 
 			parent_layout := default_layout
 			parent_layout.size      = range2( { 300, 300 }, {} )
-			parent_layout.alignment = { 0.0, 0.0 }
+			parent_layout.alignment = { 0.5, 0.5 }
+			parent_layout.margins   = { 100, 100, 100, 100 }
 			parent_layout.padding   = {}
 			parent_layout.pos       = { 0, 0 }
 
 			parent_theme := frame_style_default
 			parent_theme.layout = parent_layout
 			parent_theme.flags = {
+				// .Fixed_Position_X, .Fixed_Position_Y,
 				.Fixed_Width, .Fixed_Height,
 			}
 			ui_theme_via_style(parent_theme)
@@ -262,7 +264,7 @@ update :: proc( delta_time : f64 ) -> b32
 			ui_parent(parent)
 			{
 				if parent.first_frame {
-					debug.draggable_box_pos  = parent.style.layout.pos + { 0, 0 }
+					debug.draggable_box_pos  = parent.style.layout.pos
 					debug.draggable_box_size = parent.style.layout.size.min
 				}
 
@@ -285,19 +287,20 @@ update :: proc( delta_time : f64 ) -> b32
 					parent.style.bg_color = Color_Blue
 				}
 
-				parent.style.layout.pos  = debug.draggable_box_pos
+				parent.style.layout.pos      = debug.draggable_box_pos
 				parent.style.layout.size.min = debug.draggable_box_size
 			}
 
 			child_layout := default_layout
-			child_layout.size      = range2({ 50, 50 }, { 200, 200 })
-			child_layout.alignment = { 0.0, 0.0 }
-			child_layout.margins   = { 00, 00, 00, 00 }
+			child_layout.size      = range2({ 75, 75 }, { 0, 0 })
+			child_layout.alignment = { 0.5, 0.0 }
+			child_layout.margins   = { 20, 20, 20, 20 }
 			child_layout.padding   = {}
-			child_layout.anchor    = range2({ 0.0, 0.0 }, { 0.0, 0.0 })
+			child_layout.anchor    = range2({ 0.0, 0.0 }, { 0.0, 1.0 })
 			child_layout.pos       = { 0, 0 }
 
 			child_theme := frame_style_default
+			child_theme.bg_color = Color_GreyRed
 			child_theme.flags = {
 				// .Fixed_Width, .Fixed_Height,
 			}
@@ -307,7 +310,7 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 
 		// Whitespace AST test
-		if false
+		if true
 		{
 			profile("Whitespace AST test")
 
