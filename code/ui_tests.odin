@@ -26,7 +26,7 @@ test_draggable :: proc()
 	draggable_layout := UI_Layout {
 		anchor    = {},
 		// alignment = { 0.0, 0.5 },
-		alignment = { 0.5, 0.5 },
+		alignment      = { 0.5, 0.5 },
 		text_alignment = { 0.0, 0.0 },
 		// alignment = { 1.0, 1.0 },
 		// corner_radii = { 0.3, 0.3, 0.3, 0.3 },
@@ -74,10 +74,13 @@ test_text_box :: proc()
 
 	@static pos : Vec2
 	style := ui_style_peek( .Default )
+	style.text_alignment = { 1.0, 1.0 }
+	// style.flags     = { .Size_To_Text  }
+	style.padding   = { 10, 10, 10, 10 }
+	style.font_size = 32
 	ui_style_theme( { styles = { style, style, style, style, }} )
 
 	text := str_intern( "Lorem ipsum dolor sit amet")
-	font_size := 30
 
 	text_box := ui_text("TEXT BOX!", text, flags = { .Mouse_Clickable })
 	if text_box.first_frame {
@@ -89,4 +92,6 @@ test_text_box :: proc()
 	}
 
 	text_box.style.layout.pos = pos
+
+	text_box.style.size.min = { text_box.computed.text_size.x * 1.5, text_box.computed.text_size.y * 3 }
 }

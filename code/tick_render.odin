@@ -150,7 +150,7 @@ render_mode_2d :: proc()
 			computed_size := computed.bounds.p1 - computed.bounds.p0
 
 			if ! within_range2( view_bounds, computed.bounds ) {
-				// continue
+				continue
 			}
 
 		// TODO(Ed) : Render Borders

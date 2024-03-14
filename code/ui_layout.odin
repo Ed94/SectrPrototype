@@ -70,17 +70,9 @@ ui_compute_layout :: proc()
 
 		// 1. Anchors
 		anchor := & layout.anchor
-		// anchored_pos  := parent_content.min + parent_content_size * anchor.min
-		// anchored_size := parent_content_size * linalg.abs( anchor.p1 - anchor.p0 )
 		anchored_bounds := range2(
-			{
-				parent_content.min.x + parent_content_size.x * anchor.min.x,
-				parent_content.min.y + parent_content_size.y * anchor.min.y,
-			},
-			{
-				parent_content.max.x - parent_content_size.x * anchor.max.x,
-				parent_content.max.y - parent_content_size.y * anchor.max.y,
-			}
+			parent_content.min + parent_content_size * anchor.min,
+			parent_content.max - parent_content_size * anchor.max,
 		)
 		anchored_bounds_origin := (anchored_bounds.min + anchored_bounds.max) * 0.5
 
@@ -120,11 +112,8 @@ ui_compute_layout :: proc()
 			text_size = computed.text_size
 		}
 
-		// 4. Adjust Alignment of pivot position
-		alignment := layout.alignment
-		alignment_offset := Vec2 {
-			// adjusted_size.x * (alignment.x - 0.5),
-			// adjusted_size.y * (alignment.y - 0.5),
+		if size_to_text {
+			adjusted_size = text_size
 		}
 
 		// 5. Determine relative position
@@ -142,7 +131,9 @@ ui_compute_layout :: proc()
 
 		vec2_one := Vec2 { 1, 1 }
 
-		// Determine the box bounds
+		// 6. Determine the box bounds
+		// Adjust Alignment of pivot position
+		alignment := layout.alignment
 		bounds := range2(
 			rel_pos - adjusted_size * alignment,
 			rel_pos + adjusted_size * (vec2_one - alignment),
@@ -169,17 +160,14 @@ ui_compute_layout :: proc()
 		computed.content = content_bounds
 
 		// TODO(Ed): Needs a rework based on changes to rest of layout above being changed
-		// Text 
+		// Text
 		if len(current.text.str) > 0
 		{
-			bottom_left := content_bounds.min
-			top_right   := content_bounds.max
-
-			content_size := Vec2 { top_right.x - bottom_left.x, top_right.y - bottom_left.y }
+			content_size := content_bounds.max - content_bounds.min
 			text_pos : Vec2
-			text_pos = top_right
-			text_pos.x += (-content_size.x - text_size.x) * layout.text_alignment.x
-			text_pos.y += (-content_size.y + text_size.y) * layout.text_alignment.y
+			text_pos = content_bounds.min + { 0, text_size.y }
+			text_pos.x += ( content_size.x - text_size.x ) * layout.text_alignment.x
+			text_pos.y += ( content_size.y - text_size.y ) * layout.text_alignment.y
 
 			computed.text_size = text_size
 			computed.text_pos  = { text_pos.x, -text_pos.y }

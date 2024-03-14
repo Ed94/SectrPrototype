@@ -240,10 +240,10 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_text_box()
 
 		// test_parenting()
-		if false
+		if true
 		{
-			frame := ui_widget( "Frame", {} )
-			ui_parent(frame)
+			// frame := ui_widget( "Frame", {} )
+			// ui_parent(frame)
 
 			parent_layout := default_layout
 			parent_layout.size      = range2( { 300, 300 }, {} )
@@ -310,12 +310,13 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 
 		// Whitespace AST test
-		if true
+		if false
 		{
 			profile("Whitespace AST test")
 
 			text_style := frame_style_default
 			text_style.flags = {
+				.Size_To_Text,
 				.Fixed_Position_X, .Fixed_Position_Y,
 				// .Fixed_Width, .Fixed_Height,
 			}

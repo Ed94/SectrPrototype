@@ -145,7 +145,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	rl.SetConfigFlags( {
 		rl.ConfigFlag.WINDOW_RESIZABLE,
-		rl.ConfigFlag.WINDOW_TOPMOST,
+		// rl.ConfigFlag.WINDOW_TOPMOST,
 	})
 
 	// Rough setup of window with rl stuff

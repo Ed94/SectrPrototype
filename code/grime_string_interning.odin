@@ -53,7 +53,7 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 	cache.slab, alloc_error = slab_init( & policy, allocator = persistent_allocator() )
 	verify(alloc_error == .None, "Failed to initialize the string cache" )
 
-	cache.table, alloc_error = zpl_hmap_init_reserve( StringCached, persistent_slab_allocator(), 2 * Kilobyte )
+	cache.table, alloc_error = zpl_hmap_init_reserve( StringCached, persistent_slab_allocator(), 64 * Kilobyte )
 	return
 }
 
