@@ -28,14 +28,15 @@ import fmt_io "core:fmt"
 	str_fmt         :: fmt_io.printf
 	str_fmt_alloc   :: fmt_io.aprintf
 	str_fmt_tmp     :: fmt_io.tprintf
+	str_fmt_buffer  :: fmt_io.bprintf
 	str_fmt_builder :: fmt_io.sbprintf
 import "core:log"
 import "core:mem"
 	Allocator         :: mem.Allocator
 	AllocatorError    :: mem.Allocator_Error
-	TrackingAllocator :: mem.Tracking_Allocator
+	Arena             :: mem.Arena
+	arena_allocator   :: mem.arena_allocator
 import "core:mem/virtual"
-	Arena        :: virtual.Arena
 	MapFileError :: virtual.Map_File_Error
 	MapFileFlag  :: virtual.Map_File_Flag
 	MapFileFlags :: virtual.Map_File_Flags
@@ -99,6 +100,9 @@ when ODIN_OS == runtime.Odin_OS_Type.Windows
 
 // TODO(Ed): Disable the default allocators for the host, we'll be handling it instead.
 RuntimeState :: struct {
+	persistent : Arena,
+	transient  : Arena,
+
 	running       : b32,
 	client_memory : ClientMemory,
 	sectr_api     : sectr.ModuleAPI,
@@ -242,10 +246,22 @@ sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, lo
 	}
 }
 
+
+fmt_backing : [16 * Kilobyte] u8
+
+persistent_backing : [2 * Megabyte] byte
+transient_backing  : [2 * Megabyte] byte
+
 main :: proc()
 {
 	state : RuntimeState
 	using state
+
+	mem.arena_init( & state.persistent, persistent_backing[:] )
+	mem.arena_init( & state.transient,  transient_backing[:] )
+
+	context.allocator      = arena_allocator( & state.persistent)
+	context.temp_allocator = arena_allocator( & state.transient)
 
 	// Setup profiling
 	profiler : SpallProfiler
@@ -267,16 +283,16 @@ main :: proc()
 			os.make_directory( Path_Logs )
 		}
 
-		timestamp            := str_fmt_tmp("%04d-%02d-%02d_%02d-%02d-%02d", year, month, day, hour, min, sec)
-		path_logger_finalized = str_fmt_alloc( "%s/sectr_%v.log", Path_Logs, timestamp)
+		timestamp            := str_fmt_buffer( fmt_backing[:], "%04d-%02d-%02d_%02d-%02d-%02d", year, month, day, hour, min, sec)
+		path_logger_finalized = str_fmt_buffer( fmt_backing[:], "%s/sectr_%v.log", Path_Logs, timestamp)
 	}
 
 	logger :  sectr.Logger
-	logger_init( & logger, "Sectr Host", str_fmt_alloc( "%s/sectr.log", Path_Logs ) )
+	logger_init( & logger, "Sectr Host", str_fmt_buffer( fmt_backing[:], "%s/sectr.log", Path_Logs ) )
 	context.logger = to_odin_logger( & logger )
 	{
 		// Log System Context
-		backing_builder : [16 * Kilobyte] u8
+		backing_builder : [1 * Kilobyte] u8
 		builder         := str_builder_from_bytes( backing_builder[:] )
 		str_fmt_builder( & builder, "Core Count: %v, ", os.processor_core_count() )
 		str_fmt_builder( & builder, "Page Size: %v",    os.get_page_size() )
@@ -286,18 +302,13 @@ main :: proc()
 
 	memory := setup_memory( & profiler )
 
-	// TODO(Ed): Cannot use the manually created allocators for the host. Not sure why
-	// Something is wrong with the tracked_allocator init
-	// context.allocator        = tracked_allocator( & memory.host_persistent )
-	// context.temp_allocator   = tracked_allocator( & memory.host_transient )
-
 	// Load the Enviornment API for the first-time
 	{
 		sectr_api = load_sectr_api( 1 )
 		verify( sectr_api.lib_version != 0, "Failed to initially load the sectr module" )
 	}
 
-	free_all( context.temp_allocator )
+	// free_all( context.temp_allocator )
 
 	running   = true;
 	sectr_api = sectr_api
@@ -326,6 +337,8 @@ main :: proc()
 
 		delta_ns   = time.tick_lap_time( & host_tick )
 		host_tick  = time.tick_now()
+
+		free_all( arena_allocator( & state.transient))
 	}
 
 	// Determine how the run_cyle completed, if it failed due to an error,
@@ -344,5 +357,5 @@ main :: proc()
 	file_close( logger.file )
 	// TODO(Ed) : Add string interning!!!!!!!!!
 	// file_rename( logger.file_path, path_logger_finalized )
-	file_rename( str_fmt_tmp( "%s/sectr.log",  Path_Logs), path_logger_finalized )
+	file_rename( str_fmt_buffer( fmt_backing[:], "%s/sectr.log",  Path_Logs), path_logger_finalized )
 }

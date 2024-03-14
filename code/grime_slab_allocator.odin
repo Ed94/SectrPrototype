@@ -87,6 +87,14 @@ slab_init_pools :: proc ( using self : Slab, bucket_reserve_num : uint = 0 ) -> 
 	return .None
 }
 
+slab_reload :: proc ( using self : Slab, allocator : Allocator )
+{
+	for id in 0 ..< pools.idx {
+		pool := pools.items[id]
+		pool_reload( pool, allocator )
+	}
+}
+
 slab_destroy :: proc( using self : Slab )
 {
 	for id in 0 ..< policy.idx {
@@ -124,7 +132,7 @@ slab_alloc :: proc( using self : Slab,
 			ensure(false, "Bad block from pool")
 			return nil, alloc_error
 	}
-	log( str_fmt_tmp("Retrieved block: %p %d", raw_data(block), len(block) ))
+	// log( str_fmt_tmp("Retrieved block: %p %d", raw_data(block), len(block) ))
 
 	// if zero_memory {
 	// 	slice.zero(block)
@@ -186,12 +194,12 @@ slab_resize :: proc( using self : Slab,
 	{
 		new_data_ptr := memory_after(data)
 		new_data      = byte_slice( raw_data(data), new_size )
-		log( str_fmt_tmp("Resize via expanding block space allocation %p %d", new_data_ptr, int(new_size - old_size)))
+		// log( str_fmt_tmp("Resize via expanding block space allocation %p %d", new_data_ptr, int(new_size - old_size)))
 
 		if zero_memory && new_size > old_size {
 			to_zero := byte_slice( memory_after(data), int(new_size - old_size) )
 			slice.zero( to_zero )
-			log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", new_data_ptr, int(new_size - old_size)))
+			// log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", new_data_ptr, int(new_size - old_size)))
 		}
 		return
 	}
@@ -209,7 +217,7 @@ slab_resize :: proc( using self : Slab,
 	// 	slice.zero( new_block )
 	// }
 
-	log( str_fmt_tmp("Resize via new block: %p %d (old : %p $d )", raw_data(new_block), len(new_block), raw_data(data), old_size ))
+	// log( str_fmt_tmp("Resize via new block: %p %d (old : %p $d )", raw_data(new_block), len(new_block), raw_data(data), old_size ))
 
 	if raw_data(data) != raw_data(new_block) {
 		copy_non_overlapping( raw_data(new_block), raw_data(data), int(old_size) )

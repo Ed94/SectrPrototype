@@ -145,7 +145,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	rl.SetConfigFlags( {
 		rl.ConfigFlag.WINDOW_RESIZABLE,
-		// rl.ConfigFlag.WINDOW_TOPMOST,
+		rl.ConfigFlag.WINDOW_TOPMOST,
 	})
 
 	// Rough setup of window with rl stuff
@@ -266,16 +266,19 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	context.allocator      = persistent_allocator()
 	context.temp_allocator = transient_allocator()
 
-	state := get_state()
+	state := get_state(); using state
 
 	// Procedure Addresses are not preserved on hot-reload. They must be restored for persistent data.
 	// The only way to alleviate this is to either do custom handles to allocators
 	// Or as done below, correct containers using allocators on reload.
 	// Thankfully persistent dynamic allocations are rare, and thus we know exactly which ones they are.
 
-	font_provider_data := & state.font_provider_data
 	font_provider_data.font_cache.hashes.backing  = persistent_slab_allocator()
 	font_provider_data.font_cache.entries.backing = persistent_slab_allocator()
+
+	slab_reload( string_cache.slab, persistent_slab_allocator() )
+	string_cache.table.hashes.backing  = persistent_slab_allocator()
+	string_cache.table.entries.backing = persistent_slab_allocator()
 
 	ui_reload( & get_state().project.workspace.ui, cache_allocator =  persistent_slab_allocator() )
 
