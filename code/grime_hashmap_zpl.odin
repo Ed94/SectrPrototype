@@ -82,7 +82,7 @@ zpl_hmap_destroy :: proc( using self : ^ HMapZPL( $ Type ) ) {
 	}
 }
 
-zpl_hmap_get :: proc( using self : ^ HMapZPL( $ Type ), key : u64 ) -> ^ Type
+zpl_hmap_get :: proc ( using self : ^ HMapZPL( $ Type ), key : u64 ) -> ^ Type
 {
 	// profile(#procedure)
 	id := zpl_hmap_find( self, key ).entry_index

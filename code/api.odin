@@ -91,8 +91,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			push( policy_ptr, SlabSizeClass {    2 * Megabyte, 256 * Kilobyte, alignment })
 			push( policy_ptr, SlabSizeClass {    2 * Megabyte, 512 * Kilobyte, alignment })
 			push( policy_ptr, SlabSizeClass {    2 * Megabyte,   1 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {   2 * Megabyte,   2 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {   4 * Megabyte,   4 * Megabyte, alignment })
+			push( policy_ptr, SlabSizeClass {    2 * Megabyte,   2 * Megabyte, alignment })
+			push( policy_ptr, SlabSizeClass {    4 * Megabyte,   4 * Megabyte, alignment })
 			// push( policy_ptr, SlabSizeClass {   8 * Megabyte,   8 * Megabyte, alignment })
 			// push( policy_ptr, SlabSizeClass {  16 * Megabyte,  16 * Megabyte, alignment })
 			// push( policy_ptr, SlabSizeClass {  32 * Megabyte,  32 * Megabyte, alignment })
@@ -134,6 +134,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		cam_zoom_sensitivity_smooth  = 4.0
 
 		engine_refresh_hz = 30
+
+		timing_fps_moving_avg_alpha = 0.9
 
 		ui_resize_border_width = 5
 	}
@@ -358,6 +360,10 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 				frametime_elapsed_ms += sleep_delta_ms
 			}
 		}
+
+		config.timing_fps_moving_avg_alpha = 0.99
+		frametime_avg_ms = mov_avg_exp( f64(config.timing_fps_moving_avg_alpha), frametime_elapsed_ms, frametime_avg_ms )
+		fps_avg          = 1 / (frametime_avg_ms * MS_To_S)
 
 		if frametime_elapsed_ms > 60.0 {
 			log( str_fmt_tmp("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )

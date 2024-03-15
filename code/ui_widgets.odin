@@ -5,6 +5,7 @@ UI_Widget :: struct {
 	using signal : UI_Signal,
 }
 
+//@(optimization_mode="speed")
 ui_widget :: proc( label : string, flags : UI_BoxFlags ) -> (widget : UI_Widget)
 {
 	// profile(#procedure)
@@ -14,6 +15,7 @@ ui_widget :: proc( label : string, flags : UI_BoxFlags ) -> (widget : UI_Widget)
 	return
 }
 
+//@(optimization_mode="speed")
 ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widget)
 {
 	// profile(#procedure)
@@ -24,6 +26,7 @@ ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widge
 	return
 }
 
+//@(optimization_mode="speed")
 ui_text :: proc( label : string, content : StringCached, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	// profile(#procedure)
@@ -36,7 +39,8 @@ ui_text :: proc( label : string, content : StringCached, flags : UI_BoxFlags = {
 	return { box, signal }
 }
 
-ui_space :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
+//@(optimization_mode="speed")
+ui_text_spaces :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	// profile(#procedure)
 	state := get_state(); using state
@@ -51,7 +55,8 @@ ui_space :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 	return { box, signal }
 }
 
-ui_tab :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
+//@(optimization_mode="speed")
+ui_text_tabs :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	// profile(#procedure)
 	state   := get_state(); using state

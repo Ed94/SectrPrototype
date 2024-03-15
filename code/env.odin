@@ -137,6 +137,8 @@ AppConfig :: struct {
 
 	engine_refresh_hz : uint,
 
+	timing_fps_moving_avg_alpha : f32,
+
 	ui_resize_border_width : f32,
 }
 
@@ -169,12 +171,13 @@ State :: struct {
 
 	sleep_is_granular : b32,
 
-	frametime_delta_seconds   : f64,
-	frametime_delta_ms        : f64,
-	frametime_delta_ns        : Duration,
-	frametime_target_ms       : f64,
-
-	frametime_elapsed_ms  : f64,
+	frametime_delta_seconds : f64,
+	frametime_delta_ms      : f64,
+	frametime_delta_ns      : Duration,
+	frametime_target_ms     : f64,
+	frametime_elapsed_ms    : f64,
+	frametime_avg_ms        : f64,
+	fps_avg                 : f64,
 
 	font_firacode                : FontID,
 	font_squidgy_slimes          : FontID,

@@ -1,5 +1,6 @@
 package sectr
 
+//@(optimization_mode="speed")
 ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 {
 	// profile(#procedure)
@@ -182,7 +183,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 			if ! was_active {
 				box.prev_style  = box.style
 				box.style_delta = 0
-				log( str_fmt_tmp("NEW ACTIVE: %v", box.label.str))
 			}
 			box.style = stack_peek( & ui.theme_stack ).active
 		}

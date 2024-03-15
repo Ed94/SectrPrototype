@@ -3,6 +3,8 @@ package sectr
 import "core:math"
 import "core:math/linalg"
 
+// Note(Ed): This is naturally pretty expensive
+//@(optimization_mode="speed")
 ui_compute_layout :: proc()
 {
 	profile(#procedure)
@@ -21,7 +23,7 @@ ui_compute_layout :: proc()
 	current := root.first
 	for ; current != nil;
 	{
-		profile("Layout Box")
+		// profile("Layout Box")
 		style  := current.style
 
 		// These are used to choose via multiplication weather to apply
@@ -118,15 +120,18 @@ ui_compute_layout :: proc()
 
 		// 5. Determine relative position
 
-		// TODO(Ed): Let the user determine the coordinate space origin?
-		// rel_pos := margined_bounds_origin + alignment_offset + layout.pos
-		rel_pos := margined_bounds_origin + layout.pos
+		origin_center   := margined_bounds_origin
+		origin_top_left := Vec2 { margined_bounds.min.x, margined_bounds.max.y }
+
+		origin := .Origin_At_Anchor_Center in style.flags ? origin_center : origin_top_left
+
+		rel_pos := origin + layout.pos
 
 		if .Fixed_Position_X in style.flags {
-			rel_pos.x = parent_center.x + layout.pos.x
+			rel_pos.x = origin.x + layout.pos.x
 		}
 		if .Fixed_Position_Y in style.flags {
-			rel_pos.y = parent_center.y + layout.pos.y
+			rel_pos.y = origin.y + layout.pos.y
 		}
 
 		vec2_one := Vec2 { 1, 1 }

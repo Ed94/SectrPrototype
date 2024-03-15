@@ -32,53 +32,53 @@ when ODIN_OS == OS_Type.Windows {
 // 	return points *
 // }
 
-f32_cm_to_pixels :: proc(cm: f32) -> f32 {
+f32_cm_to_pixels :: #force_inline proc "contextless"(cm: f32) -> f32 {
 	screen_ppcm := get_state().app_window.ppcm
 	return cm * screen_ppcm
 }
 
-f32_pixels_to_cm :: proc(pixels: f32) -> f32 {
+f32_pixels_to_cm :: #force_inline proc "contextless"(pixels: f32) -> f32 {
 	screen_ppcm  := get_state().app_window.ppcm
 	cm_per_pixel := 1.0 / screen_ppcm
 	return pixels * cm_per_pixel
 }
 
-f32_points_to_pixels :: proc(points: f32) -> f32 {
+f32_points_to_pixels :: #force_inline proc "contextless"(points: f32) -> f32 {
 	screen_ppcm  := get_state().app_window.ppcm
 	cm_per_pixel := 1.0 / screen_ppcm
 	return points * DPT_PPCM * cm_per_pixel
 }
 
-f32_pixels_to_points :: proc(pixels: f32) -> f32 {
+f32_pixels_to_points :: #force_inline proc "contextless"(pixels: f32) -> f32 {
 	screen_ppcm  := get_state().app_window.ppcm
 	cm_per_pixel := 1.0 / screen_ppcm
 	return pixels * cm_per_pixel * Points_Per_CM
 }
 
-vec2_cm_to_pixels :: proc(v: Vec2) -> Vec2 {
+vec2_cm_to_pixels :: #force_inline proc "contextless"(v: Vec2) -> Vec2 {
 	screen_ppcm := get_state().app_window.ppcm
 	return v * screen_ppcm
 }
 
-vec2_pixels_to_cm :: proc(v: Vec2) -> Vec2 {
+vec2_pixels_to_cm :: #force_inline proc "contextless"(v: Vec2) -> Vec2 {
 	screen_ppcm  := get_state().app_window.ppcm
 	cm_per_pixel := 1.0 / screen_ppcm
 	return v * cm_per_pixel
 }
 
-vec2_points_to_pixels :: proc(vpoints: Vec2) -> Vec2 {
+vec2_points_to_pixels :: #force_inline proc "contextless"(vpoints: Vec2) -> Vec2 {
 	screen_ppcm  := get_state().app_window.ppcm
 	cm_per_pixel := 1.0 / screen_ppcm
 	return vpoints * DPT_PPCM * cm_per_pixel
 }
 
-range2_cm_to_pixels :: proc( range : Range2 ) -> Range2 {
+range2_cm_to_pixels :: #force_inline proc "contextless"( range : Range2 ) -> Range2 {
 	screen_ppcm := get_state().app_window.ppcm
 	result := Range2 { pts = { range.min * screen_ppcm, range.max * screen_ppcm }}
 	return result
 }
 
-range2_pixels_to_cm :: proc( range : Range2 ) -> Range2 {
+range2_pixels_to_cm :: #force_inline proc "contextless"( range : Range2 ) -> Range2 {
 	screen_ppcm := get_state().app_window.ppcm
 	cm_per_pixel := 1.0 / screen_ppcm
 	result := Range2 { pts = { range.min * cm_per_pixel, range.max * cm_per_pixel }}
@@ -132,7 +132,7 @@ screen_size :: proc "contextless" () -> AreaSize {
 	return transmute(AreaSize) ( extent * 2.0 )
 }
 
-screen_get_corners :: proc() -> BoundsCorners2 {
+screen_get_corners :: #force_inline proc "contextless"() -> BoundsCorners2 {
 	state         := get_state(); using state
 	screen_extent := state.app_window.extent
 	top_left     := Vec2 { -screen_extent.x,  screen_extent.y }
@@ -142,16 +142,17 @@ screen_get_corners :: proc() -> BoundsCorners2 {
 	return { top_left, top_right, bottom_left, bottom_right }
 }
 
-view_get_bounds :: proc() -> Range2 {
-	state         := get_state(); using state
-	cam           := & project.workspace.cam
-	screen_extent := state.app_window.extent
-	top_left     := Vec2 { cam.target.x, -cam.target.y } + Vec2 { -screen_extent.x,  screen_extent.y} * (1/cam.zoom)
-	bottom_right := Vec2 { cam.target.x, -cam.target.y } + Vec2 {  screen_extent.x, -screen_extent.y} * (1/cam.zoom)
-	return range2(top_left, bottom_right)
+view_get_bounds :: #force_inline proc "contextless"() -> Range2 {
+	state          := get_state(); using state
+	cam            := & project.workspace.cam
+	screen_extent  := state.app_window.extent
+	cam_zoom_ratio := 1.0 / cam.zoom
+	bottom_left  := Vec2 { cam.target.x, -cam.target.y } + Vec2 { -screen_extent.x, -screen_extent.y} * cam_zoom_ratio
+	top_right    := Vec2 { cam.target.x, -cam.target.y } + Vec2 {  screen_extent.x,  screen_extent.y} * cam_zoom_ratio
+	return range2( bottom_left, top_right )
 }
 
-view_get_corners :: proc() -> BoundsCorners2 {
+view_get_corners :: #force_inline proc "contextless"() -> BoundsCorners2 {
 	state          := get_state(); using state
 	cam            := & project.workspace.cam
 	cam_zoom_ratio := 1.0 / cam.zoom
@@ -170,22 +171,22 @@ screen_to_world :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
 	return result
 }
 
-screen_to_render :: proc(pos: Vec2) -> Vec2 {
+screen_to_render :: #force_inline proc "contextless"(pos: Vec2) -> Vec2 {
 	screen_extent := transmute(Vec2) get_state().project.workspace.cam.offset
 	return pos + { screen_extent.x, -screen_extent.y }
 }
 
-world_screen_extent :: proc() -> Extents2 {
+world_screen_extent :: #force_inline proc "contextless"() -> Extents2 {
 	state          := get_state(); using state
 	cam_zoom_ratio := 1.0 / project.workspace.cam.zoom
 	return app_window.extent * cam_zoom_ratio
 }
 
-world_to_screen_pos :: proc(position: Vec2) -> Vec2 {
+world_to_screen_pos :: #force_inline proc "contextless"(position: Vec2) -> Vec2 {
 	return { position.x, position.y * -1 }
 }
 
-world_to_screen_no_zoom :: proc(position: Vec2) -> Vec2 {
+world_to_screen_no_zoom :: #force_inline proc "contextless"(position: Vec2) -> Vec2 {
 	state          := get_state(); using state
 	cam_zoom_ratio := 1.0 / state.project.workspace.cam.zoom
 	return { position.x, position.y * -1 } * cam_zoom_ratio

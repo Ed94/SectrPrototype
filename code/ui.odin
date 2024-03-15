@@ -183,6 +183,10 @@ UI_StyleFlag :: enum u32 {
 	Fixed_Width,
 	Fixed_Height,
 
+	// Sets the (0, 0) position of the child box to the parents anchor's center (post-margins bounds)
+	// By Default, the origin is at the top left of the anchor's bounds
+	Origin_At_Anchor_Center,
+
 	// Will size the box to its text. (Padding & Margins will thicken )
 	Size_To_Text,
 	Text_Wrap,
@@ -340,7 +344,7 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 ui_shutdown :: proc() {
 }
 
-ui_box_equal :: proc( a, b : ^ UI_Box ) -> b32 {
+ui_box_equal :: #force_inline proc "contextless" ( a, b : ^ UI_Box ) -> b32 {
 	BoxSize :: size_of(UI_Box)
 
 	result : b32 = true
@@ -349,10 +353,11 @@ ui_box_equal :: proc( a, b : ^ UI_Box ) -> b32 {
 	return result
 }
 
-ui_box_from_key :: proc( cache : ^HMapZPL(UI_Box), key : UI_Key ) -> (^UI_Box) {
+ui_box_from_key :: #force_inline proc ( cache : ^HMapZPL(UI_Box), key : UI_Key ) -> (^UI_Box) {
 	return zpl_hmap_get( cache, cast(u64) key )
 }
 
+//@(optimization_mode="speed")
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 {
 	// profile(#procedure)
@@ -407,8 +412,10 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 {
+	// Check to make sure parent is present on the screen, if its not don't bother.
 	// If current has children, do them first
-	if box.first != nil {
+	if intersects_range2( view_get_bounds(), box.computed.bounds) && box.first != nil
+	{
 		return box.first
 	}
 
@@ -479,7 +486,8 @@ ui_graph_build :: proc( ui : ^ UI_State ) {
 	ui_graph_build_begin( ui )
 }
 
-ui_key_from_string :: proc( value : string ) -> UI_Key
+//@(optimization_mode="speed")
+ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_Key
 {
 	// profile(#procedure)
 	USE_RAD_DEBUGGERS_METHOD :: true

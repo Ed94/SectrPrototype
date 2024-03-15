@@ -4,6 +4,7 @@ import "core:fmt"
 
 import rl "vendor:raylib"
 
+//@(optimization_mode="speed")
 render :: proc()
 {
 	profile(#procedure)
@@ -23,7 +24,7 @@ render :: proc()
 	//region Render Screenspace
 	{
 		profile("Render Screenspace")
-		fps_msg       := str_fmt_tmp( "FPS: %f", 1 / (frametime_elapsed_ms * MS_To_S) )
+		fps_msg       := str_fmt_tmp( "FPS: %f", fps_avg)
 		fps_msg_width := measure_text_size( fps_msg, default_font, 16.0, 0.0 ).x
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 }
 		debug_draw_text( fps_msg, fps_msg_pos, 16.0, color = rl.GREEN )
@@ -77,21 +78,21 @@ render :: proc()
 
 		ui := project.workspace.ui
 
-		debug_text("Box Count: %v", ui.built_box_count )
+		// debug_text("Box Count: %v", ui.built_box_count )
 
 		hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
 		active_box := ui_box_from_key( ui.curr_cache, ui.active )
 		if hot_box != nil {
 			debug_text("Hot    Box   : %v", hot_box.label.str )
-			debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
+			// debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
 		}
 		if active_box != nil{
-			debug_text("Active Box: %v", active_box.label.str )
+			// debug_text("Active Box: %v", active_box.label.str )
 		}
 		// debug_text("Active Resizing: %v", ui.active_start_signal.resizing)
 
 		view := view_get_bounds()
-		debug_text("View Bounds (World): %v", view.pts )
+		// debug_text("View Bounds (World): %v", view.pts )
 
 		debug.draw_debug_text_y = 50
 	}
@@ -122,9 +123,9 @@ render_mode_2d :: proc()
 		}}
 		view_rect := rl.Rectangle {
 			render_view.min.x,
-			render_view.min.y,
-			render_view.max.x - render_view.min.x,
-			render_view.max.y - render_view.min.y,
+			render_view.max.y,
+			abs(render_view.max.x - render_view.min.x),
+			abs(render_view.max.y - render_view.min.y),
 		}
 		rl.DrawRectangleRounded( view_rect, 0.3, 9, { 255, 0, 0, 20 } )
 	}
@@ -141,7 +142,7 @@ render_mode_2d :: proc()
 		current := root.first
 		for ; current != nil; current = ui_box_tranverse_next( current )
 		{
-			profile("Box")
+			// profile("Box")
 			parent := current.parent
 
 			style    := current.style
@@ -149,18 +150,25 @@ render_mode_2d :: proc()
 
 			computed_size := computed.bounds.p1 - computed.bounds.p0
 
-			if ! within_range2( view_bounds, computed.bounds ) {
+			if ! intersects_range2( view_bounds, computed.bounds ) {
 				continue
 			}
 
 		// TODO(Ed) : Render Borders
 
 		// profile_begin("Calculating Raylib rectangles")
+			render_anchors := range2(
+				world_to_screen_pos(computed.anchors.min),
+				world_to_screen_pos(computed.anchors.max),
+			)
+			render_margins := range2(
+				world_to_screen_pos(computed.margins.min),
+				world_to_screen_pos(computed.margins.max),
+			)
 			render_bounds := range2(
 				world_to_screen_pos(computed.bounds.min),
 				world_to_screen_pos(computed.bounds.max),
 			)
-
 			render_padding := range2(
 				world_to_screen_pos(computed.padding.min),
 				world_to_screen_pos(computed.padding.max),
@@ -170,24 +178,11 @@ render_mode_2d :: proc()
 				world_to_screen_pos(computed.content.max),
 			)
 
-			rect_bounds := rl.Rectangle {
-				render_bounds.min.x,
-				render_bounds.max.y,
-				abs(render_bounds.max.x - render_bounds.min.x),
-				abs(render_bounds.max.y - render_bounds.min.y),
-			}
-			rect_padding := rl.Rectangle {
-				render_padding.min.x,
-				render_padding.max.y,
-				abs(render_padding.max.x - render_padding.min.x),
-				abs(render_padding.max.y - render_padding.min.y),
-			}
-			rect_content := rl.Rectangle {
-				render_content.min.x,
-				render_content.max.y,
-				abs(render_content.max.x - render_content.min.x),
-				abs(render_content.max.y - render_content.min.y),
-			}
+			rect_anchors := range2_to_rl_rect( render_anchors )
+			rect_margins := range2_to_rl_rect( render_margins )
+			rect_bounds  := range2_to_rl_rect( render_bounds )
+			rect_padding := range2_to_rl_rect( render_padding )
+			rect_content := range2_to_rl_rect( render_content )
 		// profile_end()
 
 		draw_rectangle :: #force_inline proc "contextless" ( rect : rl.Rectangle, style : UI_Style ) {

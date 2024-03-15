@@ -7,9 +7,21 @@ Axis2 :: enum i32 {
 	Count,
 }
 
-is_power_of_two_u32 :: proc( value : u32 ) -> b32
+is_power_of_two_u32 :: #force_inline proc "contextless" ( value : u32 ) -> b32
 {
 	return value != 0 && ( value & ( value - 1 )) == 0
+}
+
+mov_avg_exp_f32 := #force_inline proc "contextless" ( alpha, delta_interval, last_value : f32 ) -> f32
+{
+	result := (delta_interval * alpha) + (delta_interval * (1.0 - alpha))
+	return result
+}
+
+mov_avg_exp_f64 := #force_inline proc "contextless" ( alpha, delta_interval, last_value : f64 ) -> f64
+{
+	result := (delta_interval * alpha) + (delta_interval * (1.0 - alpha))
+	return result
 }
 
 import "core:math/linalg"

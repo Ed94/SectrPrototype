@@ -4,6 +4,7 @@ import "base:runtime"
 import "core:math"
 import "core:math/linalg"
 import "core:os"
+import str "core:strings"
 
 import rl "vendor:raylib"
 
@@ -63,6 +64,7 @@ frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
 	return cast(f32) get_state().frametime_delta_seconds
 }
 
+//@(optimization_mode="speed")
 update :: proc( delta_time : f64 ) -> b32
 {
 	profile(#procedure)
@@ -205,7 +207,7 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 		default_layout := UI_Layout {
 			anchor         = {},
-			alignment      = { 0.0, 0.0 },
+			alignment      = { 0., 0.0 },
 			text_alignment = { 0.0, 0.0 },
 			// corner_radii   = { 0.2, 0.2, 0.2, 0.2 },
 			pos            = { 0, 0 },
@@ -240,7 +242,7 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_text_box()
 
 		// test_parenting()
-		if true
+		if false
 		{
 			// frame := ui_widget( "Frame", {} )
 			// ui_parent(frame)
@@ -292,11 +294,11 @@ update :: proc( delta_time : f64 ) -> b32
 			}
 
 			child_layout := default_layout
-			child_layout.size      = range2({ 75, 75 }, { 0, 0 })
-			child_layout.alignment = { 0.5, 0.0 }
+			child_layout.size      = range2({ 0, 0 }, { 0, 0 })
+			child_layout.alignment = { 0.5, 0.5 }
 			child_layout.margins   = { 20, 20, 20, 20 }
 			child_layout.padding   = {}
-			child_layout.anchor    = range2({ 0.0, 0.0 }, { 0.0, 1.0 })
+			child_layout.anchor    = range2({ 0.0, 0.0 }, { 0.0, 0.0 })
 			child_layout.pos       = { 0, 0 }
 
 			child_theme := frame_style_default
@@ -310,16 +312,19 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 
 		// Whitespace AST test
-		if false
+		if true
 		{
 			profile("Whitespace AST test")
 
 			text_style := frame_style_default
 			text_style.flags = {
-				.Size_To_Text,
+				.Origin_At_Anchor_Center,
 				.Fixed_Position_X, .Fixed_Position_Y,
 				// .Fixed_Width, .Fixed_Height,
 			}
+			text_style.text_alignment = { 0.0, 0.5 }
+			text_style.alignment = { 0.0, 1.0 }
+			text_style.size.min = { 1600, 30 }
 
 			text_theme := UI_StyleTheme { styles = {
 				text_style,
@@ -332,7 +337,7 @@ update :: proc( delta_time : f64 ) -> b32
 			text_theme.hot.bg_color      = Color_Frame_Hover
 			text_theme.active.bg_color   = Color_Frame_Select
 
-			layout_text := default_layout
+			layout_text := text_style.layout
 
 			ui_style_theme( text_theme )
 
@@ -347,65 +352,114 @@ update :: proc( delta_time : f64 ) -> b32
 
 			// index := 0
 			widgets : Array(UI_Widget)
-			widgets, alloc_error = array_init( UI_Widget, frame_slab_allocator() )
+			widgets, alloc_error = array_init_reserve( UI_Widget, frame_slab_allocator(), Kilobyte * 4 )
 			widgets_ptr := & widgets
 
 			label_id := 0
 
+			line_id := 0
 			for line in array_to_slice_num( debug.lorem_parse.lines )
 			{
-				profile("WS AST Line")
-
-				head := line.first
-				for ; head != nil;
-				{
-					ui_style_theme_set_layout( layout_text )
-					widget : UI_Widget
-
-					// We're assumping PWS_Token for now...
-					// Eventually I'm going to flatten this, its not worth doing it the way I am...
-					#partial switch head.type
-					{
-						case .Visible:
-							label := str_intern( str_fmt_alloc( "%v %v", head.content.str, label_id ))
-							widget = ui_text( label.str, head.content )
-							label_id += 1
-
-							layout_text.pos.x += size_range2( widget.computed.bounds ).x
-
-						case .Spaces:
-							label := str_intern( str_fmt_alloc( "%v %v", "space", label_id ))
-							widget = ui_space( label.str )
-							label_id += 1
-
-							for idx in 1 ..< len( head.content.runes )
-							{
-								// TODO(Ed): VIRTUAL WHITESPACE
-								// widget.style.layout.size.x += range2_size( widget.computed.bounds )
-							}
-							layout_text.pos.x += size_range2( widget.computed.bounds ).x
-
-						case .Tabs:
-							label := str_intern( str_fmt_alloc( "%v %v", "tab", label_id ))
-							widget = ui_tab( label.str )
-							label_id += 1
-
-							for idx in 1 ..< len( head.content.runes )
-							{
-								// widget.style.layout.size.x += range2_size( widget.computed.bounds )
-							}
-							layout_text.pos.x += size_range2( widget.computed.bounds ).x
-					}
-
-					array_append( widgets_ptr, widget )
-					head = head.next
+				if line_id == 0 {
+					line_id += 1
+					continue
 				}
 
-				layout_text.pos.x = default_layout.pos.x
-				layout_text.pos.y -= 30
+				ui_style_theme_set_layout( layout_text )
+				line_hbox := ui_widget(str_fmt_alloc( "line %v", line_id ), {})
+
+				if line_hbox.key == ui.hot
+				{
+					line_hbox.text = StringCached {}
+					ui_parent(line_hbox)
+
+					chunk_layout := layout_text
+					chunk_layout.alignment = { 0.0, 1.0 }
+					chunk_layout.anchor = range2({ 0.0, 0 }, { 0.0, 0 })
+					chunk_layout.pos = {}
+
+					chunk_style := text_style
+					chunk_style.flags = { .Fixed_Position_X, .Size_To_Text }
+					chunk_style.layout = chunk_layout
+
+					chunk_theme := UI_StyleTheme { styles = {
+						chunk_style,
+						chunk_style,
+						chunk_style,
+						chunk_style,
+					}}
+					ui_style_theme( chunk_theme )
+
+					head := line.first
+					for ; head != nil;
+					{
+						ui_style_theme_set_layout( chunk_layout )
+						widget : UI_Widget
+
+						#partial switch head.type
+						{
+							case .Visible:
+								label := str_intern( str_fmt_alloc( "%v %v", head.content.str, label_id ))
+								widget = ui_text( label.str, head.content )
+								label_id += 1
+
+								chunk_layout.pos.x += size_range2( widget.computed.bounds ).x
+
+							case .Spaces:
+								label := str_intern( str_fmt_alloc( "%v %v", "space", label_id ))
+								widget = ui_text_spaces( label.str )
+								label_id += 1
+
+								for idx in 1 ..< len( head.content.runes )
+								{
+									// TODO(Ed): VIRTUAL WHITESPACE
+									// widget.style.layout.size.x += range2_size( widget.computed.bounds )
+								}
+								chunk_layout.pos.x += size_range2( widget.computed.bounds ).x
+
+							case .Tabs:
+								label := str_intern( str_fmt_alloc( "%v %v", "tab", label_id ))
+								widget = ui_text_tabs( label.str )
+								label_id += 1
+
+								for idx in 1 ..< len( head.content.runes )
+								{
+									// widget.style.layout.size.x += range2_size( widget.computed.bounds )
+								}
+								chunk_layout.pos.x += size_range2( widget.computed.bounds ).x
+						}
+
+						array_append( widgets_ptr, widget )
+						head = head.next
+					}
+
+					line_hbox.style.size.min.x = chunk_layout.pos.x
+				}
+				else
+				{
+					builder_backing : [16 * Kilobyte] byte
+					builder         := str.builder_from_bytes( builder_backing[:] )
+
+					line_hbox.style.flags |= { .Size_To_Text }
+
+					head := line.first.next
+					for ; head != nil;
+					{
+						str.write_string( & builder, head.content.str )
+						head = head.next
+					}
+
+					line_hbox.text = str_intern( to_string( builder ) )
+				}
+
+				array_append( widgets_ptr, line_hbox )
+
+				layout_text.pos.x  = text_style.layout.pos.x
+				layout_text.pos.y += size_range2(line_hbox.computed.bounds).y
+				line_id += 1
 			}
 
-			label_id += 1
+			label_id += 1 // Dummy action
 		}
 	}
 	//endregion Imgui Tick

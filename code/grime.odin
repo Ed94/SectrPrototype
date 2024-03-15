@@ -104,6 +104,11 @@ draw_text :: proc {
 	draw_text_string_cached,
 }
 
+mov_avg_exp :: proc {
+	mov_avg_exp_f32,
+	mov_avg_exp_f64,
+}
+
 get_bounds :: proc {
 	view_get_bounds,
 }
