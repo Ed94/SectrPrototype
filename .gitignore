@@ -2,3 +2,4 @@ build/**
 *.exe
 # thirdparty/**
 logs
+.ark

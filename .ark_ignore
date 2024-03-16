@@ -1,0 +1,25 @@
+# Ark ignore file format tries to keep things simple. Here's what you need to know about it:
+# - you add 1 entry per line
+# - entries are case insensitive, so build, BUILD, and Build are all the same
+# - # starts a comment, anything after this is ignored
+# - * represents any amount of characters
+# - ! at the start of the line represents an exclusion
+#
+# That's it! Here's some examples of it in use:
+# build/               # ignore build/ folder in the root of the project and it's content
+# saved/*              # ignore only the content inside saved/, the folder itself will not be ignored
+# *.sln                # ignore any path that ends in .sln
+# */win*/cache/*       # ignore anything inside a path that has /win and /cache/, e.g. ThirdParty/Deprecated/WIN32/cache/
+# images/*.png         # ignore any .png inside images/
+# !images/logo.png     # exclude images/logo.png, so this will not be ignored
+# images/logo.png      # ignores images/logo.png (i.e. overrides the exclusion)
+
+
+.git/
+.vscode/
+logs/
+thirdparty/Odin/.git/
+thirdparty/ols/.git/
+thirdparty/ols/
+thirdparty/ini/
+thirdparty/Odin/
