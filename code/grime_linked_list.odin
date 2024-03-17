@@ -4,6 +4,7 @@ LL_Node :: struct ( $ Type : typeid ) {
 	next  : ^Type,
 }
 
+// ll_push :: proc( list_ptr : ^(^ ($ Type)), node : ^Type ) {
 ll_push :: #force_inline proc "contextless" ( list_ptr : ^(^ ($ Type)), node : ^Type ) {
 	list       := (list_ptr^)
 	node.next   = list

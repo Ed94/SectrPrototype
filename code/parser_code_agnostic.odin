@@ -84,7 +84,7 @@ PA_TokenType :: enum u32 {
 		Vert_Bar,               // |
 		Vert_Bar_Double,        // ||
 		Vert_Bar_Equal,         // |=
-		Vert_Bar_Double_Equal,  //=
+		Vert_Bar_Double_Equal,  // |==
 	B_Operator_End,
 
 	Count,

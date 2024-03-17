@@ -242,7 +242,7 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_text_box()
 
 		// test_parenting()
-		if false
+		if true
 		{
 			// frame := ui_widget( "Frame", {} )
 			// ui_parent(frame)
@@ -312,7 +312,7 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 
 		// Whitespace AST test
-		if true
+		if false
 		{
 			profile("Whitespace AST test")
 
@@ -336,10 +336,10 @@ update :: proc( delta_time : f64 ) -> b32
 			text_theme.disabled.bg_color = Color_Frame_Disabled
 			text_theme.hot.bg_color      = Color_Frame_Hover
 			text_theme.active.bg_color   = Color_Frame_Select
+			ui_style_theme( text_theme )
 
 			layout_text := text_style.layout
 
-			ui_style_theme( text_theme )
 
 			alloc_error : AllocatorError; success : bool
 			// debug.lorem_content, success = os.read_entire_file( debug.path_lorem, frame_allocator() )

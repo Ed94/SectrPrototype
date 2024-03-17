@@ -255,7 +255,7 @@ push-location $path_root
 			# $build_args += $flag_show_system_call
 			# $build_args += $flag_no_bounds_check
 			# $build_args += $flag_no_thread_checker
-			# $build_args += $flag_default_allocator_nil
+			$build_args += $flag_default_allocator_nil
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
