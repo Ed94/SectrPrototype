@@ -272,4 +272,8 @@ DebugData :: struct {
 	path_lorem    : string,
 	lorem_content : []byte,
 	lorem_parse   : PWS_ParseResult,
+
+	// Test 3d Viewport
+	cam_vp      : rl.Camera3D,
+	viewport_rt : rl.RenderTexture,
 }

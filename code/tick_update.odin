@@ -148,7 +148,7 @@ update :: proc( delta_time : f64 ) -> b32
 		debug.mouse_vis = !debug.mouse_vis
 	}
 
-	//region Camera Manual Nav
+	//region 2D Camera Manual Nav
 	{
 		// profile("Camera Manual Nav")
 		digital_move_speed : f32 = 200.0
@@ -157,6 +157,7 @@ update :: proc( delta_time : f64 ) -> b32
 			workspace.zoom_target = cam.zoom
 		}
 
+		config.cam_max_zoom = 30.0
 		config.cam_zoom_smooth_snappiness = 10.0
 		config.cam_zoom_mode = .Smooth
 		switch config.cam_zoom_mode
@@ -164,15 +165,15 @@ update :: proc( delta_time : f64 ) -> b32
 			case .Smooth:
 				zoom_delta            := input.mouse.vertical_wheel * config.cam_zoom_sensitivity_smooth
 				workspace.zoom_target *= 1 + zoom_delta * f32(delta_time)
-				workspace.zoom_target  = clamp(workspace.zoom_target, 0.05, 10.0)
+				workspace.zoom_target  = clamp(workspace.zoom_target, 0.05, config.cam_max_zoom)
 
 				// Linearly interpolate cam.zoom towards zoom_target
 				lerp_factor := config.cam_zoom_smooth_snappiness // Adjust this value to control the interpolation speed
 				cam.zoom    += (workspace.zoom_target - cam.zoom) * lerp_factor * f32(delta_time)
-				cam.zoom     = clamp(cam.zoom, 0.05, 10.0) // Ensure cam.zoom stays within bounds
+				cam.zoom     = clamp(cam.zoom, 0.05, config.cam_max_zoom) // Ensure cam.zoom stays within bounds
 			case .Digital:
 				zoom_delta            := input.mouse.vertical_wheel * config.cam_zoom_sensitivity_digital
-				workspace.zoom_target  = clamp(workspace.zoom_target + zoom_delta, 0.05, 10.0)
+				workspace.zoom_target  = clamp(workspace.zoom_target + zoom_delta, 0.05, config.cam_max_zoom)
 				cam.zoom = workspace.zoom_target
 		}
 
@@ -191,7 +192,7 @@ update :: proc( delta_time : f64 ) -> b32
 			}
 		}
 	}
-	//endregion Camera Manual Nav
+	//endregion 2D Camera Manual Nav
 
 	//region Imgui Tick
 	{
@@ -242,7 +243,7 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_text_box()
 
 		// test_parenting()
-		if true
+		if false
 		{
 			// frame := ui_widget( "Frame", {} )
 			// ui_parent(frame)

@@ -40,6 +40,7 @@ stack_peek :: proc ( using stack : ^StackFixed( $ Type, $ Size ) ) -> Type {
 
 //region Stack Allocator
 
+// TODO(Ed) : This is untested and problably filled with bugs.
 /* Growing Stack allocator
 	This implementation can support growing if the backing allocator supports
 	it without fragmenting the backing allocator.

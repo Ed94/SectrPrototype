@@ -219,6 +219,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) 	debug.lorem_content, persistent_slab_allocator() )
 		verify( alloc_error == .None, "Faield to parse due to allocation failure" )
+
+		// Render texture test
+		debug.viewport_rt = rl.LoadRenderTexture( 1280, 720 )
 	}
 
 	startup_ms := duration_ms( time.tick_lap_time( & startup_tick))

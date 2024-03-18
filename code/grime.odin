@@ -136,6 +136,10 @@ released :: proc {
 	btn_released,
 }
 
+to_rl_rect :: proc {
+	range2_to_rl_rect,
+}
+
 to_runes :: proc {
 	string_to_runes,
 }

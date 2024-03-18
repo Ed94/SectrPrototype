@@ -44,7 +44,8 @@ logger_init :: proc( logger : ^ Logger,  id : string, file_path : string, file :
 	context.logger = { logger_interface, logger, core_log.Level.Debug, core_log.Default_File_Logger_Opts }
 	log("Initialized Logger")
 	when false {
-		log("This sentence is over 80 characters long on purpose to test the ability of this fucking logger to properfly fucking wrap long as fuck logs with a new line and then at the end of that pad it with the appropraite signature.")
+		log("This sentence is over 80 characters long on purpose to test the ability of this logger to properfly wrap long as logs with a new line and then at the end of that pad it with the appropraite signature.")
+
 	}
 }
 
