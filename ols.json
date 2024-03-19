@@ -15,10 +15,14 @@
         },
         {
             "name": "ini",
-            "path": "C:/projects/SectrPrototype/thirdparty/ini"
+            "path": "C:/projects/SectrPrototype/thirdparty/packages/ini"
+        },
+        {
+            "name": "backtrace",
+            "path": "C:/projects/SectrPrototype/thirdparty/packages/backtrace"
         }
     ],
-    "odin_command": "C:/projects/SectrPrototype/thirdparty/Odin/odin.exe",
+    "odin_command": "C:/projects/SectrPrototype/toolchain/Odin/odin.exe",
     "enable_document_symbols": true,
     "enable_fake_methods": false,
     "enable_format": false,

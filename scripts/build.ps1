@@ -14,7 +14,8 @@ $path_code       = join-path $path_root       'code'
 $path_build      = join-path $path_root       'build'
 $path_scripts    = join-path $path_root       'scripts'
 $path_thirdparty = join-path $path_root       'thirdparty'
-$path_odin       = join-path $path_thirdparty 'odin'
+$path_toolchain  = join-path $path_root       'toolchain'
+$path_odin       = join-path $path_toolchain  'odin'
 
 if ( -not( test-path $path_build) ) {
 	new-item -ItemType Directory -Path $path_build
@@ -160,7 +161,7 @@ push-location $path_root
 			$build_args += '.'
 			$build_args += $flag_build_mode_dll
 			$build_args += $flag_output_path + $module_dll
-			# $build_args += ($flag_collection + $pkg_collection_thirdparty)
+			$build_args += ($flag_collection + $pkg_collection_thirdparty)
 			$build_args += $flag_micro_architecture_native
 			# $build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical
@@ -189,7 +190,7 @@ push-location $path_root
 				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
 			}
 
-			# write-host $build_args
+			write-host $build_args
 
 			Invoke-WithColorCodedOutput -command { & $odin_compiler $build_args }
 			# Invoke-WithColorCodedOutput -command { & $raddbg "$odin_compiler" "$build_args" }
@@ -238,7 +239,7 @@ push-location $path_root
 			$build_args += $command_build
 			$build_args += './host'
 			$build_args += $flag_output_path + $executable
-			# $build_args += ($flag_collection + $pkg_collection_thirdparty)
+			$build_args += ($flag_collection + $pkg_collection_thirdparty)
 			$build_args += $flag_micro_architecture_native
 			$build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical

@@ -4,19 +4,25 @@ $path_root       = git rev-parse --show-toplevel
 $path_code       = join-path $path_root 'code'
 $path_build      = join-path $path_root 'build'
 $path_thirdparty = join-path $path_root 'thirdparty'
+$path_toolchain  = join-path $path_root 'toolchain'
 
-$url_ols_repo    = 'https://github.com/Ed94/ols'
-$url_odin_repo   = 'https://github.com/Ed94/Odin.git'
-$url_ini_parser  = 'https://github.com/laytan/odin-ini-parser.git'
-$path_odin       = join-path $path_thirdparty 'Odin'
-$path_ini_parser = join-path $path_thirdparty 'ini'
-$path_ols        = join-path $path_thirdparty 'ols'
+$url_backtrace_repo = 'https://github.com/Ed94/back.git'
+$url_ini_parser     = 'https://github.com/laytan/odin-ini-parser.git'
+$url_odin_repo      = 'https://github.com/Ed94/Odin.git'
+$url_ols_repo       = 'https://github.com/Ed94/ols'
+$path_backtrace     = join-path $path_thirdparty 'backtrace'
+$path_ini_parser    = join-path $path_thirdparty 'ini'
+$path_odin          = join-path $path_toolchain  'Odin'
+$path_ols           = join-path $path_toolchain  'ols'
 
 $incremental_checks = Join-Path $PSScriptRoot 'helpers/incremental_checks.ps1'
 . $incremental_checks
 
 if ( -not(Test-Path $path_thirdparty) ) {
 	new-item -ItemType Directory -Path $path_thirdparty
+}
+if ( -not(Test-Path $path_toolchain) ) {
+	new-item -ItemType Directory -Path $path_toolchain
 }
 
 $binaries_dirty = $false
@@ -88,8 +94,18 @@ if (Test-Path -Path $path_ini_parser)
 }
 else
 {
-	Write-Host "Cloning Odin repository..."
+	Write-Host "Cloning ini repository..."
 	git clone $url_ini_parser $path_ini_parser
+}
+
+if (test-path $path_backtrace)
+{
+	git -C $path_backtrace pull
+}
+else
+{
+	Write-Host "Cloning backtrace repository..."
+	git clone $url_backtrace_repo $path_backtrace
 }
 
 $path_vendor        = join-path $path_odin          'vendor'
