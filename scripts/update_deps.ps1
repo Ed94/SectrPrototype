@@ -30,18 +30,22 @@ function Update-GitRepo
 		return
 	}
 
-	$last_built_commit = join-path $path "last_built_commit.txt"
+	$repo_name = $url.Split('/')[-1].Replace('.git', '')
+
+	$last_built_commit = join-path $path_build "last_built_commit_$repo_name.txt"
 	if ( -not(test-path -Path $path))
 	{
 		write-host "Cloining repo from $url to $path"
 		git clone $url $path
 
+		write-host "Building $url"
 		push-location $path
 		& "$build_command"
 		pop-location
 
 		git -C $path rev-parse HEAD | out-file $last_built_commit
 		$script:binaries_dirty = $true
+		write-host
 		return
 	}
 
@@ -58,6 +62,7 @@ function Update-GitRepo
 	write-host 'Pulling...'
 	git -C $path pull
 
+	write-host "Building $url"
 	push-location $path
 	& $build_command
 	pop-location
@@ -70,11 +75,11 @@ function Update-GitRepo
 push-location $path_thirdparty
 
 
+Update-GitRepo -path $path_odin -url $url_odin_repo -build_command '.\build.bat'
+
 $env:odin = join-path $path_odin 'odin.exe'
 Update-GitRepo -path $path_ols -url $url_ols_repo -build_command '.\build.bat'
 remove-item env:odin
-
-Update-GitRepo -path $path_odin -url $url_odin_repo -build_command '.\build.bat'
 
 if (Test-Path -Path $path_ini_parser)
 {

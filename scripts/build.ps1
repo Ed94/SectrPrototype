@@ -205,7 +205,7 @@ push-location $path_root
 			}
 			return $built
 		}
-		$sectr_build_code = build-sectr
+		$script:sectr_build_code = build-sectr
 
 		function build-host
 		{
@@ -217,14 +217,13 @@ push-location $path_root
 				return
 			}
 
-			# TODO(Ed): FIX THIS
-			# $dependencies_built = $sectr_build_code -eq $module_build_failed
-			# if ( -not $dependencies_built ) {
-			# 	write-host 'Skipping sectr_host build, dependencies failed to build'
-			# 	return
-			# }
+			$dependencies_built = $script:sectr_build_code -ne $module_build_failed
+			if ( -not $dependencies_built ) {
+				write-host 'Skipping sectr_host build, dependencies failed to build'
+				return
+			}
 
-			$should_build = (check-ModuleForChanges $module_host) || ( $sectr_build_code == $module_built )
+			$should_build = (check-ModuleForChanges $module_host) -or ( $script:sectr_build_code -eq $module_built )
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr_host build, module up to date'
 				return
