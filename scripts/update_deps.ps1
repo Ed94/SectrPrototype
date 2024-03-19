@@ -5,6 +5,7 @@ $path_code       = join-path $path_root 'code'
 $path_build      = join-path $path_root 'build'
 $path_thirdparty = join-path $path_root 'thirdparty'
 
+$url_ols_repo    = 'https://github.com/Ed94/ols'
 $url_odin_repo   = 'https://github.com/Ed94/Odin.git'
 $url_ini_parser  = 'https://github.com/laytan/odin-ini-parser.git'
 $path_odin       = join-path $path_thirdparty 'Odin'
@@ -18,66 +19,67 @@ if ( -not(Test-Path $path_thirdparty) ) {
 	new-item -ItemType Directory -Path $path_thirdparty
 }
 
-push-location $path_thirdparty
+$binaries_dirty = $false
 
-if ((Test-Path -Path $path_ols) -and $false)
+function Update-GitRepo
 {
-	Write-Host "Updating ols"
-	push-location $path_ols
-	$env:odin = join-path $path_odin 'odin.exe'
+	param( [string] $path, [string] $url, [string] $build_command )
 
-	& .\build.bat
-	remove-item env:odin
+	if ( $build_command -eq $null ) {
+		write-host "Attempted to call Update-GitRepo without build_command specified"
+		return
+	}
+
+	$last_built_commit = join-path $path "last_built_commit.txt"
+	if ( -not(test-path -Path $path))
+	{
+		write-host "Cloining repo from $url to $path"
+		git clone $url $path
+
+		push-location $path
+		& "$build_command"
+		pop-location
+
+		git -C $path rev-parse HEAD | out-file $last_built_commit
+		$binaries_dirty = $true
+		return
+	}
+
+	git -C $path fetch
+	$latest_commit_hash = git -C $path rev-parse '@{u}'
+	$last_built_hash    = if (Test-Path $last_built_commit) { Get-Content $last_built_commit } else { "" }
+
+	if ( $latest_commit_hash -eq $last_built_hash ) {
+		write-host
+		return
+	}
+
+	write-host "Build out of date for: $path, updating"
+	write-host 'Pulling...'
+	git -C $path pull
+
+	push-location $path
+	& $build_command
 	pop-location
 
+	$latest_commit_hash | out-file $last_built_commit
+	$binaries_dirty = $true
 	write-host
 }
 
-if (Test-Path -Path $path_odin)
-{
-	Write-Host "Checking for updates in the Odin repository..."
-	git -C $path_odin fetch
+push-location $path_thirdparty
 
-	# TODO(Ed) : This is no longer a valid way to detect changes since I update a personal repo myself (within this local instance)
-	# Get the latest local and remote commit hashes for the current branch
-	$localCommit  = git -C $path_odin rev-parse HEAD
-	$remoteCommit = git -C $path_odin rev-parse '@{u}'
-	if ( $false -or $localCommit -ne $remoteCommit)
-	{
-		Write-Host "Odin repository is out-of-date. Pulling changes and rebuilding..."
-		git -C $path_odin pull
-		push-location $path_odin
-		& .\build.bat debug
-		pop-location
 
-		$binaries_dirty = $true
-	}
-	else {
-		Write-Host "Odin repository is up-to-date. No need to rebuild."
-	}
-}
-else
-{
-	# Odin directory does not exist, so clone the repository
-	Write-Host "Cloning Odin repository..."
-	git clone $url_odin_repo $path_odin
-	push-location $path_odin
-	& .\build.bat
-	pop-location
+$env:odin = join-path $path_odin 'odin.exe'
+Update-GitRepo -path $path_ols -url $url_ols_repo -build_command '.\build.bat'
+remove-item env:odin
 
-	$binaries_dirty = $true
-}
+Update-GitRepo -path $path_odin -url $url_odin_repo -build_command '.\build.bat'
 
 if (Test-Path -Path $path_ini_parser)
 {
-	Write-Host "Checking for updates on the ini-parser"
-	$localCommit  = git -C $path_ini_parser rev-parse HEAD
-	$remoteCommit = git -C $path_ini_parser rev-parse '@{u}'
-	if ($localCommit -ne $remoteCommit)
-	{
-		Write-Host "ini-parser repository is out-of-date. Pulling changes and rebuilding..."
-		git -C $path_ini_parser pull
-	}
+	# Write-Host "Checking for updates on the ini-parser"
+	git -C $path_ini_parser pull
 }
 else
 {
@@ -89,7 +91,7 @@ $path_vendor        = join-path $path_odin          'vendor'
 $path_vendor_raylib = join-path $path_vendor        'raylib'
 $path_raylib_dlls   = join-path $path_vendor_raylib 'windows'
 
-if ( $binaries_dirty -or $true )
+if ( $binaries_dirty )
 {
 	$third_party_dlls = Get-ChildItem -Path $path_raylib_dlls -Filter '*.dll'
 	foreach ($dll in $third_party_dlls) {
