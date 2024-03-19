@@ -4,7 +4,7 @@ import "core:fmt"
 
 import rl "vendor:raylib"
 
-//@(optimization_mode="speed")
+
 render :: proc()
 {
 	profile(#procedure)
@@ -118,6 +118,7 @@ render_mode_2d :: proc()
 	rl.BeginMode2D( project.workspace.cam )
 
 	// Draw 3D Viewport
+	when false
 	{
 		viewport_size := Vec2 { 1280.0, 720.0 }
 		vp_half_size := viewport_size * 0.5

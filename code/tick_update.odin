@@ -64,7 +64,7 @@ frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
 	return cast(f32) get_state().frametime_delta_seconds
 }
 
-//@(optimization_mode="speed")
+
 update :: proc( delta_time : f64 ) -> b32
 {
 	profile(#procedure)
@@ -310,7 +310,7 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 
 		// Whitespace AST test
-		if false
+		if true
 		{
 			profile("Whitespace AST test")
 
@@ -350,7 +350,7 @@ update :: proc( delta_time : f64 ) -> b32
 
 			// index := 0
 			widgets : Array(UI_Widget)
-			widgets, alloc_error = array_init_reserve( UI_Widget, frame_slab_allocator(), Kilobyte * 4 )
+			widgets, alloc_error = array_init_reserve( UI_Widget, frame_slab_allocator(), 8 )
 			widgets_ptr := & widgets
 
 			label_id := 0

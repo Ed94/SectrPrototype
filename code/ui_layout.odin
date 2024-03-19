@@ -4,7 +4,7 @@ import "core:math"
 import "core:math/linalg"
 
 // Note(Ed): This is naturally pretty expensive
-//@(optimization_mode="speed")
+
 ui_compute_layout :: proc()
 {
 	profile(#procedure)

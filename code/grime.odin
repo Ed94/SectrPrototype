@@ -9,13 +9,14 @@ import "base:intrinsics"
 	type_has_field :: intrinsics.type_has_field
 	type_elem_type :: intrinsics.type_elem_type
 import "base:runtime"
-	Byte     :: runtime.Byte
-	Kilobyte :: runtime.Kilobyte
-	Megabyte :: runtime.Megabyte
-	Gigabyte :: runtime.Gigabyte
-	Terabyte :: runtime.Terabyte
-	Petabyte :: runtime.Petabyte
-	Exabyte  :: runtime.Exabyte
+	Byte              :: runtime.Byte
+	Kilobyte          :: runtime.Kilobyte
+	Megabyte          :: runtime.Megabyte
+	Gigabyte          :: runtime.Gigabyte
+	Terabyte          :: runtime.Terabyte
+	Petabyte          :: runtime.Petabyte
+	Exabyte           :: runtime.Exabyte
+	resize_non_zeroed :: runtime.non_zero_mem_resize
 import c "core:c/libc"
 import "core:dynlib"
 import "core:hash"
@@ -48,7 +49,6 @@ import "core:mem"
 	is_power_of_two_uintptr :: mem.is_power_of_two
 	ptr_offset              :: mem.ptr_offset
 	resize                  :: mem.resize
-	reisze_non_zeroed       :: mem.default_resize_bytes_align_non_zeroed
 	slice_ptr               :: mem.slice_ptr
 	TrackingAllocator       :: mem.Tracking_Allocator
 	tracking_allocator      :: mem.tracking_allocator

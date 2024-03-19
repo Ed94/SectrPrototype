@@ -1,6 +1,6 @@
 package sectr
 
-//@(optimization_mode="speed")
+
 ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 {
 	// profile(#procedure)

@@ -162,7 +162,7 @@ push-location $path_root
 			$build_args += $flag_output_path + $module_dll
 			# $build_args += ($flag_collection + $pkg_collection_thirdparty)
 			$build_args += $flag_micro_architecture_native
-			$build_args += $flag_use_separate_modules
+			# $build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical
 			$build_args += $flag_optimize_none
 			# $build_args += $flag_optimize_minimal
@@ -243,10 +243,10 @@ push-location $path_root
 			$build_args += $flag_micro_architecture_native
 			$build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical
-			# $build_args += $flag_optimize_none
+			$build_args += $flag_optimize_none
 			# $build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
-			$build_args += $falg_optimize_aggressive
+			# $build_args += $falg_optimize_aggressive
 			$build_args += $flag_debug
 			$build_args += $flag_pdb_name + $pdb
 			$build_args += $flag_subsystem + 'windows'

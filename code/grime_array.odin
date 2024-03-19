@@ -270,7 +270,7 @@ array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity : u64 ) -> All
 	old_size := header_size + cast(int) self.capacity * size_of(Type)
 
 	// new_mem, result_code := resize( self.header, old_size, new_size, allocator = self.backing )
-	new_mem, result_code := reisze_non_zeroed( byte_slice( self.header, old_size), new_size, mem.DEFAULT_ALIGNMENT, allocator = self.backing )
+	new_mem, result_code := resize_non_zeroed( self.header, old_size, new_size, mem.DEFAULT_ALIGNMENT, allocator = self.backing )
 
 	if result_code != AllocatorError.None {
 		ensure( false, "Failed to allocate for new array capacity" )

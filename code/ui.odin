@@ -274,7 +274,7 @@ UI_Box :: struct {
 UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
 UI_Parent_Stack_Size      :: 512
-UI_Built_Boxes_Array_Size :: Kilobyte * 5
+UI_Built_Boxes_Array_Size :: 8
 
 UI_State :: struct {
 	// TODO(Ed) : Use these
@@ -357,7 +357,6 @@ ui_box_from_key :: #force_inline proc ( cache : ^HMapZPL(UI_Box), key : UI_Key )
 	return zpl_hmap_get( cache, cast(u64) key )
 }
 
-//@(optimization_mode="speed")
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 {
 	// profile(#procedure)
@@ -486,7 +485,6 @@ ui_graph_build :: proc( ui : ^ UI_State ) {
 	ui_graph_build_begin( ui )
 }
 
-//@(optimization_mode="speed")
 ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_Key
 {
 	// profile(#procedure)

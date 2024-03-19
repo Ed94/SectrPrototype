@@ -116,7 +116,7 @@ zpl_hmap_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 {
 	profile(#procedure)
 	// For now the prototype should never allow this to happen.
-	ensure( false, "ZPL HMAP IS REHASHING" )
+	// ensure( false, "ZPL HMAP IS REHASHING" )
 	last_added_index : i64
 
 	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.hashes.backing, new_num )

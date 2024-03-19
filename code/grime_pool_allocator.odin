@@ -138,12 +138,10 @@ pool_grab :: proc( using pool : Pool, zero_memory := false ) -> ( block : []byte
 		head := & pool.free_list_head
 
 		// Compiler Bug? Fails to compile
-		// ll_pop( head )
-
-		last_free : ^Pool_FreeBlock = pool.free_list_head
 		// last_free := ll_pop( & pool.free_list_head )
 
-		pool.free_list_head = pool.free_list_head.next 		// ll_pop
+		last_free : ^Pool_FreeBlock = pool.free_list_head
+		pool.free_list_head         = pool.free_list_head.next
 
 		block = byte_slice( cast([^]byte) last_free, int(pool.block_size) )
 		// log( str_fmt_tmp("Returning free block: %p %d", raw_data(block), pool.block_size))

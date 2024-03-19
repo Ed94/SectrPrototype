@@ -74,9 +74,6 @@ import sectr "../."
 	log                    :: sectr.log
 	SpallProfiler          :: sectr.SpallProfiler
 	to_odin_logger         :: sectr.to_odin_logger
-	TrackedAllocator       :: sectr.TrackedAllocator
-	tracked_allocator      :: sectr.tracked_allocator
-	tracked_allocator_init :: sectr.tracked_allocator_init
 	verify                 :: sectr.verify
 
 file_status :: proc {

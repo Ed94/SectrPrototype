@@ -43,9 +43,7 @@ SlabPolicy :: StackFixed(SlabSizeClass, Slab_Max_Size_Classes)
 
 SlabHeader :: struct {
 	backing : Allocator,
-
-	policy : SlabPolicy, // TODO(Ed) : Remove this, the policy can't be changed after its been set so its meaningless to have...
-	pools  : StackFixed(Pool, Slab_Max_Size_Classes),
+	pools   : StackFixed(Pool, Slab_Max_Size_Classes),
 }
 
 Slab :: struct {
@@ -68,12 +66,11 @@ slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocato
 
 	slab.header  = cast( ^SlabHeader) raw_mem
 	slab.backing = allocator
-	slab.policy  = (policy^)
-	alloc_error  = slab_init_pools( slab, bucket_reserve_num )
+	alloc_error  = slab_init_pools( slab, policy, bucket_reserve_num )
 	return
 }
 
-slab_init_pools :: proc ( using self : Slab, bucket_reserve_num : uint = 0 ) -> AllocatorError
+slab_init_pools :: proc ( using self : Slab, policy : ^SlabPolicy, bucket_reserve_num : uint = 0 ) -> AllocatorError
 {
 	profile(#procedure)
 	for id in 0 ..< policy.idx {
@@ -97,7 +94,7 @@ slab_reload :: proc ( using self : Slab, allocator : Allocator )
 
 slab_destroy :: proc( using self : Slab )
 {
-	for id in 0 ..< policy.idx {
+	for id in 0 ..< pools.idx {
 		pool := pools.items[id]
 		pool_destroy( pool )
 	}
