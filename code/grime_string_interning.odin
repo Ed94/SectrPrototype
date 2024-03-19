@@ -15,11 +15,15 @@ import "core:mem"
 import "core:slice"
 import "core:strings"
 
-// Should this just store the key instead?
+StringKey   :: distinct u64
+RunesCached :: []rune
+
+// TODO(Ed): Should this just track the key instead? (by default)
 StringCached :: struct {
 	str   : string,
 	runes : []rune,
 }
+
 
 StringCache :: struct {
 	slab      : Slab,

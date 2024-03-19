@@ -26,9 +26,6 @@ Font_Atlas_Packing_Method :: enum u32 {
 	Skyeline_Rect = 1, // stb_pack_rect
 }
 
-// TODO(Ed) : These are currently i32, I wanted them to be string ids for debug ease of use.
-// There is an issue with the hash map type preventing me from doing so. Its allocator reference breaks.
-// FontID  :: distinct string
 FontID  :: struct {
 	key   : u64,
 	label : string,
@@ -183,20 +180,6 @@ to_rl_Font :: proc( id : FontID, size := Font_Use_Default_Size ) -> rl.Font
 
 	id        := (size / Font_Size_Interval) + (size % Font_Size_Interval)
 	px_render := & def.size_table[ id - 1 ]
-
-	// This is free for now perf wise... may have to move this out to on a setting change later.
-	if id <= 8 {
-		rl.SetTextureFilter( px_render.texture, rl.TextureFilter.POINT )
-	}
-	else if id <= 14 {
-		rl.SetTextureFilter( px_render.texture, rl.TextureFilter.POINT )
-	}
-	else if id <= 48 {
-		rl.SetTextureFilter( px_render.texture, rl.TextureFilter.POINT )
-	}
-	else if id > 48 {
-		rl.SetTextureFilter( px_render.texture, rl.TextureFilter.POINT )
-	}
 
 	rl_font : rl.Font
 	rl_font.baseSize     = px_render.size

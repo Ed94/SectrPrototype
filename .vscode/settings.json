@@ -9,6 +9,7 @@
 	"autoHide.autoHideSideBar": false,
 	"files.associations": {
 		"*.rmd": "markdown",
-		"type_traits": "cpp"
+		"type_traits": "cpp",
+		"utf8proc.c": "cpp"
 	}
 }

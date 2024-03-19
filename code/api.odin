@@ -28,7 +28,7 @@ ModuleAPI :: struct {
 }
 
 @export
-startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
+startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^Logger )
 {
 	spall.SCOPED_EVENT( & prof.ctx, & prof.buffer, #procedure )
 	Memory_App.profiler = prof
@@ -127,7 +127,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		refresh_rate      =    0
 
 		cam_min_zoom                 = 0.25
-		cam_max_zoom                 = 10.0
+		cam_max_zoom                 = 30.0
 		cam_zoom_mode                = .Smooth
 		cam_zoom_smooth_snappiness   = 4.0
 		cam_zoom_sensitivity_digital = 0.2
@@ -143,33 +143,34 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	Desired_OS_Scheduler_MS :: 1
 	sleep_is_granular = set__scheduler_granularity( Desired_OS_Scheduler_MS )
 
-	// rl.Odin_SetMalloc( RL_MALLOC )
-
-	rl.SetConfigFlags( {
-		rl.ConfigFlag.WINDOW_RESIZABLE,
-		// rl.ConfigFlag.WINDOW_TOPMOST,
-	})
-
 	// Rough setup of window with rl stuff
-	window_width  : i32 = 1000
-	window_height : i32 = 600
-	win_title     : cstring = "Sectr Prototype"
-	rl.InitWindow( window_width, window_height, win_title )
-	log( "Raylib initialized and window opened" )
+	{
+		// rl.Odin_SetMalloc( RL_MALLOC )
 
-	window := & state.app_window
-	window.extent.x = f32(window_width)  * 0.5
-	window.extent.y = f32(window_height) * 0.5
+		rl.SetConfigFlags( {
+			rl.ConfigFlag.WINDOW_RESIZABLE,
+			// rl.ConfigFlag.WINDOW_TOPMOST,
+		})
 
-	// We do not support non-uniform DPI.
-	window.dpi_scale = rl.GetWindowScaleDPI().x
-	window.ppcm      = os_default_ppcm * window.dpi_scale
+		window_width  : i32 = 1000
+		window_height : i32 = 600
+		win_title     : cstring = "Sectr Prototype"
+		rl.InitWindow( window_width, window_height, win_title )
+		log( "Raylib initialized and window opened" )
 
-	// Determining current monitor and setting the target frametime based on it..
-	monitor_id         = rl.GetCurrentMonitor()
-	monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
-	rl.SetTargetFPS( 60 * 24 )
-	log( str_fmt_tmp( "Set target FPS to: %v", monitor_refresh_hz ) )
+		window := & state.app_window
+		window.extent.x = f32(window_width)  * 0.5
+		window.extent.y = f32(window_height) * 0.5
+
+		// We do not support non-uniform DPI.
+		window.dpi_scale = rl.GetWindowScaleDPI().x
+		window.ppcm      = os_default_ppcm * window.dpi_scale
+
+		// Determining current monitor and setting the target frametime based on it..
+		monitor_id         = rl.GetCurrentMonitor()
+		monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
+		log( str_fmt_tmp( "Set target FPS to: %v", monitor_refresh_hz ) )
+	}
 
 	// Basic Font Setup
 	{
@@ -196,7 +197,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			using project.workspace
 			cam = {
 				target   = { 0, 0 },
-				offset   = transmute(Vec2) window.extent,
+				offset   = transmute(Vec2) app_window.extent,
 				rotation = 0,
 				zoom     = 1.0,
 			}
@@ -290,10 +291,7 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	log("Module reloaded")
 }
 
-// TODO(Ed) : This lang really not have a fucking swap?
-swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
-	return b, a
-}
+
 
 @export
 tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32

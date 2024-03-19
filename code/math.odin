@@ -1,3 +1,5 @@
+// General mathematical constructions used for the prototype
+
 package sectr
 
 Axis2 :: enum i32 {

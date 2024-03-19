@@ -1,3 +1,5 @@
+// Goal is for any Position or 'Shape' intersections used by the prototype to be defined here for centeralization
+
 package sectr
 
 import "core:math/linalg"

@@ -86,6 +86,10 @@ import "core:unicode/utf8"
 
 OS_Type :: type_of(ODIN_OS)
 
+swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
+	return b, a
+}
+
 // Proc Name Overloads Alias table
 // This has to be done on a per-module basis.
 
@@ -118,6 +122,17 @@ is_power_of_two :: proc {
 	is_power_of_two_uintptr,
 }
 
+pixels_to_cm :: proc {
+	f32_pixels_to_cm,
+	vec2_pixels_to_cm,
+	range2_pixels_to_cm,
+}
+
+points_to_pixels :: proc {
+	f32_points_to_pixels,
+	vec2_points_to_pixels,
+}
+
 pop :: proc {
 	stack_pop,
 	stack_allocator_pop,
@@ -147,17 +162,6 @@ to_runes :: proc {
 to_string :: proc {
 	runes_to_string,
 	str_builder_to_string,
-}
-
-pixels_to_cm :: proc {
-	f32_pixels_to_cm,
-	vec2_pixels_to_cm,
-	range2_pixels_to_cm,
-}
-
-points_to_pixels :: proc {
-	f32_points_to_pixels,
-	vec2_points_to_pixels,
 }
 
 ui_set_layout :: proc {

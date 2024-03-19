@@ -1,10 +1,16 @@
+/* Space
+
+Provides various definitions for converting from one standard of measurement to another.
+
+Ultimately the user's window ppcm (pixels-per-centimeter) determins how all virtual metric conventions are handled.
+*/
 package sectr
 
 import rl "vendor:raylib"
 
 // The points to pixels and pixels to points are our only reference to accurately converting
 // an object from world space to screen-space.
-// This prototype engine will have all its spacial unit base for distances in pixels.
+// This prototype engine will have all its spacial unit base for distances in virtual pixels.
 
 Inches_To_CM  :: cast(f32) 2.54
 Points_Per_CM :: cast(f32) 28.3465

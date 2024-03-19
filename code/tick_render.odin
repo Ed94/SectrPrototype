@@ -278,7 +278,7 @@ render_mode_2d :: proc()
 		// profile_end()
 
 			if len(current.text.str) > 0 {
-				draw_text_string_cached( current.text, world_to_screen_pos(computed.text_pos), style.font_size, style.text_color )
+				draw_text( current.text, world_to_screen_pos(computed.text_pos), style.font_size, style.text_color )
 			}
 		}
 	}

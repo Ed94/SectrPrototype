@@ -11,7 +11,6 @@ The things to explore:
 * Making AST editing as versatile as text editing.
 * High-performance generating a large amount of UI widget boxes with proper auto-layout & no perceptible rendering-lag or input lag for interactions (framtimes stable).
 
-
 The project is so far in a "codebase boostrapping" phase.
 
 The project's is organized into 2 modules sectr_host & sectr.
@@ -40,5 +39,3 @@ Even so the notatble groups are:
   * Will most likely be the bulk of this prototype.
   * PIMGUI (Persistent Immediate Mode User Interface);
   * Auto-layout with heavy procedural generation of box widgets
-
-

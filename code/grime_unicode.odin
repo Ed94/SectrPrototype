@@ -1,5 +1,28 @@
 package sectr
 
+rune16 :: distinct u16
+
+
+
+
+// Exposing the alloc_error
+@(require_results)
+string_to_runes :: proc ( content : string, allocator := context.allocator) -> (runes : []rune, alloc_error : AllocatorError) {
+	num := str_rune_count(content)
+
+	runes, alloc_error = make([]rune, num, allocator)
+	if runes == nil || alloc_error != AllocatorError.None {
+		return
+	}
+
+	idx := 0
+	for codepoint in content {
+		runes[idx] = codepoint
+		idx += 1
+	}
+	return
+}
+
 string_to_runes_array :: proc( content : string, allocator := context.allocator ) -> ( []rune, AllocatorError )
 {
 	num := cast(u64) str_rune_count(content)
@@ -17,22 +40,4 @@ string_to_runes_array :: proc( content : string, allocator := context.allocator 
 		idx        += 1
 	}
 	return runes, alloc_error
-}
-
-// Exposing the alloc_error
-@(require_results)
-string_to_runes :: proc "odin" ( content : string, allocator := context.allocator) -> (runes : []rune, alloc_error : AllocatorError) {
-	num := str_rune_count(content)
-
-	runes, alloc_error = make([]rune, num, allocator)
-	if runes == nil || alloc_error != AllocatorError.None {
-		return
-	}
-
-	idx := 0
-	for codepoint in content {
-		runes[idx] = codepoint
-		idx += 1
-	}
-	return
 }

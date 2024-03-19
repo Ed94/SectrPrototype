@@ -17,7 +17,6 @@ profile_begin :: #force_inline proc "contextless" ( name : string, loc := #calle
 	spall._buffer_begin( & Memory_App.profiler.ctx, & Memory_App.profiler.buffer, name, "", loc )
 }
 
-profile_end :: #force_inline proc "contextless" ()
-{
+profile_end :: #force_inline proc "contextless" () {
 	spall._buffer_end( & Memory_App.profiler.ctx, & Memory_App.profiler.buffer)
 }
