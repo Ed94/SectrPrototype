@@ -452,7 +452,10 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	get_state().ui_context = ui
 	using get_state().ui_context
 
-	curr_cache, prev_cache = swap( curr_cache, prev_cache )
+	temp := prev_cache
+	prev_cache = curr_cache
+	curr_cache = temp
+	// curr_cache, prev_cache = swap( curr_cache, prev_cache )
 
 	if ui.active == UI_Key(0) {
 		//ui.hot = UI_Key(0)

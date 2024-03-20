@@ -162,9 +162,9 @@ push-location $path_root
 			$build_args += $flag_build_mode_dll
 			$build_args += $flag_output_path + $module_dll
 			$build_args += ($flag_collection + $pkg_collection_thirdparty)
-			$build_args += $flag_micro_architecture_native
+			# $build_args += $flag_micro_architecture_native
 			# $build_args += $flag_use_separate_modules
-			$build_args += $flag_thread_count + $CoreCount_Physical
+			# $build_args += $flag_thread_count + $CoreCount_Physical
 			$build_args += $flag_optimize_none
 			# $build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
@@ -240,9 +240,9 @@ push-location $path_root
 			$build_args += './host'
 			$build_args += $flag_output_path + $executable
 			$build_args += ($flag_collection + $pkg_collection_thirdparty)
-			$build_args += $flag_micro_architecture_native
-			$build_args += $flag_use_separate_modules
-			$build_args += $flag_thread_count + $CoreCount_Physical
+			# $build_args += $flag_micro_architecture_native
+			# $build_args += $flag_use_separate_modules
+			# $build_args += $flag_thread_count + $CoreCount_Physical
 			$build_args += $flag_optimize_none
 			# $build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
@@ -253,8 +253,8 @@ push-location $path_root
 			# $build_args += ($flag_extra_linker_flags + $linker_args )
 			$build_args += $flag_show_timings
 			# $build_args += $flag_show_system_call
-			$build_args += $flag_no_bounds_check
-			$build_args += $flag_no_thread_checker
+			# $build_args += $flag_no_bounds_check
+			# $build_args += $flag_no_thread_checker
 			# $build_args += $flag_default_allocator_nil
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address

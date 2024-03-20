@@ -231,7 +231,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// Make sure to cleanup transient before continuing...
 	// From here on, tarnsinet usage has to be done with care.
 	// For most cases, the frame allocator should be more than enough.
-	free_all( transient_allocator() )
+	// free_all( transient_allocator() )
 }
 
 // For some reason odin's symbols conflict with native foreign symbols...
@@ -269,6 +269,7 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	transient    = transient_mem
 	files_buffer = files_buffer_mem
 
+
 	context.allocator      = persistent_allocator()
 	context.temp_allocator = transient_allocator()
 
@@ -282,9 +283,12 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	font_provider_data.font_cache.hashes.backing  = persistent_slab_allocator()
 	font_provider_data.font_cache.entries.backing = persistent_slab_allocator()
 
-	slab_reload( string_cache.slab, persistent_slab_allocator() )
+	slab_reload( string_cache.slab, persistent_allocator() )
 	string_cache.table.hashes.backing  = persistent_slab_allocator()
 	string_cache.table.entries.backing = persistent_slab_allocator()
+
+	// slab_reload( frame_slab, frame_allocator())
+	slab_reload( transient_slab, transient_allocator())
 
 	ui_reload( & get_state().project.workspace.ui, cache_allocator =  persistent_slab_allocator() )
 
@@ -381,6 +385,7 @@ clean_frame :: proc()
 	context.logger = to_odin_logger( & Memory_App.logger )
 
 	free_all( frame_allocator() )
+
 
 	transient_clear_elapsed += frametime_delta32()
 	if transient_clear_elapsed >= transient_clear_time && ! transinet_clear_lock

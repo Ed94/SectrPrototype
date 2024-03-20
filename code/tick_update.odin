@@ -449,12 +449,20 @@ update :: proc( delta_time : f64 ) -> b32
 					}
 
 					line_hbox.text = str_intern( to_string( builder ) )
+					// if len(line_hbox.text.str) == 0 {
+					// 	line_hbox.text = str_intern( " " )
+					// }
 				}
 
-				array_append( widgets_ptr, line_hbox )
+				if len(line_hbox.text.str) > 0 {
+					array_append( widgets_ptr, line_hbox )
+					layout_text.pos.x  = text_style.layout.pos.x
+					layout_text.pos.y += size_range2(line_hbox.computed.bounds).y
+				}
+				else {
+					layout_text.pos.y += size_range2( (& widgets.data[ widgets.num - 1 ]).computed.bounds ).y
+				}
 
-				layout_text.pos.x  = text_style.layout.pos.x
-				layout_text.pos.y += size_range2(line_hbox.computed.bounds).y
 				line_id += 1
 			}
 

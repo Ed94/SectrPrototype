@@ -170,6 +170,8 @@ array_append_at_slice :: proc( using self : ^Array( $ Type ), items : []Type, id
 	return AllocatorError.None
 }
 
+// array_back :: proc( )
+
 array_push_back :: proc( using self : Array( $ Type)) -> b32 {
 	if num == capacity {
 		return false

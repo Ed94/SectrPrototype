@@ -163,7 +163,7 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 			return
 		}
 		pool.current_bucket = pool.bucket_list.first
-		log( "First bucket allocation")
+		// log( "First bucket allocation")
 	}
 
 	// Compiler Bug ? (Won't work without "pool."")
@@ -179,7 +179,7 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		// if current_bucket.next != nil {
 		if pool.current_bucket.next != nil {
 			// current_bucket = current_bucket.next
-			log( str_fmt_tmp("Bucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
+			// log( str_fmt_tmp("Bucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
 			pool.current_bucket = pool.current_bucket.next
 		}
 		else
@@ -204,7 +204,7 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 	pool.current_bucket.next_block += pool.block_size
 
 	next = uintptr(pool.current_bucket.blocks) + uintptr(pool.current_bucket.next_block)
-	log( str_fmt_tmp("grabbing block: %p blocks left: %d", raw_data(block), (end - next) / uintptr(pool.block_size) ))
+	// log( str_fmt_tmp("grabbing block: %p blocks left: %d", raw_data(block), (end - next) / uintptr(pool.block_size) ))
 
 	if zero_memory {
 		slice.zero(block)
@@ -232,7 +232,7 @@ pool_release :: proc( self : Pool, block : []byte, loc := #caller_location )
 	self.free_list_head = new_free_block
 
 	new_free_block = new_free_block
-	log( str_fmt_tmp("Released block: %p %d", new_free_block, self.block_size))
+	// log( str_fmt_tmp("Released block: %p %d", new_free_block, self.block_size))
 }
 
 pool_reset :: proc( using pool : Pool )

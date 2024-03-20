@@ -106,13 +106,7 @@ ui_compute_layout :: proc()
 		}
 
 		text_size : Vec2
-		// If the computed matches, we already have the size, don't bother.
-		if current.first_frame || ! size_to_text || computed.text_size.y != size_range2(computed.bounds).y {
-			text_size = cast(Vec2) measure_text_size( current.text.str, style.font, style.font_size, 0 )
-		}
-		else {
-			text_size = computed.text_size
-		}
+		text_size = cast(Vec2) measure_text_size( current.text.str, style.font, style.font_size, 0 )
 
 		if size_to_text {
 			adjusted_size = text_size

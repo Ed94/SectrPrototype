@@ -131,7 +131,7 @@ slab_alloc :: proc( using self : Slab,
 			ensure(false, "Bad block from pool")
 			return nil, alloc_error
 	}
-	log( str_fmt_tmp("%v: Retrieved block: %p %d", dbg_name, raw_data(block), len(block) ))
+	// log( str_fmt_tmp("%v: Retrieved block: %p %d", dbg_name, raw_data(block), len(block) ))
 
 	data = byte_slice(raw_data(block), size)
 	if zero_memory {

@@ -335,7 +335,7 @@ main :: proc()
 		delta_ns   = time.tick_lap_time( & host_tick )
 		host_tick  = time.tick_now()
 
-		free_all( arena_allocator( & state.transient))
+		// free_all( arena_allocator( & state.transient))
 	}
 
 	// Determine how the run_cyle completed, if it failed due to an error,
