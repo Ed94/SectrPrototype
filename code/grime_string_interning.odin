@@ -58,7 +58,7 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 	cache.slab, alloc_error = slab_init( & policy, allocator = persistent_allocator(), dbg_name = dbg_name )
 	verify(alloc_error == .None, "Failed to initialize the string cache" )
 
-	cache.table, alloc_error = zpl_hmap_init_reserve( StringCached, persistent_slab_allocator(), 64 * Kilobyte )
+	cache.table, alloc_error = zpl_hmap_init_reserve( StringCached, persistent_slab_allocator(), 8 )
 	return
 }
 
@@ -69,7 +69,7 @@ str_intern :: proc(
 ) -> StringCached
 {
 	// profile(#procedure)
-	cache := get_state().string_cache
+	cache := & get_state().string_cache
 
 	key    := u64( crc32( transmute([]byte) content ))
 	result := zpl_hmap_get( & cache.table, key )
@@ -92,9 +92,13 @@ str_intern :: proc(
 		runes, alloc_error = to_runes( content, slab_allocator(cache.slab) )
 		verify( alloc_error == .None, "String cache had a backing allocator error" )
 
+		slab_validate_pools( get_state().persistent_slab )
+
 		// result, alloc_error = zpl_hmap_set( & cache.table, key, StringCached { transmute(string) byte_slice(str_mem, length), runes } )
 		result, alloc_error = zpl_hmap_set( & cache.table, key, StringCached { transmute(string) str_mem, runes } )
 		verify( alloc_error == .None, "String cache had a backing allocator error" )
+
+		slab_validate_pools( get_state().persistent_slab )
 	}
 	// profile_end()
 

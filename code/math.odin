@@ -45,6 +45,10 @@ Range2 :: struct #raw_union{
 		x0, y0 : f32,
 		x1, y1 : f32,
 	},
+
+	// TODO(Ed) : Test these
+	array : [4]f32,
+	mat   : matrix[2, 2] f32,
 }
 
 range2 :: #force_inline proc "contextless" ( a, b : Vec2 ) -> Range2 {
@@ -57,6 +61,12 @@ add_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> Range2 {
 		a.p0 + b.p0,
 		a.p1 + b.p1,
 	}}
+	return result
+}
+
+sub_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> Range2 {
+	// result := Range2 { array = a.array - b.array }
+	result := Range2 { mat = a.mat - b.mat }
 	return result
 }
 

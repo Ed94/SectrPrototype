@@ -76,7 +76,7 @@ ui_compute_layout :: proc()
 			parent_content.min + parent_content_size * anchor.min,
 			parent_content.max - parent_content_size * anchor.max,
 		)
-		anchored_bounds_origin := (anchored_bounds.min + anchored_bounds.max) * 0.5
+		// anchored_bounds_origin := (anchored_bounds.min + anchored_bounds.max) * 0.5
 
 		// 2. Apply Margins
 		margins := range2(
@@ -106,7 +106,12 @@ ui_compute_layout :: proc()
 		}
 
 		text_size : Vec2
-		text_size = cast(Vec2) measure_text_size( current.text.str, style.font, style.font_size, 0 )
+		if style.font_size == computed.text_size.y {
+			text_size = computed.text_size
+		}
+		else {
+			text_size = cast(Vec2) measure_text_size( current.text.str, style.font, style.font_size, 0 )
+		}
 
 		if size_to_text {
 			adjusted_size = text_size
@@ -158,8 +163,6 @@ ui_compute_layout :: proc()
 		computed.padding = padding_bounds
 		computed.content = content_bounds
 
-		// TODO(Ed): Needs a rework based on changes to rest of layout above being changed
-		// Text
 		if len(current.text.str) > 0
 		{
 			content_size := content_bounds.max - content_bounds.min

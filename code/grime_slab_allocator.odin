@@ -106,7 +106,7 @@ slab_destroy :: proc( using self : Slab )
 	free( self.header, backing )
 }
 
-slab_alloc :: proc( using self : Slab,
+slab_alloc :: proc( self : Slab,
 	size        : uint,
 	alignment   : uint,
 	zero_memory := true,
@@ -116,24 +116,26 @@ slab_alloc :: proc( using self : Slab,
 	// profile(#procedure)
 	pool : Pool
 	id : u32 = 0
-	for ; id < pools.idx; id += 1 {
-			pool = pools.items[id]
+	for ; id < self.pools.idx; id += 1 {
+			pool = self.pools.items[id]
 
 			if pool.block_size >= size && pool.alignment >= alignment {
 					break
 			}
 	}
-	verify( id < pools.idx, "There is not a size class in the slab's policy to satisfy the requested allocation" )
+	verify( id < self.pools.idx, "There is not a size class in the slab's policy to satisfy the requested allocation" )
 
 	verify( pool.header != nil, "Requested alloc not supported by the slab allocator", location = loc )
 
 	block : []byte
+	slab_validate_pools( self )
 	block, alloc_error = pool_grab(pool)
-	if alloc_error != .None {
+	slab_validate_pools( self )
+	if block == nil || alloc_error != .None {
 			ensure(false, "Bad block from pool")
 			return nil, alloc_error
 	}
-	// log( str_fmt_tmp("%v: Retrieved block: %p %d", dbg_name, raw_data(block), len(block) ))
+	log( str_fmt_tmp("%v: Retrieved block: %p %d", self.dbg_name, raw_data(block), len(block) ))
 
 	data = byte_slice(raw_data(block), size)
 	if zero_memory {
@@ -196,7 +198,9 @@ slab_resize :: proc( using self : Slab,
 
 		if zero_memory && new_size > old_size {
 			to_zero := byte_slice( new_data_ptr, int(new_size - old_size) )
+			slab_validate_pools( self )
 			slice.zero( to_zero )
+			slab_validate_pools( self )
 			log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", new_data_ptr,  cast(rawptr) (uintptr(new_data_ptr) + uintptr(new_size - old_size))))
 		}
 		return
@@ -204,7 +208,9 @@ slab_resize :: proc( using self : Slab,
 
 	// We'll need to provide an entirely new block, so the data will need to be copied over.
 	new_block : []byte
+	slab_validate_pools( self )
 	new_block, alloc_error = pool_grab( pool_resize )
+	slab_validate_pools( self )
 	if new_block == nil {
 		ensure(false, "Retreived a null block")
 		return
@@ -223,7 +229,7 @@ slab_resize :: proc( using self : Slab,
 		pool_release( pool_old, data )
 	}
 
-	new_data = byte_slice( raw_data(new_block), int(old_size) )
+	new_data = new_block[ :new_size]
 	return
 }
 
@@ -232,6 +238,15 @@ slab_reset :: proc( slab : Slab )
 	for id in 0 ..< slab.pools.idx {
 		pool := slab.pools.items[id]
 		pool_reset( pool )
+	}
+}
+
+slab_validate_pools :: proc( slab : Slab )
+{
+	slab := slab
+	for id in 0 ..< slab.pools.idx {
+		pool := slab.pools.items[id]
+		pool_validate( pool )
 	}
 }
 

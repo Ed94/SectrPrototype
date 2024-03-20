@@ -165,6 +165,10 @@ released :: proc {
 	btn_released,
 }
 
+sub :: proc {
+	sub_range2,
+}
+
 to_rl_rect :: proc {
 	range2_to_rl_rect,
 }

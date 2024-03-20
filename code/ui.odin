@@ -274,7 +274,7 @@ UI_Box :: struct {
 UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
 UI_Parent_Stack_Size      :: 512
-UI_Built_Boxes_Array_Size :: 512
+UI_Built_Boxes_Array_Size :: 8 * Kilobyte
 
 UI_State :: struct {
 	// TODO(Ed) : Use these

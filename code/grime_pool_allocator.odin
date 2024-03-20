@@ -13,6 +13,8 @@ The pool doesn't allocate any buckets on initialization unless the user specifes
 */
 package sectr
 
+import "base:intrinsics"
+import "base:runtime"
 import "core:mem"
 import "core:slice"
 
@@ -29,13 +31,13 @@ PoolHeader :: struct {
 
 	free_list_head : ^Pool_FreeBlock,
 	current_bucket : ^PoolBucket,
-	bucket_list    : DLL_NodeFL( PoolBucket)
+	bucket_list    : DLL_NodeFL( PoolBucket),
 }
 
 PoolBucket :: struct {
 	using nodes : DLL_NodePN( PoolBucket),
 	next_block  : uint,
-	blocks      : [^]byte
+	blocks      : [^]byte,
 }
 
 Pool_FreeBlock :: struct {
@@ -88,21 +90,23 @@ pool_destroy :: proc ( using self : Pool )
 	free( self.header, backing )
 }
 
-pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> AllocatorError
+pool_allocate_buckets :: proc( pool : Pool, num_buckets : uint ) -> AllocatorError
 {
 	profile(#procedure)
-	pool := self
 	if num_buckets == 0 {
 		return .Invalid_Argument
 	}
-	header_size := cast(uint) align_forward_int( size_of(PoolBucket), int(alignment))
-	bucket_size := header_size + bucket_capacity
+	header_size := cast(uint) align_forward_int( size_of(PoolBucket), int(pool.alignment))
+	bucket_size := header_size + pool.bucket_capacity
 	to_allocate := cast(int) (bucket_size * num_buckets)
 
-	bucket_memory, alloc_error := alloc_bytes_non_zeroed( to_allocate, int(alignment), backing )
+	pool_validate( pool )
+	bucket_memory, alloc_error := alloc_bytes_non_zeroed( to_allocate, int(pool.alignment), pool.backing )
+	pool_validate( pool )
 	if alloc_error != .None {
 		return alloc_error
 	}
+	verify( bucket_memory != nil, "Bucket memory is null")
 
 	next_bucket_ptr := cast( [^]byte) raw_data(bucket_memory)
 	for index in 0 ..< num_buckets
@@ -110,15 +114,22 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 		bucket           := cast( ^PoolBucket) next_bucket_ptr
 		bucket.blocks     = memory_after_header(bucket)
 		bucket.next_block = 0
-		log( str_fmt_tmp("Pool (%d) allocated bucket: %p capacity: %d", self.block_size, raw_data(bucket_memory), bucket_capacity / self.block_size))
+		log( str_fmt_tmp("Pool (%d) allocated bucket: %p capacity: %d",
+			pool.block_size,
+			raw_data(bucket_memory),
+			pool.bucket_capacity / pool.block_size
+		))
 
+		if bucket == cast(rawptr) uintptr(0x100017740D0) {
+			runtime.debug_trap()
+		}
 
-		if self.bucket_list.first == nil {
-			self.bucket_list.first = bucket
-			self.bucket_list.last  = bucket
+		if pool.bucket_list.first == nil {
+			pool.bucket_list.first = bucket
+			pool.bucket_list.last  = bucket
 		}
 		else {
-			dll_push_back( & self.bucket_list.last, bucket )
+			dll_push_back( & pool.bucket_list.last, bucket )
 		}
 		// log( str_fmt_tmp("Bucket List First: %p", self.bucket_list.first))
 
@@ -130,6 +141,10 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, alloc_error : AllocatorError )
 {
 	pool := pool
+	if pool.current_bucket != nil {
+		verify( pool.current_bucket.blocks != nil, str_fmt_tmp("current_bucket was wiped %p", pool.current_bucket) )
+	}
+
 	// profile(#procedure)
 	alloc_error = .None
 
@@ -150,6 +165,7 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		if zero_memory {
 			slice.zero(block)
 		}
+		verify(false, "WE SHOULD NEVER BE HERE")
 		return
 	}
 
@@ -172,8 +188,8 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 	next := uintptr(pool.current_bucket.blocks) + uintptr(pool.current_bucket.next_block)
 	end  := uintptr(pool.current_bucket.blocks) + uintptr(pool.bucket_capacity)
 
-	blocks_left := end - next
-	if blocks_left == 0
+	blocks_left, overflow_signal := intrinsics.overflow_sub( end, next )
+	if blocks_left == 0 || overflow_signal
 	{
 		// Compiler Bug
 		// if current_bucket.next != nil {
@@ -181,6 +197,7 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 			// current_bucket = current_bucket.next
 			// log( str_fmt_tmp("Bucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
 			pool.current_bucket = pool.current_bucket.next
+			verify( pool.current_bucket.blocks != nil, "Next's blocks are null?" )
 		}
 		else
 		{
@@ -191,8 +208,11 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 				return
 			}
 			pool.current_bucket = pool.current_bucket.next
+			verify( pool.current_bucket.blocks != nil, "Next's blocks are null (Post new bucket alloc)?" )
 		}
 	}
+
+	verify( pool.current_bucket != nil, "Attempted to grab a block from a null bucket reference" )
 
 	// Compiler Bug
 	// block = slice_ptr( current_bucket.blocks[ current_bucket.next_block:], int(block_size) )
@@ -244,6 +264,18 @@ pool_reset :: proc( using pool : Pool )
 
 	pool.free_list_head = nil
 	pool.current_bucket = bucket_list.first
+}
+
+pool_validate :: proc( pool : Pool )
+{
+	pool := pool
+	// Make sure all buckets don't show any indication of corruption
+	bucket : ^PoolBucket = pool.bucket_list.first
+	// Compiler bug ^^ same as pool_reset
+	for ; bucket != nil; bucket = bucket.next
+	{
+		verify( bucket.blocks != nil, "Found corrupted bucket" )
+	}
 }
 
 pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32

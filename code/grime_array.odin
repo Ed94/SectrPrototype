@@ -60,7 +60,7 @@ array_init_reserve :: proc
 
 	raw_mem : rawptr
 	raw_mem, alloc_error = alloc( array_size, allocator = allocator )
-	log( str_fmt_tmp("array reserved: %d", header_size + int(capacity) * size_of(Type) ))
+	// log( str_fmt_tmp("array reserved: %d", header_size + int(capacity) * size_of(Type) ))
 	if alloc_error != AllocatorError.None do return
 
 	result.header    = cast( ^ArrayHeader(Type)) raw_mem;
