@@ -60,7 +60,7 @@ pool_init :: proc (
 
 	pool.header           = cast( ^PoolHeader) raw_mem
 	pool.backing          = allocator
-	pool.block_size       = block_size
+	pool.block_size       = align_forward_uint(block_size, alignment)
 	pool.bucket_capacity  = bucket_capacity
 	pool.alignment        = alignment
 
@@ -96,7 +96,8 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 		return .Invalid_Argument
 	}
 	header_size := cast(uint) align_forward_int( size_of(PoolBucket), int(alignment))
-	to_allocate := cast(int) (header_size + bucket_capacity * num_buckets)
+	bucket_size := header_size + bucket_capacity
+	to_allocate := cast(int) (bucket_size * num_buckets)
 
 	bucket_memory, alloc_error := alloc_bytes_non_zeroed( to_allocate, int(alignment), backing )
 	if alloc_error != .None {
@@ -109,7 +110,7 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 		bucket           := cast( ^PoolBucket) next_bucket_ptr
 		bucket.blocks     = memory_after_header(bucket)
 		bucket.next_block = 0
-		// log( str_fmt_tmp("Pool allocated block: %p capacity: %d", raw_data(bucket_memory), bucket_capacity))
+		log( str_fmt_tmp("Pool (%d) allocated bucket: %p capacity: %d", self.block_size, raw_data(bucket_memory), bucket_capacity / self.block_size))
 
 
 		if self.bucket_list.first == nil {
@@ -121,19 +122,20 @@ pool_allocate_buckets :: proc( using self : Pool, num_buckets : uint ) -> Alloca
 		}
 		// log( str_fmt_tmp("Bucket List First: %p", self.bucket_list.first))
 
-		next_bucket_ptr = next_bucket_ptr[ bucket_capacity: ]
+		next_bucket_ptr = next_bucket_ptr[ bucket_size: ]
 	}
 	return alloc_error
 }
 
-pool_grab :: proc( using pool : Pool, zero_memory := false ) -> ( block : []byte, alloc_error : AllocatorError )
+pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, alloc_error : AllocatorError )
 {
 	pool := pool
 	// profile(#procedure)
 	alloc_error = .None
 
 	// Check the free-list first for a block
-	if free_list_head != nil
+	// if pool.free_list_head != nil && false
+	if false
 	{
 		head := & pool.free_list_head
 
@@ -144,7 +146,10 @@ pool_grab :: proc( using pool : Pool, zero_memory := false ) -> ( block : []byte
 		pool.free_list_head         = pool.free_list_head.next
 
 		block = byte_slice( cast([^]byte) last_free, int(pool.block_size) )
-		// log( str_fmt_tmp("Returning free block: %p %d", raw_data(block), pool.block_size))
+		log( str_fmt_tmp("Returning free block: %p %d", raw_data(block), pool.block_size))
+		if zero_memory {
+			slice.zero(block)
+		}
 		return
 	}
 
@@ -157,7 +162,8 @@ pool_grab :: proc( using pool : Pool, zero_memory := false ) -> ( block : []byte
 			ensure(false, "Failed to allocate bucket")
 			return
 		}
-		pool.current_bucket = bucket_list.first
+		pool.current_bucket = pool.bucket_list.first
+		log( "First bucket allocation")
 	}
 
 	// Compiler Bug ? (Won't work without "pool."")
@@ -173,12 +179,12 @@ pool_grab :: proc( using pool : Pool, zero_memory := false ) -> ( block : []byte
 		// if current_bucket.next != nil {
 		if pool.current_bucket.next != nil {
 			// current_bucket = current_bucket.next
-			// log( str_fmt_tmp("Bucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
+			log( str_fmt_tmp("Bucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
 			pool.current_bucket = pool.current_bucket.next
 		}
 		else
 		{
-			// log( "All previous buckets exhausted, allocating new bucket")
+			log( "All previous buckets exhausted, allocating new bucket")
 			alloc_error := pool_allocate_buckets( pool, 1 )
 			if alloc_error != .None {
 				ensure(false, "Failed to allocate bucket")
@@ -191,8 +197,14 @@ pool_grab :: proc( using pool : Pool, zero_memory := false ) -> ( block : []byte
 	// Compiler Bug
 	// block = slice_ptr( current_bucket.blocks[ current_bucket.next_block:], int(block_size) )
 	// self.current_bucket.next_block += block_size
-	block = byte_slice( pool.current_bucket.blocks[ pool.current_bucket.next_block:], int(block_size) )
-	pool.current_bucket.next_block += block_size
+
+	block_ptr := cast(rawptr) (uintptr(pool.current_bucket.blocks) + uintptr(pool.current_bucket.next_block))
+
+	block = byte_slice( block_ptr, int(pool.block_size) )
+	pool.current_bucket.next_block += pool.block_size
+
+	next = uintptr(pool.current_bucket.blocks) + uintptr(pool.current_bucket.next_block)
+	log( str_fmt_tmp("grabbing block: %p blocks left: %d", raw_data(block), (end - next) / uintptr(pool.block_size) ))
 
 	if zero_memory {
 		slice.zero(block)
@@ -220,6 +232,7 @@ pool_release :: proc( self : Pool, block : []byte, loc := #caller_location )
 	self.free_list_head = new_free_block
 
 	new_free_block = new_free_block
+	log( str_fmt_tmp("Released block: %p %d", new_free_block, self.block_size))
 }
 
 pool_reset :: proc( using pool : Pool )

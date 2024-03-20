@@ -116,7 +116,7 @@ zpl_hmap_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 {
 	profile(#procedure)
 	// For now the prototype should never allow this to happen.
-	// ensure( false, "ZPL HMAP IS REHASHING" )
+	ensure( false, "ZPL HMAP IS REHASHING" )
 	last_added_index : i64
 
 	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.hashes.backing, new_num )
@@ -263,6 +263,8 @@ zpl_hmap_find :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> HMapZPL_F
 }
 
 zpl_hmap_full :: proc( using self : ^ HMapZPL( $ Type) ) -> b32 {
-	result : b32 = entries.num > u64(HMapZPL_CritialLoadScale * cast(f64) hashes.num)
+	critical_load := u64(HMapZPL_CritialLoadScale * cast(f64) hashes.num)
+	result : b32 = entries.num > critical_load
+	ensure( !result, "HASHTABLE IS FULL" )
 	return result
 }

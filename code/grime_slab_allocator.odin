@@ -42,8 +42,9 @@ Slab_Max_Size_Classes :: 64
 SlabPolicy :: StackFixed(SlabSizeClass, Slab_Max_Size_Classes)
 
 SlabHeader :: struct {
-	backing : Allocator,
-	pools   : StackFixed(Pool, Slab_Max_Size_Classes),
+	dbg_name : string,
+	backing  : Allocator,
+	pools    : StackFixed(Pool, Slab_Max_Size_Classes),
 }
 
 Slab :: struct {
@@ -56,7 +57,7 @@ slab_allocator :: proc( slab : Slab ) -> ( allocator : Allocator ) {
 	return
 }
 
-slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocator : Allocator ) -> ( slab : Slab, alloc_error : AllocatorError )
+slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocator : Allocator,  dbg_name : string = "" ) -> ( slab : Slab, alloc_error : AllocatorError )
 {
 	header_size :: size_of( SlabHeader )
 
@@ -64,9 +65,10 @@ slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocato
 	raw_mem, alloc_error = alloc( header_size, mem.DEFAULT_ALIGNMENT, allocator )
 	if alloc_error != .None do return
 
-	slab.header  = cast( ^SlabHeader) raw_mem
-	slab.backing = allocator
-	alloc_error  = slab_init_pools( slab, policy, bucket_reserve_num )
+	slab.header   = cast( ^SlabHeader) raw_mem
+	slab.backing  = allocator
+	slab.dbg_name = dbg_name
+	alloc_error   = slab_init_pools( slab, policy, bucket_reserve_num )
 	return
 }
 
@@ -129,11 +131,7 @@ slab_alloc :: proc( using self : Slab,
 			ensure(false, "Bad block from pool")
 			return nil, alloc_error
 	}
-	// log( str_fmt_tmp("Retrieved block: %p %d", raw_data(block), len(block) ))
-
-	// if zero_memory {
-	// 	slice.zero(block)
-	// }
+	log( str_fmt_tmp("%v: Retrieved block: %p %d", dbg_name, raw_data(block), len(block) ))
 
 	data = byte_slice(raw_data(block), size)
 	if zero_memory {
@@ -187,16 +185,17 @@ slab_resize :: proc( using self : Slab,
 	verify( pool_resize.header != nil, "Requested resize not supported by the slab allocator", location = loc )
 
 	// Resize will keep block in the same size_class, just give it more of its already allocated block
-	if pool_old == pool_resize
+	if pool_old.block_size == pool_resize.block_size
 	{
 		new_data_ptr := memory_after(data)
 		new_data      = byte_slice( raw_data(data), new_size )
-		// log( str_fmt_tmp("Resize via expanding block space allocation %p %d", new_data_ptr, int(new_size - old_size)))
+		// log( dump_stacktrace() )
+		log( str_fmt_tmp("%v: Resize via expanding block space allocation %p %d", dbg_name, new_data_ptr, int(new_size - old_size)))
 
 		if zero_memory && new_size > old_size {
-			to_zero := byte_slice( memory_after(data), int(new_size - old_size) )
+			to_zero := byte_slice( new_data_ptr, int(new_size - old_size) )
 			slice.zero( to_zero )
-			// log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", new_data_ptr, int(new_size - old_size)))
+			log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", new_data_ptr,  cast(rawptr) (uintptr(new_data_ptr) + uintptr(new_size - old_size))))
 		}
 		return
 	}
@@ -217,6 +216,7 @@ slab_resize :: proc( using self : Slab,
 	// log( str_fmt_tmp("Resize via new block: %p %d (old : %p $d )", raw_data(new_block), len(new_block), raw_data(data), old_size ))
 
 	if raw_data(data) != raw_data(new_block) {
+		log( str_fmt_tmp("%v: Resize view new block, copying from old data block to new block: (%p %d), (%p %d)", dbg_name, raw_data(data), len(data), raw_data(new_block), len(new_block)))
 		copy_non_overlapping( raw_data(new_block), raw_data(data), int(old_size) )
 		pool_release( pool_old, data )
 	}

@@ -93,7 +93,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			push( policy_ptr, SlabSizeClass {    2 * Megabyte,   1 * Megabyte, alignment })
 			push( policy_ptr, SlabSizeClass {    2 * Megabyte,   2 * Megabyte, alignment })
 			push( policy_ptr, SlabSizeClass {    4 * Megabyte,   4 * Megabyte, alignment })
-			// push( policy_ptr, SlabSizeClass {   8 * Megabyte,   8 * Megabyte, alignment })
+			push( policy_ptr, SlabSizeClass {    8 * Megabyte,   8 * Megabyte, alignment })
 			// push( policy_ptr, SlabSizeClass {  16 * Megabyte,  16 * Megabyte, alignment })
 			// push( policy_ptr, SlabSizeClass {  32 * Megabyte,  32 * Megabyte, alignment })
 			// push( policy_ptr, SlabSizeClass {  64 * Megabyte,  64 * Megabyte, alignment })
@@ -103,10 +103,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		}
 
 		alloc_error : AllocatorError
-		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator() )
+		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = "persistent slab" )
 		verify( alloc_error == .None, "Failed to allocate the persistent slab" )
 
-		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator() )
+		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator(), dbg_name = "transient slab" )
 		verify( alloc_error == .None, "Failed to allocate transient slab" )
 
 		transient_clear_time = 120 // Seconds, 2 Minutes
@@ -213,7 +213,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
 		}
 
-		debug.path_lorem = str_fmt_alloc("C:/projects/SectrPrototype/examples/Lorem Ipsum.txt", allocator = persistent_allocator())
+		debug.path_lorem = str_fmt_alloc("C:/projects/SectrPrototype/examples/Lorem Ipsum.txt", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
 		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
@@ -309,7 +309,7 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		// Setup Frame Slab
 		{
 			alloc_error : AllocatorError
-			frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0, allocator = frame_allocator() )
+			frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0, allocator = frame_allocator(), dbg_name = "frame slab" )
 			verify( alloc_error == .None, "Failed to allocate frame slab" )
 		}
 
@@ -389,7 +389,7 @@ clean_frame :: proc()
 		free_all( transient_allocator() )
 
 		alloc_error : AllocatorError
-		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator() )
+		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator(), dbg_name = "transient slab" )
 		verify( alloc_error == .None, "Failed to allocate transient slab" )
 	}
 }

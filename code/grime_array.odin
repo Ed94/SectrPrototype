@@ -55,10 +55,12 @@ array_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( Array(Type), A
 array_init_reserve :: proc
 ( $ Type : typeid, allocator : Allocator, capacity : u64 ) -> ( result : Array(Type), alloc_error : AllocatorError )
 {
-	header_size :: size_of(ArrayHeader)
+	header_size := size_of(ArrayHeader(Type))
+	array_size  := header_size + int(capacity) * size_of(Type)
 
 	raw_mem : rawptr
-	raw_mem, alloc_error = alloc( header_size + int(capacity) * size_of(Type), allocator = allocator )
+	raw_mem, alloc_error = alloc( array_size, allocator = allocator )
+	log( str_fmt_tmp("array reserved: %d", header_size + int(capacity) * size_of(Type) ))
 	if alloc_error != AllocatorError.None do return
 
 	result.header    = cast( ^ArrayHeader(Type)) raw_mem;
@@ -266,8 +268,8 @@ array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity : u64 ) -> All
 
 	header_size :: size_of(ArrayHeader(Type))
 
-	new_size := header_size + cast(int) new_capacity  * size_of(Type)
-	old_size := header_size + cast(int) self.capacity * size_of(Type)
+	new_size := header_size + (cast(int) new_capacity ) * size_of(Type)
+	old_size := header_size + (cast(int) self.capacity) * size_of(Type)
 
 	// new_mem, result_code := resize( self.header, old_size, new_size, allocator = self.backing )
 	new_mem, result_code := resize_non_zeroed( self.header, old_size, new_size, mem.DEFAULT_ALIGNMENT, allocator = self.backing )
@@ -281,9 +283,9 @@ array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity : u64 ) -> All
 		return result_code
 	}
 
-	self.header      = cast( ^ArrayHeader(Type)) raw_data(new_mem);
-	self.data        = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) self.header)[ 1:]
-	self.capacity    = new_capacity
-	self.num         = self.num
+	self.header          = cast( ^ArrayHeader(Type)) raw_data(new_mem);
+	self.header.data     = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) self.header)[ 1:]
+	self.header.capacity = new_capacity
+	self.header.num      = self.num
 	return result_code
 }

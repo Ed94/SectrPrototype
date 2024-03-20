@@ -24,7 +24,6 @@ StringCached :: struct {
 	runes : []rune,
 }
 
-
 StringCache :: struct {
 	slab      : Slab,
 	table     : HMapZPL(StringCached),
@@ -54,7 +53,7 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 	header_size :: size_of( Slab )
 
 	alloc_error : AllocatorError
-	cache.slab, alloc_error = slab_init( & policy, allocator = persistent_allocator() )
+	cache.slab, alloc_error = slab_init( & policy, allocator = persistent_allocator(), dbg_name = "StringCache slab" )
 	verify(alloc_error == .None, "Failed to initialize the string cache" )
 
 	cache.table, alloc_error = zpl_hmap_init_reserve( StringCached, persistent_slab_allocator(), 64 * Kilobyte )

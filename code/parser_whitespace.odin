@@ -88,9 +88,10 @@ PWS_ParseError :: struct {
 	msg   : string,
 }
 
-PWS_ParseError_Max        :: 32
-PWS_NodeArray_ReserveSize :: Kilobyte * 4
-PWS_LineArray_RserveSize  :: Kilobyte
+PWS_ParseError_Max         :: 32
+PWS_TokenArray_ReserveSize :: Kilobyte * 64
+PWS_NodeArray_ReserveSize  :: Kilobyte * 64
+PWS_LineArray_ReserveSize  :: Kilobyte * 64
 
 // TODO(Ed) : The ast arrays should be handled by a slab allocator dedicated to PWS_ASTs
 // This can grow in undeterministic ways, persistent will get very polluted otherwise.
@@ -164,7 +165,7 @@ pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResu
 	}
 
 	alloc_error : AllocatorError
-	tokens, alloc_error = array_init_reserve( PWS_Token, allocator, 8 )
+	tokens, alloc_error = array_init_reserve( PWS_Token, allocator, Kilobyte * 4   )
 	if alloc_error != AllocatorError.None {
 		ensure(false, "Failed to allocate token's array")
 		return result, alloc_error
@@ -239,7 +240,6 @@ PWS_ParseData :: struct {
 pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseResult, AllocatorError )
 {
 	bytes := transmute([]byte) text
-	log( str_fmt_tmp( "parsing: %v ...", (len(text) > 30 ? transmute(string) bytes[ :30] : text) ))
 
 	profile(#procedure)
 	using parser : PWS_ParseData
@@ -255,10 +255,12 @@ pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseR
 
 	tokens = lex.tokens
 
-	nodes, alloc_error = array_init_reserve( PWS_AST, allocator, 8 )
+	log( str_fmt_tmp( "parsing: %v ...", (len(text) > 30 ? transmute(string) bytes[ :30] : text) ))
+
+	nodes, alloc_error = array_init_reserve( PWS_AST, allocator, PWS_NodeArray_ReserveSize )
 	verify( alloc_error == nil, "Allocation failure creating nodes array")
 
-	parser.lines, alloc_error = array_init_reserve( ^PWS_AST, allocator, 8 )
+	parser.lines, alloc_error = array_init_reserve( ^PWS_AST, allocator, PWS_LineArray_ReserveSize )
 	verify( alloc_error == nil, "Allocation failure creating line array")
 
 	//region Helper procs

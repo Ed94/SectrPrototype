@@ -33,6 +33,8 @@ import fmt_io "core:fmt"
 	str_tmp_from_any :: fmt_io.tprint
 import "core:mem"
 	align_forward_int       :: mem.align_forward_int
+	align_forward_uint      :: mem.align_forward_uint
+	align_forward_uintptr   :: mem.align_forward_uintptr
 	Allocator               :: mem.Allocator
 	AllocatorError          :: mem.Allocator_Error
 	AllocatorMode           :: mem.Allocator_Mode
@@ -71,6 +73,10 @@ import "core:os"
 import "core:path/filepath"
 	file_name_from_path :: filepath.short_stem
 import str "core:strings"
+	StringBuilder          :: str.Builder
+	str_builder_from_bytes :: str.builder_from_bytes
+	str_builder_init       :: str.builder_init
+	str_builder_to_writer  :: str.to_writer
 	str_builder_to_string  :: str.to_string
 import "core:time"
 	Duration         :: time.Duration
@@ -83,6 +89,10 @@ import "core:unicode/utf8"
 	str_rune_count  :: utf8.rune_count_in_string
 	runes_to_string :: utf8.runes_to_string
 	// string_to_runes :: utf8.string_to_runes
+import "thirdparty:backtrace"
+	StackTraceData   :: backtrace.Trace_Const
+	stacktrace       :: backtrace.trace
+	stacktrace_lines :: backtrace.lines
 
 OS_Type :: type_of(ODIN_OS)
 
@@ -108,9 +118,8 @@ draw_text :: proc {
 	draw_text_string_cached,
 }
 
-mov_avg_exp :: proc {
-	mov_avg_exp_f32,
-	mov_avg_exp_f64,
+from_bytes :: proc {
+	str_builder_from_bytes,
 }
 
 get_bounds :: proc {
@@ -120,6 +129,11 @@ get_bounds :: proc {
 is_power_of_two :: proc {
 	is_power_of_two_u32,
 	is_power_of_two_uintptr,
+}
+
+mov_avg_exp :: proc {
+	mov_avg_exp_f32,
+	mov_avg_exp_f64,
 }
 
 pixels_to_cm :: proc {
@@ -162,6 +176,10 @@ to_runes :: proc {
 to_string :: proc {
 	runes_to_string,
 	str_builder_to_string,
+}
+
+to_writer :: proc {
+	str_builder_to_writer,
 }
 
 ui_set_layout :: proc {
