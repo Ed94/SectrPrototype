@@ -177,7 +177,7 @@ push-location $path_root
 			$build_args += ($flag_extra_linker_flags + $linker_args )
 			# $build_args += $flag_no_thread_checker
 			# $build_args += $flag_dynamic_map_calls
-			$build_args += $flag_default_allocator_nil
+			# $build_args += $flag_default_allocator_nil
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
@@ -190,7 +190,7 @@ push-location $path_root
 				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
 			}
 
-			write-host $build_args
+			# write-host $build_args
 
 			Invoke-WithColorCodedOutput -command { & $odin_compiler $build_args }
 			# Invoke-WithColorCodedOutput -command { & $raddbg "$odin_compiler" "$build_args" }
@@ -255,7 +255,7 @@ push-location $path_root
 			# $build_args += $flag_show_system_call
 			$build_args += $flag_no_bounds_check
 			$build_args += $flag_no_thread_checker
-			$build_args += $flag_default_allocator_nil
+			# $build_args += $flag_default_allocator_nil
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
