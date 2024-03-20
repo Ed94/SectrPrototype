@@ -86,11 +86,13 @@ slab_init_pools :: proc ( using self : Slab, policy : ^SlabPolicy, bucket_reserv
 	return .None
 }
 
-slab_reload :: proc ( using self : Slab, allocator : Allocator )
+slab_reload :: proc ( slab : Slab, allocator : Allocator )
 {
-	for id in 0 ..< pools.idx {
-		pool := pools.items[id]
-		pool_reload( pool, allocator )
+	slab.backing = allocator
+
+	for id in 0 ..< slab.pools.idx {
+		pool := slab.pools.items[id]
+		pool_reload( pool, slab.backing )
 	}
 }
 

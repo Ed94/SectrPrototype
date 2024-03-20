@@ -243,7 +243,6 @@ sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, lo
 	}
 }
 
-
 fmt_backing : [16 * Kilobyte] u8
 
 persistent_backing : [2 * Megabyte] byte
@@ -326,16 +325,16 @@ main :: proc()
 	{
 		spall.SCOPED_EVENT( & profiler.ctx, & profiler.buffer, "Host Tick" )
 
-		// Hot-Reload
-		sync_sectr_api( & sectr_api, & memory, & logger, & profiler )
-
 		running = sectr_api.tick( duration_seconds( delta_ns ), delta_ns )
 		sectr_api.clean_frame()
 
 		delta_ns   = time.tick_lap_time( & host_tick )
 		host_tick  = time.tick_now()
 
-		// free_all( arena_allocator( & state.transient))
+		free_all( arena_allocator( & state.transient))
+
+		// Hot-Reload
+		sync_sectr_api( & sectr_api, & memory, & logger, & profiler )
 	}
 
 	// Determine how the run_cyle completed, if it failed due to an error,

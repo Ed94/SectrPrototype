@@ -71,8 +71,8 @@ pool_init :: proc (
 	return
 }
 
-pool_reload :: proc( using self : Pool, allocator : Allocator ) {
-	self.backing = allocator
+pool_reload :: proc( pool : Pool, allocator : Allocator ) {
+	pool.backing = allocator
 }
 
 pool_destroy :: proc ( using self : Pool )

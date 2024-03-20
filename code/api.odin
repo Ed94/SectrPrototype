@@ -15,6 +15,10 @@ import rl "vendor:raylib"
 Path_Assets       :: "../assets/"
 Path_Input_Replay :: "scratch.sectr_replay"
 
+Persistent_Slab_DBG_Name :: "Peristent Slab"
+Frame_Slab_DBG_Name      :: "Frame Slab"
+Transient_Slab_DBG_Name  :: "Transient Slab"
+
 ModuleAPI :: struct {
 	lib         : dynlib.Library,
 	write_time  : FileTime,
@@ -103,10 +107,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		}
 
 		alloc_error : AllocatorError
-		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = "persistent slab" )
+		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = Persistent_Slab_DBG_Name )
 		verify( alloc_error == .None, "Failed to allocate the persistent slab" )
 
-		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator(), dbg_name = "transient slab" )
+		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator(), dbg_name = Transient_Slab_DBG_Name )
 		verify( alloc_error == .None, "Failed to allocate transient slab" )
 
 		transient_clear_time = 120 // Seconds, 2 Minutes
@@ -269,7 +273,6 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	transient    = transient_mem
 	files_buffer = files_buffer_mem
 
-
 	context.allocator      = persistent_allocator()
 	context.temp_allocator = transient_allocator()
 
@@ -280,6 +283,8 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	// Or as done below, correct containers using allocators on reload.
 	// Thankfully persistent dynamic allocations are rare, and thus we know exactly which ones they are.
 
+	slab_reload( persistent_slab, persistent_allocator() )
+
 	font_provider_data.font_cache.hashes.backing  = persistent_slab_allocator()
 	font_provider_data.font_cache.entries.backing = persistent_slab_allocator()
 
@@ -287,15 +292,13 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	string_cache.table.hashes.backing  = persistent_slab_allocator()
 	string_cache.table.entries.backing = persistent_slab_allocator()
 
-	// slab_reload( frame_slab, frame_allocator())
+	slab_reload( frame_slab, frame_allocator())
 	slab_reload( transient_slab, transient_allocator())
 
 	ui_reload( & get_state().project.workspace.ui, cache_allocator =  persistent_slab_allocator() )
 
 	log("Module reloaded")
 }
-
-
 
 @export
 tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
@@ -313,7 +316,7 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		// Setup Frame Slab
 		{
 			alloc_error : AllocatorError
-			frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0, allocator = frame_allocator(), dbg_name = "frame slab" )
+			frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0, allocator = frame_allocator(), dbg_name = Frame_Slab_DBG_Name )
 			verify( alloc_error == .None, "Failed to allocate frame slab" )
 		}
 
@@ -394,7 +397,7 @@ clean_frame :: proc()
 		free_all( transient_allocator() )
 
 		alloc_error : AllocatorError
-		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator(), dbg_name = "transient slab" )
+		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator(), dbg_name = Transient_Slab_DBG_Name )
 		verify( alloc_error == .None, "Failed to allocate transient slab" )
 	}
 }
