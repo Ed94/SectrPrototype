@@ -7,7 +7,7 @@ package sectr
 import "core:mem"
 
 // Initialize a sub-section of our virtual memory as a sub-arena
-sub_arena_init :: proc( address : ^ byte, size : int ) -> ( ^ Arena) {
+sub_arena_init :: proc( address : ^byte, size : int ) -> ( ^ Arena) {
 	Arena :: mem.Arena
 
 	arena_size :: size_of( Arena)

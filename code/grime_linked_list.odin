@@ -6,13 +6,13 @@ LL_Node :: struct ( $ Type : typeid ) {
 
 // ll_push :: proc( list_ptr : ^(^ ($ Type)), node : ^Type ) {
 ll_push :: #force_inline proc "contextless" ( list_ptr : ^(^ ($ Type)), node : ^Type ) {
-	list       := (list_ptr^)
+	list : ^Type = (list_ptr^)
 	node.next   = list
 	(list_ptr^) = node
 }
 
 ll_pop :: #force_inline proc "contextless" ( list_ptr : ^(^ ($ Type)) ) -> ( node : ^Type ) {
-	list       := (list_ptr^)
+	list : ^Type = (list_ptr^)
 	(list_ptr^) = list.next
 	return list
 }
@@ -37,7 +37,7 @@ DLL_Node :: struct ( $ Type : typeid ) #raw_union {
 DLL_NodeFull :: struct ( $ Type : typeid ) {
 	// using _ : DLL_NodeFL(Type),
 	first, last : ^Type,
-	prev, next : ^Type,
+	prev, next  : ^Type,
 }
 
 DLL_NodePN :: struct ( $ Type : typeid ) {
@@ -80,7 +80,7 @@ dll_fl_append :: proc ( list : ^( $TypeList), node : ^( $TypeNode) )
 
 dll_push_back :: proc "contextless" ( current_ptr : ^(^ ($ TypeCurr)), node : ^$TypeNode )
 {
-	current := (current_ptr ^)
+	current : ^TypeCurr = (current_ptr ^)
 
 	if current == nil
 	{
@@ -99,7 +99,7 @@ dll_push_back :: proc "contextless" ( current_ptr : ^(^ ($ TypeCurr)), node : ^$
 
 dll_pop_back :: #force_inline proc "contextless" ( current_ptr : ^(^ ($ Type)) )
 {
-	to_remove := (current_ptr ^)
+	to_remove : ^Type = (current_ptr ^)
 	if to_remove == nil {
 		return
 	}

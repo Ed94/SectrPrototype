@@ -45,7 +45,8 @@ array_to_slice :: proc( using self : Array($ Type) ) -> []Type {
 }
 
 array_grow_formula :: proc( value : u64 ) -> u64 {
-	return 2 * value + 8
+	result := (2 * value) + 8
+	return result
 }
 
 array_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( Array(Type), AllocatorError ) {
@@ -273,7 +274,6 @@ array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity : u64 ) -> All
 	new_size := header_size + (cast(int) new_capacity ) * size_of(Type)
 	old_size := header_size + (cast(int) self.capacity) * size_of(Type)
 
-	// new_mem, result_code := resize( self.header, old_size, new_size, allocator = self.backing )
 	new_mem, result_code := resize_non_zeroed( self.header, old_size, new_size, mem.DEFAULT_ALIGNMENT, allocator = self.backing )
 
 	if result_code != AllocatorError.None {

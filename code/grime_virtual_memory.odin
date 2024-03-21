@@ -99,7 +99,7 @@ when ODIN_OS != OS_Type.Windows {
 
 virtual__reserve :: proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMemoryRegion, alloc_error : AllocatorError )
 {
-	header_size := size_of(VirtualMemoryRegionHeader)
+	header_size := memory_align_formula(size_of(VirtualMemoryRegionHeader), mem.DEFAULT_ALIGNMENT)
 
 	// Ignoring the base address, add an os specific impl if you want it.
 	data : []byte
@@ -107,7 +107,7 @@ virtual__reserve :: proc "contextless" ( base_address : uintptr, size : uint ) -
 	alloc_error := core_virtual.commit( header_size )
 
 	vmem.base_address  := cast( ^VirtualMemoryRegionHeader ) raw_data(data)
-	vmem.reserve_start  = memory_after_header(vmem.base_address)
+	vmem.reserve_start  = cast([^]byte) (uintptr(vmem.base_address) + uintptr(header_size))
 	vmem.reserved       = len(data)
 	vmem.committed      = header_size
 	return

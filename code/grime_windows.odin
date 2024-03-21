@@ -3,6 +3,7 @@ package sectr
 import "core:c"
 import "core:c/libc"
 import "core:fmt"
+import "core:mem"
 import core_virtual "core:mem/virtual"
 import "core:strings"
 import win32 "core:sys/windows"
@@ -73,10 +74,9 @@ WIN32_ERROR_INVALID_ADDRESS :: 487
 WIN32_ERROR_COMMITMENT_LIMIT :: 1455
 
 @(require_results)
-virtual__reserve ::
-proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMemoryRegion, alloc_error : AllocatorError )
+virtual__reserve :: proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMemoryRegion, alloc_error : AllocatorError )
 {
-	header_size :: cast(uint) size_of(VirtualMemoryRegion)
+	header_size := cast(uint) memory_align_formula(size_of(VirtualMemoryRegionHeader), mem.DEFAULT_ALIGNMENT)
 
 	result := win32.VirtualAlloc( rawptr(base_address), header_size + size, win32.MEM_RESERVE, win32.PAGE_READWRITE )
 	if result == nil {
@@ -102,7 +102,7 @@ proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMe
 	}
 
 	vmem.base_address  = cast(^VirtualMemoryRegionHeader) result
-	vmem.reserve_start = memory_after_header(vmem.base_address)
+	vmem.reserve_start  = cast([^]byte) (uintptr(vmem.base_address) + uintptr(header_size))
 	vmem.reserved      = size
 	vmem.committed     = header_size
 	alloc_error        = .None

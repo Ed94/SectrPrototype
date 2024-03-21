@@ -15,6 +15,7 @@ The host application as well ideally (although this may not be the case for a wh
 package sectr
 
 import "base:intrinsics"
+import "base:runtime"
 import "core:mem"
 import "core:os"
 import "core:slice"
@@ -148,9 +149,8 @@ varena_alloc :: proc( using self : ^VArena,
 	self.commit_used += size_to_allocate
 	alloc_error    = .None
 
-	log_backing : [Kilobyte * 16]byte
-	backing_slice := byte_slice( & log_backing[0], len(log_backing))
-
+	// log_backing : [Kilobyte * 16]byte
+	// backing_slice := byte_slice( & log_backing[0], len(log_backing))
 	// log( str_fmt_buffer( backing_slice, "varena alloc - BASE: %p PTR: %X, SIZE: %d", cast(rawptr) self.base_address, & data[0], requested_size) )
 
 	if zero_memory

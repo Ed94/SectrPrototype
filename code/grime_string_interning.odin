@@ -11,6 +11,7 @@ If open addressing, we just keep the open addressed array of node slots in the g
 */
 package sectr
 
+import "base:runtime"
 import "core:mem"
 import "core:slice"
 import "core:strings"
@@ -53,6 +54,8 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 	header_size :: size_of( Slab )
 
 	@static dbg_name := "StringCache slab"
+
+	state := get_state()
 
 	alloc_error : AllocatorError
 	cache.slab, alloc_error = slab_init( & policy, allocator = persistent_allocator(), dbg_name = dbg_name )

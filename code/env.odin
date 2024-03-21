@@ -50,31 +50,39 @@ Memory :: struct {
 }
 
 persistent_allocator :: proc() -> Allocator {
-	return varena_allocator( Memory_App.persistent )
+	result := varena_allocator( Memory_App.persistent )
+	return result
 }
 
 frame_allocator :: proc() -> Allocator {
-	return varena_allocator( Memory_App.frame )
+	result := varena_allocator( Memory_App.frame )
+	return result
 }
 
 transient_allocator :: proc() -> Allocator {
-	return varena_allocator( Memory_App.transient )
+	result := varena_allocator( Memory_App.transient )
+	return result
 }
 
 files_buffer_allocator :: proc() -> Allocator {
-	return varena_allocator( Memory_App.files_buffer )
+	result := varena_allocator( Memory_App.files_buffer )
+	return result
 }
 
 persistent_slab_allocator :: proc() -> Allocator {
-	return slab_allocator( get_state().persistent_slab )
+	state := get_state()
+	result := slab_allocator( state.persistent_slab )
+	return result
 }
 
 frame_slab_allocator :: proc() -> Allocator {
-	return slab_allocator( get_state().frame_slab )
+	result := slab_allocator( get_state().frame_slab )
+	return result
 }
 
 transient_slab_allocator :: proc() -> Allocator {
-	return slab_allocator( get_state().transient_slab )
+	result := slab_allocator( get_state().transient_slab )
+	return result
 }
 
 // TODO(Ed) : Implment host memory mapping api

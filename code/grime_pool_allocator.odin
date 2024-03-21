@@ -100,9 +100,14 @@ pool_allocate_buckets :: proc( pool : Pool, num_buckets : uint ) -> AllocatorErr
 	bucket_size := header_size + pool.bucket_capacity
 	to_allocate := cast(int) (bucket_size * num_buckets)
 
+	log(str_fmt_tmp("Allocating %d bytes for %d buckets with header_size %d bytes & bucket_size %d", to_allocate, num_buckets, header_size, bucket_size ))
+
 	pool_validate( pool )
 	bucket_memory, alloc_error := alloc_bytes_non_zeroed( to_allocate, int(pool.alignment), pool.backing )
 	pool_validate( pool )
+
+	log(str_fmt_tmp("Bucket memory size: %d bytes, without header: %d", len(bucket_memory), len(bucket_memory) - int(header_size)))
+
 	if alloc_error != .None {
 		return alloc_error
 	}
@@ -114,15 +119,13 @@ pool_allocate_buckets :: proc( pool : Pool, num_buckets : uint ) -> AllocatorErr
 		bucket           := cast( ^PoolBucket) next_bucket_ptr
 		bucket.blocks     = memory_after_header(bucket)
 		bucket.next_block = 0
-		log( str_fmt_tmp("Pool (%d) allocated bucket: %p capacity: %d",
+		log( str_fmt_tmp("\tPool (%d) allocated bucket: %p start %p capacity: %d (raw: %d)",
 			pool.block_size,
 			raw_data(bucket_memory),
-			pool.bucket_capacity / pool.block_size
+			bucket.blocks,
+			pool.bucket_capacity / pool.block_size,
+			pool.bucket_capacity
 		))
-
-		if bucket == cast(rawptr) uintptr(0x100017740D0) {
-			runtime.debug_trap()
-		}
 
 		if pool.bucket_list.first == nil {
 			pool.bucket_list.first = bucket
@@ -142,26 +145,25 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 {
 	pool := pool
 	if pool.current_bucket != nil {
-		verify( pool.current_bucket.blocks != nil, str_fmt_tmp("current_bucket was wiped %p", pool.current_bucket) )
+		verify( pool.current_bucket.blocks != nil, str_fmt_tmp("(corruption) current_bucket was wiped %p", pool.current_bucket) )
 	}
 
 	// profile(#procedure)
 	alloc_error = .None
 
 	// Check the free-list first for a block
-	// if pool.free_list_head != nil && false
+	// if pool.free_list_head != nil
 	if false
 	{
 		head := & pool.free_list_head
 
 		// Compiler Bug? Fails to compile
 		// last_free := ll_pop( & pool.free_list_head )
-
 		last_free : ^Pool_FreeBlock = pool.free_list_head
 		pool.free_list_head         = pool.free_list_head.next
 
 		block = byte_slice( cast([^]byte) last_free, int(pool.block_size) )
-		log( str_fmt_tmp("Returning free block: %p %d", raw_data(block), pool.block_size))
+		log( str_fmt_tmp("\tReturning free block: %p %d", raw_data(block), pool.block_size))
 		if zero_memory {
 			slice.zero(block)
 		}
@@ -169,8 +171,6 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		return
 	}
 
-	// Compiler Fail Bug ? using current_bucket directly instead of with pool..
-	// if current_bucket == nil
 	if pool.current_bucket == nil
 	{
 		alloc_error = pool_allocate_buckets( pool, 1 )
@@ -182,9 +182,6 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		// log( "First bucket allocation")
 	}
 
-	// Compiler Bug ? (Won't work without "pool."")
-	// next := uintptr(current_bucket.blocks) + uintptr(current_bucket.next_block)
-	// end  := uintptr(current_bucket.blocks) + uintptr(bucket_capacity)
 	next := uintptr(pool.current_bucket.blocks) + uintptr(pool.current_bucket.next_block)
 	end  := uintptr(pool.current_bucket.blocks) + uintptr(pool.bucket_capacity)
 
@@ -195,20 +192,20 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		// if current_bucket.next != nil {
 		if pool.current_bucket.next != nil {
 			// current_bucket = current_bucket.next
-			// log( str_fmt_tmp("Bucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
+			log( str_fmt_tmp("\tBucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
 			pool.current_bucket = pool.current_bucket.next
-			verify( pool.current_bucket.blocks != nil, "Next's blocks are null?" )
+			verify( pool.current_bucket.blocks != nil, "New current_bucket's blocks are null (new current_bucket is corrupted)" )
 		}
 		else
 		{
-			log( "All previous buckets exhausted, allocating new bucket")
+			log( "\tAll previous buckets exhausted, allocating new bucket")
 			alloc_error := pool_allocate_buckets( pool, 1 )
 			if alloc_error != .None {
 				ensure(false, "Failed to allocate bucket")
 				return
 			}
 			pool.current_bucket = pool.current_bucket.next
-			verify( pool.current_bucket.blocks != nil, "Next's blocks are null (Post new bucket alloc)?" )
+			verify( pool.current_bucket.blocks != nil, "Next's blocks are null (Post new bucket alloc)" )
 		}
 	}
 
@@ -224,10 +221,11 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 	pool.current_bucket.next_block += pool.block_size
 
 	next = uintptr(pool.current_bucket.blocks) + uintptr(pool.current_bucket.next_block)
-	// log( str_fmt_tmp("grabbing block: %p blocks left: %d", raw_data(block), (end - next) / uintptr(pool.block_size) ))
+	log( str_fmt_tmp("\tgrabbing block: %p from %p blocks left: %d", raw_data(block), pool.current_bucket.blocks, (end - next) / uintptr(pool.block_size) ))
 
 	if zero_memory {
 		slice.zero(block)
+		log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", block_ptr,  cast(rawptr) (uintptr(block_ptr) + uintptr(pool.block_size))))
 	}
 	return
 }
@@ -274,7 +272,7 @@ pool_validate :: proc( pool : Pool )
 	// Compiler bug ^^ same as pool_reset
 	for ; bucket != nil; bucket = bucket.next
 	{
-		verify( bucket.blocks != nil, "Found corrupted bucket" )
+		verify( bucket.blocks != nil, str_fmt_tmp("Found corrupted bucket %p", bucket) )
 	}
 }
 

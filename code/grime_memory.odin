@@ -56,8 +56,8 @@ memory_after :: #force_inline proc "contextless" ( slice : []byte ) -> ( ^ byte)
 }
 
 memory_after_header :: #force_inline proc "contextless" ( header : ^($ Type) ) -> ( [^]byte) {
-	// return cast( [^]byte) (cast( [^]Type) header)[ 1:]
-	result := cast( [^]byte) ptr_offset( header, size_of(Type) )
+	result := cast( [^]byte) ptr_offset( header, 1 )
+	// result := cast( [^]byte) (cast( [^]Type) header)[ 1:]
 	return result
 }
 

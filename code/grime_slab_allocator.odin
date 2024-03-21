@@ -28,6 +28,7 @@ which each contain the ratio of bucket to block size.
 */
 package sectr
 
+import "base:runtime"
 import "core:mem"
 import "core:slice"
 
@@ -123,14 +124,14 @@ slab_alloc :: proc( self : Slab,
 					break
 			}
 	}
-	verify( id < self.pools.idx, "There is not a size class in the slab's policy to satisfy the requested allocation" )
-
-	verify( pool.header != nil, "Requested alloc not supported by the slab allocator", location = loc )
+	verify( id < self.pools.idx, "There is not a size class in the slab's policy to satisfy the requested allocation", location = loc )
+	verify( pool.header != nil,  "Requested alloc not supported by the slab allocator", location = loc )
 
 	block : []byte
 	slab_validate_pools( self )
 	block, alloc_error = pool_grab(pool)
 	slab_validate_pools( self )
+
 	if block == nil || alloc_error != .None {
 			ensure(false, "Bad block from pool")
 			return nil, alloc_error
@@ -198,9 +199,11 @@ slab_resize :: proc( using self : Slab,
 
 		if zero_memory && new_size > old_size {
 			to_zero := byte_slice( new_data_ptr, int(new_size - old_size) )
+
 			slab_validate_pools( self )
 			slice.zero( to_zero )
 			slab_validate_pools( self )
+
 			log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", new_data_ptr,  cast(rawptr) (uintptr(new_data_ptr) + uintptr(new_size - old_size))))
 		}
 		return
@@ -208,23 +211,28 @@ slab_resize :: proc( using self : Slab,
 
 	// We'll need to provide an entirely new block, so the data will need to be copied over.
 	new_block : []byte
+
 	slab_validate_pools( self )
 	new_block, alloc_error = pool_grab( pool_resize )
 	slab_validate_pools( self )
+
 	if new_block == nil {
 		ensure(false, "Retreived a null block")
 		return
 	}
 
 	if alloc_error != .None do return
-	// if zero_memory {
-	// 	slice.zero( new_block )
-	// }
+
+	// TODO(Ed): Reapply this when safe.
+	if zero_memory {
+		slice.zero( new_block )
+		log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", raw_data(new_block),  cast(rawptr) (uintptr(raw_data(new_block)) + uintptr(new_size))))
+	}
 
 	// log( str_fmt_tmp("Resize via new block: %p %d (old : %p $d )", raw_data(new_block), len(new_block), raw_data(data), old_size ))
 
 	if raw_data(data) != raw_data(new_block) {
-		log( str_fmt_tmp("%v: Resize view new block, copying from old data block to new block: (%p %d), (%p %d)", dbg_name, raw_data(data), len(data), raw_data(new_block), len(new_block)))
+		log( str_fmt_tmp("%v: Resize via new block, copying from old data block to new block: (%p %d), (%p %d)", dbg_name, raw_data(data), len(data), raw_data(new_block), len(new_block)))
 		copy_non_overlapping( raw_data(new_block), raw_data(data), int(old_size) )
 		pool_release( pool_old, data )
 	}
