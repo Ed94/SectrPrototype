@@ -150,6 +150,10 @@ push-location $path_root
 			$module_dll = join-path $path_build ( $project_name + '.dll' )
 			$pdb        = join-path $path_build ( $project_name + '.pdb' )
 
+			if (test-path $pdb) {
+				remove-item $pdb
+			}
+
 			$linker_args = ""
 			$linker_args += ( $flag_msvc_link_disable_dynamic_base + ' ' )
 			$linker_args += ( $flag_msvc_link_fixed_base_address   + ' ' )
@@ -228,6 +232,10 @@ push-location $path_root
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr_host build, module up to date'
 				return
+			}
+
+			if (test-path $pdb) {
+				remove-item $pdb
 			}
 
 			write-host 'Building Host Module'

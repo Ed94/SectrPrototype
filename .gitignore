@@ -3,3 +3,4 @@ build/**
 # thirdparty/**
 logs
 .ark
+logs*.zip
