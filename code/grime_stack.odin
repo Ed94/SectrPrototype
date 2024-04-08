@@ -27,8 +27,9 @@ stack_pop :: proc( using stack : ^StackFixed( $ Type, $ Size ) ) {
 }
 
 stack_peek_ref :: proc( using stack : ^StackFixed( $ Type, $ Size ) ) -> ( ^Type) {
-	last := max( 0, idx - 1 ) if idx > 0 else 0
-	return & items[last]
+	last_idx := max( 0, idx - 1 ) if idx > 0 else 0
+	last     := & items[last_idx]
+	return last
 }
 
 stack_peek :: proc ( using stack : ^StackFixed( $ Type, $ Size ) ) -> Type {

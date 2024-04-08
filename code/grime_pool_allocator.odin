@@ -25,6 +25,7 @@ Pool :: struct {
 PoolHeader :: struct {
 	backing : Allocator,
 
+	zero_bucket     : b32,
 	block_size      : uint,
 	bucket_capacity : uint,
 	alignment       : uint,
@@ -47,11 +48,12 @@ Pool_FreeBlock :: struct {
 Pool_Check_Release_Object_Validity :: true
 
 pool_init :: proc (
-	block_size         : uint,
-	bucket_capacity    : uint,
-	bucket_reserve_num : uint = 0,
-	alignment          : uint = mem.DEFAULT_ALIGNMENT,
-	allocator          : Allocator = context.allocator
+	should_zero_buckets : b32,
+	block_size          : uint,
+	bucket_capacity     : uint,
+	bucket_reserve_num  : uint = 0,
+	alignment           : uint = mem.DEFAULT_ALIGNMENT,
+	allocator           : Allocator = context.allocator
 ) -> ( pool : Pool, alloc_error : AllocatorError )
 {
 	header_size := align_forward_int( size_of(PoolHeader), int(alignment) )
@@ -61,6 +63,7 @@ pool_init :: proc (
 	if alloc_error != .None do return
 
 	pool.header           = cast( ^PoolHeader) raw_mem
+	pool.zero_bucket      = should_zero_buckets
 	pool.backing          = allocator
 	pool.block_size       = align_forward_uint(block_size, alignment)
 	pool.bucket_capacity  = bucket_capacity
@@ -100,13 +103,21 @@ pool_allocate_buckets :: proc( pool : Pool, num_buckets : uint ) -> AllocatorErr
 	bucket_size := header_size + pool.bucket_capacity
 	to_allocate := cast(int) (bucket_size * num_buckets)
 
-	log(str_fmt_tmp("Allocating %d bytes for %d buckets with header_size %d bytes & bucket_size %d", to_allocate, num_buckets, header_size, bucket_size ))
+	// log(str_fmt_tmp("Allocating %d bytes for %d buckets with header_size %d bytes & bucket_size %d", to_allocate, num_buckets, header_size, bucket_size ))
+
+	bucket_memory : []byte
+	alloc_error   : AllocatorError
 
 	pool_validate( pool )
-	bucket_memory, alloc_error := alloc_bytes_non_zeroed( to_allocate, int(pool.alignment), pool.backing )
+	if pool.zero_bucket {
+		bucket_memory, alloc_error = alloc_bytes( to_allocate, int(pool.alignment), pool.backing )
+	}
+	else {
+		bucket_memory, alloc_error = alloc_bytes_non_zeroed( to_allocate, int(pool.alignment), pool.backing )
+	}
 	pool_validate( pool )
 
-	log(str_fmt_tmp("Bucket memory size: %d bytes, without header: %d", len(bucket_memory), len(bucket_memory) - int(header_size)))
+	// log(str_fmt_tmp("Bucket memory size: %d bytes, without header: %d", len(bucket_memory), len(bucket_memory) - int(header_size)))
 
 	if alloc_error != .None {
 		return alloc_error
@@ -119,13 +130,12 @@ pool_allocate_buckets :: proc( pool : Pool, num_buckets : uint ) -> AllocatorErr
 		bucket           := cast( ^PoolBucket) next_bucket_ptr
 		bucket.blocks     = memory_after_header(bucket)
 		bucket.next_block = 0
-		log( str_fmt_tmp("\tPool (%d) allocated bucket: %p start %p capacity: %d (raw: %d)",
-			pool.block_size,
-			raw_data(bucket_memory),
-			bucket.blocks,
-			pool.bucket_capacity / pool.block_size,
-			pool.bucket_capacity
-		))
+		// log( str_fmt_tmp("\tPool (%d) allocated bucket: %p start %p capacity: %d (raw: %d)",
+		// 	pool.block_size,
+		// 	raw_data(bucket_memory),
+		// 	bucket.blocks,
+		// 	pool.bucket_capacity / pool.block_size,
+		// 	pool.bucket_capacity ))
 
 		if pool.bucket_list.first == nil {
 			pool.bucket_list.first = bucket
@@ -147,13 +157,11 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 	if pool.current_bucket != nil {
 		verify( pool.current_bucket.blocks != nil, str_fmt_tmp("(corruption) current_bucket was wiped %p", pool.current_bucket) )
 	}
-
 	// profile(#procedure)
 	alloc_error = .None
 
 	// Check the free-list first for a block
-	// if pool.free_list_head != nil
-	if false
+	if pool.free_list_head != nil
 	{
 		head := & pool.free_list_head
 
@@ -163,11 +171,10 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		pool.free_list_head         = pool.free_list_head.next
 
 		block = byte_slice( cast([^]byte) last_free, int(pool.block_size) )
-		log( str_fmt_tmp("\tReturning free block: %p %d", raw_data(block), pool.block_size))
+		// log( str_fmt_tmp("\tReturning free block: %p %d", raw_data(block), pool.block_size))
 		if zero_memory {
 			slice.zero(block)
 		}
-		verify(false, "WE SHOULD NEVER BE HERE")
 		return
 	}
 
@@ -192,13 +199,13 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		// if current_bucket.next != nil {
 		if pool.current_bucket.next != nil {
 			// current_bucket = current_bucket.next
-			log( str_fmt_tmp("\tBucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
+			// log( str_fmt_tmp("\tBucket %p exhausted using %p", pool.current_bucket, pool.current_bucket.next))
 			pool.current_bucket = pool.current_bucket.next
 			verify( pool.current_bucket.blocks != nil, "New current_bucket's blocks are null (new current_bucket is corrupted)" )
 		}
 		else
 		{
-			log( "\tAll previous buckets exhausted, allocating new bucket")
+			// log( "\tAll previous buckets exhausted, allocating new bucket")
 			alloc_error := pool_allocate_buckets( pool, 1 )
 			if alloc_error != .None {
 				ensure(false, "Failed to allocate bucket")
@@ -221,11 +228,11 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 	pool.current_bucket.next_block += pool.block_size
 
 	next = uintptr(pool.current_bucket.blocks) + uintptr(pool.current_bucket.next_block)
-	log( str_fmt_tmp("\tgrabbing block: %p from %p blocks left: %d", raw_data(block), pool.current_bucket.blocks, (end - next) / uintptr(pool.block_size) ))
+	// log( str_fmt_tmp("\tgrabbing block: %p from %p blocks left: %d", raw_data(block), pool.current_bucket.blocks, (end - next) / uintptr(pool.block_size) ))
 
 	if zero_memory {
 		slice.zero(block)
-		log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", block_ptr,  cast(rawptr) (uintptr(block_ptr) + uintptr(pool.block_size))))
+		// log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", block_ptr,  cast(rawptr) (uintptr(block_ptr) + uintptr(pool.block_size))))
 	}
 	return
 }
@@ -246,6 +253,7 @@ pool_release :: proc( self : Pool, block : []byte, loc := #caller_location )
 
 	// ll_push:
 	new_free_block     := cast(^Pool_FreeBlock) raw_data(block)
+	(new_free_block ^)  = {}
 	new_free_block.next = self.free_list_head
 	self.free_list_head = new_free_block
 

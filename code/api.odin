@@ -98,9 +98,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			push( policy_ptr, SlabSizeClass {    2 * Megabyte,   2 * Megabyte, alignment })
 			push( policy_ptr, SlabSizeClass {    4 * Megabyte,   4 * Megabyte, alignment })
 			push( policy_ptr, SlabSizeClass {    8 * Megabyte,   8 * Megabyte, alignment })
-			// push( policy_ptr, SlabSizeClass {  16 * Megabyte,  16 * Megabyte, alignment })
-			// push( policy_ptr, SlabSizeClass {  32 * Megabyte,  32 * Megabyte, alignment })
-			// push( policy_ptr, SlabSizeClass {  64 * Megabyte,  64 * Megabyte, alignment })
+			push( policy_ptr, SlabSizeClass {   16 * Megabyte,  16 * Megabyte, alignment })
+			push( policy_ptr, SlabSizeClass {   32 * Megabyte,  32 * Megabyte, alignment })
+			push( policy_ptr, SlabSizeClass {   64 * Megabyte,  64 * Megabyte, alignment })
 			// push( policy_ptr, SlabSizeClass { 128 * Megabyte, 128 * Megabyte, alignment })
 			// push( policy_ptr, SlabSizeClass { 256 * Megabyte, 256 * Megabyte, alignment })
 			// push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
@@ -235,7 +235,6 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// Make sure to cleanup transient before continuing...
 	// From here on, tarnsinet usage has to be done with care.
 	// For most cases, the frame allocator should be more than enough.
-	// free_all( transient_allocator() )
 }
 
 // For some reason odin's symbols conflict with native foreign symbols...
@@ -316,7 +315,10 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		// Setup Frame Slab
 		{
 			alloc_error : AllocatorError
-			frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0, allocator = frame_allocator(), dbg_name = Frame_Slab_DBG_Name )
+			frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0,
+				allocator           = frame_allocator(),
+				dbg_name            = Frame_Slab_DBG_Name,
+				should_zero_buckets = true )
 			verify( alloc_error == .None, "Failed to allocate frame slab" )
 		}
 
@@ -388,7 +390,6 @@ clean_frame :: proc()
 	context.logger = to_odin_logger( & Memory_App.logger )
 
 	free_all( frame_allocator() )
-
 
 	transient_clear_elapsed += frametime_delta32()
 	if transient_clear_elapsed >= transient_clear_time && ! transinet_clear_lock

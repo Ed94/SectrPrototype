@@ -20,7 +20,7 @@ import "core:slice"
 HMapZPL_MapProc    :: #type proc( $ Type : typeid, key : u64, value :   Type )
 HMapZPL_MapMutProc :: #type proc( $ Type : typeid, key : u64, value : ^ Type )
 
-HMapZPL_CritialLoadScale :: 0.50
+HMapZPL_CritialLoadScale :: 0.70
 HMapZPL_HashToEntryRatio :: 1.50
 
 HMapZPL_FindResult :: struct {

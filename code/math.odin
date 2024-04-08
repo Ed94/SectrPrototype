@@ -2,11 +2,39 @@
 
 package sectr
 
+import "core:math"
+
 Axis2 :: enum i32 {
 	Invalid = -1,
 	X       = 0,
 	Y       = 1,
 	Count,
+}
+
+f32_Infinity :: 0x7F800000
+f32_Min      :: 0x00800000
+
+// Note(Ed) : I don't see an intrinsict available anywhere for this. So I'll be using the Terathon non-sse impl
+// Inverse Square Root
+// C++ Source https://github.com/EricLengyel/Terathon-Math-Library/blob/main/TSMath.cpp#L191
+inverse_sqrt_f32 :: proc "contextless" ( value : f32 ) -> f32
+{
+	if ( value < f32_Min) {
+		return f32_Infinity
+	}
+
+	value_u32 := transmute(u32) value
+
+	initial_approx := 0x5F375A86 - (value_u32 >> 1)
+	refined_approx := transmute(f32) initial_approx
+
+	// Newton–Raphson method for getting better approximations of square roots
+	// Done twice for greater accuracy.
+	refined_approx  = refined_approx * (1.5 - value * 0.5 * refined_approx * refined_approx )
+	refined_approx  = refined_approx * (1.5 - value * 0.5 * refined_approx * refined_approx )
+	// refined_approx = (0.5 * refined_approx) * (3.0 - value * refined_approx * refined_approx)
+	// refined_approx = (0.5 * refined_approx) * (3.0 - value * refined_approx * refined_approx)
+	return refined_approx
 }
 
 is_power_of_two_u32 :: #force_inline proc "contextless" ( value : u32 ) -> b32
@@ -28,13 +56,17 @@ mov_avg_exp_f64 := #force_inline proc "contextless" ( alpha, delta_interval, las
 
 import "core:math/linalg"
 
-Vec2 :: linalg.Vector2f32
-Vec3 :: linalg.Vector3f32
+Quat128 :: quaternion128
+Matrix2 :: matrix [2, 2] f32
+Vec2i   :: [2]i32
+Vec3i   :: [3]i32
 
-Vec2i :: [2]i32
-Vec3i :: [3]i32
+vec2i_to_vec2 :: #force_inline proc "contextless" (v : Vec2i) -> Vec2 {return transmute(Vec2) v}
+vec3i_to_vec3 :: #force_inline proc "contextless" (v : Vec3i) -> Vec3 {return transmute(Vec3) v}
 
-Range2 :: struct #raw_union{
+//region Range2
+
+Range2 :: struct #raw_union {
 	using min_max : struct {
 		min, max : Vec2
 	},
@@ -50,6 +82,8 @@ Range2 :: struct #raw_union{
 	array : [4]f32,
 	mat   : matrix[2, 2] f32,
 }
+
+UnitRange2 :: distinct Range2
 
 range2 :: #force_inline proc "contextless" ( a, b : Vec2 ) -> Range2 {
 	result := Range2 { pts = { a, b } }
@@ -78,3 +112,5 @@ equal_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> b32 {
 size_range2 :: #force_inline proc "contextless" ( value : Range2 ) -> Vec2 {
 	return { value.p1.x - value.p0.x, value.p0.y - value.p1.y }
 }
+
+//endregion Range2

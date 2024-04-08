@@ -274,7 +274,8 @@ UI_Box :: struct {
 UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
 UI_Parent_Stack_Size      :: 512
-UI_Built_Boxes_Array_Size :: 8
+// UI_Built_Boxes_Array_Size :: 8
+UI_Built_Boxes_Array_Size :: 4 * Kilobyte
 
 UI_State :: struct {
 	// TODO(Ed) : Use these
@@ -320,14 +321,15 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 	ui := ui
 	ui^ = {}
 
-	for cache in (& ui.caches) {
+	// cache.ref in ui.caches.ref
+	for & cache in (& ui.caches) {
 		box_cache, allocation_error := zpl_hmap_init_reserve( UI_Box, cache_allocator, UI_Built_Boxes_Array_Size )
 		verify( allocation_error == AllocatorError.None, "Failed to allocate box cache" )
 		cache = box_cache
 	}
 
-	ui.curr_cache = & ui.caches[1]
-	ui.prev_cache = & ui.caches[0]
+	ui.curr_cache = (& ui.caches[1])
+	ui.prev_cache = (& ui.caches[0])
 	log("ui_startup completed")
 }
 

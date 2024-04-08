@@ -86,7 +86,7 @@ render_mode_screenspace :: proc ()
 		rl.DrawCircleV( cursor_pos, 10, Color_White_A125 )
 	}
 
-	ui := project.workspace.ui
+	ui := & project.workspace.ui
 
 	// debug_text("Box Count: %v", ui.built_box_count )
 

@@ -9,14 +9,15 @@ import "base:intrinsics"
 	type_has_field :: intrinsics.type_has_field
 	type_elem_type :: intrinsics.type_elem_type
 import "base:runtime"
-	Byte              :: runtime.Byte
-	Kilobyte          :: runtime.Kilobyte
-	Megabyte          :: runtime.Megabyte
-	Gigabyte          :: runtime.Gigabyte
-	Terabyte          :: runtime.Terabyte
-	Petabyte          :: runtime.Petabyte
-	Exabyte           :: runtime.Exabyte
-	resize_non_zeroed :: runtime.non_zero_mem_resize
+	Byte               :: runtime.Byte
+	Kilobyte           :: runtime.Kilobyte
+	Megabyte           :: runtime.Megabyte
+	Gigabyte           :: runtime.Gigabyte
+	Terabyte           :: runtime.Terabyte
+	Petabyte           :: runtime.Petabyte
+	Exabyte            :: runtime.Exabyte
+	resize_non_zeroed  :: runtime.non_zero_mem_resize
+	SourceCodeLocation :: runtime.Source_Code_Location
 import c "core:c/libc"
 import "core:dynlib"
 import "core:hash"
@@ -31,6 +32,7 @@ import fmt_io "core:fmt"
 	str_fmt_buffer   :: fmt_io.bprintf
 	str_to_file_ln   :: fmt_io.fprintln
 	str_tmp_from_any :: fmt_io.tprint
+import "core:math"
 import "core:mem"
 	align_forward_int       :: mem.align_forward_int
 	align_forward_uint      :: mem.align_forward_uint
@@ -57,8 +59,7 @@ import "core:mem"
 	tracking_allocator_init :: mem.tracking_allocator_init
 import "core:mem/virtual"
 	VirtualProtectFlags :: virtual.Protect_Flags
-import "core:odin"
-	SourceCodeLocation :: runtime.Source_Code_Location
+// import "core:odin"
 import "core:os"
 	FileFlag_Create    :: os.O_CREATE
 	FileFlag_ReadWrite :: os.O_RDWR
@@ -107,10 +108,30 @@ add :: proc {
 	add_range2,
 }
 
+bivec :: proc {
+	bivec_from_f32s,
+	vec3_to_bivec,
+}
+
 cm_to_pixels :: proc {
 	f32_cm_to_pixels,
 	vec2_cm_to_pixels,
 	range2_cm_to_pixels,
+}
+
+regress :: proc {
+	regress_bivec3,
+}
+
+cross :: proc {
+	cross_vec3,
+}
+
+dot :: proc {
+	dot_vec2,
+	dot_vec3,
+	dot_v3_unitv3,
+	dot_unitv3_vs,
 }
 
 draw_text :: proc {
@@ -124,6 +145,11 @@ from_bytes :: proc {
 
 get_bounds :: proc {
 	view_get_bounds,
+}
+
+inverse_mag :: proc {
+	inverse_mag_vec3,
+	inverse_mag_rotor3,
 }
 
 is_power_of_two :: proc {
@@ -152,6 +178,25 @@ pop :: proc {
 	stack_allocator_pop,
 }
 
+pow :: proc{
+	math.pow_f16,
+	math.pow_f16le,
+	math.pow_f16be,
+	math.pow_f32,
+	math.pow_f32le,
+	math.pow_f32be,
+	math.pow_f64,
+	math.pow_f64le,
+	math.pow_f64be,
+}
+
+pow2 :: proc {
+	math.pow2_f16,
+	math.pow2_f32,
+	math.pow2_f64,
+	pow2_vec3,
+}
+
 pressed :: proc {
 	btn_pressed,
 }
@@ -161,12 +206,40 @@ push :: proc {
 	stack_allocator_push,
 }
 
+rotor3 :: proc {
+	rotor3_via_comps,
+	rotor3_via_s_bv,
+	rotor3_via_from_to,
+}
+
 released :: proc {
 	btn_released,
 }
 
+sqrt :: proc{
+	math.sqrt_f16,
+	math.sqrt_f16le,
+	math.sqrt_f16be,
+	math.sqrt_f32,
+	math.sqrt_f32le,
+	math.sqrt_f32be,
+	math.sqrt_f64,
+	math.sqrt_f64le,
+	math.sqrt_f64be,
+}
+
+inverse_sqrt :: proc {
+	inverse_sqrt_f32,
+}
+
 sub :: proc {
+	sub_point3,
 	sub_range2,
+	sub_bivec3,
+}
+
+to_quat128 :: proc {
+	rotor3_to_quat128,
 }
 
 to_rl_rect :: proc {
@@ -182,6 +255,17 @@ to_string :: proc {
 	str_builder_to_string,
 }
 
+to_vec3 :: proc {
+	bivec3_to_vec3,
+	point3_to_vec3,
+	pointflat3_to_vec3,
+	unitvec3_to_vec3,
+}
+
+to_vec4 :: proc {
+	unitvec4_to_vec4,
+}
+
 to_writer :: proc {
 	str_builder_to_writer,
 }
@@ -189,4 +273,9 @@ to_writer :: proc {
 ui_set_layout :: proc {
 	ui_style_set_layout,
 	ui_style_theme_set_layout,
+}
+
+wedge :: proc {
+	wedge_vec3,
+	wedge_bivec3,
 }

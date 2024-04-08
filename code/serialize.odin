@@ -106,7 +106,7 @@ project_serialize :: proc( project : ^ Project, archive : ^ ArchiveData, is_writ
 
 	if is_writting
 	{
-		marshal_archive : MarshalArchive
+		marshal_archive := new(MarshalArchive, frame_slab_allocator())
 		marshal_archive.version = archive.version
 		marshal_archive.project = project^
 		// TODO(Ed): In the future this will be more complicated, as serialization of workspaces and the code database won't be trivial
@@ -127,7 +127,7 @@ project_serialize :: proc( project : ^ Project, archive : ^ ArchiveData, is_writ
 
 		// Note(Ed) : This works fine for now, but eventually it will most likely break with pointers...
 		// We'll most likely set things up so that all refs in the project & workspace are handles.
-		marshal_archive : MarshalArchive
+		marshal_archive := new(MarshalArchive, frame_slab_allocator())
 		json.unmarshal( archive.data, & marshal_archive, spec = json.Specification.MJSON, allocator = context.temp_allocator )
 		if marshal_archive.version == Serializer_Version {
 			project^ = marshal_archive.project

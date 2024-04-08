@@ -58,7 +58,7 @@ slab_allocator :: proc( slab : Slab ) -> ( allocator : Allocator ) {
 	return
 }
 
-slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocator : Allocator,  dbg_name : string = "" ) -> ( slab : Slab, alloc_error : AllocatorError )
+slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocator : Allocator,  dbg_name : string = "", should_zero_buckets : b32 = false ) -> ( slab : Slab, alloc_error : AllocatorError )
 {
 	header_size :: size_of( SlabHeader )
 
@@ -69,17 +69,17 @@ slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocato
 	slab.header   = cast( ^SlabHeader) raw_mem
 	slab.backing  = allocator
 	slab.dbg_name = dbg_name
-	alloc_error   = slab_init_pools( slab, policy, bucket_reserve_num )
+	alloc_error   = slab_init_pools( slab, policy, bucket_reserve_num, should_zero_buckets )
 	return
 }
 
-slab_init_pools :: proc ( using self : Slab, policy : ^SlabPolicy, bucket_reserve_num : uint = 0 ) -> AllocatorError
+slab_init_pools :: proc ( using self : Slab, policy : ^SlabPolicy, bucket_reserve_num : uint = 0, should_zero_buckets : b32 ) -> AllocatorError
 {
 	profile(#procedure)
 	for id in 0 ..< policy.idx {
 		using size_class := policy.items[id]
 
-		pool, alloc_error := pool_init( block_size, bucket_capacity, bucket_reserve_num, block_alignment, backing )
+		pool, alloc_error := pool_init( should_zero_buckets, block_size, bucket_capacity, bucket_reserve_num, block_alignment, backing )
 		if alloc_error != .None do return alloc_error
 
 		push( & self.pools, pool )
@@ -136,7 +136,7 @@ slab_alloc :: proc( self : Slab,
 			ensure(false, "Bad block from pool")
 			return nil, alloc_error
 	}
-	log( str_fmt_tmp("%v: Retrieved block: %p %d", self.dbg_name, raw_data(block), len(block) ))
+	// log( str_fmt_tmp("%v: Retrieved block: %p %d", self.dbg_name, raw_data(block), len(block) ))
 
 	data = byte_slice(raw_data(block), size)
 	if zero_memory {
@@ -195,7 +195,7 @@ slab_resize :: proc( using self : Slab,
 		new_data_ptr := memory_after(data)
 		new_data      = byte_slice( raw_data(data), new_size )
 		// log( dump_stacktrace() )
-		log( str_fmt_tmp("%v: Resize via expanding block space allocation %p %d", dbg_name, new_data_ptr, int(new_size - old_size)))
+		// log( str_fmt_tmp("%v: Resize via expanding block space allocation %p %d", dbg_name, new_data_ptr, int(new_size - old_size)))
 
 		if zero_memory && new_size > old_size {
 			to_zero := byte_slice( new_data_ptr, int(new_size - old_size) )
@@ -204,7 +204,7 @@ slab_resize :: proc( using self : Slab,
 			slice.zero( to_zero )
 			slab_validate_pools( self )
 
-			log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", new_data_ptr,  cast(rawptr) (uintptr(new_data_ptr) + uintptr(new_size - old_size))))
+			// log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", new_data_ptr,  cast(rawptr) (uintptr(new_data_ptr) + uintptr(new_size - old_size))))
 		}
 		return
 	}
@@ -226,13 +226,13 @@ slab_resize :: proc( using self : Slab,
 	// TODO(Ed): Reapply this when safe.
 	if zero_memory {
 		slice.zero( new_block )
-		log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", raw_data(new_block),  cast(rawptr) (uintptr(raw_data(new_block)) + uintptr(new_size))))
+		// log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", raw_data(new_block),  cast(rawptr) (uintptr(raw_data(new_block)) + uintptr(new_size))))
 	}
 
 	// log( str_fmt_tmp("Resize via new block: %p %d (old : %p $d )", raw_data(new_block), len(new_block), raw_data(data), old_size ))
 
 	if raw_data(data) != raw_data(new_block) {
-		log( str_fmt_tmp("%v: Resize via new block, copying from old data block to new block: (%p %d), (%p %d)", dbg_name, raw_data(data), len(data), raw_data(new_block), len(new_block)))
+		// log( str_fmt_tmp("%v: Resize via new block, copying from old data block to new block: (%p %d), (%p %d)", dbg_name, raw_data(data), len(data), raw_data(new_block), len(new_block)))
 		copy_non_overlapping( raw_data(new_block), raw_data(data), int(old_size) )
 		pool_release( pool_old, data )
 	}

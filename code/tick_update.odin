@@ -350,8 +350,8 @@ update :: proc( delta_time : f64 ) -> b32
 
 			// index := 0
 			widgets : Array(UI_Widget)
-			widgets, alloc_error = array_init_reserve( UI_Widget, frame_slab_allocator(), Kilobyte * 64 )
-			// widgets, alloc_error = array_init_reserve( UI_Widget, frame_slab_allocator(), Kilobyte * 8 )
+			widgets, alloc_error = array_init_reserve( UI_Widget, frame_slab_allocator(), 8 )
+			// widgets, alloc_error = array_init_reserve( UI_Widget, frame_slab_allocator(), 4 * Kilobyte )
 			widgets_ptr := & widgets
 
 			label_id := 0
