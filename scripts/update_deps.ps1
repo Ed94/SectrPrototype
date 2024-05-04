@@ -9,11 +9,9 @@ $path_toolchain  = join-path $path_root 'toolchain'
 $url_backtrace_repo = 'https://github.com/Ed94/back.git'
 $url_ini_parser     = 'https://github.com/laytan/odin-ini-parser.git'
 $url_odin_repo      = 'https://github.com/Ed94/Odin.git'
-$url_ols_repo       = 'https://github.com/Ed94/ols'
 $path_backtrace     = join-path $path_thirdparty 'backtrace'
 $path_ini_parser    = join-path $path_thirdparty 'ini'
 $path_odin          = join-path $path_toolchain  'Odin'
-$path_ols           = join-path $path_toolchain  'ols'
 
 $incremental_checks = Join-Path $PSScriptRoot 'helpers/incremental_checks.ps1'
 . $incremental_checks
@@ -82,10 +80,6 @@ push-location $path_thirdparty
 
 
 Update-GitRepo -path $path_odin -url $url_odin_repo -build_command '.\build.bat'
-
-$env:odin = join-path $path_odin 'odin.exe'
-Update-GitRepo -path $path_ols -url $url_ols_repo -build_command '.\build.bat'
-remove-item env:odin
 
 if (Test-Path -Path $path_ini_parser)
 {

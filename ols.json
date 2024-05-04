@@ -3,11 +3,11 @@
     "collections": [
         {
             "name": "core",
-            "path": "C:/projects/SectrPrototype/thirdparty/Odin/core"
+            "path": "C:/projects/SectrPrototype/toolchain/Odin/core"
         },
         {
             "name": "vendor",
-            "path": "C:/projects/SectrPrototype/thirdparty/Odin/vendor"
+            "path": "C:/projects/SectrPrototype/toolchain/Odin/vendor"
         },
         {
             "name": "code",
@@ -15,11 +15,11 @@
         },
         {
             "name": "ini",
-            "path": "C:/projects/SectrPrototype/thirdparty/packages/ini"
+            "path": "C:/projects/SectrPrototype/thirdparty/ini"
         },
         {
             "name": "backtrace",
-            "path": "C:/projects/SectrPrototype/thirdparty/packages/backtrace"
+            "path": "C:/projects/SectrPrototype/thirdparty/backtrace"
         }
     ],
     "odin_command": "C:/projects/SectrPrototype/toolchain/Odin/odin.exe",

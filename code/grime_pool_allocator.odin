@@ -1,9 +1,9 @@
 /*
 This is a pool allocator setup to grow incrementally via buckets.
-Buckets are stored in singly-linked lists so that allocations aren't necessrily contigous.
+Buckets are stored in singly-linked lists so that allocations aren't necessrily contiguous.
 
 The pool is setup with the intention to only grab single entires from the bucket,
-not for a contigous array of them.
+not for a contiguous array of them.
 Thus the free-list only tracks the last free entries thrown out by the user,
 irrespective of the bucket the originated from.
 This means if there is a heavy recyling of entires in a pool
