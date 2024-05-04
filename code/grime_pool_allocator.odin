@@ -7,9 +7,9 @@ not for a contiguous array of them.
 Thus the free-list only tracks the last free entries thrown out by the user,
 irrespective of the bucket the originated from.
 This means if there is a heavy recyling of entires in a pool
-there can be a large discrepancy of memory localicty of the buckets are small.
+there can be a large discrepancy of memory localicty if buckets are small.
 
-The pool doesn't allocate any buckets on initialization unless the user specifes.
+The pool doesn't allocate any buckets on initialization unless the user specifies.
 */
 package sectr
 

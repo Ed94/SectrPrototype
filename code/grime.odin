@@ -108,9 +108,9 @@ add :: proc {
 	add_range2,
 }
 
-bivec :: proc {
-	bivec_from_f32s,
-	vec3_to_bivec,
+bivec3 :: proc {
+	bivec3_via_f32s,
+	vec3_to_bivec3,
 }
 
 cm_to_pixels :: proc {
@@ -149,7 +149,7 @@ get_bounds :: proc {
 
 inverse_mag :: proc {
 	inverse_mag_vec3,
-	inverse_mag_rotor3,
+	// inverse_mag_rotor3,
 }
 
 is_power_of_two :: proc {
@@ -191,9 +191,6 @@ pow :: proc{
 }
 
 pow2 :: proc {
-	math.pow2_f16,
-	math.pow2_f32,
-	math.pow2_f64,
 	pow2_vec3,
 }
 
@@ -208,7 +205,7 @@ push :: proc {
 
 rotor3 :: proc {
 	rotor3_via_comps,
-	rotor3_via_s_bv,
+	rotor3_via_bv_s,
 	rotor3_via_from_to,
 }
 
@@ -255,14 +252,15 @@ to_string :: proc {
 	str_builder_to_string,
 }
 
-to_vec3 :: proc {
+vec3 :: proc {
+	vec3_via_f32s,
 	bivec3_to_vec3,
 	point3_to_vec3,
 	pointflat3_to_vec3,
 	unitvec3_to_vec3,
 }
 
-to_vec4 :: proc {
+vec4 :: proc {
 	unitvec4_to_vec4,
 }
 

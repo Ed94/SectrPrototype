@@ -1,6 +1,8 @@
 /*
 The default arena allocator Odin provides does fragmented resizes even for the last most allocated block getting resized.
 This is an alternative to alleviates that.
+
+TODO(Ed): Implement?
 */
 package sectr
 

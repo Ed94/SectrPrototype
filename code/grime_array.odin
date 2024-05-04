@@ -1,6 +1,6 @@
 // Based on gencpp's and thus zpl's Array implementation
 // Made becasue of the map issue with fonts during hot-reload.
-// I didn't want to make the HMapZPL impl with the [dynamic] array for now to isolate
+// I didn't want to make the HMapZPL impl with the [dynamic] array for now to isolate the hot-reload issue (when I was diagnoising)
 package sectr
 
 import "core:c/libc"
