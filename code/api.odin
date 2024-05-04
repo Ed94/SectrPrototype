@@ -126,8 +126,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// Configuration Load
 	{
 		using config
-		resolution_width  = 1000
-		resolution_height =  600
+		resolution_width  = 1280
+		resolution_height =  900
 		refresh_rate      =    0
 
 		cam_min_zoom                 = 0.25
@@ -156,8 +156,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			// rl.ConfigFlag.WINDOW_TOPMOST,
 		})
 
-		window_width  : i32 = 1000
-		window_height : i32 = 600
+		window_width  : i32 = cast(i32) config.resolution_width
+		window_height : i32 = cast(i32) config.resolution_height
 		win_title     : cstring = "Sectr Prototype"
 		rl.InitWindow( window_width, window_height, win_title )
 		log( "Raylib initialized and window opened" )

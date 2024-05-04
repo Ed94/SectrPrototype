@@ -8,7 +8,7 @@ import "core:os"
 
 import rl "vendor:raylib"
 
-Font_Largest_Px_Size :: 32
+Font_Largest_Px_Size :: 96
 
 Font_Size_Interval :: 2
 

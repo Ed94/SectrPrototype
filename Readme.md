@@ -1,6 +1,8 @@
 # Sectr Prototype
 
 ![img](docs/assets/sectr_host_2024-03-09_04-30-27.png)
+<video src="docs/assets/raddbg_2024-05-04_12-05-47.mp4" width="600" controls></video>
+
 
 This prototype aims to flesh out ideas I've wanted to explore futher when it came to code editing and tools for code in general.
 
