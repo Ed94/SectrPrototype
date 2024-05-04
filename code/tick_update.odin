@@ -244,12 +244,11 @@ update :: proc( delta_time : f64 ) -> b32
 		{
 			// frame := ui_widget( "Frame", {} )
 			// ui_parent(frame)
-
 			parent_layout := default_layout
 			parent_layout.size      = range2( { 300, 300 }, {} )
 			parent_layout.alignment = { 0.5, 0.5 }
 			parent_layout.margins   = { 100, 100, 100, 100 }
-			parent_layout.padding   = {}
+			parent_layout.padding   = { 5, 10, 5, 5 }
 			parent_layout.pos       = { 0, 0 }
 
 			parent_theme := frame_style_default
@@ -267,11 +266,9 @@ update :: proc( delta_time : f64 ) -> b32
 					debug.draggable_box_pos  = parent.style.layout.pos
 					debug.draggable_box_size = parent.style.layout.size.min
 				}
-
 				if parent.dragging {
 					debug.draggable_box_pos += mouse_world_delta()
 				}
-
 				if parent.resizing
 				{
 					og_layout := ui_context.active_start_style.layout
@@ -286,7 +283,6 @@ update :: proc( delta_time : f64 ) -> b32
 				if (ui.hot == parent.key) && (ui.hot_resizable || ui.active_start_signal.resizing) {
 					parent.style.bg_color = Color_Blue
 				}
-
 				parent.style.layout.pos      = debug.draggable_box_pos
 				parent.style.layout.size.min = debug.draggable_box_size
 			}
@@ -295,18 +291,19 @@ update :: proc( delta_time : f64 ) -> b32
 			child_layout.size      = range2({ 0, 0 }, { 0, 0 })
 			child_layout.alignment = { 0.5, 0.5 }
 			child_layout.margins   = { 20, 20, 20, 20 }
-			child_layout.padding   = {}
-			child_layout.anchor    = range2({ 0.0, 0.0 }, { 0.0, 0.0 })
+			child_layout.padding   = { 5, 5, 5, 5 }
+			child_layout.anchor    = range2({ 0.2, 0.1 }, { 0.1, 0.15 })
 			child_layout.pos       = { 0, 0 }
 
 			child_theme := frame_style_default
 			child_theme.bg_color = Color_GreyRed
 			child_theme.flags = {
 				// .Fixed_Width, .Fixed_Height,
+				.Origin_At_Anchor_Center
 			}
 			child_theme.layout = child_layout
 			ui_theme_via_style(child_theme)
-			child  := ui_widget( "Child", { .Mouse_Clickable })
+			child := ui_widget( "Child", { .Mouse_Clickable })
 		}
 
 		// Whitespace AST test

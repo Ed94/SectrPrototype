@@ -15,7 +15,7 @@ Color_BG_TextBox_Green :: Color { 102, 102, 110, 255 }
 Color_Frame_Disabled   :: Color {  22,  22,  22, 120 }
 Color_Frame_Hover      :: Color { 122, 122, 125, 200 }
 Color_Frame_Select     :: Color { 188, 188, 188, 220 }
-Color_GreyRed          :: Color { 220, 100, 100, 165 }
+Color_GreyRed          :: Color { 220, 100, 100, 50 }
 Color_White_A125       :: Color { 255, 255, 255, 165 }
 Color_Black            :: Color { 0, 0, 0, 255 }
 

@@ -1,9 +1,5 @@
 # Sectr Prototype
 
-![img](docs/assets/sectr_host_2024-03-09_04-30-27.png)
-<video src="docs/assets/raddbg_2024-05-04_12-05-47.mp4" width="600" controls></video>
-
-
 This prototype aims to flesh out ideas I've wanted to explore futher when it came to code editing and tools for code in general.
 
 The things to explore:
@@ -44,3 +40,9 @@ Even so the notatble groups are:
   * Auto-layout with heavy procedural generation of box widgets
 
 There is some unused code in `code/__imgui_raddbg`. Its a partial translation of some data structures from raddbg's ui.
+
+## Gallery
+
+![img](docs/assets/sectr_host_2024-03-09_04-30-27.png)
+![img](docs/assets/sectr_host_2024-05-04_12-29-39.png)
+![img](docs/assets/Code_2024-05-04_12-55-53.png)
