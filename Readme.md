@@ -9,7 +9,8 @@ The things to explore:
 * 2D canvas for laying out code visualized in various types of ASTs
 * WYSIWYG frontend ASTs
 * Making AST editing as versatile as text editing.
-* High-performance generating a large amount of UI widget boxes with proper auto-layout & no perceptible rendering-lag or input lag for interactions (framtimes stable).
+* High-performance generating a large amount of UI widget boxes with proper auto-layout & no perceptible rendering-lag or input lag for interactions (frametimes stable).
+* Model-View-Controller interface between code managed by a 'backend' (both in memory and filesystem) and the UX composition (which has separate filesystem composition).
 
 The project is so far in a "codebase boostrapping" phase.
 
@@ -39,3 +40,5 @@ Even so the notatble groups are:
   * Will most likely be the bulk of this prototype.
   * PIMGUI (Persistent Immediate Mode User Interface);
   * Auto-layout with heavy procedural generation of box widgets
+
+There is some unused code in `code/__imgui_raddbg`. Its a partial translation of some data structures from raddbg's ui.
