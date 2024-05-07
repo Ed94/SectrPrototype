@@ -177,7 +177,7 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 	alloc_error = .None
 
 	// Check the free-list first for a block
-	if pool.free_list_head != nil
+	if pool.free_list_head != nil && false // There is a very nasty memory bug with free-lists I need to solve before they can be used.
 	{
 		head := & pool.free_list_head
 
