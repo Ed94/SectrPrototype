@@ -10,9 +10,9 @@ MemoryTracker :: struct {
 	entries : Array(MemoryTrackerEntry),
 }
 
-Track_Memory :: true
+Track_Memory :: false
 
-tracker_msg_buffer : [Kilobyte * 64]u8
+tracker_msg_buffer : [Kilobyte * 16]u8
 
 memtracker_clear :: proc ( tracker : MemoryTracker ) {
 	when ! Track_Memory {
