@@ -73,7 +73,9 @@ pool_init :: proc (
 	pool.bucket_capacity  = bucket_capacity
 	pool.alignment        = alignment
 
-	memtracker_init( & pool.tracker, allocator, Kilobyte * 96, dbg_name )
+	when ODIN_DEBUG {
+		memtracker_init( & pool.tracker, allocator, Kilobyte * 96, dbg_name )
+	}
 
 	if bucket_reserve_num > 0 {
 		alloc_error = pool_allocate_buckets( pool, bucket_reserve_num )
@@ -99,7 +101,9 @@ pool_destroy :: proc ( using self : Pool )
 
 	free( self.header, backing )
 
-	memtracker_clear( self.tracker )
+	when ODIN_DEBUG {
+		memtracker_clear( self.tracker )
+	}
 }
 
 pool_allocate_buckets :: proc( pool : Pool, num_buckets : uint ) -> AllocatorError
@@ -164,7 +168,10 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 {
 	pool := pool
 	if pool.current_bucket != nil {
-		verify( pool.current_bucket.blocks != nil, str_fmt_tmp("(corruption) current_bucket was wiped %p", pool.current_bucket) )
+		if ( pool.current_bucket.blocks == nil ) {
+			ensure( false, str_fmt_tmp("(corruption) current_bucket was wiped %p", pool.current_bucket) )
+		}
+		// verify( pool.current_bucket.blocks != nil, str_fmt_tmp("(corruption) current_bucket was wiped %p", pool.current_bucket) )
 	}
 	// profile(#procedure)
 	alloc_error = .None
@@ -185,7 +192,9 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 			slice.zero(block)
 		}
 
-		memtracker_register_auto_name_slice( & pool.tracker, block)
+		when ODIN_DEBUG {
+			memtracker_register_auto_name_slice( & pool.tracker, block)
+		}
 		return
 	}
 
@@ -246,7 +255,9 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		// log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", block_ptr,  cast(rawptr) (uintptr(block_ptr) + uintptr(pool.block_size))))
 	}
 
-	memtracker_register_auto_name_slice( & pool.tracker, block)
+	when ODIN_DEBUG {
+		memtracker_register_auto_name_slice( & pool.tracker, block)
+	}
 	return
 }
 
@@ -275,7 +286,9 @@ pool_release :: proc( self : Pool, block : []byte, loc := #caller_location )
 
 	start := new_free_block
 	end   := transmute(rawptr) (uintptr(new_free_block) + uintptr(self.block_size) - 1)
-	memtracker_unregister( self.tracker, { start, end } )
+	when ODIN_DEBUG {
+		memtracker_unregister( self.tracker, { start, end } )
+	}
 }
 
 pool_reset :: proc( using pool : Pool )
@@ -297,7 +310,9 @@ pool_validate :: proc( pool : Pool )
 	// Compiler bug ^^ same as pool_reset
 	for ; bucket != nil; bucket = bucket.next
 	{
-		verify( bucket.blocks != nil, str_fmt_tmp("Found corrupted bucket %p", bucket) )
+		if ( bucket.blocks == nil ) {
+			ensure(false, str_fmt_tmp("Found a corrupted bucket %p", bucket ))
+		}
 	}
 }
 
@@ -314,7 +329,8 @@ pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32
 		end           := start + uintptr(bucket_capacity)
 		block_address := uintptr(raw_data(block))
 
-		if start <= block_address && block_address < end {
+		if start <= block_address && block_address < end
+		{
 			misalignment := (block_address - start) % uintptr(block_size)
 			if misalignment != 0 {
 				ensure(false, "pool_validate_ownership: This data is within this pool's buckets, however its not aligned to the start of a block")

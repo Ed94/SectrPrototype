@@ -70,7 +70,9 @@ slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocato
 	slab.header   = cast( ^SlabHeader) raw_mem
 	slab.backing  = allocator
 	slab.dbg_name = dbg_name
-	memtracker_init( & slab.tracker, allocator, Kilobyte * 256, dbg_name )
+	when ODIN_DEBUG {
+		memtracker_init( & slab.tracker, allocator, Kilobyte * 256, dbg_name )
+	}
 	alloc_error   = slab_init_pools( slab, policy, bucket_reserve_num, should_zero_buckets )
 	return
 }
@@ -109,7 +111,9 @@ slab_destroy :: proc( using self : Slab )
 	}
 
 	free( self.header, backing )
-	memtracker_clear(tracker)
+	when ODIN_DEBUG {
+		memtracker_clear(tracker)
+	}
 }
 
 slab_alloc :: proc( self : Slab,
@@ -148,7 +152,9 @@ slab_alloc :: proc( self : Slab,
 		slice.zero(data)
 	}
 
-	memtracker_register_auto_name( & self.tracker, raw_data(block), & block[ len(block) - 1 ] )
+	when ODIN_DEBUG {
+		memtracker_register_auto_name( & self.tracker, raw_data(block), & block[ len(block) - 1 ] )
+	}
 	return
 }
 
@@ -162,7 +168,11 @@ slab_free :: proc( using self : Slab, data : []byte, loc := #caller_location )
 		if pool_validate_ownership( pool, data ) {
 			start := raw_data(data)
 			end   := ptr_offset(start, pool.block_size - 1)
-			memtracker_unregister( self.tracker, { start, end } )
+
+			when ODIN_DEBUG {
+				memtracker_unregister( self.tracker, { start, end } )
+			}
+
 			pool_release( pool, data, loc )
 			return
 		}
@@ -248,11 +258,16 @@ slab_resize :: proc( using self : Slab,
 
 		start := raw_data( data )
 		end   := rawptr(uintptr(start) + uintptr(pool_old.block_size) - 1)
-		memtracker_unregister( self.tracker, { start, end } )
+
+		when ODIN_DEBUG {
+			memtracker_unregister( self.tracker, { start, end } )
+		}
 	}
 
 	new_data = new_block[ :new_size]
-	memtracker_register_auto_name( & self.tracker, raw_data(new_block), & new_block[ len(new_block) - 1 ] )
+	when ODIN_DEBUG {
+		memtracker_register_auto_name( & self.tracker, raw_data(new_block), & new_block[ len(new_block) - 1 ] )
+	}
 	return
 }
 
@@ -262,7 +277,9 @@ slab_reset :: proc( slab : Slab )
 		pool := slab.pools.items[id]
 		pool_reset( pool )
 	}
-	memtracker_clear(slab.tracker)
+	when ODIN_DEBUG {
+		memtracker_clear(slab.tracker)
+	}
 }
 
 slab_validate_pools :: proc( slab : Slab )

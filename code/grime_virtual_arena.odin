@@ -88,8 +88,9 @@ varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
 	}
 	arena.allow_any_reize = allow_any_reize
 
-	// Setup the tracker
-	memtracker_init( & arena.tracker, runtime.heap_allocator(), Kilobyte * 128, dbg_name )
+	when ODIN_DEBUG {
+		memtracker_init( & arena.tracker, runtime.heap_allocator(), Kilobyte * 128, dbg_name )
+	}
 	return
 }
 
@@ -175,7 +176,7 @@ varena_free_all :: proc( using self : ^VArena )
 	sync.mutex_guard( & mutex )
 	commit_used = 0
 
-	when ODIN_DEBUG {
+	when ODIN_DEBUG && Track_Memory {
 		array_clear(tracker.entries)
 	}
 }

@@ -10,14 +10,30 @@ MemoryTracker :: struct {
 	entries : Array(MemoryTrackerEntry),
 }
 
+Track_Memory :: true
+
+tracker_msg_buffer : [Kilobyte * 64]u8
+
 memtracker_clear :: proc ( tracker : MemoryTracker ) {
-	// logf("Clearing tracker: %v", tracker.name)
+	when ! Track_Memory {
+		return
+	}
+	temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
+	context.temp_allocator = arena_allocator(& temp_arena)
+
+	logf("Clearing tracker: %v", tracker.name)
 	memtracker_dump_entries(tracker);
 	array_clear(tracker.entries)
 }
 
 memtracker_init :: proc ( tracker : ^MemoryTracker, allocator : Allocator, num_entries : u64, name : string )
 {
+	when ! Track_Memory {
+		return
+	}
+	temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
+	context.temp_allocator = arena_allocator(& temp_arena)
+
 	tracker.name = name
 
 	error : AllocatorError
@@ -29,6 +45,13 @@ memtracker_init :: proc ( tracker : ^MemoryTracker, allocator : Allocator, num_e
 
 memtracker_register :: proc( tracker : ^MemoryTracker, new_entry : MemoryTrackerEntry )
 {
+	when ! Track_Memory {
+		return
+	}
+	profile(#procedure)
+	temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
+	context.temp_allocator = arena_allocator(& temp_arena)
+
 	if tracker.entries.num == tracker.entries.capacity {
 		ensure(false, "Memory tracker entries array full, can no longer register any more allocations")
 		return
@@ -48,21 +71,27 @@ memtracker_register :: proc( tracker : ^MemoryTracker, new_entry : MemoryTracker
 			memtracker_dump_entries(tracker ^)
 		}
 		array_append_at( & tracker.entries, new_entry, idx )
-		// log(str_fmt_tmp("%v : Registered: %v", tracker.name, new_entry) )
+		log(str_fmt_tmp("%v : Registered: %v", tracker.name, new_entry) )
 		return
 	}
 
 	array_append( & tracker.entries, new_entry )
-	// log(str_fmt_tmp("%v : Registered: %v", tracker.name, new_entry) )
+	log(str_fmt_tmp("%v : Registered: %v", tracker.name, new_entry) )
 }
 
 memtracker_register_auto_name :: proc( tracker : ^MemoryTracker, start, end : rawptr )
 {
+	when ! Track_Memory {
+		return
+	}
 	memtracker_register( tracker, {start, end})
 }
 
 memtracker_register_auto_name_slice :: proc( tracker : ^MemoryTracker, slice : []byte )
 {
+	when ! Track_Memory {
+		return
+	}
 	start := raw_data(slice)
 	end   := & slice[ len(slice) - 1 ]
 	memtracker_register( tracker, {start, end})
@@ -70,13 +99,20 @@ memtracker_register_auto_name_slice :: proc( tracker : ^MemoryTracker, slice : [
 
 memtracker_unregister :: proc( tracker : MemoryTracker, to_remove : MemoryTrackerEntry )
 {
+	when ! Track_Memory {
+		return
+	}
+	profile(#procedure)
+	temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
+	context.temp_allocator = arena_allocator(& temp_arena)
+
 	entries := array_to_slice_num(tracker.entries)
 	for idx in 0..< tracker.entries.num
 	{
 		entry := & entries[idx]
 		if entry.start == to_remove.start {
 			if (entry.end == to_remove.end || to_remove.end == nil) {
-				// log(str_fmt_tmp("%v: Unregistered: %v", tracker.name, to_remove));
+				log(str_fmt_tmp("%v: Unregistered: %v", tracker.name, to_remove));
 				array_remove_at(tracker.entries, idx)
 				return
 			}
@@ -92,8 +128,14 @@ memtracker_unregister :: proc( tracker : MemoryTracker, to_remove : MemoryTracke
 
 memtracker_check_for_collisions :: proc ( tracker : MemoryTracker )
 {
-	entries := array_to_slice_num(tracker.entries)
+	when ! Track_Memory {
+		return
+	}
+	profile(#procedure)
+	temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
+	context.temp_allocator = arena_allocator(& temp_arena)
 
+	entries := array_to_slice_num(tracker.entries)
 	for idx in 1 ..< tracker.entries.num {
 		// Check to make sure each allocations adjacent entries do not intersect
 		left  := & entries[idx - 1]
@@ -109,6 +151,12 @@ memtracker_check_for_collisions :: proc ( tracker : MemoryTracker )
 
 memtracker_dump_entries :: proc( tracker : MemoryTracker )
 {
+	when ! Track_Memory {
+		return
+	}
+	temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
+	context.temp_allocator = arena_allocator(& temp_arena)
+
 	log( "Dumping Memory Tracker:")
 	for idx in 0 ..< tracker.entries.num {
 		entry := & tracker.entries.data[idx]
