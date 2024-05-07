@@ -44,6 +44,7 @@ SlabPolicy :: StackFixed(SlabSizeClass, Slab_Max_Size_Classes)
 
 SlabHeader :: struct {
 	dbg_name : string,
+	tracker  : MemoryTracker,
 	backing  : Allocator,
 	pools    : StackFixed(Pool, Slab_Max_Size_Classes),
 }
@@ -69,6 +70,7 @@ slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocato
 	slab.header   = cast( ^SlabHeader) raw_mem
 	slab.backing  = allocator
 	slab.dbg_name = dbg_name
+	memtracker_init( & slab.tracker, allocator, Kilobyte * 256, dbg_name )
 	alloc_error   = slab_init_pools( slab, policy, bucket_reserve_num, should_zero_buckets )
 	return
 }
@@ -76,10 +78,12 @@ slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocato
 slab_init_pools :: proc ( using self : Slab, policy : ^SlabPolicy, bucket_reserve_num : uint = 0, should_zero_buckets : b32 ) -> AllocatorError
 {
 	profile(#procedure)
+
 	for id in 0 ..< policy.idx {
 		using size_class := policy.items[id]
 
-		pool, alloc_error := pool_init( should_zero_buckets, block_size, bucket_capacity, bucket_reserve_num, block_alignment, backing )
+		pool_dbg_name     := str_fmt_alloc("%v pool[%v]", dbg_name, block_size, allocator = backing)
+		pool, alloc_error := pool_init( should_zero_buckets, block_size, bucket_capacity, bucket_reserve_num, block_alignment, backing, pool_dbg_name )
 		if alloc_error != .None do return alloc_error
 
 		push( & self.pools, pool )
@@ -105,6 +109,7 @@ slab_destroy :: proc( using self : Slab )
 	}
 
 	free( self.header, backing )
+	memtracker_clear(tracker)
 }
 
 slab_alloc :: proc( self : Slab,
@@ -142,6 +147,8 @@ slab_alloc :: proc( self : Slab,
 	if zero_memory {
 		slice.zero(data)
 	}
+
+	memtracker_register_auto_name( & self.tracker, raw_data(block), & block[ len(block) - 1 ] )
 	return
 }
 
@@ -153,6 +160,9 @@ slab_free :: proc( using self : Slab, data : []byte, loc := #caller_location )
 	{
 		pool = pools.items[id]
 		if pool_validate_ownership( pool, data ) {
+			start := raw_data(data)
+			end   := ptr_offset(start, pool.block_size - 1)
+			memtracker_unregister( self.tracker, { start, end } )
 			pool_release( pool, data, loc )
 			return
 		}
@@ -235,9 +245,14 @@ slab_resize :: proc( using self : Slab,
 		// log( str_fmt_tmp("%v: Resize via new block, copying from old data block to new block: (%p %d), (%p %d)", dbg_name, raw_data(data), len(data), raw_data(new_block), len(new_block)))
 		copy_non_overlapping( raw_data(new_block), raw_data(data), int(old_size) )
 		pool_release( pool_old, data )
+
+		start := raw_data( data )
+		end   := rawptr(uintptr(start) + uintptr(pool_old.block_size) - 1)
+		memtracker_unregister( self.tracker, { start, end } )
 	}
 
 	new_data = new_block[ :new_size]
+	memtracker_register_auto_name( & self.tracker, raw_data(new_block), & new_block[ len(new_block) - 1 ] )
 	return
 }
 
@@ -247,6 +262,7 @@ slab_reset :: proc( slab : Slab )
 		pool := slab.pools.items[id]
 		pool_reset( pool )
 	}
+	memtracker_clear(slab.tracker)
 }
 
 slab_validate_pools :: proc( slab : Slab )

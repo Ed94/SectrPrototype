@@ -36,8 +36,8 @@ HMapZPL_Entry :: struct ( $ Type : typeid) {
 }
 
 HMapZPL :: struct ( $ Type : typeid ) {
-	hashes  : Array( i64 ),
-	entries : Array( HMapZPL_Entry(Type) ),
+	hashes   : Array( i64 ),
+	entries  : Array( HMapZPL_Entry(Type) ),
 }
 
 zpl_hmap_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( HMapZPL( Type), AllocatorError ) {
@@ -45,12 +45,12 @@ zpl_hmap_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( HMapZPL( Ty
 }
 
 zpl_hmap_init_reserve :: proc
-( $ Type : typeid, allocator : Allocator, num : u64 ) -> ( HMapZPL( Type), AllocatorError )
+( $ Type : typeid, allocator : Allocator, num : u64, dbg_name : string = "" ) -> ( HMapZPL( Type), AllocatorError )
 {
 	result                        : HMapZPL(Type)
 	hashes_result, entries_result : AllocatorError
 
-	result.hashes, hashes_result = array_init_reserve( i64, allocator, num )
+	result.hashes, hashes_result = array_init_reserve( i64, allocator, num, dbg_name = dbg_name )
 	if hashes_result != AllocatorError.None {
 		ensure( false, "Failed to allocate hashes array" )
 		return result, hashes_result
@@ -58,7 +58,7 @@ zpl_hmap_init_reserve :: proc
 	array_resize( & result.hashes, num )
 	slice.fill( slice_ptr( result.hashes.data, cast(int) result.hashes.num), -1 )
 
-	result.entries, entries_result = array_init_reserve( HMapZPL_Entry(Type), allocator, num )
+	result.entries, entries_result = array_init_reserve( HMapZPL_Entry(Type), allocator, num, dbg_name = dbg_name )
 	if entries_result != AllocatorError.None {
 		ensure( false, "Failed to allocate entries array" )
 		return result, entries_result
@@ -119,7 +119,7 @@ zpl_hmap_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 	// ensure( false, "ZPL HMAP IS REHASHING" )
 	last_added_index : i64
 
-	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.hashes.backing, new_num )
+	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.hashes.backing, new_num, ht.hashes.dbg_name )
 	if init_result != AllocatorError.None {
 		ensure( false, "New zpl_hmap failed to allocate" )
 		return init_result

@@ -8,6 +8,8 @@ import "core:os"
 
 import rl "vendor:raylib"
 
+Str_App_State := "App State"
+
 Memory_App : Memory
 
 Memory_Base_Address_Persistent   :: Terabyte * 1
@@ -39,6 +41,8 @@ Memory :: struct {
 	frame        : ^VArena,
 	transient    : ^VArena,
 	files_buffer : ^VArena,
+
+	state   : ^State,
 
 	// Should only be used for small memory allocation iterations
 	// Not for large memory env states
@@ -199,7 +203,8 @@ State :: struct {
 }
 
 get_state :: proc "contextless" () -> ^ State {
-	return cast( ^ State ) Memory_App.persistent.reserve_start
+	// return cast( ^ State ) Memory_App.persistent.reserve_start
+	return Memory_App.state
 }
 
 AppWindow :: struct {

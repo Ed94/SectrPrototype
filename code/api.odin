@@ -15,9 +15,9 @@ import rl "vendor:raylib"
 Path_Assets       :: "../assets/"
 Path_Input_Replay :: "scratch.sectr_replay"
 
-Persistent_Slab_DBG_Name :: "Peristent Slab"
-Frame_Slab_DBG_Name      :: "Frame Slab"
-Transient_Slab_DBG_Name  :: "Transient Slab"
+Persistent_Slab_DBG_Name := "Peristent Slab"
+Frame_Slab_DBG_Name      := "Frame Slab"
+Transient_Slab_DBG_Name  := "Transient Slab"
 
 ModuleAPI :: struct {
 	lib         : dynlib.Library,
@@ -56,6 +56,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	}
 
 	state := new( State, persistent_allocator() )
+	Memory_App.state = state
 	using state
 
 	// Setup Persistent Slab
@@ -118,16 +119,14 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	string_cache = str_cache_init()
 
-	context.user_ptr = state
-
 	input      = & input_data[1]
 	input_prev = & input_data[0]
 
 	// Configuration Load
 	{
 		using config
-		resolution_width  = 1280
-		resolution_height =  900
+		resolution_width  = 1000
+		resolution_height =  600
 		refresh_rate      =    0
 
 		cam_min_zoom                 = 0.25
@@ -153,7 +152,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		rl.SetConfigFlags( {
 			rl.ConfigFlag.WINDOW_RESIZABLE,
-			rl.ConfigFlag.WINDOW_TOPMOST,
+			// rl.ConfigFlag.WINDOW_TOPMOST,
 		})
 
 		window_width  : i32 = cast(i32) config.resolution_width
@@ -275,7 +274,7 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	context.allocator      = persistent_allocator()
 	context.temp_allocator = transient_allocator()
 
-	state := get_state(); using state
+	using state
 
 	// Procedure Addresses are not preserved on hot-reload. They must be restored for persistent data.
 	// The only way to alleviate this is to either do custom handles to allocators

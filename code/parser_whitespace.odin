@@ -165,7 +165,7 @@ pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResu
 	}
 
 	alloc_error : AllocatorError
-	tokens, alloc_error = array_init_reserve( PWS_Token, allocator, Kilobyte * 4   )
+	tokens, alloc_error = array_init_reserve( PWS_Token, allocator, Kilobyte * 4 )
 	if alloc_error != AllocatorError.None {
 		ensure(false, "Failed to allocate token's array")
 		return result, alloc_error

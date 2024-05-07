@@ -1,0 +1,117 @@
+package sectr
+
+MemoryTrackerEntry :: struct {
+	start, end : rawptr,
+	// owner      : string,
+}
+
+MemoryTracker :: struct {
+	name    : string,
+	entries : Array(MemoryTrackerEntry),
+}
+
+memtracker_clear :: proc ( tracker : MemoryTracker ) {
+	// logf("Clearing tracker: %v", tracker.name)
+	memtracker_dump_entries(tracker);
+	array_clear(tracker.entries)
+}
+
+memtracker_init :: proc ( tracker : ^MemoryTracker, allocator : Allocator, num_entries : u64, name : string )
+{
+	tracker.name = name
+
+	error : AllocatorError
+	tracker.entries, error = array_init_reserve( MemoryTrackerEntry, allocator, num_entries, dbg_name = name )
+	if error != AllocatorError.None {
+		fatal("Failed to allocate memory tracker's hashmap");
+	}
+}
+
+memtracker_register :: proc( tracker : ^MemoryTracker, new_entry : MemoryTrackerEntry )
+{
+	if tracker.entries.num == tracker.entries.capacity {
+		ensure(false, "Memory tracker entries array full, can no longer register any more allocations")
+		return
+	}
+
+	for idx  in 0..< tracker.entries.num
+	{
+		entry := & tracker.entries.data[idx]
+		if new_entry.start > entry.start {
+			continue
+		}
+
+		if (entry.end < new_entry.start)
+		{
+			msg := str_fmt_tmp("Memory tracker(%v) detected a collision:\nold_entry: %v\nnew_entry: %v", tracker.name, entry, new_entry)
+			ensure( false, msg )
+			memtracker_dump_entries(tracker ^)
+		}
+		array_append_at( & tracker.entries, new_entry, idx )
+		// log(str_fmt_tmp("%v : Registered: %v", tracker.name, new_entry) )
+		return
+	}
+
+	array_append( & tracker.entries, new_entry )
+	// log(str_fmt_tmp("%v : Registered: %v", tracker.name, new_entry) )
+}
+
+memtracker_register_auto_name :: proc( tracker : ^MemoryTracker, start, end : rawptr )
+{
+	memtracker_register( tracker, {start, end})
+}
+
+memtracker_register_auto_name_slice :: proc( tracker : ^MemoryTracker, slice : []byte )
+{
+	start := raw_data(slice)
+	end   := & slice[ len(slice) - 1 ]
+	memtracker_register( tracker, {start, end})
+}
+
+memtracker_unregister :: proc( tracker : MemoryTracker, to_remove : MemoryTrackerEntry )
+{
+	entries := array_to_slice_num(tracker.entries)
+	for idx in 0..< tracker.entries.num
+	{
+		entry := & entries[idx]
+		if entry.start == to_remove.start {
+			if (entry.end == to_remove.end || to_remove.end == nil) {
+				// log(str_fmt_tmp("%v: Unregistered: %v", tracker.name, to_remove));
+				array_remove_at(tracker.entries, idx)
+				return
+			}
+
+			ensure(false, str_fmt_tmp("%v: Found an entry with the same start address but end address was different:\nentry   : %v\nto_remove: %v", tracker.name, entry, to_remove))
+			memtracker_dump_entries(tracker)
+		}
+	}
+
+	ensure(false, str_fmt_tmp("%v: Attempted to unregister an entry that was not tracked: %v", tracker.name, to_remove))
+	memtracker_dump_entries(tracker)
+}
+
+memtracker_check_for_collisions :: proc ( tracker : MemoryTracker )
+{
+	entries := array_to_slice_num(tracker.entries)
+
+	for idx in 1 ..< tracker.entries.num {
+		// Check to make sure each allocations adjacent entries do not intersect
+		left  := & entries[idx - 1]
+		right := & entries[idx]
+
+		collided := left.start > right.start || left.end > right.end
+		if collided {
+			msg := str_fmt_tmp("%v: Memory tracker detected a collision:\nleft: %v\nright: %v", tracker.name, left, right)
+			memtracker_dump_entries(tracker)
+		}
+	}
+}
+
+memtracker_dump_entries :: proc( tracker : MemoryTracker )
+{
+	log( "Dumping Memory Tracker:")
+	for idx in 0 ..< tracker.entries.num {
+		entry := & tracker.entries.data[idx]
+		log( str_fmt_tmp("%v", entry) )
+	}
+}

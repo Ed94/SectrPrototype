@@ -23,7 +23,9 @@ Pool :: struct {
 }
 
 PoolHeader :: struct {
-	backing : Allocator,
+	backing  : Allocator,
+	dbg_name : string,
+	tracker  : MemoryTracker,
 
 	zero_bucket     : b32,
 	block_size      : uint,
@@ -53,7 +55,8 @@ pool_init :: proc (
 	bucket_capacity     : uint,
 	bucket_reserve_num  : uint = 0,
 	alignment           : uint = mem.DEFAULT_ALIGNMENT,
-	allocator           : Allocator = context.allocator
+	allocator           : Allocator = context.allocator,
+	dbg_name            : string,
 ) -> ( pool : Pool, alloc_error : AllocatorError )
 {
 	header_size := align_forward_int( size_of(PoolHeader), int(alignment) )
@@ -65,13 +68,17 @@ pool_init :: proc (
 	pool.header           = cast( ^PoolHeader) raw_mem
 	pool.zero_bucket      = should_zero_buckets
 	pool.backing          = allocator
+	pool.dbg_name         = dbg_name
 	pool.block_size       = align_forward_uint(block_size, alignment)
 	pool.bucket_capacity  = bucket_capacity
 	pool.alignment        = alignment
 
+	memtracker_init( & pool.tracker, allocator, Kilobyte * 96, dbg_name )
+
 	if bucket_reserve_num > 0 {
 		alloc_error = pool_allocate_buckets( pool, bucket_reserve_num )
 	}
+
 	pool.current_bucket = pool.bucket_list.first
 	return
 }
@@ -91,6 +98,8 @@ pool_destroy :: proc ( using self : Pool )
 	}
 
 	free( self.header, backing )
+
+	memtracker_clear( self.tracker )
 }
 
 pool_allocate_buckets :: proc( pool : Pool, num_buckets : uint ) -> AllocatorError
@@ -175,6 +184,8 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		if zero_memory {
 			slice.zero(block)
 		}
+
+		memtracker_register_auto_name_slice( & pool.tracker, block)
 		return
 	}
 
@@ -234,6 +245,8 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		slice.zero(block)
 		// log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", block_ptr,  cast(rawptr) (uintptr(block_ptr) + uintptr(pool.block_size))))
 	}
+
+	memtracker_register_auto_name_slice( & pool.tracker, block)
 	return
 }
 
@@ -257,8 +270,12 @@ pool_release :: proc( self : Pool, block : []byte, loc := #caller_location )
 	new_free_block.next = self.free_list_head
 	self.free_list_head = new_free_block
 
-	new_free_block = new_free_block
+	// new_free_block = new_free_block
 	// log( str_fmt_tmp("Released block: %p %d", new_free_block, self.block_size))
+
+	start := new_free_block
+	end   := transmute(rawptr) (uintptr(new_free_block) + uintptr(self.block_size) - 1)
+	memtracker_unregister( self.tracker, { start, end } )
 }
 
 pool_reset :: proc( using pool : Pool )
@@ -298,6 +315,15 @@ pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32
 		block_address := uintptr(raw_data(block))
 
 		if start <= block_address && block_address < end {
+			misalignment := (block_address - start) % uintptr(block_size)
+			if misalignment != 0 {
+				ensure(false, "pool_validate_ownership: This data is within this pool's buckets, however its not aligned to the start of a block")
+				log(str_fmt_tmp("Block address: %p Misalignment: %p closest: %p",
+					transmute(rawptr)block_address,
+					transmute(rawptr)misalignment,
+					rawptr(block_address - misalignment)))
+			}
+
 			within_bucket = true
 			break
 		}

@@ -5,6 +5,18 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Debug gen_odin_src",
+			"type": "cppvsdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/toolchain/odin/codegen/build/gen_src.exe",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}/toolchain/odin",
+			"environment": [],
+			"console": "externalTerminal",
+			"visualizerFile": "${workspaceFolder}/toolchain/odin/scripts/gencpp.natvis"
+		},
+		{
 			"type": "lldb",
 			"request": "launch",
 			"name": "Debug",

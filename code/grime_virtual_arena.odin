@@ -25,6 +25,8 @@ VArena_GrowthPolicyProc :: #type proc( commit_used, committed, reserved, request
 
 VArena :: struct {
 	using vmem       : VirtualMemoryRegion,
+	dbg_name         : string,
+	tracker          : MemoryTracker,
 	commit_used      : uint,
 	growth_policy    : VArena_GrowthPolicyProc,
 	allow_any_reize  : b32,
@@ -59,7 +61,7 @@ varena_allocator :: proc( arena : ^VArena ) -> ( allocator : Allocator ) {
 
 // Default growth_policy is nil
 varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
-	growth_policy : VArena_GrowthPolicyProc, allow_any_reize : b32 = false
+	growth_policy : VArena_GrowthPolicyProc, allow_any_reize : b32 = false, dbg_name : string
 ) -> ( arena : VArena, alloc_error : AllocatorError)
 {
 	page_size := uint(virtual_get_page_size())
@@ -85,6 +87,9 @@ varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
 		arena.growth_policy = growth_policy
 	}
 	arena.allow_any_reize = allow_any_reize
+
+	// Setup the tracker
+	memtracker_init( & arena.tracker, runtime.heap_allocator(), Kilobyte * 128, dbg_name )
 	return
 }
 
@@ -96,7 +101,6 @@ varena_alloc :: proc( using self : ^VArena,
 ) -> ( data : []byte, alloc_error : AllocatorError )
 {
 	verify( alignment & (alignment - 1) == 0, "Non-power of two alignment", location = location )
-	context.user_ptr = self
 	page_size := uint(virtual_get_page_size())
 
 	requested_size := size
@@ -160,6 +164,9 @@ varena_alloc :: proc( using self : ^VArena,
 		mem_zero( data_ptr, int(requested_size) )
 	}
 
+	when ODIN_DEBUG {
+		memtracker_register_auto_name( & tracker, & data[0], & data[len(data) - 1] )
+	}
 	return
 }
 
@@ -167,6 +174,10 @@ varena_free_all :: proc( using self : ^VArena )
 {
 	sync.mutex_guard( & mutex )
 	commit_used = 0
+
+	when ODIN_DEBUG {
+		array_clear(tracker.entries)
+	}
 }
 
 varena_release :: proc( using self : ^VArena )
@@ -198,7 +209,8 @@ varena_allocator_proc :: proc(
 	switch mode
 	{
 		case .Alloc, .Alloc_Non_Zeroed:
-			return varena_alloc( arena, size, alignment, (mode != .Alloc_Non_Zeroed), location )
+			data, alloc_error = varena_alloc( arena, size, alignment, (mode != .Alloc_Non_Zeroed), location )
+			return
 
 		case .Free:
 			alloc_error = .Mode_Not_Implemented
@@ -209,7 +221,8 @@ varena_allocator_proc :: proc(
 		case .Resize, .Resize_Non_Zeroed:
 			if old_memory == nil {
 				ensure(false, "Resizing without old_memory?")
-				return varena_alloc( arena, size, alignment, (mode != .Resize_Non_Zeroed), location )
+				data, alloc_error = varena_alloc( arena, size, alignment, (mode != .Resize_Non_Zeroed), location )
+				return
 			}
 
 			if size == old_size {
@@ -249,12 +262,20 @@ varena_allocator_proc :: proc(
 				if new_region == nil || alloc_error != .None {
 					ensure(false, "Failed to grab new region")
 					data = byte_slice( old_memory, old_size )
+
+					when ODIN_DEBUG {
+						memtracker_register_auto_name( & arena.tracker, & data[0], & data[len(data) - 1] )
+					}
 					return
 				}
 
 				copy_non_overlapping( raw_data(new_region), old_memory, int(old_size) )
 				data = new_region
 				// log( str_fmt_tmp("varena resize (new): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size))
+
+				when ODIN_DEBUG {
+					memtracker_register_auto_name( & arena.tracker, & data[0], & data[len(data) - 1] )
+				}
 				return
 			}
 
@@ -268,6 +289,10 @@ varena_allocator_proc :: proc(
 
 			data = byte_slice( old_memory, size )
 			// log( str_fmt_tmp("varena resize (expanded): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size))
+
+			when ODIN_DEBUG {
+				memtracker_register_auto_name( & arena.tracker, & data[0], & data[len(data) - 1] )
+			}
 			return
 
 		case .Query_Features:

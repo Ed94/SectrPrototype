@@ -10,6 +10,8 @@
 	"files.associations": {
 		"*.rmd": "markdown",
 		"type_traits": "cpp",
-		"utf8proc.c": "cpp"
-	}
+		"utf8proc.c": "cpp",
+		"xtr1common": "cpp"
+	},
+	"C_Cpp.intelliSenseEngineFallback": "disabled"
 }

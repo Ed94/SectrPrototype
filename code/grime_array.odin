@@ -16,6 +16,8 @@ import "core:slice"
 
 ArrayHeader :: struct ( $ Type : typeid ) {
 	backing   : Allocator,
+	dbg_name  : string,
+	fixed_cap : b32,
 	capacity  : u64,
 	num       : u64,
 	data      : [^]Type,
@@ -54,7 +56,7 @@ array_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( Array(Type), A
 }
 
 array_init_reserve :: proc
-( $ Type : typeid, allocator : Allocator, capacity : u64 ) -> ( result : Array(Type), alloc_error : AllocatorError )
+( $ Type : typeid, allocator : Allocator, capacity : u64, fixed_cap : b32 = false, dbg_name : string = "" ) -> ( result : Array(Type), alloc_error : AllocatorError )
 {
 	header_size := size_of(ArrayHeader(Type))
 	array_size  := header_size + int(capacity) * size_of(Type)
@@ -66,6 +68,8 @@ array_init_reserve :: proc
 
 	result.header    = cast( ^ArrayHeader(Type)) raw_mem;
 	result.backing   = allocator
+	// result.dbg_name  = dbg_name
+	result.fixed_cap = fixed_cap
 	result.capacity  = capacity
 	result.data      = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) result.header)[ 1:]
 	return
@@ -127,14 +131,8 @@ array_append_at :: proc( using self : ^Array( $ Type ), item : Type, id : u64 ) 
 	}
 
 	target := & data[id]
+	libc.memmove( ptr_offset(target, 1), target, uint(num - id) * size_of(Type) )
 
-	// TODO(Ed) : VERIFY VIA DEBUG THIS COPY IS FINE.
-	dst = slice_ptr( ptr_offset(target) + 1, num - id - 1 )
-	src = slice_ptr( target, num - id )
-	copy( dst, src )
-
-	// Note(Ed) : Original code from gencpp
-	// libc.memmove( ptr_offset(target, 1), target, (num - idx) * size_of(Type) )
 	data[id] = item
 	num     += 1
 	return AllocatorError.None
@@ -183,11 +181,11 @@ array_push_back :: proc( using self : Array( $ Type)) -> b32 {
 	return true
 }
 
-array_clear :: proc( using self : Array( $ Type ), zero_data : b32 ) {
+array_clear :: proc "contextless" ( using self : Array( $ Type ), zero_data : b32 = false ) {
 	if zero_data {
-		mem.set( raw_data( data ), 0, num )
+		mem.set( data, 0, int(num * size_of(Type)) )
 	}
-	num = 0
+	header.num = 0
 }
 
 array_fill :: proc( using self : Array( $ Type ), begin, end : u64, value : Type ) -> b32
@@ -206,7 +204,7 @@ array_fill :: proc( using self : Array( $ Type ), begin, end : u64, value : Type
 }
 
 array_free :: proc( using self : Array( $ Type ) ) {
-	free( data, backing )
+	free( self.header, backing )
 	self.data = nil
 }
 
@@ -228,13 +226,13 @@ array_pop :: proc( using self : Array( $ Type ) ) {
 
 array_remove_at :: proc( using self : Array( $ Type ), id : u64 )
 {
-	verify( id >= num, "Attempted to remove from an index larger than the array" )
+	verify( id < header.num, "Attempted to remove from an index larger than the array" )
 
-	left  = slice_ptr( data, id )
-	right = slice_ptr( ptr_offset( memory_after(left), 1), num - len(left) - 1 )
-	copy( left, right )
+	left  := & data[id]
+	right := & data[id + 1]
+	libc.memmove( left, right, uint(num - id) * size_of(Type) )
 
-	num -= 1
+	header.num -= 1
 }
 
 array_reserve :: proc( using self : ^Array( $ Type ), new_capacity : u64 ) -> AllocatorError
@@ -290,4 +288,21 @@ array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity : u64 ) -> All
 	self.header.capacity = new_capacity
 	self.header.num      = self.num
 	return result_code
+}
+
+array_block_size :: proc "contextless" ( self : Array( $Type ) ) -> u64 {
+	header_size :: size_of(ArrayHeader(Type))
+	block_size  := cast(u64) (header_size + self.capacity * size_of(Type))
+	return block_size
+}
+
+array_memtracker_entry :: proc( self : Array( $Type ), name : string ) -> MemoryTrackerEntry {
+	header_size :: size_of(ArrayHeader(Type))
+	block_size  := cast(uintptr) (header_size + (cast(uintptr) self.capacity) * size_of(Type))
+
+	block_start := transmute(^u8) self.header
+	block_end   := ptr_offset( block_start, block_size )
+
+	tracker_entry := MemoryTrackerEntry { name, block_start, block_end }
+	return tracker_entry
 }
