@@ -190,6 +190,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		log( "Default font loaded" )
 	}
 
+	// Setup the app ui state
+	ui_startup( & app_ui, cache_allocator = persistent_slab_allocator() )
+
 	// Demo project setup
 	{
 		using project
@@ -274,6 +277,7 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	context.allocator      = persistent_allocator()
 	context.temp_allocator = transient_allocator()
 
+	Memory_App.state = get_state()
 	using state
 
 	// Procedure Addresses are not preserved on hot-reload. They must be restored for persistent data.

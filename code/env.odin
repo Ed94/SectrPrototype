@@ -10,6 +10,7 @@ import rl "vendor:raylib"
 
 Str_App_State := "App State"
 
+
 Memory_App : Memory
 
 Memory_Base_Address_Persistent   :: Terabyte * 1
@@ -177,6 +178,7 @@ State :: struct {
 
 	config     : AppConfig,
 	app_window : AppWindow,
+	app_ui     : UI_State,
 
 	monitor_id         : i32,
 	monitor_refresh_hz : i32,
@@ -203,8 +205,7 @@ State :: struct {
 }
 
 get_state :: proc "contextless" () -> ^ State {
-	// return cast( ^ State ) Memory_App.persistent.reserve_start
-	return Memory_App.state
+	return cast( ^ State ) Memory_App.persistent.reserve_start
 }
 
 AppWindow :: struct {
@@ -223,8 +224,8 @@ ProjectConfig :: struct {
 }
 
 Project :: struct {
-	path : StringCached,
-	name : StringCached,
+	path : StrRunesPair,
+	name : StrRunesPair,
 
 	config   : ProjectConfig,
 	codebase : CodeBase,
@@ -242,7 +243,7 @@ Frame :: struct
 }
 
 Workspace :: struct {
-	name : StringCached,
+	name : StrRunesPair,
 
 	cam         : Camera,
 	zoom_target : f32,

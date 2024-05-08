@@ -7,7 +7,7 @@ rune16 :: distinct u16
 
 // Exposing the alloc_error
 @(require_results)
-string_to_runes :: proc ( content : string, allocator := context.allocator) -> (runes : []rune, alloc_error : AllocatorError) {
+string_to_runes :: proc ( content : string, allocator := context.allocator) -> (runes : []rune, alloc_error : AllocatorError) #optional_allocator_error {
 	num := str_rune_count(content)
 
 	runes, alloc_error = make([]rune, num, allocator)

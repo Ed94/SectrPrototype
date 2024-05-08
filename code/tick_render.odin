@@ -23,17 +23,42 @@ render :: proc()
 
 render_mode_screenspace :: proc ()
 {
+	profile("Render Screenspace")
+
 	state := get_state(); using state
 	replay := & Memory_App.replay
 	cam    := & project.workspace.cam
 	win_extent := state.app_window.extent
+
+	//region App UI
+	Render_App_UI:
+	{
+		profile("App UI")
+		ui := & state.app_ui
+		root := ui.root
+		if root.num_children == 0 {
+			break Render_App_UI
+		}
+
+		current := root.first
+		for ; current != nil; current = ui_box_tranverse_next( current )
+		{
+			// profile("Box")
+			parent := current.parent
+
+			style    := current.style
+			computed := & current.computed
+
+			computed_size := computed.bounds.p1 - computed.bounds.p0
+		}
+	}
+	//endregion App UI
 
 	screen_top_left : Vec2 = {
 		-win_extent.x  + cam.target.x,
 		-win_extent.y + cam.target.y,
 	}
 
-	profile("Render Screenspace")
 	fps_msg       := str_fmt_tmp( "FPS: %f", fps_avg)
 	fps_msg_width := measure_text_size( fps_msg, default_font, 16.0, 0.0 ).x
 	fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 }
@@ -230,16 +255,19 @@ render_mode_2d :: proc()
 		{
 			draw_rectangle( rect_bounds, style )
 		}
+		if style.border_width > 0 {
+			draw_rectangle_lines( rect_bounds, style, style.border_color, style.border_width )
+		}
 		// profile_end()
 
 			line_thickness := 1 * cam_zoom_ratio
 
 		// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
 		if equal_range2(computed.content, computed.padding) {
-			draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
+			// draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
 		}
 		else {
-			draw_rectangle_lines( rect_content, style, Color_Debug_UI_Content_Bounds, line_thickness )
+			// draw_rectangle_lines( rect_content, style, Color_Debug_UI_Content_Bounds, line_thickness )
 		}
 		// profile_end()
 
@@ -291,7 +319,7 @@ render_mode_2d :: proc()
 		rl.DrawCircleV( world_to_screen_pos(cursor_world_pos), 5, Color_GreyRed )
 	}
 
-	// rl.DrawCircleV( { 0, 0 }, 1 * cam_zoom_ratio, Color_White )
+	rl.DrawCircleV( { 0, 0 }, 1 * cam_zoom_ratio, Color_White )
 
 	rl.EndMode2D()
 }

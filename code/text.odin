@@ -66,7 +66,7 @@ draw_text_string :: proc( content : string, pos : Vec2, size : f32, color : rl.C
 	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
 }
 
-draw_text_string_cached :: proc( content : StringCached, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
+draw_text_string_cached :: proc( content : StrRunesPair, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
 {
 	// profile(#procedure)
 	state := get_state(); using state

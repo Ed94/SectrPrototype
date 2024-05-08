@@ -138,6 +138,14 @@ screen_size :: proc "contextless" () -> AreaSize {
 	return transmute(AreaSize) ( extent * 2.0 )
 }
 
+screen_get_bounds :: #force_inline proc "contextless" () -> Range2 {
+	state          := get_state(); using state
+	screen_extent  := state.app_window.extent
+	bottom_left    := Vec2 { -screen_extent.x, -screen_extent.y}
+	top_right      := Vec2 {  screen_extent.x,  screen_extent.y}
+	return range2( bottom_left, top_right )
+}
+
 screen_get_corners :: #force_inline proc "contextless"() -> BoundsCorners2 {
 	state         := get_state(); using state
 	screen_extent := state.app_window.extent

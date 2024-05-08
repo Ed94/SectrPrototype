@@ -153,8 +153,8 @@ ui_compute_layout :: proc()
 
 		// Determine Content Bounds
 		content_bounds := range2(
-			bounds.min + { layout.padding.left,  layout.padding.bottom },
-			bounds.max - { layout.padding.right, layout.padding.top },
+			bounds.min + { layout.padding.left,  layout.padding.bottom } + border_offset,
+			bounds.max - { layout.padding.right, layout.padding.top } - border_offset,
 		)
 
 		computed.anchors = anchored_bounds

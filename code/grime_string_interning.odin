@@ -20,14 +20,14 @@ StringKey   :: distinct u64
 RunesCached :: []rune
 
 // TODO(Ed): Should this just track the key instead? (by default)
-StringCached :: struct {
+StrRunesPair :: struct {
 	str   : string,
 	runes : []rune,
 }
 
 StringCache :: struct {
 	slab      : Slab,
-	table     : HMapZPL(StringCached),
+	table     : HMapZPL(StrRunesPair),
 }
 
 str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
@@ -61,7 +61,7 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 	cache.slab, alloc_error = slab_init( & policy, allocator = persistent_allocator(), dbg_name = dbg_name )
 	verify(alloc_error == .None, "Failed to initialize the string cache" )
 
-	cache.table, alloc_error = zpl_hmap_init_reserve( StringCached, persistent_allocator(), 1 * Megabyte, dbg_name )
+	cache.table, alloc_error = zpl_hmap_init_reserve( StrRunesPair, persistent_allocator(), 1 * Megabyte, dbg_name )
 	return
 }
 
@@ -69,7 +69,7 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 	// cache : ^StringCache,
 str_intern :: proc(
 	content : string
-) -> StringCached
+) -> StrRunesPair
 {
 	// profile(#procedure)
 	cache := & get_state().string_cache
@@ -97,8 +97,8 @@ str_intern :: proc(
 
 		slab_validate_pools( get_state().persistent_slab )
 
-		// result, alloc_error = zpl_hmap_set( & cache.table, key, StringCached { transmute(string) byte_slice(str_mem, length), runes } )
-		result, alloc_error = zpl_hmap_set( & cache.table, key, StringCached { transmute(string) str_mem, runes } )
+		// result, alloc_error = zpl_hmap_set( & cache.table, key, StrRunesPair { transmute(string) byte_slice(str_mem, length), runes } )
+		result, alloc_error = zpl_hmap_set( & cache.table, key, StrRunesPair { transmute(string) str_mem, runes } )
 		verify( alloc_error == .None, "String cache had a backing allocator error" )
 
 		slab_validate_pools( get_state().persistent_slab )
@@ -108,7 +108,7 @@ str_intern :: proc(
 	return (result ^)
 }
 
-// runes_intern :: proc( content : []rune ) -> StringCached
+// runes_intern :: proc( content : []rune ) -> StrRunesPair
 // {
 // 	cache := get_state().string_cache
 // }

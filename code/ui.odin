@@ -179,9 +179,17 @@ UI_StyleFlag :: enum u32 {
 	Clamp_Position_Y,
 
 	// Enroces the widget will maintain its size reguardless of any constraints
-	// Will override parent constraints
+	// Will override parent constraints (use the size.min.xy to specify the width & height)
 	Fixed_Width,
 	Fixed_Height,
+
+	// TODO(Ed): Implement this!
+	// Enforces the widget will have a width specified as a ratio of its height (use the size.min/max.x to specify the scalar)
+	// If you wish for the width to stay fixed couple with the Fixed_Width flag
+	Scale_Width_By_Height_Ratio,
+	// Enforces the widget will have a height specified as a ratio of its width (use the size.min/max.y to specify the scalar)
+	// If you wish for the height to stay fixed couple with the Fixed_Height flag
+	Scale_Height_By_Width_Ratio,
 
 	// Sets the (0, 0) position of the child box to the parents anchor's center (post-margins bounds)
 	// By Default, the origin is at the top left of the anchor's bounds
@@ -244,8 +252,8 @@ UI_Box :: struct {
 	// Cache ID
 	key   : UI_Key,
 	// label : string,
-	label : StringCached,
-	text  : StringCached,
+	label : StrRunesPair,
+	text  : StrRunesPair,
 
 	// Regenerated per frame.
 	using links  : DLL_NodeFull( UI_Box ), // first, last, prev, next
@@ -573,4 +581,15 @@ ui_style_theme_set_layout :: proc ( layout : UI_Layout ) {
 	for & preset in stack_peek_ref( & get_state().ui_context.theme_stack ).array {
 		preset.layout = layout
 	}
+}
+
+ui_style_theme_layout_push :: proc ( layout : UI_Layout ) {
+	ui := get_state().ui_context
+	ui_style_theme_push( stack_peek( & ui.theme_stack) )
+	ui_style_theme_set_layout(layout)
+}
+
+@(deferred_none = ui_style_theme_pop)
+ui_style_theme_layout :: proc( layout : UI_Layout ) {
+	ui_style_theme_layout_push(layout)
 }

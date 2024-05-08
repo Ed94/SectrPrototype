@@ -14,12 +14,8 @@
             "path": "C:/projects/SectrPrototype/code"
         },
         {
-            "name": "ini",
-            "path": "C:/projects/SectrPrototype/thirdparty/ini"
-        },
-        {
-            "name": "backtrace",
-            "path": "C:/projects/SectrPrototype/thirdparty/backtrace"
+            "name": "thirdparty",
+            "path": "C:/projects/SectrPrototype/thirdparty"
         }
     ],
     "odin_command": "C:/projects/SectrPrototype/toolchain/Odin/odin.exe",

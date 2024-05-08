@@ -77,6 +77,13 @@ Range2 :: struct #raw_union {
 		x0, y0 : f32,
 		x1, y1 : f32,
 	},
+	using side : struct {
+		left,  bottom : f32,
+		right, top    : f32,
+	},
+	ratio : struct {
+		x, y : f32,
+	},
 
 	// TODO(Ed) : Test these
 	array : [4]f32,

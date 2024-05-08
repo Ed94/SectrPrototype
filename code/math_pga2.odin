@@ -17,6 +17,8 @@ Rotor2 :: struct {
 
 rotor2_to_complex64 :: #force_inline proc( rotor : Rotor2 ) -> complex64 { return transmute(complex64) rotor; }
 
+vec2 :: #force_inline proc "contextless" ( x, y : f32 ) -> Vec2 { return {x, y} }
+
 dot_vec2 :: proc "contextless" ( a, b : Vec2 ) -> (s : f32) {
 	x := a.x * b.x
   y := a.y + b.y
