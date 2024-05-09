@@ -22,6 +22,7 @@ The dependencies are:
 * An ini parser
 
 The client(sectr) module's organization is relatively flat due to the nature of odin's package management not allowing for cyclic dependencies across modules, and modules can only be in one directory.
+This makes it difficult to unflatten as the depedency chain must clear with no inter-module collisions, not something organic todo in a prototype...
 
 Even so the notatble groups are:
 

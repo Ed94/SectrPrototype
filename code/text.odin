@@ -21,7 +21,7 @@ debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Co
 	// if ( len(font) == 0 ) {
 		font = default_font
 	}
-	pos := screen_to_render(pos)
+	pos := surface_to_render_pos(pos)
 
 	px_size := size
 
@@ -34,7 +34,34 @@ debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Co
 		tint     = color );
 }
 
-draw_text_string :: proc( content : string, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
+draw_text_screenspace :: proc( content : StrRunesPair, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
+{
+	// profile(#procedure)
+	state := get_state(); using state
+
+	if len( content.str ) == 0 {
+		return
+	}
+	font := font
+	if  font.key == Font_Default.key {
+		font = default_font
+	}
+	pos := pos
+
+	rl_font := to_rl_Font(font, size )
+	runes   := content.runes
+
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.TRILINEAR)
+	rl.DrawTextCodepoints( rl_font,
+		raw_data(runes), cast(i32) len(runes),
+		position = transmute(rl.Vector2) pos,
+		fontSize = size,
+		spacing  = 0.0,
+		tint     = color );
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
+}
+
+ws_view_draw_text_string :: proc( content : string, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
 {
 	// profile(#procedure)
 	state := get_state(); using state
@@ -50,7 +77,7 @@ draw_text_string :: proc( content : string, pos : Vec2, size : f32, color : rl.C
 	// if len(font) == 0 {
 		font = default_font
 	}
-	pos := world_to_screen_pos(pos)
+	pos := ws_view_to_render_pos(pos)
 
 	px_size     := size
 	zoom_adjust := px_size * project.workspace.cam.zoom
@@ -66,7 +93,7 @@ draw_text_string :: proc( content : string, pos : Vec2, size : f32, color : rl.C
 	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
 }
 
-draw_text_string_cached :: proc( content : StrRunesPair, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
+ws_view_draw_text_StrRunesPair :: proc( content : StrRunesPair, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
 {
 	// profile(#procedure)
 	state := get_state(); using state
@@ -78,7 +105,7 @@ draw_text_string_cached :: proc( content : StrRunesPair, pos : Vec2, size : f32,
 	if  font.key == Font_Default.key {
 		font = default_font
 	}
-	pos := world_to_screen_pos(pos)
+	pos := ws_view_to_render_pos(pos)
 
 	px_size     := size
 	zoom_adjust := px_size * project.workspace.cam.zoom

@@ -2,18 +2,6 @@
     "$schema": "https://raw.githubusercontent.com/DanielGavin/ols/master/misc/ols.schema.json",
     "collections": [
         {
-            "name": "core",
-            "path": "C:/projects/SectrPrototype/toolchain/Odin/core"
-        },
-        {
-            "name": "vendor",
-            "path": "C:/projects/SectrPrototype/toolchain/Odin/vendor"
-        },
-        {
-            "name": "code",
-            "path": "C:/projects/SectrPrototype/code"
-        },
-        {
             "name": "thirdparty",
             "path": "C:/projects/SectrPrototype/thirdparty"
         }

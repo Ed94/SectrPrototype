@@ -269,14 +269,14 @@ MouseState :: struct {
 			side, forward, back, extra : DigitalBtn
 		}
 	},
-	pos, delta                       : Vec2,
+	raw_pos, pos, delta              : Vec2,
 	vertical_wheel, horizontal_wheel : AnalogAxis
 }
 
 mouse_world_delta :: #force_inline proc "contextless" () -> Vec2 {
 	using state := get_state()
 	cam := & state.project.workspace.cam
-	return { input.mouse.delta.x, -input.mouse.delta.y } * ( 1 / cam.zoom )
+	return input.mouse.delta * ( 1 / cam.zoom )
 }
 
 InputState :: struct {
@@ -347,8 +347,9 @@ poll_input :: proc( old, new : ^ InputState )
 			input_process_digital_btn( old_btn, new_btn, is_down )
 		}
 
-		new.mouse.pos            = rl.GetMousePosition() - transmute(Vec2) get_state().app_window.extent
-		new.mouse.delta          = rl.GetMouseDelta()
+		new.mouse.raw_pos        = rl.GetMousePosition()
+		new.mouse.pos            = render_to_surface_pos(new.mouse.raw_pos)
+		new.mouse.delta          = rl.GetMouseDelta() * {1, -1}
 		new.mouse.vertical_wheel = rl.GetMouseWheelMove()
 	}
 }

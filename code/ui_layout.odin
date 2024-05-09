@@ -5,12 +5,12 @@ import "core:math/linalg"
 
 // Note(Ed): This is naturally pretty expensive
 
-ui_compute_layout :: proc()
+ui_compute_layout :: proc( ui : ^UI_State )
 {
 	profile(#procedure)
 	state := get_state()
 
-	root := state.project.workspace.ui.root
+	root := ui.root
 	{
 		computed := & root.computed
 		style    := root.style
@@ -172,7 +172,7 @@ ui_compute_layout :: proc()
 			text_pos.y += ( content_size.y - text_size.y ) * layout.text_alignment.y
 
 			computed.text_size = text_size
-			computed.text_pos  = { text_pos.x, -text_pos.y }
+			computed.text_pos  = { text_pos.x, text_pos.y }
 		}
 
 		current = ui_box_tranverse_next( current )

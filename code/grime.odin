@@ -134,9 +134,9 @@ dot :: proc {
 	dot_unitv3_vs,
 }
 
-draw_text :: proc {
-	draw_text_string,
-	draw_text_string_cached,
+ws_view_draw_text :: proc {
+	ws_view_draw_text_string,
+	ws_view_draw_text_StrRunesPair,
 }
 
 from_bytes :: proc {

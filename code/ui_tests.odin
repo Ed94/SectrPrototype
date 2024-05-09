@@ -66,6 +66,9 @@ test_draggable :: proc()
 
 	draggable.style.layout.pos  = debug.draggable_box_pos
 	draggable.style.layout.size.min = debug.draggable_box_size
+
+	draggable.text       = { str_fmt_alloc("%v", debug.draggable_box_pos), {} }
+	draggable.text.runes = to_runes(draggable.text.str)
 }
 
 test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_Style )

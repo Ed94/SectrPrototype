@@ -1,8 +1,15 @@
+/*
+	This was a tracking allocator made to kill off various bugs left with grime's pool & slab allocators
+	It doesn't perform that well on a per-frame basis and should be avoided for general memory debugging
+
+	It only makes sure that memory allocations don't collide in the allocator and deallocations don't occur for memory never allocated.
+
+	I'm keeping it around as an artifact & for future allocators I may make.
+*/
 package sectr
 
 MemoryTrackerEntry :: struct {
 	start, end : rawptr,
-	// owner      : string,
 }
 
 MemoryTracker :: struct {

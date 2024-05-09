@@ -69,6 +69,8 @@ UI_BoxFlag :: enum u64 {
 	Pan_X,
 	Pan_Y,
 
+	Screenspace,
+
 	Count,
 }
 UI_BoxFlags :: bit_set[UI_BoxFlag; u64]
@@ -84,13 +86,6 @@ UI_Computed :: struct {
 	content    : Range2, // Bounds for content (text or children)
 	text_pos   : Vec2,   // Position of text within content
 	text_size  : Vec2,   // Size of text within content
-}
-
-UI_LayoutSide :: struct {
-	// using _ :  struct {
-		top, bottom : UI_Scalar,
-		left, right : UI_Scalar,
-	// }
 }
 
 UI_Cursor :: struct {
@@ -119,32 +114,6 @@ UI_ScalarConstraint :: struct {
 
 UI_Scalar2 :: [Axis2.Count]UI_Scalar
 
-// Desiered constraints on the UI_Box.
-UI_Layout :: struct {
-	anchor         : Range2,
-	alignment      : Vec2,
-	text_alignment : Vec2,
-
-	border_width : UI_Scalar,
-
-	margins : UI_LayoutSide,
-	padding : UI_LayoutSide,
-
-	// TODO(Ed): We cannot support individual corners unless we add it to raylib (or finally change the rendering backend)
-	corner_radii : [Corner.Count]f32,
-
-	// Position in relative coordinate space.
-	// If the box's flags has Fixed_Position, then this will be its aboslute position in the relative coordinate space
-	pos : Vec2,
-
-	size : Range2,
-
-	// TODO(Ed) :  Should thsi just always be WS_Pos for workspace UI?
-	// (We can union either varient and just know based on checking if its the screenspace UI)
-	// If the box is a child of the root parent, its automatically in world space and thus will use the tile_pos.
-	// tile_pos : WS_Pos,
-}
-
 UI_Signal :: struct {
 	cursor_pos : Vec2,
 	drag_delta : Vec2,
@@ -161,91 +130,6 @@ UI_Signal :: struct {
 	resizing    : b8,
 	cursor_over : b8,
 	commit      : b8,
-}
-
-UI_StyleFlag :: enum u32 {
-
-	// Will perform scissor pass on children to their parent's bounds
-	// (Specified in the parent)
-	Clip_Children_To_Bounds,
-
-	// Enforces the box will always remain in a specific position relative to the parent.
-	// Overriding the anchors and margins.
-	Fixed_Position_X,
-	Fixed_Position_Y,
-
-	// Enforces box will always be within the bounds of the parent box.
-	Clamp_Position_X,
-	Clamp_Position_Y,
-
-	// Enroces the widget will maintain its size reguardless of any constraints
-	// Will override parent constraints (use the size.min.xy to specify the width & height)
-	Fixed_Width,
-	Fixed_Height,
-
-	// TODO(Ed): Implement this!
-	// Enforces the widget will have a width specified as a ratio of its height (use the size.min/max.x to specify the scalar)
-	// If you wish for the width to stay fixed couple with the Fixed_Width flag
-	Scale_Width_By_Height_Ratio,
-	// Enforces the widget will have a height specified as a ratio of its width (use the size.min/max.y to specify the scalar)
-	// If you wish for the height to stay fixed couple with the Fixed_Height flag
-	Scale_Height_By_Width_Ratio,
-
-	// Sets the (0, 0) position of the child box to the parents anchor's center (post-margins bounds)
-	// By Default, the origin is at the top left of the anchor's bounds
-	Origin_At_Anchor_Center,
-
-	// Will size the box to its text. (Padding & Margins will thicken )
-	Size_To_Text,
-	Text_Wrap,
-
-	Count,
-}
-UI_StyleFlags :: bit_set[UI_StyleFlag; u32]
-
-UI_StylePreset :: enum u32 {
-	Default,
-	Disabled,
-	Hot,
-	Active,
-	Count,
-}
-
-UI_Style :: struct {
-	flags : UI_StyleFlags,
-
-	bg_color     : Color,
-	border_color : Color,
-
-	// TODO(Ed) : Add support for this eventually
-	blur_size : f32,
-
-	font           : FontID,
-	// TODO(Ed): Should this get moved to the layout struct? Techncially font-size is mainly
-	font_size      : f32,
-	text_color     : Color,
-
-	cursor : UI_Cursor,
-
-	using layout : UI_Layout,
-
-	 // Used with style, prev_style, and style_delta to produce a simple interpolated animation
-	 // Applied in the layout pass & the rendering pass for their associated fields.
-	transition_time : f32,
-}
-
-UI_StyleTheme :: struct #raw_union {
-	array : [UI_StylePreset.Count] UI_Style,
-	using styles : struct {
-		default, disabled, hot, active : UI_Style,
-	}
-}
-
-UI_TextAlign :: enum u32 {
-	Left,
-	Center,
-	Right,
-	Count
 }
 
 UI_Box :: struct {
@@ -443,16 +327,16 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
 	using state := get_state()
 	if ui_context == & state.project.workspace.ui {
-		return screen_to_world( input.mouse.pos )
+		return surface_to_ws_view_pos( input.mouse.pos )
 	}
 	else {
 		return input.mouse.pos
 	}
 }
 
-ui_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
+ui_ws_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
 	using state := get_state()
-	return ui_cursor_pos() - state.ui_context.active_start_signal.cursor_pos
+	return surface_to_ws_view_pos(input.mouse.pos) - state.ui_context.active_start_signal.cursor_pos
 }
 
 ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
@@ -481,19 +365,19 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 }
 
 // TODO(Ed) :: Is this even needed?
-ui_graph_build_end :: proc()
+ui_graph_build_end :: proc( ui : ^UI_State )
 {
 	profile(#procedure)
 
 	ui_parent_pop() // Should be ui_context.root
 
 	// Regenerate the computed layout if dirty
-	ui_compute_layout()
+	ui_compute_layout( ui )
 
 	get_state().ui_context = nil
 }
 
-@(deferred_none = ui_graph_build_end)
+@(deferred_in = ui_graph_build_end)
 ui_graph_build :: proc( ui : ^ UI_State ) {
 	ui_graph_build_begin( ui )
 }
@@ -520,10 +404,6 @@ ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_
 	return key
 }
 
-ui_layout_padding :: proc( pixels : f32 ) -> UI_LayoutSide {
-	return { pixels, pixels, pixels, pixels }
-}
-
 ui_parent_push :: proc( ui : ^ UI_Box ) {
 	stack := & get_state().ui_context.parent_stack
 	stack_push( & get_state().ui_context.parent_stack, ui )
@@ -541,55 +421,4 @@ ui_parent_pop :: proc() {
 @(deferred_none = ui_parent_pop)
 ui_parent :: proc( ui : ^UI_Box) {
 	ui_parent_push( ui )
-}
-
-ui_style_peek :: proc( box_state : UI_StylePreset ) -> UI_Style {
-	return stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state]
-}
-
-ui_style_ref :: proc( box_state : UI_StylePreset ) -> (^ UI_Style) {
-	return & stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state]
-}
-
-ui_style_set :: proc ( style : UI_Style, box_state : UI_StylePreset ) {
-	stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state] = style
-}
-
-ui_style_set_layout :: proc ( layout : UI_Layout, preset : UI_StylePreset ) {
-	stack_peek_ref( & get_state().ui_context.theme_stack ).array[preset].layout = layout
-}
-
-ui_style_theme_push :: proc( preset : UI_StyleTheme ) {
-	push( & get_state().ui_context.theme_stack, preset )
-}
-
-ui_style_theme_pop :: proc() {
-	pop( & get_state().ui_context.theme_stack )
-}
-
-@(deferred_none = ui_style_theme_pop)
-ui_style_theme :: proc( preset : UI_StyleTheme ) {
-	ui_style_theme_push( preset )
-}
-
-@(deferred_none = ui_style_theme_pop)
-ui_theme_via_style :: proc ( style : UI_Style ) {
-	ui_style_theme_push( UI_StyleTheme { styles = { style, style, style, style } })
-}
-
-ui_style_theme_set_layout :: proc ( layout : UI_Layout ) {
-	for & preset in stack_peek_ref( & get_state().ui_context.theme_stack ).array {
-		preset.layout = layout
-	}
-}
-
-ui_style_theme_layout_push :: proc ( layout : UI_Layout ) {
-	ui := get_state().ui_context
-	ui_style_theme_push( stack_peek( & ui.theme_stack) )
-	ui_style_theme_set_layout(layout)
-}
-
-@(deferred_none = ui_style_theme_pop)
-ui_style_theme_layout :: proc( layout : UI_Layout ) {
-	ui_style_theme_layout_push(layout)
 }
