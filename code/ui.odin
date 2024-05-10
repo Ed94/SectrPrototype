@@ -294,7 +294,7 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 	using state := get_state()
 	if box.first != nil
 	{
-		is_app_ui := ui_context == & app_ui
+		is_app_ui := ui_context == & screen_ui
 		if is_app_ui || intersects_range2( view_get_bounds(), box.computed.bounds)
 		{
 			return box.first
@@ -316,7 +316,7 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
 	using state := get_state()
 	if ui_context == & state.project.workspace.ui {
-		return surface_to_ws_view_pos( input.mouse.pos )
+		return screen_to_ws_view_pos( input.mouse.pos )
 	}
 	else {
 		return input.mouse.pos 
@@ -325,7 +325,7 @@ ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
 
 ui_ws_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
 	using state := get_state()
-	return surface_to_ws_view_pos(input.mouse.pos) - state.ui_context.active_start_signal.cursor_pos
+	return screen_to_ws_view_pos(input.mouse.pos) - state.ui_context.active_start_signal.cursor_pos
 }
 
 ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )

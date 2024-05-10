@@ -348,7 +348,7 @@ poll_input :: proc( old, new : ^ InputState )
 		}
 
 		new.mouse.raw_pos        = rl.GetMousePosition()
-		new.mouse.pos            = render_to_surface_pos(new.mouse.raw_pos)
+		new.mouse.pos            = render_to_screen_pos(new.mouse.raw_pos)
 		new.mouse.delta          = rl.GetMouseDelta() * {1, -1}
 		new.mouse.vertical_wheel = rl.GetMouseWheelMove()
 	}

@@ -203,7 +203,7 @@ render_mode_2d_workspace :: proc()
 
 
 	if debug.mouse_vis {
-		cursor_world_pos := surface_to_ws_view_pos(input.mouse.pos)
+		cursor_world_pos := screen_to_ws_view_pos(input.mouse.pos)
 		rl.DrawCircleV( ws_view_to_render_pos(cursor_world_pos), 5, Color_GreyRed )
 	}
 
@@ -271,10 +271,10 @@ render_mode_screenspace :: proc ()
 		debug_text("Mouse Vertical Wheel: %v", input.mouse.vertical_wheel )
 		debug_text("Mouse Delta                    : %v", input.mouse.delta )
 		debug_text("Mouse Position (Render)        : %v", input.mouse.raw_pos )
-		debug_text("Mouse Position (Surface)       : %v", input.mouse.pos )
-		debug_text("Mouse Position (Workspace View): %v", surface_to_ws_view_pos(input.mouse.pos) )
+		debug_text("Mouse Position (Screen)        : %v", input.mouse.pos )
+		debug_text("Mouse Position (Workspace View): %v", screen_to_ws_view_pos(input.mouse.pos) )
 		rl.DrawCircleV( input.mouse.raw_pos,                    10, Color_White_A125 )
-		rl.DrawCircleV( surface_to_render_pos(input.mouse.pos),  2, Color_BG )
+		rl.DrawCircleV( screen_to_render_pos(input.mouse.pos),  2, Color_BG )
 	}
 
 	ui := & project.workspace.ui
@@ -291,7 +291,7 @@ render_mode_screenspace :: proc ()
 		debug_text("Workspace Active Box: %v", active_box.label.str )
 	}
 
-	ui = & app_ui
+	ui = & screen_ui
 
 	debug_text("Box Count: %v", ui.built_box_count )
 
@@ -324,7 +324,7 @@ render_app_ui :: proc()
 	Render_App_UI:
 	{
 		profile("App UI")
-		ui := & state.app_ui
+		ui := & state.screen_ui
 		state.ui_context = ui
 		root := ui.root
 		if root.num_children == 0 {
@@ -343,24 +343,24 @@ render_app_ui :: proc()
 			computed_size := computed.bounds.p1 - computed.bounds.p0
 
 			render_anchors := range2(
-				surface_to_render_pos(computed.anchors.min),
-				surface_to_render_pos(computed.anchors.max),
+				screen_to_render_pos(computed.anchors.min),
+				screen_to_render_pos(computed.anchors.max),
 			)
 			render_margins := range2(
-				surface_to_render_pos(computed.margins.min),
-				surface_to_render_pos(computed.margins.max),
+				screen_to_render_pos(computed.margins.min),
+				screen_to_render_pos(computed.margins.max),
 			)
 			render_bounds := range2(
-				surface_to_render_pos(computed.bounds.min),
-				surface_to_render_pos(computed.bounds.max),
+				screen_to_render_pos(computed.bounds.min),
+				screen_to_render_pos(computed.bounds.max),
 			)
 			render_padding := range2(
-				surface_to_render_pos(computed.padding.min),
-				surface_to_render_pos(computed.padding.max),
+				screen_to_render_pos(computed.padding.min),
+				screen_to_render_pos(computed.padding.max),
 			)
 			render_content := range2(
-				surface_to_render_pos(computed.content.min),
-				surface_to_render_pos(computed.content.max),
+				screen_to_render_pos(computed.content.min),
+				screen_to_render_pos(computed.content.max),
 			)
 			rect_anchors := range2_to_rl_rect( render_anchors )
 			rect_margins := range2_to_rl_rect( render_margins )
@@ -426,7 +426,7 @@ render_app_ui :: proc()
 		// profile_end()
 
 			if len(current.text.str) > 0 && style.font.key != 0 {
-				draw_text_screenspace( current.text, surface_to_render_pos(computed.text_pos), style.layout.font_size, style.text_color )
+				draw_text_screenspace( current.text, screen_to_render_pos(computed.text_pos), style.layout.font_size, style.text_color )
 			}
 		}
 	}

@@ -140,9 +140,9 @@ screen_size :: proc "contextless" () -> AreaSize {
 
 screen_get_bounds :: #force_inline proc "contextless" () -> Range2 {
 	state          := get_state(); using state
-	surface_extent  := state.app_window.extent
-	bottom_left    := Vec2 { -surface_extent.x, -surface_extent.y}
-	top_right      := Vec2 {  surface_extent.x,  surface_extent.y}
+	screen_extent  := state.app_window.extent
+	bottom_left    := Vec2 { -screen_extent.x, -screen_extent.y}
+	top_right      := Vec2 {  screen_extent.x,  screen_extent.y}
 	return range2( bottom_left, top_right )
 }
 
@@ -180,7 +180,7 @@ view_get_corners :: #force_inline proc "contextless"() -> BoundsCorners2 {
 	return { top_left, top_right, bottom_left, bottom_right }
 }
 
-render_to_surface_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
+render_to_screen_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
 	extent := & get_state().app_window.extent
 	result := Vec2 {
 		pos.x - extent.x,
@@ -193,15 +193,15 @@ render_to_ws_view_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
 	return {}
 }
 
-surface_to_ws_view_pos :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
+screen_to_ws_view_pos :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
 	state := get_state(); using state
 	cam   := & project.workspace.cam
 	result := Vec2 { cam.target.x, -cam.target.y}  + Vec2 { pos.x, pos.y } * (1 / cam.zoom)
 	return result
 }
 
-// (Surface) Centered screen space to conventional screen space used for rendering
-surface_to_render_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
+// Centered screen space to conventional screen space used for rendering
+screen_to_render_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
 	screen_extent := transmute(Vec2) get_state().app_window.extent
 	return pos * {1, -1} + { screen_extent.x, screen_extent.y }
 }
@@ -216,9 +216,9 @@ ws_view_extent :: #force_inline proc "contextless"() -> Extents2 {
 	return app_window.extent * cam_zoom_ratio
 }
 
-// Workspace view to surface space position
+// Workspace view to screen space position
 // TODO(Ed): Support a position which would not be centered on the screen if in a viewport
-ws_view_to_surface_pos :: #force_inline proc "contextless"(position: Vec2) -> Vec2 {
+ws_view_to_screen_pos :: #force_inline proc "contextless"(position: Vec2) -> Vec2 {
 	return position
 }
 
@@ -226,9 +226,9 @@ ws_view_to_render_pos :: #force_inline proc "contextless"(position: Vec2) -> Vec
 	return { position.x, position.y * -1 }
 }
 
-// Workspace view to surface space position (zoom agnostic)
+// Workspace view to screen space position (zoom agnostic)
 // TODO(Ed): Support a position which would not be centered on the screen if in a viewport
-ws_view_to_surface_pos_no_zoom :: #force_inline proc "contextless"(position: Vec2) -> Vec2 {
+ws_view_to_screen_pos_no_zoom :: #force_inline proc "contextless"(position: Vec2) -> Vec2 {
 	state          := get_state(); using state
 	cam_zoom_ratio := 1.0 / state.project.workspace.cam.zoom
 	return { position.x, position.y } * cam_zoom_ratio

@@ -177,7 +177,7 @@ State :: struct {
 
 	config     : AppConfig,
 	app_window : AppWindow,
-	app_ui     : App_UI_State,
+	screen_ui  : UI_ScreenState,
 
 	monitor_id         : i32,
 	monitor_refresh_hz : i32,

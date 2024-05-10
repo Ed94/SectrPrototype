@@ -21,7 +21,7 @@ debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Co
 	// if ( len(font) == 0 ) {
 		font = default_font
 	}
-	pos := surface_to_render_pos(pos)
+	pos := screen_to_render_pos(pos)
 
 	px_size := size
 

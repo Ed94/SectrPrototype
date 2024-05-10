@@ -193,16 +193,7 @@ update :: proc( delta_time : f64 ) -> b32
 
 	// TODO(Ed): We need input buffer so that we can consume input actions based on the UI with priority
 
-	//region App UI Tick
-	{
-		profile("App Screenspace Imgui")
-
-		ui_graph_build( & state.app_ui )
-		ui := ui_context
-
-		ui_app_menu_bar()
-	}
-	//endregion App UI Tick
+	ui_screen_tick()
 
 	//region WorkspaceImgui Tick
 	{

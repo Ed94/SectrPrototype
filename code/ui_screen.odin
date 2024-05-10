@@ -1,6 +1,6 @@
 package sectr
 
-App_UI_State :: struct
+UI_ScreenState :: struct
 {
 	using base : UI_State,
 	menu_bar : struct
@@ -20,13 +20,24 @@ App_UI_State :: struct
 	},
 }
 
+ui_screen_tick :: proc() {
+	profile("Screenspace Imgui")
+
+	using state := get_state()
+	ui_graph_build( & screen_ui )
+	ui := ui_context
+
+	ui_app_menu_bar()
+	ui_app_settings_menu()
+}
+
 ui_app_menu_bar :: proc()
 {
 	profile("App Menu Bar")
 	fmt :: str_fmt_alloc
 
 	using state := get_state()
-	using app_ui
+	using screen_ui
 	{
 		using menu_bar
 		ui_theme_via_style({
@@ -91,26 +102,19 @@ ui_app_menu_bar :: proc()
 		spacer.style.anchor.ratio.x = 1.0
 		// spacer.style.bg_color = Color_Red
 	}
-
-	ui_app_settings_menu()
 }
 
 ui_app_settings_menu :: proc()
 {
 	profile("Settings Menu")
 	using state := get_state()
-	using state.app_ui
-	if menu_bar.settings_btn.pressed || ! menu_bar.settings_btn.is_open {
-		return
-	}
+	using state.screen_ui
+	if menu_bar.settings_btn.pressed || ! menu_bar.settings_btn.is_open do return
 
 	using settings_menu
-	if size.x < min_size.x {
-		size.x = min_size.x
-	}
-	if size.y < min_size.y {
-		size.y = min_size.y
-	}
+	if size.x < min_size.x do size.x = min_size.x
+	if size.y < min_size.y do size.y = min_size.y
+
 	container = ui_vbox_begin( .Top_To_Bottom, "Settings Menu", {.Mouse_Clickable})
 	{
 		using container
@@ -133,11 +137,10 @@ ui_app_settings_menu :: proc()
 		ui_style_theme_ref().hot.bg_color = Color_Blue
 		frame_bar := ui_hbox_begin(.Left_To_Right, "Settings Menu: Frame Bar", { .Mouse_Clickable, .Focusable, .Click_To_Focus })
 		{
-			frame_bar.style.bg_color       = Color_BG_Panel
-			frame_bar.style.flags          = {.Fixed_Height}
-			frame_bar.style.alignment      = { 0, 0 }
-			// frame_bar.style.anchor.ratio.y = 0.25
-			frame_bar.style.size.min.y     = 50
+			frame_bar.style.bg_color   = Color_BG_Panel
+			frame_bar.style.flags      = {.Fixed_Height}
+			frame_bar.style.alignment  = { 0, 0 }
+			frame_bar.style.size.min.y = 50
 			if frame_bar.active {
 				pos += input.mouse.delta
 			}
@@ -146,7 +149,6 @@ ui_app_settings_menu :: proc()
 			title := ui_text("Settings Menu: Title", str_intern("Settings Menu"), {.Disabled})
 			{
 				using title
-				// style.alignment      = {0, 1}
 				style.margins        = { 0, 0, 15, 0}
 				style.text_alignment = {0 , 0.5}
 				style.anchor.ratio.x = 1.0
@@ -160,11 +162,8 @@ ui_app_settings_menu :: proc()
 			{
 				using close_btn
 				text = str_intern("close")
-				style.flags = {.Fixed_Width}
-				// style.bg_color = Color_GreyRed
+				style.flags          = {.Fixed_Width}
 				style.size.min       = {50, 0}
-				// style.anchor         = range2( {1.0, 0}, {})
-				// style.alignment      = {0, 0}
 				style.text_alignment = {0.5, 0.5}
 				style.anchor.ratio.x = 1.0
 				if close_btn.pressed {

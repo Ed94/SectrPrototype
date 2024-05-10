@@ -192,9 +192,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	// Setup the app ui state
 	{
-		ui_startup( & app_ui.base, cache_allocator = persistent_slab_allocator() )
+		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
 
-		using app_ui
+		using screen_ui
 		menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
 		menu_bar.size = {200, 40}
 
