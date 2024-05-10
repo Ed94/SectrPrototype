@@ -122,5 +122,6 @@ log :: proc( msg : string, level := LogLevel.Info, loc := #caller_location ) {
 }
 
 logf :: proc( fmt : string, args : ..any,  level := LogLevel.Info, loc := #caller_location  ) {
+	// context.allocator = transient_allocator()
 	core_log.logf( level, fmt, args, location = loc )
 }

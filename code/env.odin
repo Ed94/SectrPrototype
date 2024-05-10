@@ -10,7 +10,6 @@ import rl "vendor:raylib"
 
 Str_App_State := "App State"
 
-
 Memory_App : Memory
 
 Memory_Base_Address_Persistent   :: Terabyte * 1

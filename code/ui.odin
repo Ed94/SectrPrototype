@@ -114,24 +114,6 @@ UI_ScalarConstraint :: struct {
 
 UI_Scalar2 :: [Axis2.Count]UI_Scalar
 
-UI_Signal :: struct {
-	cursor_pos : Vec2,
-	drag_delta : Vec2,
-	scroll     : Vec2,
-
-	left_clicked     : b8,
-	right_clicked    : b8,
-	double_clicked   : b8,
-	keyboard_clicked : b8,
-
-	pressed     : b8,
-	released    : b8,
-	dragging    : b8,
-	resizing    : b8,
-	cursor_over : b8,
-	commit      : b8,
-}
-
 UI_Box :: struct {
 	// Cache ID
 	key   : UI_Key,
@@ -192,7 +174,6 @@ UI_State :: struct {
 	// flag_stack    : Stack( UI_BoxFlags, UI_BoxFlags_Stack_Size ),
 
 	hot             : UI_Key,
-	hot_resizable   : b32,
 	hot_start_style : UI_Style,
 
 	active_mouse        : [MouseBtn.count] UI_Key,
@@ -330,7 +311,7 @@ ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
 		return surface_to_ws_view_pos( input.mouse.pos )
 	}
 	else {
-		return input.mouse.pos
+		return input.mouse.pos 
 	}
 }
 
@@ -354,9 +335,6 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	if ui.active == UI_Key(0) {
 		//ui.hot = UI_Key(0)
 		ui.active_start_signal = {}
-	}
-	if ui.hot == UI_Key(0) {
-		ui.hot_resizable = false
 	}
 
 	ui.built_box_count = 0
@@ -419,6 +397,4 @@ ui_parent_pop :: proc() {
 }
 
 @(deferred_none = ui_parent_pop)
-ui_parent :: proc( ui : ^UI_Box) {
-	ui_parent_push( ui )
-}
+ui_parent :: #force_inline proc( ui : ^UI_Box) { ui_parent_push( ui ) }

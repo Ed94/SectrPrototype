@@ -180,28 +180,6 @@ render_mode_2d_workspace :: proc()
 		}
 		// profile_end()
 
-			if .Mouse_Resizable in current.flags
-			{
-				// profile("Resize Bounds")
-				resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
-				resize_percent_width := computed_size * (resize_border_width * 1.0/ 200.0)
-				resize_border_non_range := add(current.computed.bounds, range2(
-						{  resize_percent_width.x, -resize_percent_width.x },
-						{ -resize_percent_width.x,  resize_percent_width.x }))
-
-				render_resize := range2(
-					ws_view_to_render_pos(resize_border_non_range.min),
-					ws_view_to_render_pos(resize_border_non_range.max),
-				)
-				rect_resize := rl.Rectangle {
-					render_resize.min.x,
-					render_resize.min.y,
-					render_resize.max.x - render_resize.min.x,
-					render_resize.max.y - render_resize.min.y,
-				}
-				draw_rectangle_lines( rect_padding, style, Color_Red, line_thickness )
-			}
-
 			point_radius := 3 * cam_zoom_ratio
 
 		// profile_begin("circles")
@@ -216,7 +194,7 @@ render_mode_2d_workspace :: proc()
 		// profile_end()
 
 			if len(current.text.str) > 0 {
-				ws_view_draw_text( current.text, ws_view_to_render_pos(computed.text_pos * {1, -1}), style.font_size, style.text_color )
+				ws_view_draw_text( current.text, ws_view_to_render_pos(computed.text_pos * {1, -1}), style.layout.font_size, style.text_color )
 			}
 		}
 	}
@@ -290,6 +268,7 @@ render_mode_screenspace :: proc ()
 
 	if debug.mouse_vis {
 		debug_text("Mouse Vertical Wheel: %v", input.mouse.vertical_wheel )
+		debug_text("Mouse Delta                    : %v", input.mouse.delta )
 		debug_text("Mouse Position (Render)        : %v", input.mouse.raw_pos )
 		debug_text("Mouse Position (Surface)       : %v", input.mouse.pos )
 		debug_text("Mouse Position (Workspace View): %v", surface_to_ws_view_pos(input.mouse.pos) )
@@ -299,18 +278,31 @@ render_mode_screenspace :: proc ()
 
 	ui := & project.workspace.ui
 
-	// debug_text("Box Count: %v", ui.built_box_count )
+	debug_text("Box Count: %v", ui.built_box_count )
 
 	hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
 	active_box := ui_box_from_key( ui.curr_cache, ui.active )
 	if hot_box != nil {
-		debug_text("Hot    Box   : %v", hot_box.label.str )
-		// debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
+		debug_text("Worksapce Hot    Box   : %v", hot_box.label.str )
+		debug_text("Workspace Hot    Range2: %v", hot_box.computed.bounds.pts)
 	}
 	if active_box != nil{
-		// debug_text("Active Box: %v", active_box.label.str )
+		debug_text("Workspace Active Box: %v", active_box.label.str )
 	}
-	// debug_text("Active Resizing: %v", ui.active_start_signal.resizing)
+
+	ui = & app_ui
+
+	debug_text("Box Count: %v", ui.built_box_count )
+
+	hot_box    = ui_box_from_key( ui.curr_cache, ui.hot )
+	active_box = ui_box_from_key( ui.curr_cache, ui.active )
+	if hot_box != nil {
+		debug_text("Hot    Box   : %v", hot_box.label.str )
+		debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
+	}
+	if active_box != nil{
+		debug_text("Active Box: %v", active_box.label.str )
+	}
 
 	view := view_get_bounds()
 	// debug_text("View Bounds (World): %v", view.pts )
@@ -432,7 +424,7 @@ render_app_ui :: proc()
 		// profile_end()
 
 			if len(current.text.str) > 0 {
-				draw_text_screenspace( current.text, surface_to_render_pos(computed.text_pos), style.font_size, style.text_color )
+				draw_text_screenspace( current.text, surface_to_render_pos(computed.text_pos), style.layout.font_size, style.text_color )
 			}
 		}
 	}

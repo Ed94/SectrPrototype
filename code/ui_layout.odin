@@ -106,11 +106,11 @@ ui_compute_layout :: proc( ui : ^UI_State )
 		}
 
 		text_size : Vec2
-		if style.font_size == computed.text_size.y {
+		if style.layout.font_size == computed.text_size.y {
 			text_size = computed.text_size
 		}
 		else {
-			text_size = cast(Vec2) measure_text_size( current.text.str, style.font, style.font_size, 0 )
+			text_size = cast(Vec2) measure_text_size( current.text.str, style.font, style.layout.font_size, 0 )
 		}
 
 		if size_to_text {
@@ -154,7 +154,7 @@ ui_compute_layout :: proc( ui : ^UI_State )
 		// Determine Content Bounds
 		content_bounds := range2(
 			bounds.min + { layout.padding.left,  layout.padding.bottom } + border_offset,
-			bounds.max - { layout.padding.right, layout.padding.top } - border_offset,
+			bounds.max - { layout.padding.right, layout.padding.top }    - border_offset,
 		)
 
 		computed.anchors = anchored_bounds

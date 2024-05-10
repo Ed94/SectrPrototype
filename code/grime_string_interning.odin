@@ -19,10 +19,12 @@ import "core:strings"
 StringKey   :: distinct u64
 RunesCached :: []rune
 
-// TODO(Ed): Should this just track the key instead? (by default)
 StrRunesPair :: struct {
 	str   : string,
 	runes : []rune,
+}
+to_str_runes_pair :: proc ( content : string ) -> StrRunesPair {
+	return { content, to_runes(content) }
 }
 
 StringCache :: struct {
@@ -65,8 +67,9 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 	return
 }
 
-// str_cache_intern_string :: proc(
-	// cache : ^StringCache,
+str_intern_key    :: #force_inline proc( content : string ) ->  StringKey      { return cast(StringKey) crc32( transmute([]byte) content ) }
+str_intern_lookup :: #force_inline proc( key : StringKey )  -> (^StrRunesPair) { return zpl_hmap_get( & get_state().string_cache.table, transmute(u64) key ) }
+
 str_intern :: proc(
 	content : string
 ) -> StrRunesPair
@@ -74,8 +77,8 @@ str_intern :: proc(
 	// profile(#procedure)
 	cache := & get_state().string_cache
 
-	key    := u64( crc32( transmute([]byte) content ))
-	result := zpl_hmap_get( & cache.table, key )
+	key    := str_intern_key(content)
+	result := zpl_hmap_get( & cache.table, transmute(u64) key )
 	if result != nil {
 		return (result ^)
 	}
@@ -98,7 +101,7 @@ str_intern :: proc(
 		slab_validate_pools( get_state().persistent_slab )
 
 		// result, alloc_error = zpl_hmap_set( & cache.table, key, StrRunesPair { transmute(string) byte_slice(str_mem, length), runes } )
-		result, alloc_error = zpl_hmap_set( & cache.table, key, StrRunesPair { transmute(string) str_mem, runes } )
+		result, alloc_error = zpl_hmap_set( & cache.table, transmute(u64) key, StrRunesPair { transmute(string) str_mem, runes } )
 		verify( alloc_error == .None, "String cache had a backing allocator error" )
 
 		slab_validate_pools( get_state().persistent_slab )

@@ -43,24 +43,11 @@ test_draggable :: proc()
 	}
 
 	// Dragging
-	if draggable.dragging {
+	if draggable.active {
 		debug.draggable_box_pos += mouse_world_delta()
 	}
 
-	// Resize
-	if draggable.resizing
-	{
-		og_layout := ui_context.active_start_style.layout
-
-		center            := debug.draggable_box_pos
-		original_distance := linalg.distance(ui.active_start_signal.cursor_pos, center)
-		cursor_distance   := linalg.distance(draggable.cursor_pos, center)
-		scale_factor      := cursor_distance * (1 / original_distance)
-
-		debug.draggable_box_size = og_layout.size.min * scale_factor
-	}
-
-	if (ui.hot == draggable.key) && (ui.hot_resizable || ui.active_start_signal.resizing) {
+	if (ui.hot == draggable.key) {
 		draggable.style.bg_color = Color_Blue
 	}
 
@@ -100,21 +87,10 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 			debug.draggable_box_pos  = parent.style.layout.pos
 			debug.draggable_box_size = parent.style.layout.size.min
 		}
-		if parent.dragging {
+		if parent.active {
 			debug.draggable_box_pos += mouse_world_delta()
 		}
-		if parent.resizing
-		{
-			og_layout := ui_context.active_start_style.layout
-
-			center            := debug.draggable_box_pos
-			original_distance := linalg.distance(ui.active_start_signal.cursor_pos, center)
-			cursor_distance   := linalg.distance(parent.cursor_pos, center)
-			scale_factor      := cursor_distance * (1 / original_distance)
-
-			debug.draggable_box_size = og_layout.size.min * scale_factor
-		}
-		if (ui.hot == parent.key) && (ui.hot_resizable || ui.active_start_signal.resizing) {
+		if (ui.hot == parent.key) {
 			parent.style.bg_color = Color_Blue
 		}
 		parent.style.layout.pos      = debug.draggable_box_pos
@@ -150,7 +126,7 @@ test_text_box :: proc()
 	style.text_alignment = { 1.0, 1.0 }
 	// style.flags     = { .Size_To_Text  }
 	style.padding   = { 10, 10, 10, 10 }
-	style.font_size = 32
+	style.layout.font_size = 32
 	ui_style_theme( { styles = { style, style, style, style, }} )
 
 	text := str_intern( "Lorem ipsum dolor sit amet")
@@ -160,7 +136,7 @@ test_text_box :: proc()
 		pos = text_box.style.layout.pos
 	}
 
-	if text_box.dragging {
+	if text_box.active {
 		pos += mouse_world_delta()
 	}
 

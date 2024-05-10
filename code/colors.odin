@@ -9,7 +9,7 @@ Color_Red   :: rl.RED
 Color_White :: rl.WHITE
 
 Color_Transparent          :: Color {   0,   0,   0,   0 }
-Color_BG                   :: Color {  61,  61,  64, 255 }
+Color_BG                   :: Color {  55,  55,  60, 255 }
 Color_BG_TextBox           :: Color {  32,  32,  32, 180 }
 Color_BG_Panel             :: Color {  32,  32,  32, 255 }
 Color_BG_Panel_Translucent :: Color {  32,  32,  32, 220 }
@@ -21,7 +21,7 @@ Color_GreyRed              :: Color { 220, 100, 100, 50 }
 Color_White_A125           :: Color { 255, 255, 255, 165 }
 Color_Black                :: Color { 0, 0, 0, 255 }
 Color_Green                :: Color { 0, 180, 0, 255 }
-Color_ResizeHandle         :: Color { 90, 90, 100, 255 }
+Color_ResizeHandle         :: Color { 20, 40, 50, 80 }
 
 Color_3D_BG :: Color { 188, 182 , 170, 255 }
 

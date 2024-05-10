@@ -1,5 +1,23 @@
 package sectr
 
+UI_Signal :: struct {
+	cursor_pos : Vec2,
+	drag_delta : Vec2,
+	scroll     : Vec2,
+
+	left_clicked     : b8,
+	right_clicked    : b8,
+	double_clicked   : b8,
+	keyboard_clicked : b8,
+
+	active     : b8,
+	was_active : b8,
+
+	pressed     : b8,
+	released    : b8,
+	cursor_over : b8,
+	commit      : b8,
+}
 
 ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 {
@@ -15,18 +33,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	// profile_begin( "Cursor collision")
 		signal.cursor_pos  = ui_cursor_pos()
 		signal.cursor_over = cast(b8) pos_within_range2( signal.cursor_pos, box.computed.bounds )
-
-		computed_size := box.computed.bounds.p1 - box.computed.bounds.p0
-
-		resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
-		resize_percent_width := computed_size * (resize_border_width * 1.0/ 200.0)
-		resize_border_non_range := add(box.computed.bounds, range2(
-				{  resize_percent_width.x, -resize_percent_width.x },
-				{ -resize_percent_width.x,  resize_percent_width.x }))
-
-		within_resize_range := cast(b8) ! pos_within_range2( signal.cursor_pos, resize_border_non_range )
-		within_resize_range &= signal.cursor_over
-		within_resize_range &= .Mouse_Resizable in box.flags
 	// profile_end()
 
 	// profile_begin("misc")
@@ -46,29 +52,17 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		ui.active                      = box.key
 		ui.active_mouse[MouseBtn.Left] = box.key
 
-		ui.last_pressed_key = box.key
-		ui.active_start_style  = box.style
+		ui.last_pressed_key   = box.key
+		ui.active_start_style = box.style
 
 		signal.pressed = true
 		// TODO(Ed) : Support double-click detection
-	}
-
-	if mouse_clickable && signal.cursor_over && left_released
-	{
-		ui.active        = UI_Key(0)
-		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
-
-		signal.released     = true
-		signal.left_clicked = true
-
-		ui.last_clicked = box.key
 	}
 
 	if mouse_clickable && ! signal.cursor_over && left_released
 	{
 		box.hot_delta = 0
 
-		ui.hot    = UI_Key(0)
 		ui.active = UI_Key(0)
 		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
 
@@ -100,14 +94,14 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	is_disabled := UI_BoxFlag.Disabled in box.flags
 	is_hot      := ui.hot    == box.key
 	is_active   := ui.active == box.key
+	is_rooted   := ui.root   == box.parent
 
-	if signal.cursor_over
+	if signal.cursor_over && ! is_disabled
 	{
 		hot_vacant    := ui.hot    == UI_Key(0)
 		active_vacant := ui.active == UI_Key(0)
-
-		if (hot_vacant    || is_hot) &&
-			 (active_vacant || is_active)
+			//  (active_vacant  is_active)
+		if (hot_vacant && signal.cursor_over || is_hot)
 		{
 			// prev_hot := zpl_hmap_get( ui.prev_cache, u64(ui.hot) )
 			// prev_hot_label := prev_hot != nil ? prev_hot.label.str : ""
@@ -125,10 +119,20 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 			ui.hot = UI_Key(0)
 		}
 	}
-	// profile_end()
 
-	signal.resizing  = cast(b8)  is_active && (within_resize_range || ui.active_start_signal.resizing)
-	ui.hot_resizable = cast(b32) (is_hot && within_resize_range) || signal.resizing
+	if mouse_clickable && signal.cursor_over && left_released
+	{
+		ui.active                      = UI_Key(0)
+		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
+
+		signal.released = true
+
+		if was_active {
+			signal.left_clicked = true
+			ui.last_clicked     = box.key
+		}
+	}
+	// profile_end()
 
 	// State Deltas update
 	// profile_begin( "state deltas upate")
@@ -164,7 +168,9 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	}
 	// profile_end()
 
-	signal.dragging = cast(b8)  is_active && ( ! within_resize_range && ! ui.active_start_signal.resizing)
+	signal.active     = cast(b8) is_active
+	signal.was_active = cast(b8) was_active
+	// logf("was_active: %v", was_active)
 
 	// Update style if not in default state
 	{
@@ -210,5 +216,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	if is_active && ! was_active {
 		ui.active_start_signal = signal
 	}
+
 	return signal
 }

@@ -10,14 +10,14 @@ StackFixed :: struct ( $ Type : typeid, $ Size : u32 ) {
 	items : [ Size ] Type,
 }
 
-stack_push :: proc( using stack : ^ StackFixed( $ Type, $ Size ), value : Type ) {
+stack_push :: #force_inline proc( using stack : ^ StackFixed( $ Type, $ Size ), value : Type ) {
 	verify( idx < len( items ), "Attempted to push on a full stack" )
 
 	items[ idx ] = value
 	idx += 1
 }
 
-stack_pop :: proc( using stack : ^StackFixed( $ Type, $ Size ) ) {
+stack_pop :: #force_inline proc( using stack : ^StackFixed( $ Type, $ Size ) ) {
 	verify( idx > 0, "Attempted to pop an empty stack" )
 
 	idx -= 1
@@ -26,13 +26,13 @@ stack_pop :: proc( using stack : ^StackFixed( $ Type, $ Size ) ) {
 	}
 }
 
-stack_peek_ref :: proc( using stack : ^StackFixed( $ Type, $ Size ) ) -> ( ^Type) {
+stack_peek_ref :: #force_inline proc "contextless" ( using stack : ^StackFixed( $ Type, $ Size ) ) -> ( ^Type) {
 	last_idx := max( 0, idx - 1 ) if idx > 0 else 0
 	last     := & items[last_idx]
 	return last
 }
 
-stack_peek :: proc ( using stack : ^StackFixed( $ Type, $ Size ) ) -> Type {
+stack_peek :: #force_inline proc "contextless" ( using stack : ^StackFixed( $ Type, $ Size ) ) -> Type {
 	last := max( 0, idx - 1 ) if idx > 0 else 0
 	return items[last]
 }

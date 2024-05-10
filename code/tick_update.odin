@@ -64,7 +64,6 @@ frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
 	return cast(f32) get_state().frametime_delta_seconds
 }
 
-
 update :: proc( delta_time : f64 ) -> b32
 {
 	profile(#procedure)
@@ -210,7 +209,7 @@ update :: proc( delta_time : f64 ) -> b32
 		{
 			fmt :: str_fmt_alloc
 
-			@static bar_pos := Vec2{}
+			@static bar_pos := Vec2{0, 100}
 			bar_size := vec2( 400, 40 )
 
 			menu_bar : UI_Widget
@@ -218,28 +217,28 @@ update :: proc( delta_time : f64 ) -> b32
 				theme := UI_Style {
 					flags = {
 					},
-					bg_color = { 0, 0, 0, 30 },
+					bg_color     = { 0, 0, 0, 30 },
 					border_color = { 0, 0, 0, 200 },
 
 					font = default_font,
-					font_size = 12,
 					text_color = Color_White,
 
 					layout = UI_Layout {
 						anchor = {},
 						border_width = 1.0,
+						font_size = 12,
 						pos    = bar_pos,
 						size   = range2( bar_size, {}),
 						// padding = { 10, 10, 10, 10 },
 					},
 				}
+
 				ui_theme_via_style(theme)
-				menu_bar = ui_widget("App Menu Bar", UI_BoxFlags {} )
-				menu_bar.text       = { fmt("%v", bar_pos), {} }
-				menu_bar.text.runes = to_runes(menu_bar.text.str)
+				menu_bar = ui_widget("App Menu Bar", {} )
+				menu_bar.text = to_str_runes_pair( fmt("%v", bar_pos))
 
 				if (menu_bar.first_frame) {
-					bar_pos = screen_get_corners().top_right - vec2(0, app_window.extent.y * 0.5)
+					// bar_pos = screen_get_corners().top_right - vec2(0, app_window.extent.y * 0.5)
 				}
 			}
 			// Setup Children
@@ -255,49 +254,43 @@ update :: proc( delta_time : f64 ) -> b32
 					bg_color = Color_Frame_Disabled,
 
 					font       = default_font,
-					font_size  = 18,
 					text_color = Color_White,
 
 					layout = UI_Layout {
 						anchor         = range2( {0, 0}, {0.0, 0} ),
 						alignment      = { 0.0, 1.0 },
+						font_size      = 18,
 						text_alignment = { 0.5, 0.5 },
 						pos            = { 0, 0 },
 						size           = range2( {25, bar_size.y}, {0, 0})
 					}
 				}
-				theme := UI_StyleTheme { styles = {
-					style,
-					style,
-					style,
-					style,
-				}}
+				theme := to_ui_styletheme(style)
 				theme.disabled.bg_color = Color_Frame_Disabled
-				theme.hot.bg_color      = Color_White
+				theme.hot.bg_color      = Color_Red
 				theme.active.bg_color   = Color_Frame_Select
 				ui_style_theme(theme)
 
 				move_box : UI_Widget
 				{
 					move_box = ui_button("Move Box")
-					if move_box.dragging {
+					if move_box.active {
 						bar_pos += input.mouse.delta
 					}
 				}
-				// bar_pos = {0, 400}
 
 				move_settings_spacer := ui_widget("Move-Settings Spacer", {})
-				move_settings_spacer.text = str_intern("spacer")
-				move_settings_spacer.style.font_size = 10
-				move_settings_spacer.style.bg_color = Color_Transparent
-
-				// settings_btn : UI_Widget
 				{
-					settings_btn = ui_button("Settings Btn")
-					settings_btn.text = str_intern("Settings")
-					settings_btn.style.flags = {
-						.Scale_Width_By_Height_Ratio,
-					}
+					using move_settings_spacer
+					text                   = str_intern("spacer")
+					style.bg_color         = Color_Transparent
+					style.layout.font_size = 10
+				}
+
+				settings_btn      = ui_button("Settings Btn")
+				settings_btn.text = str_intern("Settings")
+				settings_btn.style.flags = {
+					.Scale_Width_By_Height_Ratio,
 				}
 
 				// HBox layout calculation?
@@ -319,175 +312,80 @@ update :: proc( delta_time : f64 ) -> b32
 				}
 			}
 
-
 			@static settings_open := true
-			if settings_btn.left_clicked || settings_open
+			if settings_btn.pressed || settings_open
 			{
 				settings_open = true
 
-				@static pos := Vec2 {0, 0}
-				@static size := Vec2 { 600, 800 }
-				resize_border_width : f32 = 10
-
-				// Prototype for a resize box
-				// Will surround one box with a resize borders
-				// All sides can have their borders toggled
-				resize_box := ui_widget("Settings Menu: Resize Box", {})
-				{
-					using resize_box
-					style.pos = pos
-					style.alignment = { 0.5, 0.5 }
-					style.bg_color = {}
-					style.size = range2( size, {})
+				resize_border_width : f32 = 20
+				@static pos  := Vec2 {0, 0}
+				@static size := Vec2 { 200, 200 }
+				if size.x < 200 {
+					size.x = 200
 				}
-				ui_parent(resize_box)
-
-				// Resize handles and corners
-				{
-					flags := UI_BoxFlags { .Mouse_Clickable, .Focusable }
-
-					style_resize_width := UI_Style {
-						flags     = { .Fixed_Width },
-						size      = range2({resize_border_width, 0}, {}),
-						bg_color  = Color_ResizeHandle,
-						alignment = {0, 1},
-						margins   = { resize_border_width, resize_border_width, 0, 0 },
-					}
-					style_resize_height := style_resize_width
-					style_resize_height.flags    = {.Fixed_Height}
-					style_resize_height.size.min = {0, resize_border_width}
-					style_resize_height.margins  = { 0, 0, resize_border_width, resize_border_width }
-
-					ui_theme_via_style(style_resize_width)
-					left   := ui_widget("Settings Menu: Resize Left Border", flags )
-					right  := ui_widget("Settings Menu: Resize Right Border", flags)
-					right.style.anchor.left = 1
-					right.style.alignment   = {1, 1}
-
-					ui_theme_via_style(style_resize_height)
-					top    := ui_widget("Settings Menu: Resize Top Border", flags )
-					bottom := ui_widget("Settings Menu: Resize Bottom Border", flags)
-					bottom.style.anchor.top = 1
-					bottom.style.alignment  = {0, 0}
-
-					style_corner := UI_Style {
-						flags     = { .Fixed_Width, .Fixed_Height },
-						size      = range2({resize_border_width, resize_border_width}, {}),
-						bg_color  = Color_Blue,
-						alignment = {0, 1}
-					}
-					ui_theme_via_style(style_corner)
-					corner_tl := ui_widget("Settings Menu: Corner TL", flags)
-					corner_tr := ui_widget("Settings Menu: Corner TR", flags)
-					corner_tr.style.anchor    = range2({1, 0}, {})
-					corner_tr.style.alignment = {1, 1}
-
-					corner_bl := ui_widget("Settings Menu: Corner BL", flags)
-					corner_bl.style.anchor    = range2({}, {0, 1})
-					corner_bl.style.alignment = {}
-					corner_br := ui_widget("Settings Menu: Corner BR", flags)
-					corner_br.style.anchor    = range2({1, 0}, {0, 1})
-					corner_br.style.alignment = {1, 0}
-
-					process_handle_drag :: #force_inline proc ( handle : ^UI_Widget,
-						side_scalar              :  f32,
-						size_axis                : ^f32,
-						size_delta_axis          :  f32,
-						pos_axis                 : ^f32,
-						alignment_axis           : ^f32,
-						alignment_while_dragging :  f32 )
-					{
-						if get_state().ui_context.last_pressed_key != handle.key { return }
-
-						@static was_dragging := false
-						@static within_drag  := false
-
-						using handle.signal
-						if dragging
-						{
-							if ! was_dragging {
-								was_dragging  = true
-								(pos_axis ^) += size_axis^ * 0.5 * side_scalar
-							}
-							(size_axis      ^) += size_delta_axis * -side_scalar
-							(alignment_axis ^)  = alignment_while_dragging
-						}
-						else if was_dragging && released
-						{
-							(pos_axis ^) += size_axis^ * 0.5 * -side_scalar
-							was_dragging  = false
-						}
-					}
-
-					process_handle_drag( & right , -1.0, & size.x, input.mouse.delta.x, & pos.x, & resize_box.style.alignment.x, 0)
-					process_handle_drag( & left,    1.0, & size.x, input.mouse.delta.x, & pos.x, & resize_box.style.alignment.x, 1)
-					process_handle_drag( & top,    -1.0, & size.y, input.mouse.delta.y, & pos.y, & resize_box.style.alignment.y, 0)
-					process_handle_drag( & bottom,  1.0, & size.y, input.mouse.delta.y, & pos.y, & resize_box.style.alignment.y, 1)
-
-					// process_corner_drag :: #force_inline proc()
-					{
-
-					}
+				if size.y < 200 {
+					size.y = 200
 				}
-
-				settings_menu := ui_widget("Settings Menu", {})
+				settings_menu := ui_widget("Settings Menu", {.Mouse_Clickable})
 				{
 					using settings_menu
-					style.alignment = { 0.0, 1.0 }
-					style.bg_color = Color_BG_Panel_Translucent
-					// style.border_width = 1.0
-					// style.border_color = Color_Blue
-					style.margins = {
-						resize_border_width,
-						resize_border_width,
-						resize_border_width,
-						resize_border_width, }
+					style.flags = {
+						// .Origin_At_Anchor_Center
+					}
+					style.pos       = pos
+					style.alignment = { 1.0, 0.5 }
+					style.bg_color  = Color_BG_Panel_Translucent
+					style.size      = range2( size, {})
 				}
-				ui_parent(settings_menu)
 
+				ui_parent(settings_menu)
 				ui_theme_via_style({
-					bg_color = Color_Transparent,
-					font = default_font,
-					font_size = 16,
+					bg_color   = Color_Transparent,
+					font       = default_font,
 					text_color = Color_White,
-					size = range2({0, 40}, {0, 40}) // TODO(Ed): Implment ratio scaling for height
+					size       = range2({0, 40}, {0, 40}), // TODO(Ed): Implment ratio scaling for height
+					layout     = { font_size = 16 },
 				})
+				ui_style_theme_ref().hot.bg_color = Color_Blue
 				frame_bar := ui_widget("Settings Menu: Frame Bar", { .Mouse_Clickable, .Focusable, .Click_To_Focus })
 				{
 					using frame_bar
-					style.bg_color = Color_BG_Panel
-					style.flags = {}
+					style.bg_color  = Color_BG_Panel
+					style.flags     = {}
 					style.alignment = { 0, 1 }
-					// style.size = {}
-					style.anchor = range2( {0, 0.95}, {0, 0} )
-					ui_parent(frame_bar)
+				}
+				ui_parent(frame_bar)
 
-					if dragging {
-						pos += input.mouse.delta
-					}
+				if frame_bar.active {
+					pos += input.mouse.delta
+				}
 
-					title := ui_text("Settings Menu: Title", str_intern("Settings Menu"))
-					{
-						using title
-						style.alignment = {0, 1}
-						style.margins = { 0, 0, 15, 0}
-						style.text_alignment = {0.0 , 0.5}
-					}
+				title := ui_text("Settings Menu: Title", str_intern("Settings Menu"), {.Disabled})
+				{
+					using title
+					style.alignment      = {0, 1}
+					style.margins        = { 0, 0, 15, 0}
+					style.text_alignment = {0 , 0.5}
+				}
 
-					close_btn := ui_button("Settings Menu: Close Btn")
-					{
-						using close_btn
-						text = str_intern("close")
-						style.bg_color = Color_GreyRed
-						style.size.min = {50, 0}
-						style.anchor = range2( {1.0, 0}, {})
-						style.alignment = {1, 1}
-						style.text_alignment = {0.5, 0.5}
-						if close_btn.pressed {
-							settings_open = false
-						}
+				ui_style_theme(ui_style_theme_peek())
+				ui_style_theme_ref().default.bg_color = Color_GreyRed
+				ui_style_theme_ref().hot.    bg_color = Color_Red
+				close_btn := ui_button("Settings Menu: Close Btn")
+				{
+					using close_btn
+					text = str_intern("close")
+					// style.bg_color = Color_GreyRed
+					style.size.min       = {50, 0}
+					style.anchor         = range2( {1.0, 0}, {})
+					style.alignment      = {1, 1}
+					style.text_alignment = {0.5, 0.5}
+					if close_btn.pressed {
+						settings_open = false
 					}
 				}
+
+				ui_resizable_handles( & settings_menu, & pos, & size )
 			}
 		}
 	}
@@ -508,6 +406,7 @@ update :: proc( delta_time : f64 ) -> b32
 		default_layout := UI_Layout {
 			anchor         = {},
 			alignment      = { 0., 0.0 },
+			font_size      = 30,
 			text_alignment = { 0.0, 0.0 },
 			// corner_radii   = { 0.2, 0.2, 0.2, 0.2 },
 			pos            = { 0, 0 },
@@ -516,25 +415,18 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 
 		frame_style_default := UI_Style {
-			flags    = frame_style_flags,
-			bg_color = Color_BG_TextBox,
-
+			flags      = frame_style_flags,
+			bg_color   = Color_BG_TextBox,
 			font       = default_font,
-			font_size  = 30,
 			text_color = Color_White,
 
 			layout = default_layout,
 		}
 
-		frame_theme := UI_StyleTheme { styles = {
-			frame_style_default,
-			frame_style_default,
-			frame_style_default,
-			frame_style_default,
-		}}
+		frame_theme := to_ui_styletheme(frame_style_default)
 		frame_theme.disabled.bg_color = Color_Frame_Disabled
-		frame_theme.hot.bg_color      = Color_Frame_Hover
-		frame_theme.active.bg_color   = Color_Frame_Select
+		frame_theme.hot.     bg_color = Color_Frame_Hover
+		frame_theme.active.  bg_color = Color_Frame_Select
 		ui_style_theme( frame_theme )
 
 		config.ui_resize_border_width = 2.5

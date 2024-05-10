@@ -13,18 +13,18 @@ UI_Layout :: struct {
 	alignment      : Vec2,
 	text_alignment : Vec2,
 
-	border_width : UI_Scalar,
+	font_size : f32,
 
 	margins : UI_LayoutSide,
 	padding : UI_LayoutSide,
 
 	// TODO(Ed): We cannot support individual corners unless we add it to raylib (or finally change the rendering backend)
 	corner_radii : [Corner.Count]f32,
+	border_width : UI_Scalar,
 
 	// Position in relative coordinate space.
 	// If the box's flags has Fixed_Position, then this will be its aboslute position in the relative coordinate space
-	pos : Vec2,
-
+	pos  : Vec2,
 	size : Range2,
 
 	// TODO(Ed) :  Should thsi just always be WS_Pos for workspace UI?
@@ -33,6 +33,7 @@ UI_Layout :: struct {
 	// tile_pos : WS_Pos,
 }
 
+// TODO(Ed): Change this to layout flags? Everything so far is just related to auto-layout
 UI_StyleFlag :: enum u32 {
 
 	// Will perform scissor pass on children to their parent's bounds
@@ -65,8 +66,14 @@ UI_StyleFlag :: enum u32 {
 	// By Default, the origin is at the top left of the anchor's bounds
 	Origin_At_Anchor_Center,
 
-	// Will size the box to its text. (Padding & Margins will thicken )
+	// TODO(Ed): Implement this!
+	// For this to work, the children must have a minimum size set & their size overall must be greater than the parent's minimum size
+	Size_To_Content,
+
+	// Will size the box to its text.
 	Size_To_Text,
+
+	// TODO(Ed): Implement this!
 	Text_Wrap,
 
 	Count,
@@ -92,11 +99,14 @@ UI_Style :: struct {
 
 	font           : FontID,
 	// TODO(Ed): Should this get moved to the layout struct? Techncially font-size is mainly
-	font_size      : f32,
 	text_color     : Color,
 
 	cursor : UI_Cursor,
 
+	// TODO(Ed): Should layout be separate from style?
+	// It technically entirely makes up style flags
+	// and the only thing shared I guess is the font determining the measured text size + transition time
+	// Technically we can provide a separate transition time option just for layout...
 	using layout : UI_Layout,
 
 	 // Used with style, prev_style, and style_delta to produce a simple interpolated animation
@@ -118,43 +128,28 @@ UI_TextAlign :: enum u32 {
 	Count
 }
 
-ui_layout_padding :: proc( pixels : f32 ) -> UI_LayoutSide {
-	return { pixels, pixels, pixels, pixels }
-}
+to_ui_layoutside :: #force_inline proc( pixels : f32 ) -> UI_LayoutSide { return { pixels, pixels, pixels, pixels } }
 
-ui_style_peek :: proc( box_state : UI_StylePreset ) -> UI_Style {
-	return stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state]
-}
+to_ui_styletheme :: #force_inline proc( style : UI_Style ) -> UI_StyleTheme { return { styles = {style, style, style, style} } }
 
-ui_style_ref :: proc( box_state : UI_StylePreset ) -> (^ UI_Style) {
-	return & stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state]
-}
+ui_style_peek :: #force_inline proc( box_state : UI_StylePreset ) -> UI_Style     { return stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state] }
+ui_style_ref  :: #force_inline proc( box_state : UI_StylePreset ) -> (^ UI_Style) { return & stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state] }
 
-ui_style_set :: proc ( style : UI_Style, box_state : UI_StylePreset ) {
-	stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state] = style
-}
+ui_style_set :: #force_inline proc ( style : UI_Style, box_state : UI_StylePreset ) { stack_peek_ref( & get_state().ui_context.theme_stack ).array[box_state] = style }
 
-ui_style_set_layout :: proc ( layout : UI_Layout, preset : UI_StylePreset ) {
-	stack_peek_ref( & get_state().ui_context.theme_stack ).array[preset].layout = layout
-}
+ui_style_set_layout :: #force_inline proc ( layout : UI_Layout, preset : UI_StylePreset ) { stack_peek_ref( & get_state().ui_context.theme_stack ).array[preset].layout = layout }
 
-ui_style_theme_push :: proc( preset : UI_StyleTheme ) {
-	push( & get_state().ui_context.theme_stack, preset )
-}
-
-ui_style_theme_pop :: proc() {
-	pop( & get_state().ui_context.theme_stack )
-}
+ui_style_theme_push :: #force_inline proc( preset : UI_StyleTheme ) { push( & get_state().ui_context.theme_stack, preset ) }
+ui_style_theme_pop  :: #force_inline proc()                         { pop(  & get_state().ui_context.theme_stack ) }
 
 @(deferred_none = ui_style_theme_pop)
-ui_style_theme :: proc( preset : UI_StyleTheme ) {
-	ui_style_theme_push( preset )
-}
+ui_style_theme :: #force_inline proc( preset : UI_StyleTheme ) { ui_style_theme_push( preset ) }
+
+ui_style_theme_peek :: #force_inline proc() -> UI_StyleTheme     { return stack_peek( & get_state().ui_context.theme_stack ) }
+ui_style_theme_ref  ::  #force_inline proc() -> (^ UI_StyleTheme) { return stack_peek_ref( & get_state().ui_context.theme_stack ) }
 
 @(deferred_none = ui_style_theme_pop)
-ui_theme_via_style :: proc ( style : UI_Style ) {
-	ui_style_theme_push( UI_StyleTheme { styles = { style, style, style, style } })
-}
+ui_theme_via_style :: #force_inline proc ( style : UI_Style ) { ui_style_theme_push( UI_StyleTheme { styles = { style, style, style, style } }) }
 
 ui_style_theme_set_layout :: proc ( layout : UI_Layout ) {
 	for & preset in stack_peek_ref( & get_state().ui_context.theme_stack ).array {
@@ -169,6 +164,4 @@ ui_style_theme_layout_push :: proc ( layout : UI_Layout ) {
 }
 
 @(deferred_none = ui_style_theme_pop)
-ui_style_theme_layout :: proc( layout : UI_Layout ) {
-	ui_style_theme_layout_push(layout)
-}
+ui_style_theme_layout :: #force_inline proc( layout : UI_Layout ) { ui_style_theme_layout_push(layout) }
