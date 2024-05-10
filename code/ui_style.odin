@@ -1,5 +1,15 @@
 package sectr
 
+UI_LayoutDirectionX :: enum(i32) {
+	Left_To_Right,
+	Right_To_Left,
+}
+
+UI_LayoutDirectionY :: enum(i32) {
+	Top_To_Bottom,
+	Bottom_To_Top,
+}
+
 UI_LayoutSide :: struct {
 	// using _ :  struct {
 		top, bottom : UI_Scalar,

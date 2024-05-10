@@ -21,7 +21,7 @@ Color_GreyRed              :: Color { 220, 100, 100, 50 }
 Color_White_A125           :: Color { 255, 255, 255, 165 }
 Color_Black                :: Color { 0, 0, 0, 255 }
 Color_Green                :: Color { 0, 180, 0, 255 }
-Color_ResizeHandle         :: Color { 20, 40, 50, 80 }
+Color_ResizeHandle         :: Color { 80, 80, 90, 180 }
 
 Color_3D_BG :: Color { 188, 182 , 170, 255 }
 

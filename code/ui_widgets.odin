@@ -7,8 +7,6 @@ UI_Widget :: struct {
 
 ui_widget :: proc( label : string, flags : UI_BoxFlags ) -> (widget : UI_Widget)
 {
-	// profile(#procedure)
-
 	widget.box    = ui_box_make( flags, label )
 	widget.signal = ui_signal_from_box( widget.box )
 	return
@@ -16,8 +14,6 @@ ui_widget :: proc( label : string, flags : UI_BoxFlags ) -> (widget : UI_Widget)
 
 ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widget)
 {
-	// profile(#procedure)
-
 	btn_flags := UI_BoxFlags { .Mouse_Clickable, .Focusable, .Click_To_Focus }
 	btn.box    = ui_box_make( btn_flags | flags, label )
 	btn.signal = ui_signal_from_box( btn.box )
@@ -32,7 +28,7 @@ attempt to slot them adjacent to each other along the x-axis.
 The user must provide the direction that the hbox will append entries.
 How the widgets will be scaled will be based on the individual entires style flags.
 
-All the usual behaviors that the style and box flags do apply when manage by the box widget.
+All the usual behaviors that the style and box flags do apply when managed by the box widget.
 Whether or not the horizontal box will scale the widget's width is if:
 fixed size or "scale by ratio" flags are not used for the width.
 The hbox will use the anchor's (range2) ratio.x value to determine the "stretch ratio".
@@ -40,18 +36,31 @@ The hbox will use the anchor's (range2) ratio.x value to determine the "stretch 
 Keep in mind the stretch ratio is only respected if no size.min.x value is violated for each of the widgets.
 */
 
-ui_hbox_begin :: proc( label : string, flags : UI_BoxFlags = {}
-//, direction
-) -> (widget : UI_Widget) {
-	// profile(#procedure)
+// Horizontal Widget
+UI_HBox :: struct {
+	using widget : UI_Widget,
+	direction    : UI_LayoutDirectionX,
+}
 
-	widget.box    = ui_box_make( flags, label )
-	widget.signal = ui_signal_from_box( widget.box )
+// Boilerplate creation
+ui_hbox_begin :: proc( direction : UI_LayoutDirectionX, label : string, flags : UI_BoxFlags = {} ) -> (hbox : UI_HBox) {
+	// profile(#procedure)
+	hbox.direction = direction
+	hbox.box       = ui_box_make( flags, label )
+	hbox.signal    = ui_signal_from_box( hbox.box )
 	return
 }
 
-ui_hbox_end :: proc( hbox : UI_Widget ) -> UI_Widget {
-	hbox_width := hbox.computed.content.max.y - hbox.computed.content.min.y
+// Auto-layout children
+ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil ) {
+	// profile(#procedure)
+	hbox_width : f32
+	if width_ref != nil {
+		hbox_width = width_ref ^
+	}
+	else {
+		hbox_width = hbox.computed.content.max.x - hbox.computed.content.min.x
+	}
 
 	// do layout calculations for the children
 	total_stretch_ratio : f32 = 0.0
@@ -74,20 +83,53 @@ ui_hbox_end :: proc( hbox : UI_Widget ) -> UI_Widget {
 			size_req_children += size.min.x
 			continue
 		}
+
+		total_stretch_ratio += anchor.ratio.x
 	}
-	availble_flexible_space := hbox_width - size_req_children
-	return hbox
+
+	avail_flex_space := hbox_width - size_req_children
+
+	allocate_space :: proc( child : ^UI_Box, total_stretch_ratio, avail_flex_space : f32 )
+	{
+		using child.style
+		if ! (.Fixed_Width in child.style.flags) {
+			size.min.x = anchor.ratio.x * (1 / total_stretch_ratio) * avail_flex_space
+		}
+		flags    |= {.Fixed_Width}
+		alignment = {0, 1}
+	}
+
+	space_used : f32 = 0.0
+	switch hbox.direction{
+		case .Right_To_Left:
+			for child := hbox.last; child != nil; child = child.prev {
+				allocate_space(child, total_stretch_ratio, avail_flex_space)
+				using child.style
+				anchor      = range2({0, 0}, {0, 0})
+				pos.x       = space_used
+				space_used += size.min.x
+			}
+		case .Left_To_Right:
+			for child := hbox.first; child != nil; child = child.next {
+				allocate_space(child, total_stretch_ratio, avail_flex_space)
+				using child.style
+				anchor      = range2({0, 0}, {0, 0})
+				pos.x       = space_used
+				space_used += size.min.x
+			}
+	}
 }
 
-ui_hbox_auto_end :: proc( vbox : UI_Widget ) {
-	ui_hbox_end(vbox)
+// Auto-layout children and pop parent from parent stack
+ui_hbox_end_pop_parent :: proc( hbox : UI_HBox ) {
+	ui_hbox_end(hbox)
 	ui_parent_pop()
 }
 
-@(deferred_out = ui_hbox_end)
-ui_hbox :: #force_inline proc( label : string, flags : UI_BoxFlags = {} ) -> (widget : UI_Widget) {
-	widget        = ui_hbox_begin(label, flags)
-	ui_parent(widget)
+@(deferred_out = ui_hbox_end_pop_parent)
+ui_hbox :: #force_inline proc( direction : UI_LayoutDirectionX, label : string, flags : UI_BoxFlags = {} ) -> (hbox : UI_HBox) {
+	hbox = ui_hbox_begin(direction, label, flags)
+	ui_parent_push(hbox.widget)
 	return
 }
 //endregion Horizontal Box
@@ -235,6 +277,14 @@ ui_resizable_handles :: proc( parent : ^UI_Widget,
 	if corner_bl do process_handle_drag( & handle_corner_bl, { -1, -1 }, delta, {1, 1}, pos, size, alignment )
 }
 
+ui_spacer :: proc( label : string ) -> (widget : UI_Widget) {
+	widget.box    = ui_box_make( {.Mouse_Clickable}, label )
+	widget.signal = ui_signal_from_box( widget.box )
+
+	widget.style.bg_color = Color_Transparent
+	return
+}
+
 ui_text :: proc( label : string, content : StrRunesPair, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	// profile(#procedure)
@@ -278,28 +328,115 @@ ui_text_tabs :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 }
 
 //region Vertical Box
-ui_vbox_begin :: proc( label : string, flags : UI_BoxFlags = {} ) -> (widget : UI_Widget) {
-	// profile(#procedure)
+/*
+Vertical Boxes automatically manage a collection of widgets and
+attempt to slot them adjacent to each other along the y-axis.
 
-	widget.box    = ui_box_make( flags, label )
-	// widget.signal = ui_signal_from_box( widget.box )
+The user must provide the direction that the vbox will append entries.
+How the widgets will be scaled will be based on the individual entires style flags.
+
+All the usual behaviors that the style and box flags do apply when managed by the box widget.
+Whether or not the horizontal box will scale the widget's width is if:
+fixed size or "scale by ratio" flags are not used for the width.
+The hbox will use the anchor's (range2) ratio.y value to determine the "stretch ratio".
+
+Keep in mind the stretch ratio is only respected if no size.min.y value is violated for each of the widgets.
+*/
+
+UI_VBox :: struct {
+	using widget : UI_Widget,
+	direction    : UI_LayoutDirectionY,
+}
+
+// Boilerplate creation
+ui_vbox_begin :: proc( direction : UI_LayoutDirectionY, label : string, flags : UI_BoxFlags = {} ) -> (vbox : UI_VBox) {
+	// profile(#procedure)
+	vbox.direction = direction
+	vbox.box       = ui_box_make( flags, label )
+	vbox.signal    = ui_signal_from_box( vbox.box )
 	return
 }
-ui_vbox_end :: proc( hbox : UI_Widget ) -> UI_Widget {
+
+// Auto-layout children
+ui_vbox_end :: proc( vbox : UI_VBox, height_ref : ^f32 = nil ) {
+	// profile(#procedure)
+
+	vbox_height : f32
+	if height_ref != nil {
+		vbox_height = height_ref ^
+	}
+	else {
+		vbox_height = vbox.computed.bounds.max.y - vbox.computed.bounds.min.y
+	}
+
 	// do layout calculations for the children
-	return hbox
+	total_stretch_ratio : f32 = 0.0
+	size_req_children   : f32 = 0
+	for child := vbox.first; child != nil; child = child.next
+	{
+		using child
+		using style.layout
+		scaled_width_by_height : b32 = b32(.Scale_Width_By_Height_Ratio in style.flags)
+		if .Fixed_Height in style.flags
+		{
+			if scaled_width_by_height {
+				width  := size.max.x != 0 ? size.max.x : vbox_height
+				height := width * size.min.y
+
+				size_req_children += height
+				continue
+			}
+
+			size_req_children += size.min.y
+			continue
+		}
+
+		total_stretch_ratio += anchor.ratio.y
+	}
+
+	avail_flex_space := vbox_height - size_req_children
+
+	allocate_space :: proc( child : ^UI_Box, total_stretch_ratio, avail_flex_space : f32 )
+	{
+		using child.style
+		if ! (.Fixed_Height in child.style.flags) {
+			size.min.y = anchor.ratio.y * (1 / total_stretch_ratio) * avail_flex_space
+		}
+		flags    |= {.Fixed_Height}
+		alignment = {0, 0}
+	}
+
+	space_used : f32 = 0.0
+	switch vbox.direction {
+		case .Top_To_Bottom:
+			for child := vbox.last; child != nil; child = child.prev {
+				allocate_space(child, total_stretch_ratio, avail_flex_space)
+				using child.style
+				anchor      = range2({0, 0}, {0, 1})
+				pos.y       = space_used
+				space_used += size.min.y
+			}
+		case .Bottom_To_Top:
+			for child := vbox.first; child != nil; child = child.next {
+				allocate_space(child, total_stretch_ratio, avail_flex_space)
+				using child.style
+				anchor      = range2({0, 0}, {0, 1})
+				pos.y       = space_used
+				space_used += size.min.y
+			}
+	}
 }
-ui_vbox_auto_end :: proc( hbox : UI_Widget ) {
-	ui_vbox_end(hbox)
+
+// Auto-layout children and pop parent from parent stack
+ui_vbox_end_pop_parent :: proc( vbox : UI_VBox ) {
+	ui_vbox_end(vbox)
 	ui_parent_pop()
 }
 
-// ui_vbox_append( widget : UI_Widget )
-
-@(deferred_out = ui_vbox_auto_end)
-ui_vbox :: #force_inline proc( label : string, flags : UI_BoxFlags = {} ) -> (widget : UI_Widget) {
-	widget = ui_vbox_begin(label, flags)
-	ui_parent_push(widget)
+@(deferred_out = ui_vbox_end_pop_parent)
+ui_vbox :: #force_inline proc( direction : UI_LayoutDirectionY, label : string, flags : UI_BoxFlags = {} ) -> (vbox : UI_VBox) {
+	vbox = ui_vbox_begin(direction, label, flags)
+	ui_parent_push(vbox.widget)
 	return
 }
 //endregion Vertical Box

@@ -291,9 +291,14 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 {
 	// Check to make sure parent is present on the screen, if its not don't bother.
 	// If current has children, do them first
-	if intersects_range2( view_get_bounds(), box.computed.bounds) && box.first != nil
+	using state := get_state()
+	if box.first != nil
 	{
-		return box.first
+		is_app_ui := ui_context == & app_ui
+		if is_app_ui || intersects_range2( view_get_bounds(), box.computed.bounds)
+		{
+			return box.first
+		}
 	}
 
 	if box.next == nil

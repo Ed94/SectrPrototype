@@ -26,12 +26,14 @@ debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Co
 	px_size := size
 
 	rl_font := to_rl_Font(font, px_size )
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
 	rl.DrawTextCodepoints( rl_font,
 		raw_data(runes), cast(i32) len(runes),
 		position = transmute(rl.Vector2) pos,
 		fontSize = px_size,
 		spacing  = 0.0,
 		tint     = color );
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
 }
 
 draw_text_screenspace :: proc( content : StrRunesPair, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
@@ -51,7 +53,7 @@ draw_text_screenspace :: proc( content : StrRunesPair, pos : Vec2, size : f32, c
 	rl_font := to_rl_Font(font, size )
 	runes   := content.runes
 
-	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.TRILINEAR)
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
 	rl.DrawTextCodepoints( rl_font,
 		raw_data(runes), cast(i32) len(runes),
 		position = transmute(rl.Vector2) pos,
@@ -83,14 +85,14 @@ ws_view_draw_text_string :: proc( content : string, pos : Vec2, size : f32, colo
 	zoom_adjust := px_size * project.workspace.cam.zoom
 
 	rl_font := to_rl_Font(font, zoom_adjust )
-	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.TRILINEAR)
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.BILINEAR)
 	rl.DrawTextCodepoints( rl_font,
 		raw_data(runes), cast(i32) len(runes),
 		position = transmute(rl.Vector2) pos,
 		fontSize = px_size,
 		spacing  = 0.0,
 		tint     = color );
-	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.ANISOTROPIC_16X)
 }
 
 ws_view_draw_text_StrRunesPair :: proc( content : StrRunesPair, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
@@ -112,14 +114,14 @@ ws_view_draw_text_StrRunesPair :: proc( content : StrRunesPair, pos : Vec2, size
 	rl_font     := to_rl_Font(font, zoom_adjust )
 	runes       := content.runes
 
-	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.TRILINEAR)
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.BILINEAR)
 	rl.DrawTextCodepoints( rl_font,
 		raw_data(runes), cast(i32) len(runes),
 		position = transmute(rl.Vector2) pos,
 		fontSize = px_size,
 		spacing  = 0.0,
 		tint     = color );
-	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.ANISOTROPIC_16X)
 }
 
 // Raylib's equivalent doesn't take a length for the string (making it a pain in the ass)

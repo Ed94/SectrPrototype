@@ -111,6 +111,7 @@ render_mode_2d_workspace :: proc()
 		if root.num_children == 0 {
 			break ImguiRender
 		}
+		state.ui_context = ui
 
 		current := root.first
 		for ; current != nil; current = ui_box_tranverse_next( current )
@@ -173,10 +174,10 @@ render_mode_2d_workspace :: proc()
 
 		// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
 		if equal_range2(computed.content, computed.padding) {
-			// draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
+			draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
 		}
 		else {
-			// draw_rectangle_lines( rect_content, style, Color_Debug_UI_Content_Bounds, line_thickness )
+			draw_rectangle_lines( rect_content, style, Color_Debug_UI_Content_Bounds, line_thickness )
 		}
 		// profile_end()
 
@@ -278,7 +279,7 @@ render_mode_screenspace :: proc ()
 
 	ui := & project.workspace.ui
 
-	debug_text("Box Count: %v", ui.built_box_count )
+	debug_text("Box Count (Workspace): %v", ui.built_box_count )
 
 	hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
 	active_box := ui_box_from_key( ui.curr_cache, ui.active )
@@ -324,6 +325,7 @@ render_app_ui :: proc()
 	{
 		profile("App UI")
 		ui := & state.app_ui
+		state.ui_context = ui
 		root := ui.root
 		if root.num_children == 0 {
 			break Render_App_UI
@@ -423,7 +425,7 @@ render_app_ui :: proc()
 			// rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
 		// profile_end()
 
-			if len(current.text.str) > 0 {
+			if len(current.text.str) > 0 && style.font.key != 0 {
 				draw_text_screenspace( current.text, surface_to_render_pos(computed.text_pos), style.layout.font_size, style.text_color )
 			}
 		}

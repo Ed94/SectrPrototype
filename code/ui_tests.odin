@@ -202,7 +202,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 		}
 
 		ui_style_theme_set_layout( layout_text )
-		line_hbox := ui_widget(str_fmt_alloc( "line %v", line_id ), {})
+		line_hbox := ui_widget(str_fmt_alloc( "line %v", line_id ), {.Mouse_Clickable})
 
 		if line_hbox.key == ui.hot
 		{

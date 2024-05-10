@@ -21,7 +21,7 @@ UI_Signal :: struct {
 	commit      : b8,
 }
 
-ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
+ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas := true ) -> UI_Signal
 {
 	// profile(#procedure)
 	ui    := get_state().ui_context
@@ -199,6 +199,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	// logf("was_active: %v", was_active)
 
 	// Update style if not in default state
+	if update_style
 	{
 		// profile("Update style")
 

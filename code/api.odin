@@ -191,7 +191,15 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	}
 
 	// Setup the app ui state
-	ui_startup( & app_ui, cache_allocator = persistent_slab_allocator() )
+	{
+		ui_startup( & app_ui.base, cache_allocator = persistent_slab_allocator() )
+
+		using app_ui
+		menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
+		menu_bar.size = {200, 40}
+
+		settings_menu.min_size = {200, 200}
+	}
 
 	// Demo project setup
 	{
@@ -340,7 +348,7 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 	{
 		// profile("Client tick timing processing")
 		config.engine_refresh_hz = uint(monitor_refresh_hz)
-		// config.engine_refresh_hz = 10
+		// config.engine_refresh_hz = 30
 		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
 
