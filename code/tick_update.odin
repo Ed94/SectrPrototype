@@ -207,6 +207,7 @@ update :: proc( delta_time : f64 ) -> b32
 		*/
 		if true
 		{
+			profile("App Menu Bar")
 			fmt :: str_fmt_alloc
 
 			@static bar_pos := Vec2{0, 100}
@@ -234,7 +235,7 @@ update :: proc( delta_time : f64 ) -> b32
 				}
 
 				ui_theme_via_style(theme)
-				menu_bar = ui_widget("App Menu Bar", {} )
+				menu_bar = ui_widget("App Menu Bar", { .Mouse_Clickable} )
 				menu_bar.text = to_str_runes_pair( fmt("%v", bar_pos))
 
 				if (menu_bar.first_frame) {
@@ -277,6 +278,15 @@ update :: proc( delta_time : f64 ) -> b32
 					if move_box.active {
 						bar_pos += input.mouse.delta
 					}
+					using move_box
+					hot := ui_box_from_key(ui.curr_cache, ui.hot)
+					if hot != nil {
+						text = to_str_runes_pair(str_fmt_tmp("Hot box: %v %v", hot.label.str, hot.hot_delta))
+						style.font = default_font
+						style.font_size = 12
+						style.text_color = Color_White
+						style.text_alignment = {0, 1}
+					}
 				}
 
 				move_settings_spacer := ui_widget("Move-Settings Spacer", {})
@@ -315,6 +325,7 @@ update :: proc( delta_time : f64 ) -> b32
 			@static settings_open := true
 			if settings_btn.pressed || settings_open
 			{
+				profile("Settings Menu")
 				settings_open = true
 
 				resize_border_width : f32 = 20
@@ -336,6 +347,10 @@ update :: proc( delta_time : f64 ) -> b32
 					style.alignment = { 1.0, 0.5 }
 					style.bg_color  = Color_BG_Panel_Translucent
 					style.size      = range2( size, {})
+					text = to_str_runes_pair(str_fmt_tmp("Hot Delta: %v", hot_delta))
+					style.font = default_font
+					style.font_size = 12
+					style.text_color = Color_White
 				}
 
 				ui_parent(settings_menu)

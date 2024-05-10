@@ -21,8 +21,8 @@ The dependencies are:
 * Odin repo's base, core, and vendor(raylib) libaries
 * An ini parser
 
-The client(sectr) module's organization is relatively flat due to the nature of odin's package management not allowing for cyclic dependencies across modules, and modules can only be in one directory.
-This makes it difficult to unflatten as the depedency chain must clear with no inter-module collisions, not something organic todo in a prototype...
+The client(sectr) module's organization is relatively flat due to the nature of odin's module suste, not allowing for cyclic dependencies across modules, and modules can only be in one directory.
+This makes it difficult to unflatten, not something organic todo in a prototype...
 
 Even so the notatble groups are:
 
@@ -37,7 +37,7 @@ Even so the notatble groups are:
 * Parser : AST generation, editing, and serialization. A 1/3 of this prototype will most likely be this alone.
 * UI : AST visualzation & editing, backend visualization, project organizationa via workspaces (2d cavnases)
   * Will most likely be the bulk of this prototype.
-  * PIMGUI (Persistent Immediate Mode User Interface);
+  * PIMGUI (Persistent Immediate Mode User Interface)
   * Auto-layout with heavy procedural generation of box widgets
 
 There is some unused code in `code/__imgui_raddbg`. Its a partial translation of some data structures from raddbg's ui.

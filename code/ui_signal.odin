@@ -1,5 +1,7 @@
 package sectr
 
+import "base:runtime"
+
 UI_Signal :: struct {
 	cursor_pos : Vec2,
 	drag_delta : Vec2,
@@ -33,6 +35,25 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	// profile_begin( "Cursor collision")
 		signal.cursor_pos  = ui_cursor_pos()
 		signal.cursor_over = cast(b8) pos_within_range2( signal.cursor_pos, box.computed.bounds )
+
+		// TODO(Ed): We eventually need to setup a sorted root based on last active history
+		UnderCheck:
+		{
+			if ! signal.cursor_over do break UnderCheck
+
+			last_root := ui_box_from_key( ui.prev_cache, ui.root.key )
+			if last_root == nil do break UnderCheck
+
+			top_ancestor := ui_top_ancestor(box)
+			if top_ancestor.parent_index != last_root.num_children - 1
+			{
+				for curr := last_root.last; curr != nil && curr.key != box.key; curr = curr.prev {
+					if pos_within_range2( signal.cursor_pos, curr.computed.bounds ) && curr.parent_index > top_ancestor.parent_index {
+						signal.cursor_over = false
+					}
+				}
+			}
+		}
 	// profile_end()
 
 	// profile_begin("misc")
@@ -42,13 +63,17 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	mouse_clickable    := UI_BoxFlag.Mouse_Clickable    in box.flags
 	keyboard_clickable := UI_BoxFlag.Keyboard_Clickable in box.flags
 
-	was_hot      := ui.hot    == box.key && box.hot_delta    > 0
-	was_active   := ui.active == box.key && box.active_delta > 0
+	was_hot      := (box.hot_delta    > 0)
+	was_active   := (ui.active == box.key) && (box.active_delta > 0)
 	was_disabled := box.disabled_delta > 0
+	if was_hot {
+		// runtime.debug_trap()
+	}
 
-	if mouse_clickable && signal.cursor_over && left_pressed
+	if mouse_clickable && signal.cursor_over && left_pressed && was_hot
 	{
-		ui.hot                         = box.key
+		// runtime.debug_trap()
+		// ui.hot                         = box.key
 		ui.active                      = box.key
 		ui.active_mouse[MouseBtn.Left] = box.key
 
@@ -61,7 +86,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 
 	if mouse_clickable && ! signal.cursor_over && left_released
 	{
-		box.hot_delta = 0
+		box.active_delta = 0
 
 		ui.active = UI_Key(0)
 		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
@@ -94,15 +119,18 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 	is_disabled := UI_BoxFlag.Disabled in box.flags
 	is_hot      := ui.hot    == box.key
 	is_active   := ui.active == box.key
-	is_rooted   := ui.root   == box.parent
 
-	if signal.cursor_over && ! is_disabled
+	if mouse_clickable && signal.cursor_over && ! is_disabled
 	{
 		hot_vacant    := ui.hot    == UI_Key(0)
 		active_vacant := ui.active == UI_Key(0)
 			//  (active_vacant  is_active)
-		if (hot_vacant && signal.cursor_over || is_hot)
+		if signal.cursor_over
 		{
+			if ! hot_vacant {
+				prev := ui_box_from_key( ui.curr_cache, ui.hot )
+				prev.hot_delta = 0
+			}
 			// prev_hot := zpl_hmap_get( ui.prev_cache, u64(ui.hot) )
 			// prev_hot_label := prev_hot != nil ? prev_hot.label.str : ""
 			// log( str_fmt_tmp("Detected HOT via CURSOR OVER: %v is_hot: %v is_active: %v prev_hot: %v", box.label.str, is_hot, is_active, prev_hot_label ))
@@ -112,16 +140,17 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 			ui.hot_start_style = box.style
 		}
 	}
-	else
+	else if ! signal.cursor_over && was_hot
 	{
-		is_hot = false
-		if ui.hot == box.key {
-			ui.hot = UI_Key(0)
-		}
+		ui.hot        = UI_Key(0)
+		is_hot        = false
+		box.hot_delta = 0
 	}
 
 	if mouse_clickable && signal.cursor_over && left_released
 	{
+		box.active_delta = 0
+
 		ui.active                      = UI_Key(0)
 		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
 
@@ -142,9 +171,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box ) -> UI_Signal
 		if was_hot {
 			box.style_delta += frame_delta
 		}
-	}
-	else {
-		box.hot_delta = 0
 	}
 	if is_active
 	{

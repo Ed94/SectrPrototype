@@ -138,6 +138,8 @@ UI_Box :: struct {
 	disabled_delta : f32,
 	style_delta    : f32,
 
+	parent_index : i32,
+
 	// prev_computed : UI_Computed,
 	// prev_style    : UI_Style,v
 	// mouse         : UI_InteractState,
@@ -276,6 +278,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	if parent != nil
 	{
 		dll_full_push_back( null_box, parent, curr_box )
+		curr_box.parent_index = parent.num_children
 		parent.num_children += 1
 		curr_box.parent      = parent
 	}
@@ -398,3 +401,11 @@ ui_parent_pop :: proc() {
 
 @(deferred_none = ui_parent_pop)
 ui_parent :: #force_inline proc( ui : ^UI_Box) { ui_parent_push( ui ) }
+
+// Topmost ancestor that is not the root
+ui_top_ancestor :: #force_inline proc "contextless" ( box : ^UI_Box ) -> (^UI_Box) {
+	using ui := get_state().ui_context
+	ancestor := box
+	for ; ancestor.parent != root; ancestor = ancestor.parent {}
+	return ancestor
+}

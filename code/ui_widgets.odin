@@ -107,6 +107,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget,
 	corner_br := true,
 	corner_bl := true, )
 {
+	profile(#procedure)
 	handle_left      : UI_Widget
 	handle_right     : UI_Widget
 	handle_top       : UI_Widget
