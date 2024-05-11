@@ -221,7 +221,7 @@ render_mode_screenspace :: proc ()
 	cam    := & project.workspace.cam
 	win_extent := state.app_window.extent
 
-	render_app_ui()
+	render_screen_ui()
 
 	fps_msg       := str_fmt_tmp( "FPS: %f", fps_avg)
 	fps_msg_width := measure_text_size( fps_msg, default_font, 16.0, 0.0 ).x
@@ -314,7 +314,7 @@ render_mode_screenspace :: proc ()
 // A non-zoomable static-view for ui
 // Only a scalar factor may be applied to the size of widgets & fonts
 // 'Window tiled' panels reside here
-render_app_ui :: proc()
+render_screen_ui :: proc()
 {
 	profile(#procedure)
 

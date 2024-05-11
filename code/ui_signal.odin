@@ -72,6 +72,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 
 	if mouse_clickable && signal.cursor_over && left_pressed && was_hot
 	{
+		//TODO(Ed): We need to add the reorder of top-level widgets based on this interaction
+
 		// runtime.debug_trap()
 		// ui.hot                         = box.key
 		ui.active                      = box.key

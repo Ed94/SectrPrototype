@@ -122,8 +122,9 @@ ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil ) {
 
 // Auto-layout children and pop parent from parent stack
 ui_hbox_end_pop_parent :: proc( hbox : UI_HBox ) {
-	ui_hbox_end(hbox)
+	// ui_box_compute_layout(hox.widget)
 	ui_parent_pop()
+	ui_hbox_end(hbox)
 }
 
 @(deferred_out = ui_hbox_end_pop_parent)
@@ -135,6 +136,7 @@ ui_hbox :: #force_inline proc( direction : UI_LayoutDirectionX, label : string, 
 //endregion Horizontal Box
 
 // Adds resizable handles to a widget
+// TODO(Ed): Add centered resize support (use center alignment on shift-click)
 ui_resizable_handles :: proc( parent : ^UI_Widget,
 	pos, size                  : ^Vec2,
 	handle_width               : f32  = 15,
@@ -429,8 +431,9 @@ ui_vbox_end :: proc( vbox : UI_VBox, height_ref : ^f32 = nil ) {
 
 // Auto-layout children and pop parent from parent stack
 ui_vbox_end_pop_parent :: proc( vbox : UI_VBox ) {
-	ui_vbox_end(vbox)
+	// ui_box_compute_layout(vbox)
 	ui_parent_pop()
+	ui_vbox_end(vbox)
 }
 
 @(deferred_out = ui_vbox_end_pop_parent)

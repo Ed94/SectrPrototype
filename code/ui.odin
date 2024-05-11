@@ -79,6 +79,7 @@ UI_BoxFlag_Scroll :: UI_BoxFlags { .Scroll_X, .Scroll_Y }
 // The UI_Box's actual positioning and sizing
 // There is an excess of rectangles here for debug puproses.
 UI_Computed :: struct {
+	fresh      : b32,    // If the auto-layout has been computed for the current frame
 	anchors    : Range2, // Bounds for anchors within parent
 	margins    : Range2, // Bounds for margins within parent
 	bounds     : Range2, // Bounds for box itself
@@ -268,10 +269,11 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 	curr_box.flags  = flags
 
-	// Clear old links
-	curr_box.parent = nil
-	curr_box.links  = {}
-	curr_box.num_children = 0
+	// Clear non-persistent data
+	curr_box.computed.fresh = false
+	curr_box.parent         = nil
+	curr_box.links          = {}
+	curr_box.num_children   = 0
 
 	// If there is a parent, setup the relevant references
 	parent := stack_peek( & parent_stack )

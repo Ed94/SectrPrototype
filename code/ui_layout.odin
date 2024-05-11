@@ -23,6 +23,9 @@ ui_compute_layout :: proc( ui : ^UI_State )
 	current := root.first
 	for ; current != nil;
 	{
+		// if current.computed.fresh do return
+
+		// TODO(Ed): Lift this to ui_box_compute_layout
 		// profile("Layout Box")
 		style  := current.style
 
@@ -174,6 +177,7 @@ ui_compute_layout :: proc( ui : ^UI_State )
 			computed.text_size = text_size
 			computed.text_pos  = { text_pos.x, text_pos.y }
 		}
+		computed.fresh = true
 
 		current = ui_box_tranverse_next( current )
 	}

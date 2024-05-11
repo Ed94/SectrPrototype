@@ -27,11 +27,11 @@ ui_screen_tick :: proc() {
 	ui_graph_build( & screen_ui )
 	ui := ui_context
 
-	ui_app_menu_bar()
-	ui_app_settings_menu()
+	ui_screen_menu_bar()
+	ui_screen_settings_menu()
 }
 
-ui_app_menu_bar :: proc()
+ui_screen_menu_bar :: proc()
 {
 	profile("App Menu Bar")
 	fmt :: str_fmt_alloc
@@ -104,7 +104,7 @@ ui_app_menu_bar :: proc()
 	}
 }
 
-ui_app_settings_menu :: proc()
+ui_screen_settings_menu :: proc()
 {
 	profile("Settings Menu")
 	using state := get_state()
@@ -171,13 +171,13 @@ ui_app_settings_menu :: proc()
 				}
 			}
 
-			ui_hbox_end(frame_bar, & size.x)
+			ui_hbox_end(frame_bar)//, & size.x)
 		}
 
 		spacer := ui_spacer("Settings Menu: Spacer")
 		spacer.style.anchor.ratio.y = 1.0
 
-		ui_vbox_end(container, & size.y)
+		ui_vbox_end(container)//, & size.y)
 	}
 
 	ui_resizable_handles( & container, & pos, & size )
