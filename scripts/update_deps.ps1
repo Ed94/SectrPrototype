@@ -42,6 +42,11 @@ function Update-GitRepo
 		write-host "Cloining repo from $url to $path"
 		git clone $url $path
 
+		$path_scripts = join-path $path 'scripts'
+		push-locaiton $path_scripts
+		& .\build_and_run_gen_src_pass.ps1
+		pop-location
+
 		write-host "Building $url"
 		push-location $path
 		& "$build_command"
@@ -65,6 +70,11 @@ function Update-GitRepo
 	write-host "Build out of date for: $path, updating"
 	write-host 'Pulling...'
 	git -C $path pull
+
+	$path_scripts = join-path $path 'scripts'
+	push-location $path_scripts
+	& .\build_and_run_gen_src_pass.ps1
+	pop-location
 
 	write-host "Building $url"
 	push-location $path

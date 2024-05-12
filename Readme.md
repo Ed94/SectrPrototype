@@ -17,7 +17,8 @@ The host module loads the main module & its memory. Hot-reloading it's dll when 
 
 The dependencies are:
 
-* Odin Compiler
+* Odin Compiler (Slightly custom)
+  * Added #region, #endregion directives support for editors
 * Odin repo's base, core, and vendor(raylib) libaries
 * An ini parser
 
