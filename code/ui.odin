@@ -76,19 +76,6 @@ UI_BoxFlag :: enum u64 {
 UI_BoxFlags :: bit_set[UI_BoxFlag; u64]
 UI_BoxFlag_Scroll :: UI_BoxFlags { .Scroll_X, .Scroll_Y }
 
-// The UI_Box's actual positioning and sizing
-// There is an excess of rectangles here for debug puproses.
-UI_Computed :: struct {
-	fresh      : b32,    // If the auto-layout has been computed for the current frame
-	anchors    : Range2, // Bounds for anchors within parent
-	margins    : Range2, // Bounds for margins within parent
-	bounds     : Range2, // Bounds for box itself
-	padding    : Range2, // Bounds for padding's starting bounds (will be offset by border if there is one)
-	content    : Range2, // Bounds for content (text or children)
-	text_pos   : Vec2,   // Position of text within content
-	text_size  : Vec2,   // Size of text within content
-}
-
 UI_Cursor :: struct {
 	placeholder : int,
 }
@@ -125,10 +112,16 @@ UI_Box :: struct {
 	// Regenerated per frame.
 	using links  : DLL_NodeFull( UI_Box ), // first, last, prev, next
 	parent       : ^UI_Box,
-	num_children : i32,
+	num_children : i16,
+	ancestors    : i16,
+	parent_index : i16,
 
-	flags      : UI_BoxFlags,
-	computed   : UI_Computed,
+	flags    : UI_BoxFlags,
+	computed : UI_Computed,
+
+	prev_layout : UI_Layout,
+	layout      : UI_Layout,
+
 	prev_style : UI_Style,
 	style      : UI_Style,
 
@@ -138,8 +131,6 @@ UI_Box :: struct {
 	active_delta   : f32,
 	disabled_delta : f32,
 	style_delta    : f32,
-
-	parent_index : i32,
 
 	// prev_computed : UI_Computed,
 	// prev_style    : UI_Style,v
@@ -172,8 +163,9 @@ UI_State :: struct {
 	layout_dirty  : b32,
 
 	// TODO(Ed) : Look into using a build arena like Ryan does for these possibly (and thus have a linked-list stack)
-	theme_stack  : StackFixed( UI_StyleTheme, UI_Style_Stack_Size ),
-	parent_stack : StackFixed( ^UI_Box, UI_Parent_Stack_Size ),
+	layout_combo_stack : StackFixed( UI_LayoutCombo, UI_Style_Stack_Size ),
+	style_combo_stack  : StackFixed( UI_StyleCombo,  UI_Style_Stack_Size ),
+	parent_stack       : StackFixed( ^UI_Box, UI_Parent_Stack_Size ),
 	// flag_stack    : Stack( UI_BoxFlags, UI_BoxFlags_Stack_Size ),
 
 	hot             : UI_Key,
@@ -192,7 +184,7 @@ UI_State :: struct {
 	last_pressed_key_us : [MouseBtn.count] f32,
 }
 
-ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator )
+ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_reserve_size : u64 */ )
 {
 	ui := ui
 	ui^ = {}
@@ -283,6 +275,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 		curr_box.parent_index = parent.num_children
 		parent.num_children += 1
 		curr_box.parent      = parent
+		curr_box.ancestors   = parent.ancestors + 1
 	}
 
 	ui.built_box_count += 1
@@ -416,3 +409,5 @@ ui_top_ancestor :: #force_inline proc "contextless" ( box : ^UI_Box ) -> (^UI_Bo
 	for ; ancestor.parent != root; ancestor = ancestor.parent {}
 	return ancestor
 }
+
+ui_context :: #force_inline proc() -> ^UI_State { return get_state().ui_context }

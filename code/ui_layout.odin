@@ -3,182 +3,145 @@ package sectr
 import "core:math"
 import "core:math/linalg"
 
-// Note(Ed): This is naturally pretty expensive
+// The UI_Box's actual positioning and sizing
+// There is an excess of rectangles here for debug puproses.
+UI_Computed :: struct {
+	fresh      : b32,    // If the auto-layout has been computed for the current frame
+	// anchors    : Range2, // Bounds for anchors within parent
+	// margins    : Range2, // Bounds for margins within parent
+	bounds     : Range2, // Bounds for box itself
+	padding    : Range2, // Bounds for padding's starting bounds (will be offset by border if there is one)
+	content    : Range2, // Bounds for content (text or children)
+	text_pos   : Vec2,   // Position of text within content
+	text_size  : Vec2,   // Size of text within content
+}
 
-ui_compute_layout :: proc( ui : ^UI_State )
-{
-	profile(#procedure)
-	state := get_state()
+UI_LayoutDirectionX :: enum(i32) {
+	Left_To_Right,
+	Right_To_Left,
+}
 
-	root := ui.root
-	{
-		computed := & root.computed
-		style    := root.style
-		layout   := & style.layout
-		computed.bounds.min = layout.pos
-		computed.bounds.max = layout.size.min
-		computed.content    = computed.bounds
+UI_LayoutDirectionY :: enum(i32) {
+	Top_To_Bottom,
+	Bottom_To_Top,
+}
+
+UI_LayoutSide :: struct {
+	// using _ :  struct {
+		top, bottom : UI_Scalar,
+		left, right : UI_Scalar,
+	// }
+}
+
+UI_LayoutFlag :: enum u32 {
+
+	// Will perform scissor pass on children to their parent's bounds
+	// (Specified in the parent)
+	Clip_Children_To_Bounds,
+
+	// Enforces the box will always remain in a specific position relative to the parent.
+	// Overriding the anchors and margins.
+	Fixed_Position_X,
+	Fixed_Position_Y,
+
+	// Enforces box will always be within the bounds of the parent box.
+	Clamp_Position_X,
+	Clamp_Position_Y,
+
+	// Enroces the widget will maintain its size reguardless of any constraints
+	// Will override parent constraints (use the size.min.xy to specify the width & height)
+	Fixed_Width,
+	Fixed_Height,
+
+	// TODO(Ed): Implement this!
+	// Enforces the widget will have a width specified as a ratio of its height (use the size.min/max.x to specify the scalar)
+	// If you wish for the width to stay fixed couple with the Fixed_Width flag
+	Scale_Width_By_Height_Ratio,
+	// Enforces the widget will have a height specified as a ratio of its width (use the size.min/max.y to specify the scalar)
+	// If you wish for the height to stay fixed couple with the Fixed_Height flag
+	Scale_Height_By_Width_Ratio,
+
+	// Sets the (0, 0) position of the child box to the parents anchor's center (post-margins bounds)
+	// By Default, the origin is at the top left of the anchor's bounds
+	Origin_At_Anchor_Center,
+
+	// TODO(Ed): Implement this!
+	// For this to work, the children must have a minimum size set & their size overall must be greater than the parent's minimum size
+	Size_To_Content,
+
+	// Will size the box to its text.
+	Size_To_Text,
+
+	// TODO(Ed): Implement this!
+	Text_Wrap,
+
+	Count,
+}
+UI_LayoutFlags :: bit_set[UI_LayoutFlag; u32]
+
+// Used within UI_Box, provides the layout (spacial constraints & specification) of the widget and
+UI_Layout :: struct {
+	flags          : UI_LayoutFlags,
+	anchor         : Range2,
+	alignment      : Vec2,
+	text_alignment : Vec2,
+
+	font_size : f32,
+
+	margins : UI_LayoutSide,
+	padding : UI_LayoutSide,
+
+	border_width : UI_Scalar,
+
+	// Position in relative coordinate space.
+	// If the box's flags has Fixed_Position, then this will be its aboslute position in the relative coordinate space
+	pos  : Vec2,
+	size : Range2,
+
+	// TODO(Ed) :  Should thsi just always be WS_Pos for workspace UI?
+	// (We can union either varient and just know based on checking if its the screenspace UI)
+	// If the box is a child of the root parent, its automatically in world space and thus will use the tile_pos.
+	// tile_pos : WS_Pos,
+
+	transition_time : f32,
+}
+
+UI_LayoutCombo :: struct #raw_union {
+	array : [UI_StylePreset.Count] UI_Layout,
+	using layouts : struct {
+		default, disabled, hot, active : UI_Layout,
 	}
+}
 
-	current := root.first
-	for ; current != nil;
-	{
-		// if current.computed.fresh do return
+to_ui_layout_side  :: #force_inline proc( pixels : f32 )       -> UI_LayoutSide  { return { pixels, pixels, pixels, pixels } }
+to_ui_layout_combo :: #force_inline proc( layout : UI_Layout ) -> UI_LayoutCombo { return { layouts = {layout, layout, layout, layout} } }
 
-		// TODO(Ed): Lift this to ui_box_compute_layout
-		// profile("Layout Box")
-		style  := current.style
+/*
+Layout Interface
 
-		// These are used to choose via multiplication weather to apply
-		// position & size constraints of the parent.
-		// The parent's unadjusted content bounds however are enforced for position,
-		// they cannot be ignored. The user may bypass them by doing the
-		// relative offset math vs world/screen space if they desire.
-		fixed_pos_x  : f32 = cast(f32) int(.Fixed_Position_X in style.flags)
-		fixed_pos_y  : f32 = cast(f32) int(.Fixed_Position_Y in style.flags)
-		fixed_width  : f32 = cast(f32) int(.Fixed_Width      in style.flags)
-		fixed_height : f32 = cast(f32) int(.Fixed_Height     in style.flags)
+Layout for UI_Boxes in the state graph is stored on a per-graph UI_State basis in the fixed sized stack called layout_combo_stack.
+The following provides a convient way to manipulate this stack from the assuption of the program's state.ui_context
 
-		size_to_text : bool = .Size_To_Text in style.flags
+The following procedure overloads are available from grime.odin:
+* ui_layout
+* ui_layout_push
+*/
 
-		parent         := current.parent
-		computed       := & current.computed
+ui_layout_peek :: #force_inline proc() ->  UI_LayoutCombo { return stack_peek( & get_state().ui_context.layout_combo_stack) }
+ui_layout_ref  :: #force_inline proc() -> ^UI_LayoutCombo { return stack_peek_ref( & get_state().ui_context.layout_combo_stack) }
 
-		parent_content      := parent.computed.content
-		parent_content_size := parent_content.max - parent_content.min
-		parent_center       := parent_content.min + parent_content_size * 0.5
+ui_layout_push_layout :: #force_inline proc( layout : UI_Layout )     { push( & get_state().ui_context.layout_combo_stack, to_ui_layout_combo(layout)) }
+ui_layout_push_theme  :: #force_inline proc( combo : UI_LayoutCombo ) { push( & get_state().ui_context.layout_combo_stack, combo ) }
+ui_layout_pop         :: #force_inline proc()                         { pop(  & get_state().ui_context.layout_combo_stack ) }
 
-		layout := & style.layout
+@(deferred_none = ui_layout_pop) ui_layout_via_layout :: #force_inline proc( layout : UI_Layout )      { ui_layout_push( layout) }
+@(deferred_none = ui_layout_pop) ui_layout_via_combo  :: #force_inline proc( combo  : UI_LayoutCombo ) { ui_layout_push( combo) }
 
-		/*
-		If fixed position (X or Y):
-		* Ignore Margins
-		* Ignore Anchors
+ui_set_layout :: #force_inline proc( layout : UI_Layout, preset : UI_StylePreset ) { stack_peek_ref( & get_state().ui_context.layout_combo_stack).array[preset] = layout }
 
-		If clampped position (X or Y):
-		* Positon cannot exceed the anchors/margins bounds.
+/*
+Widget Layout Ops
+*/
 
-		If fixed size (X or Y):
-		* Ignore Parent constraints (can only be clipped)
-
-		If auto-sized:
-		* Enforce parent size constraint of bounds relative to
-			where the adjusted content bounds are after applying margins & anchors.
-			The 'side' conflicting with the bounds will end at that bound side instead of clipping.
-
-		If size.min is not 0:
-		* Ignore parent constraints if the bounds go below that value.
-
-		If size.max is 0:
-		* Allow the child box to spread to entire adjusted content bounds, otherwise clampped to max size.
-		*/
-
-		// 1. Anchors
-		anchor := & layout.anchor
-		anchored_bounds := range2(
-			parent_content.min + parent_content_size * anchor.min,
-			parent_content.max - parent_content_size * anchor.max,
-		)
-		// anchored_bounds_origin := (anchored_bounds.min + anchored_bounds.max) * 0.5
-
-		// 2. Apply Margins
-		margins := range2(
-			{ layout.margins.left,  layout.margins.bottom },
-			{ layout.margins.right, layout.margins.top },
-		)
-		margined_bounds := range2(
-			anchored_bounds.min + margins.min,
-			anchored_bounds.max - margins.max,
-		)
-		margined_bounds_origin := (margined_bounds.min + margined_bounds.max) * 0.5
-		margined_size          :=  margined_bounds.max - margined_bounds.min
-
-		// 3. Enforce Min/Max Size Constraints
-		adjusted_max_size_x := layout.size.max.x > 0 ? min( margined_size.x, layout.size.max.x ) : margined_size.x
-		adjusted_max_size_y := layout.size.max.y > 0 ? min( margined_size.y, layout.size.max.y ) : margined_size.y
-
-		adjusted_size : Vec2
-		adjusted_size.x = max( adjusted_max_size_x, layout.size.min.x)
-		adjusted_size.y = max( adjusted_max_size_y, layout.size.min.y)
-
-		if .Fixed_Width in style.flags {
-			adjusted_size.x = layout.size.min.x
-		}
-		if .Fixed_Height in style.flags {
-			adjusted_size.y = layout.size.min.y
-		}
-
-		text_size : Vec2
-		if style.layout.font_size == computed.text_size.y {
-			text_size = computed.text_size
-		}
-		else {
-			text_size = cast(Vec2) measure_text_size( current.text.str, style.font, style.layout.font_size, 0 )
-		}
-
-		if size_to_text {
-			adjusted_size = text_size
-		}
-
-		// 5. Determine relative position
-
-		origin_center   := margined_bounds_origin
-		origin_top_left := Vec2 { margined_bounds.min.x, margined_bounds.max.y }
-
-		origin := .Origin_At_Anchor_Center in style.flags ? origin_center : origin_top_left
-
-		rel_pos := origin + layout.pos
-
-		if .Fixed_Position_X in style.flags {
-			rel_pos.x = origin.x + layout.pos.x
-		}
-		if .Fixed_Position_Y in style.flags {
-			rel_pos.y = origin.y + layout.pos.y
-		}
-
-		vec2_one := Vec2 { 1, 1 }
-
-		// 6. Determine the box bounds
-		// Adjust Alignment of pivot position
-		alignment := layout.alignment
-		bounds := range2(
-			rel_pos - adjusted_size * alignment,
-			rel_pos + adjusted_size * (vec2_one - alignment),
-		)
-
-		// Determine Padding's outer bounds
-		border_offset := Vec2	{ layout.border_width, layout.border_width }
-
-		padding_bounds := range2(
-			bounds.min + border_offset,
-			bounds.min - border_offset,
-		)
-
-		// Determine Content Bounds
-		content_bounds := range2(
-			bounds.min + { layout.padding.left,  layout.padding.bottom } + border_offset,
-			bounds.max - { layout.padding.right, layout.padding.top }    - border_offset,
-		)
-
-		computed.anchors = anchored_bounds
-		computed.margins = margined_bounds
-		computed.bounds  = bounds
-		computed.padding = padding_bounds
-		computed.content = content_bounds
-
-		if len(current.text.str) > 0
-		{
-			content_size := content_bounds.max - content_bounds.min
-			text_pos : Vec2
-			text_pos = content_bounds.min + { 0, text_size.y }
-			text_pos.x += ( content_size.x - text_size.x ) * layout.text_alignment.x
-			text_pos.y += ( content_size.y - text_size.y ) * layout.text_alignment.y
-
-			computed.text_size = text_size
-			computed.text_pos  = { text_pos.x, text_pos.y }
-		}
-		computed.fresh = true
-
-		current = ui_box_tranverse_next( current )
-	}
+ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_LayoutDirectionX, width_ref : ^f32 ) {
 }

@@ -133,6 +133,7 @@ MemoryConfig :: struct {
 	commit_initial_filebuffer : uint,
 }
 
+// ALl nobs available for this application
 AppConfig :: struct {
 	using memory : MemoryConfig,
 
@@ -154,6 +155,39 @@ AppConfig :: struct {
 	ui_resize_border_width : f32,
 }
 
+AppWindow :: struct {
+	extent    : Extents2, // Window half-size
+	dpi_scale : f32,      // Dots per inch scale (provided by raylib via glfw)
+	ppcm      : f32,      // Dots per centimetre
+}
+
+FontData :: struct {
+	provider : FontProviderData,
+
+	// TODO(Ed): We can have font constants here I guess but eventually
+	// I rather have fonts configurable for a 'theme' combo
+	// So that way which IDs are picked depends on runtime
+	firacode                : FontID,
+	squidgy_slimes          : FontID,
+	rec_mono_semicasual_reg : FontID,
+
+	default_font            : FontID,
+}
+
+FrameTime :: struct {
+	sleep_is_granular : b32,
+
+	delta_seconds : f64,
+	delta_ms      : f64,
+	delta_ns      : Duration,
+	target_ms     : f64,
+	elapsed_ms    : f64,
+	avg_ms        : f64,
+	fps_avg       : f64,
+}
+
+// Global Singleton stored in the persistent virtual arena, the first allocated data.
+// Use get_state() to conviently retrieve at any point for the program's lifetime
 State :: struct {
 	default_slab_policy     : SlabPolicy,
 	persistent_slab         : Slab,
@@ -164,8 +198,6 @@ State :: struct {
 	transient_clear_elapsed : f32,  // Time since last clear
 
 	string_cache : StringCache,
-
-	font_provider_data : FontProviderData,
 
 	input_data : [2]InputState,
 	input_prev : ^InputState,
@@ -182,6 +214,7 @@ State :: struct {
 	monitor_id         : i32,
 	monitor_refresh_hz : i32,
 
+	// using frametime : FrameTime,
 	sleep_is_granular : b32,
 
 	frametime_delta_seconds : f64,
@@ -191,6 +224,9 @@ State :: struct {
 	frametime_elapsed_ms    : f64,
 	frametime_avg_ms        : f64,
 	fps_avg                 : f64,
+
+	// fonts : FontData,
+	font_provider_data : FontProviderData,
 
 	font_firacode                : FontID,
 	font_squidgy_slimes          : FontID,
@@ -206,90 +242,10 @@ State :: struct {
 	cam_context : Camera,
 }
 
-get_state :: proc "contextless" () -> ^ State {
+get_state :: #force_inline proc "contextless" () -> ^ State {
 	return cast( ^ State ) Memory_App.persistent.reserve_start
 }
 
-AppWindow :: struct {
-	extent    : Extents2, // Window half-size
-	dpi_scale : f32,      // Dots per inch scale (provided by raylib via glfw)
-	ppcm      : f32,      // Dots per centimetre
-}
-
-// PMDB
-CodeBase :: struct {
-	placeholder : int,
-}
-
-ProjectConfig :: struct {
-	placeholder : int,
-}
-
-Project :: struct {
-	path : StrRunesPair,
-	name : StrRunesPair,
-
-	config   : ProjectConfig,
-	codebase : CodeBase,
-
-	// TODO(Ed) : Support multiple workspaces
-	workspace : Workspace,
-}
-
-Frame :: struct
-{
-	pos  : Vec2,
-	size : Vec2,
-
-	ui : ^UI_Box,
-}
-
-Workspace :: struct {
-	name : StrRunesPair,
-
-	cam         : Camera,
-	zoom_target : f32,
-
-	frames : Array(Frame),
-
-	test_frame : Frame,
-
-	// TODO(Ed) : The workspace is mainly a 'UI' conceptually...
-	ui : UI_State,
-}
-
-DebugData :: struct {
-	square_size : i32,
-	square_pos  : rl.Vector2,
-
-	draw_debug_text_y : f32,
-
-	cursor_locked     : b32,
-	cursor_unlock_pos : Vec2, // Raylib changes the mose position on lock, we want restore the position the user would be in on screen
-	mouse_vis         : b32,
-	last_mouse_pos    : Vec2,
-
-	// UI Vis
-	draw_ui_box_bounds_points : bool,
-	draw_ui_margin_bounds     : bool,
-	draw_ui_anchor_bounds     : bool,
-	draw_UI_padding_bounds    : bool,
-	draw_ui_content_bounds    : bool,
-
-	// Test First
-	frame_2_created : b32,
-
-	// Test Draggable
-	draggable_box_pos  : Vec2,
-	draggable_box_size : Vec2,
-	box_original_size  : Vec2,
-
-	// Test parsing
-	path_lorem    : string,
-	lorem_content : []byte,
-	lorem_parse   : PWS_ParseResult,
-
-	// Test 3d Viewport
-	cam_vp      : rl.Camera3D,
-	viewport_rt : rl.RenderTexture,
-}
+// get_frametime :: #force_inline proc "contextless" () -> FrameTime {
+// 	return get_state().frametime
+// }

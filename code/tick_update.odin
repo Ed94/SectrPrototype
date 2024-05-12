@@ -175,8 +175,8 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 
 		move_velocity : Vec2 = {
-			- cast(f32) i32(debug_actions.cam_move_left) + cast(f32) i32(debug_actions.cam_move_right),
-		  - cast(f32) i32(debug_actions.cam_move_up)   + cast(f32) i32(debug_actions.cam_move_down),
+			+ cast(f32) i32(debug_actions.cam_move_left) - cast(f32) i32(debug_actions.cam_move_right),
+		  + cast(f32) i32(debug_actions.cam_move_up)   - cast(f32) i32(debug_actions.cam_move_down),
 		}
 		move_velocity *= digital_move_speed * f32(delta_time)
 		cam.target    += move_velocity
@@ -203,13 +203,14 @@ update :: proc( delta_time : f64 ) -> b32
 		ui_graph_build( & state.project.workspace.ui )
 		ui := ui_context
 
-		frame_style_flags : UI_StyleFlags = {
+		frame_style_flags : UI_LayoutFlags = {
 			.Fixed_Position_X, .Fixed_Position_Y,
 			.Fixed_Width, .Fixed_Height,
 		}
 		default_layout := UI_Layout {
+			flags          = frame_style_flags,
 			anchor         = {},
-			alignment      = { 0., 0.0 },
+			alignment      = { 0.0, 0.0 },
 			font_size      = 30,
 			text_alignment = { 0.0, 0.0 },
 			// corner_radii   = { 0.2, 0.2, 0.2, 0.2 },
@@ -217,27 +218,24 @@ update :: proc( delta_time : f64 ) -> b32
 			size           = range2( { 1000, 1000 }, {}),
 			// padding = { 20, 20, 20, 20 }
 		}
-
+		ui_layout( default_layout )
 		frame_style_default := UI_Style {
-			flags      = frame_style_flags,
 			bg_color   = Color_BG_TextBox,
 			font       = default_font,
 			text_color = Color_White,
-
-			layout = default_layout,
 		}
-
-		frame_theme := to_ui_styletheme(frame_style_default)
+		frame_theme := to_ui_style_combo(frame_style_default)
 		frame_theme.disabled.bg_color = Color_Frame_Disabled
 		frame_theme.hot.     bg_color = Color_Frame_Hover
 		frame_theme.active.  bg_color = Color_Frame_Select
-		ui_style_theme( frame_theme )
+		ui_style( frame_theme )
 
 		config.ui_resize_border_width = 2.5
+		// test_hover_n_click()
 		// test_draggable()
 		// test_text_box()
 		// test_parenting( & default_layout, & frame_style_default )
-		// test_whitespace_ast( & default_layout, & frame_style_default )
+		test_whitespace_ast( & default_layout, & frame_style_default )
 	}
 	//endregion Workspace Imgui Tick
 

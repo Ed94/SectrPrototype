@@ -11,9 +11,9 @@ test_hover_n_click :: proc()
 	if first_btn.left_clicked || debug.frame_2_created {
 		debug.frame_2_created = true
 
-		second_layout := first_btn.style.layout
+		second_layout := first_btn.layout
 		second_layout.pos = { 250, 0 }
-		ui_set_layout( second_layout )
+		ui_layout( second_layout )
 
 		second_box := ui_button( "SECOND BOX!")
 	}
@@ -34,12 +34,12 @@ test_draggable :: proc()
 		pos       = { 0, 0 },
 		size      = range2({ 200, 200 }, {}),
 	}
-	ui_style_theme_set_layout( draggable_layout )
+	ui_layout( draggable_layout )
 
 	draggable := ui_widget( "Draggable Box!", UI_BoxFlags { .Mouse_Clickable, .Mouse_Resizable } )
 	if draggable.first_frame {
-		debug.draggable_box_pos  = draggable.style.layout.pos + { 0, -100 }
-		debug.draggable_box_size = draggable.style.layout.size.min
+		debug.draggable_box_pos  = draggable.layout.pos + { 0, -100 }
+		debug.draggable_box_size = draggable.layout.size.min
 	}
 
 	// Dragging
@@ -51,8 +51,8 @@ test_draggable :: proc()
 		draggable.style.bg_color = Color_Blue
 	}
 
-	draggable.style.layout.pos  = debug.draggable_box_pos
-	draggable.style.layout.size.min = debug.draggable_box_size
+	draggable.layout.pos  = debug.draggable_box_pos
+	draggable.layout.size.min = debug.draggable_box_size
 
 	draggable.text       = { str_fmt_alloc("%v", debug.draggable_box_pos), {} }
 	draggable.text.runes = to_runes(draggable.text.str)
@@ -71,21 +71,21 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 	parent_layout.margins   = { 100, 100, 100, 100 }
 	parent_layout.padding   = { 5, 10, 5, 5 }
 	parent_layout.pos       = { 0, 0 }
-
-	parent_theme := frame_style_default ^
-	parent_theme.layout = parent_layout
-	parent_theme.flags = {
+	parent_layout.flags = {
 		// .Fixed_Position_X, .Fixed_Position_Y,
 		.Fixed_Width, .Fixed_Height,
 	}
-	ui_theme_via_style(parent_theme)
+	ui_layout(parent_layout)
+
+	parent_style := frame_style_default ^
+	ui_style(parent_style)
 
 	parent :=	ui_widget( "Parent", { .Mouse_Clickable, .Mouse_Resizable })
-	ui_parent(parent)
+	ui_parent_push(parent)
 	{
 		if parent.first_frame {
-			debug.draggable_box_pos  = parent.style.layout.pos
-			debug.draggable_box_size = parent.style.layout.size.min
+			debug.draggable_box_pos  = parent.layout.pos
+			debug.draggable_box_size = parent.layout.size.min
 		}
 		if parent.active {
 			debug.draggable_box_pos += mouse_world_delta()
@@ -93,8 +93,8 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 		if (ui.hot == parent.key) {
 			parent.style.bg_color = Color_Blue
 		}
-		parent.style.layout.pos      = debug.draggable_box_pos
-		parent.style.layout.size.min = debug.draggable_box_size
+		parent.layout.pos      = debug.draggable_box_pos
+		parent.layout.size.min = debug.draggable_box_size
 	}
 
 	child_layout := default_layout ^
@@ -104,16 +104,16 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 	child_layout.padding   = { 5, 5, 5, 5 }
 	child_layout.anchor    = range2({ 0.2, 0.1 }, { 0.1, 0.15 })
 	child_layout.pos       = { 0, 0 }
-
-	child_theme := frame_style_default ^
-	child_theme.bg_color = Color_GreyRed
-	child_theme.flags = {
+	child_layout.flags = {
 		// .Fixed_Width, .Fixed_Height,
 		.Origin_At_Anchor_Center
 	}
-	child_theme.layout = child_layout
-	ui_theme_via_style(child_theme)
+
+	child_style := frame_style_default ^
+	child_style.bg_color = Color_GreyRed
+	ui_theme(child_layout, child_style)
 	child := ui_widget( "Child", { .Mouse_Clickable })
+	ui_parent_pop()
 }
 
 test_text_box :: proc()
@@ -122,27 +122,27 @@ test_text_box :: proc()
 	ui    := ui_context
 
 	@static pos : Vec2
-	style := ui_style_peek( .Default )
-	style.text_alignment = { 1.0, 1.0 }
+	layout := ui_layout_peek().default
+	layout.text_alignment = { 1.0, 1.0 }
 	// style.flags     = { .Size_To_Text  }
-	style.padding   = { 10, 10, 10, 10 }
-	style.layout.font_size = 32
-	ui_style_theme( { styles = { style, style, style, style, }} )
+	layout.padding   = { 10, 10, 10, 10 }
+	layout.font_size = 32
+	ui_layout( layout)
 
 	text := str_intern( "Lorem ipsum dolor sit amet")
 
 	text_box := ui_text("TEXT BOX!", text, flags = { .Mouse_Clickable })
 	if text_box.first_frame {
-		pos = text_box.style.layout.pos
+		pos = text_box.layout.pos
 	}
 
 	if text_box.active {
 		pos += mouse_world_delta()
 	}
 
-	text_box.style.layout.pos = pos
+	text_box.layout.pos = pos
 
-	text_box.style.size.min = { text_box.computed.text_size.x * 1.5, text_box.computed.text_size.y * 3 }
+	text_box.layout.size.min = { text_box.computed.text_size.x * 1.5, text_box.computed.text_size.y * 3 }
 }
 
 test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_Style )
@@ -151,30 +151,22 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 	state := get_state(); using state
 	ui    := ui_context
 
-	text_style := frame_style_default ^
-	text_style.flags = {
+	text_layout := default_layout^
+	text_layout.flags = {
 		.Origin_At_Anchor_Center,
 		.Fixed_Position_X, .Fixed_Position_Y,
 		// .Fixed_Width, .Fixed_Height,
 	}
-	text_style.text_alignment = { 0.0, 0.5 }
-	text_style.alignment = { 0.0, 1.0 }
-	text_style.size.min = { 1600, 30 }
-
-	text_theme := UI_StyleTheme { styles = {
-		text_style,
-		text_style,
-		text_style,
-		text_style,
-	}}
-	text_theme.default.bg_color  = Color_Transparent
-	text_theme.disabled.bg_color = Color_Frame_Disabled
-	text_theme.hot.bg_color      = Color_Frame_Hover
-	text_theme.active.bg_color   = Color_Frame_Select
-	ui_style_theme( text_theme )
-
-	layout_text := text_style.layout
-
+	text_layout.text_alignment = { 0.0, 0.5 }
+	text_layout.alignment = { 0.0, 1.0 }
+	text_layout.size.min = { 1600, 30 }
+	text_style := frame_style_default ^
+	text_style_combo := to_ui_style_combo(text_style)
+	text_style_combo.default.bg_color  = Color_Transparent
+	text_style_combo.disabled.bg_color = Color_Frame_Disabled
+	text_style_combo.hot.bg_color      = Color_Frame_Hover
+	text_style_combo.active.bg_color   = Color_Frame_Select
+	ui_theme( text_layout, text_style )
 
 	alloc_error : AllocatorError; success : bool
 	// debug.lorem_content, success = os.read_entire_file( debug.path_lorem, frame_allocator() )
@@ -201,7 +193,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 			continue
 		}
 
-		ui_style_theme_set_layout( layout_text )
+		ui_layout( text_layout )
 		line_hbox := ui_widget(str_fmt_alloc( "line %v", line_id ), {.Mouse_Clickable})
 
 		if line_hbox.key == ui.hot
@@ -209,27 +201,19 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 			line_hbox.text = StrRunesPair {}
 			ui_parent(line_hbox)
 
-			chunk_layout := layout_text
+			chunk_layout := text_layout
 			chunk_layout.alignment = { 0.0, 1.0 }
 			chunk_layout.anchor = range2({ 0.0, 0 }, { 0.0, 0 })
 			chunk_layout.pos = {}
+			chunk_layout.flags = { .Fixed_Position_X, .Size_To_Text }
 
 			chunk_style := text_style
-			chunk_style.flags = { .Fixed_Position_X, .Size_To_Text }
-			chunk_style.layout = chunk_layout
-
-			chunk_theme := UI_StyleTheme { styles = {
-				chunk_style,
-				chunk_style,
-				chunk_style,
-				chunk_style,
-			}}
-			ui_style_theme( chunk_theme )
+			ui_theme( to_ui_layout_combo(chunk_layout), to_ui_style_combo(chunk_style) )
 
 			head := line.first
 			for ; head != nil;
 			{
-				ui_style_theme_set_layout( chunk_layout )
+				ui_layout( chunk_layout )
 				widget : UI_Widget
 
 				#partial switch head.type
@@ -269,14 +253,14 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 				head = head.next
 			}
 
-			line_hbox.style.size.min.x = chunk_layout.pos.x
+			line_hbox.layout.size.min.x = chunk_layout.pos.x
 		}
 		else
 		{
 			builder_backing : [16 * Kilobyte] byte
 			builder         := str.builder_from_bytes( builder_backing[:] )
 
-			line_hbox.style.flags |= { .Size_To_Text }
+			line_hbox.layout.flags |= { .Size_To_Text }
 
 			head := line.first.next
 			for ; head != nil;
@@ -293,11 +277,11 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 
 		if len(line_hbox.text.str) > 0 {
 			array_append( widgets_ptr, line_hbox )
-			layout_text.pos.x  = text_style.layout.pos.x
-			layout_text.pos.y += size_range2(line_hbox.computed.bounds).y
+			text_layout.pos.x  = text_layout.pos.x
+			text_layout.pos.y += size_range2(line_hbox.computed.bounds).y
 		}
 		else {
-			layout_text.pos.y += size_range2( (& widgets.data[ widgets.num - 1 ]).computed.bounds ).y
+			text_layout.pos.y += size_range2( (& widgets.data[ widgets.num - 1 ]).computed.bounds ).y
 		}
 
 		line_id += 1

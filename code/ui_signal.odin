@@ -211,7 +211,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 				box.prev_style  = box.style
 				box.style_delta = 0
 			}
-			box.style = stack_peek( & ui.theme_stack ).hot
+			box.layout = ui_layout_peek().hot
+			box.style = ui_style_peek().hot
 		}
 		if is_active
 		{
@@ -219,7 +220,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 				box.prev_style  = box.style
 				box.style_delta = 0
 			}
-			box.style = stack_peek( & ui.theme_stack ).active
+			box.layout = ui_layout_peek().active
+			box.style = ui_style_peek().active
 		}
 		if is_disabled
 		{
@@ -227,7 +229,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 				box.prev_style  = box.style
 				box.style_delta = 0
 			}
-			box.style = stack_peek( & ui.theme_stack ).disabled
+			box.layout = ui_layout_peek().disabled
+			box.style = ui_style_peek().disabled
 		}
 
 		if ! is_disabled && ! is_active && ! is_hot {
@@ -238,7 +241,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 			else {
 				box.style_delta += frame_delta
 			}
-			box.style = stack_peek( & ui.theme_stack ).default
+			box.layout = ui_layout_peek().default
+			box.style = ui_style_peek().default
 		}
 	}
 

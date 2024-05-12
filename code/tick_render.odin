@@ -4,18 +4,20 @@ import "core:fmt"
 
 import rl "vendor:raylib"
 
-draw_rectangle :: #force_inline proc "contextless" ( rect : rl.Rectangle, style : UI_Style ) {
-	if style.layout.corner_radii[0] > 0 {
-		rl.DrawRectangleRounded( rect, style.layout.corner_radii[0], 9, style.bg_color )
+draw_rectangle :: #force_inline proc "contextless" ( rect : rl.Rectangle, box : ^UI_Box ) {
+	using box
+	if style.corner_radii[0] > 0 {
+		rl.DrawRectangleRounded( rect, style.corner_radii[0], 9, style.bg_color )
 	}
 	else {
 		rl.DrawRectangleRec( rect, style.bg_color )
 	}
 }
 
-draw_rectangle_lines :: #force_inline proc "contextless" ( rect : rl.Rectangle, style : UI_Style, color : Color, thickness : f32 ) {
-	if style.layout.corner_radii[0] > 0 {
-		rl.DrawRectangleRoundedLines( rect, style.layout.corner_radii[0], 9, thickness, color )
+draw_rectangle_lines :: #force_inline proc "contextless" ( rect : rl.Rectangle, box : ^UI_Box, color : Color, thickness : f32 ) {
+	using box
+	if style.corner_radii[0] > 0 {
+		rl.DrawRectangleRoundedLines( rect, style.corner_radii[0], 9, thickness, color )
 	}
 	else {
 		rl.DrawRectangleLinesEx( rect, thickness, color )
@@ -119,6 +121,7 @@ render_mode_2d_workspace :: proc()
 			// profile("Box")
 			parent := current.parent
 
+			layout   := current.layout
 			style    := current.style
 			computed := & current.computed
 
@@ -128,18 +131,17 @@ render_mode_2d_workspace :: proc()
 				continue
 			}
 
-
 		// TODO(Ed) : Render Borders
 
 		// profile_begin("Calculating Raylib rectangles")
-			render_anchors := range2(
-				ws_view_to_render_pos(computed.anchors.min),
-				ws_view_to_render_pos(computed.anchors.max),
-			)
-			render_margins := range2(
-				ws_view_to_render_pos(computed.margins.min),
-				ws_view_to_render_pos(computed.margins.max),
-			)
+			// render_anchors := range2(
+			// 	ws_view_to_render_pos(computed.anchors.min),
+			// 	ws_view_to_render_pos(computed.anchors.max),
+			// )
+			// render_margins := range2(
+			// 	ws_view_to_render_pos(computed.margins.min),
+			// 	ws_view_to_render_pos(computed.margins.max),
+			// )
 			render_bounds := range2(
 				ws_view_to_render_pos(computed.bounds.min),
 				ws_view_to_render_pos(computed.bounds.max),
@@ -153,8 +155,8 @@ render_mode_2d_workspace :: proc()
 				ws_view_to_render_pos(computed.content.max),
 			)
 
-			rect_anchors := range2_to_rl_rect( render_anchors )
-			rect_margins := range2_to_rl_rect( render_margins )
+			// rect_anchors := range2_to_rl_rect( render_anchors )
+			// rect_margins := range2_to_rl_rect( render_margins )
 			rect_bounds  := range2_to_rl_rect( render_bounds )
 			rect_padding := range2_to_rl_rect( render_padding )
 			rect_content := range2_to_rl_rect( render_content )
@@ -163,10 +165,10 @@ render_mode_2d_workspace :: proc()
 		// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
 		if style.bg_color.a != 0
 		{
-			draw_rectangle( rect_bounds, style )
+			draw_rectangle( rect_bounds, current )
 		}
-		if style.border_width > 0 {
-			draw_rectangle_lines( rect_bounds, style, style.border_color, style.border_width )
+		if layout.border_width > 0 {
+			draw_rectangle_lines( rect_bounds, current, style.border_color, layout.border_width )
 		}
 		// profile_end()
 
@@ -174,10 +176,10 @@ render_mode_2d_workspace :: proc()
 
 		// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
 		if equal_range2(computed.content, computed.padding) {
-			draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
+			draw_rectangle_lines( rect_padding, current, Color_Debug_UI_Padding_Bounds, line_thickness )
 		}
 		else {
-			draw_rectangle_lines( rect_content, style, Color_Debug_UI_Content_Bounds, line_thickness )
+			draw_rectangle_lines( rect_content, current, Color_Debug_UI_Content_Bounds, line_thickness )
 		}
 		// profile_end()
 
@@ -195,7 +197,7 @@ render_mode_2d_workspace :: proc()
 		// profile_end()
 
 			if len(current.text.str) > 0 {
-				ws_view_draw_text( current.text, ws_view_to_render_pos(computed.text_pos * {1, -1}), style.layout.font_size, style.text_color )
+				ws_view_draw_text( current.text, ws_view_to_render_pos(computed.text_pos * {1, -1}), layout.font_size, style.text_color )
 			}
 		}
 	}
@@ -338,18 +340,19 @@ render_screen_ui :: proc()
 			parent := current.parent
 
 			style    := current.style
+			layout   := current.layout
 			computed := & current.computed
 
 			computed_size := computed.bounds.p1 - computed.bounds.p0
 
-			render_anchors := range2(
-				screen_to_render_pos(computed.anchors.min),
-				screen_to_render_pos(computed.anchors.max),
-			)
-			render_margins := range2(
-				screen_to_render_pos(computed.margins.min),
-				screen_to_render_pos(computed.margins.max),
-			)
+			// render_anchors := range2(
+			// 	screen_to_render_pos(computed.anchors.min),
+			// 	screen_to_render_pos(computed.anchors.max),
+			// )
+			// render_margins := range2(
+			// 	screen_to_render_pos(computed.margins.min),
+			// 	screen_to_render_pos(computed.margins.max),
+			// )
 			render_bounds := range2(
 				screen_to_render_pos(computed.bounds.min),
 				screen_to_render_pos(computed.bounds.max),
@@ -362,8 +365,8 @@ render_screen_ui :: proc()
 				screen_to_render_pos(computed.content.min),
 				screen_to_render_pos(computed.content.max),
 			)
-			rect_anchors := range2_to_rl_rect( render_anchors )
-			rect_margins := range2_to_rl_rect( render_margins )
+			// rect_anchors := range2_to_rl_rect( render_anchors )
+			// rect_margins := range2_to_rl_rect( render_margins )
 			rect_bounds  := range2_to_rl_rect( render_bounds )
 			rect_padding := range2_to_rl_rect( render_padding )
 			rect_content := range2_to_rl_rect( render_content )
@@ -372,10 +375,10 @@ render_screen_ui :: proc()
 		// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
 		if style.bg_color.a != 0
 		{
-			draw_rectangle( rect_bounds, style )
+			draw_rectangle( rect_bounds, current )
 		}
-		if style.border_width > 0 {
-			draw_rectangle_lines( rect_bounds, style, style.border_color, style.border_width )
+		if layout.border_width > 0 {
+			draw_rectangle_lines( rect_bounds, current, style.border_color, layout.border_width )
 		}
 		// profile_end()
 
@@ -383,34 +386,34 @@ render_screen_ui :: proc()
 
 		// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
 		if equal_range2(computed.content, computed.padding) {
-			// draw_rectangle_lines( rect_padding, style, Color_Debug_UI_Padding_Bounds, line_thickness )
+			draw_rectangle_lines( rect_padding, current, Color_Debug_UI_Padding_Bounds, line_thickness )
 		}
 		else {
-			// draw_rectangle_lines( rect_content, style, Color_Debug_UI_Content_Bounds, line_thickness )
+			draw_rectangle_lines( rect_content, current, Color_Debug_UI_Content_Bounds, line_thickness )
 		}
 		// profile_end()
 
-			if .Mouse_Resizable in current.flags
-			{
-				// profile("Resize Bounds")
-				resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
-				resize_percent_width := computed_size * (resize_border_width * 1.0/ 200.0)
-				resize_border_non_range := add(current.computed.bounds, range2(
-						{  resize_percent_width.x, -resize_percent_width.x },
-						{ -resize_percent_width.x,  resize_percent_width.x }))
+			// if .Mouse_Resizable in current.flags
+			// {
+			// 	// profile("Resize Bounds")
+			// 	resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
+			// 	resize_percent_width := computed_size * (resize_border_width * 1.0/ 200.0)
+			// 	resize_border_non_range := add(current.computed.bounds, range2(
+			// 			{  resize_percent_width.x, -resize_percent_width.x },
+			// 			{ -resize_percent_width.x,  resize_percent_width.x }))
 
-				render_resize := range2(
-					resize_border_non_range.min,
-					resize_border_non_range.max,
-				)
-				rect_resize := rl.Rectangle {
-					render_resize.min.x,
-					render_resize.min.y,
-					render_resize.max.x - render_resize.min.x,
-					render_resize.max.y - render_resize.min.y,
-				}
-				draw_rectangle_lines( rect_padding, style, Color_Red, line_thickness )
-			}
+			// 	render_resize := range2(
+			// 		resize_border_non_range.min,
+			// 		resize_border_non_range.max,
+			// 	)
+			// 	rect_resize := rl.Rectangle {
+			// 		render_resize.min.x,
+			// 		render_resize.min.y,
+			// 		render_resize.max.x - render_resize.min.x,
+			// 		render_resize.max.y - render_resize.min.y,
+			// 	}
+			// 	draw_rectangle_lines( rect_padding, current, Color_Red, line_thickness )
+			// }
 
 			point_radius : f32 = 3
 
@@ -421,12 +424,12 @@ render_screen_ui :: proc()
 			// }
 			// rl.DrawCircleV( center, point_radius, Color_White )
 
-			// rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
-			// rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
+			rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
+			rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
 		// profile_end()
 
 			if len(current.text.str) > 0 && style.font.key != 0 {
-				draw_text_screenspace( current.text, screen_to_render_pos(computed.text_pos), style.layout.font_size, style.text_color )
+				draw_text_screenspace( current.text, screen_to_render_pos(computed.text_pos), layout.font_size, style.text_color )
 			}
 		}
 	}

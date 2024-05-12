@@ -268,9 +268,30 @@ to_writer :: proc {
 	str_builder_to_writer,
 }
 
-ui_set_layout :: proc {
-	ui_style_set_layout,
-	ui_style_theme_set_layout,
+ui_layout_push :: proc {
+	ui_layout_push_layout,
+	ui_layout_push_theme,
+}
+
+ui_layout :: proc {
+	ui_layout_via_layout,
+	ui_layout_via_combo,
+}
+
+ui_style_push :: proc {
+	ui_style_push_style,
+	ui_style_push_combo,
+}
+
+ui_style :: proc {
+	ui_style_via_style,
+	ui_style_via_combo,
+}
+
+ui_theme :: proc {
+	ui_theme_via_layout_style,
+	ui_theme_via_combos,
+	ui_theme_via_theme,
 }
 
 wedge :: proc {
