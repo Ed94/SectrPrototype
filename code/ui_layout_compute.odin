@@ -1,14 +1,15 @@
 package sectr
 
-// Note(Ed): This is naturally pretty expensive
-
-ui_box_compute_layout :: proc( box : ^UI_Box )
+ui_box_compute_layout :: proc( box : ^UI_Box,
+	ancestors_layout_required : b32 = false,
+	root_layout_required      : b32 = false )
 {
 	profile("Layout Box")
 	state := get_state()
 	ui    := state.ui_context
 
 	parent := box.parent
+	// TODO(Ed): Add support to premmtively compute ancestor's layouts
 	// if parent != ui.root && ! parent.computed.fresh {
 	// 	ui_box_compute_layout( parent )
 	// }
@@ -44,6 +45,9 @@ ui_box_compute_layout :: proc( box : ^UI_Box )
 
 	If fixed size (X or Y):
 	* Ignore Parent constraints (can only be clipped)
+
+	If an axis is auto-sized by a ratio of the other axis
+	* 
 
 	If auto-sized:
 	* Enforce parent size constraint of bounds relative to

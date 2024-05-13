@@ -42,7 +42,7 @@ test_draggable :: proc()
 		corner_radii = { 0.3, 0.3, 0.3, 0.3 },
 	})
 
-	draggable := ui_widget( "Draggable Box!", UI_BoxFlags { .Mouse_Clickable, .Mouse_Resizable } )
+	draggable := ui_widget( "Draggable Box!", UI_BoxFlags { .Mouse_Clickable } )
 	if draggable.first_frame {
 		debug.draggable_box_pos  = draggable.layout.pos + { 0, -100 }
 		debug.draggable_box_size = draggable.layout.size.min
@@ -87,7 +87,7 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 	parent_style := frame_style_default ^
 	ui_style(parent_style)
 
-	parent :=	ui_widget( "Parent", { .Mouse_Clickable, .Mouse_Resizable })
+	parent :=	ui_widget( "Parent", { .Mouse_Clickable })
 	ui_parent_push(parent)
 	{
 		if parent.first_frame {

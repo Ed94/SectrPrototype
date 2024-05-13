@@ -1,5 +1,6 @@
 package sectr
 
+// TODO(Ed): We problably can embedd this info into the UI_Layout with the regular text_alignment
 UI_TextAlign :: enum u32 {
 	Left,
 	Center,
@@ -20,7 +21,7 @@ UI_Style :: struct {
 	border_color : Color,
 
 	// TODO(Ed): We cannot support individual corners unless we add it to raylib (or finally change the rendering backend)
-		corner_radii : [Corner.Count]f32,
+	corner_radii : [Corner.Count]f32,
 
 	// TODO(Ed) : Add support for this eventually
 	blur_size : f32,
@@ -31,9 +32,8 @@ UI_Style :: struct {
 	// TODO(Ed): Add support for custom shader
 	// shader : UI_Shader,
 
-	font           : FontID,
-	// TODO(Ed): Should this get moved to the layout struct? Techncially font-size is mainly
-	text_color     : Color,
+	font       : FontID,
+	text_color : Color,
 
 	// TODO(Ed) : Support setting the cursor state
 	cursor : UI_Cursor,

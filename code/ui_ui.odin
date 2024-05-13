@@ -59,22 +59,19 @@ UI_BoxFlag :: enum u64 {
 	Click_To_Focus,
 
 	Mouse_Clickable,
-	Mouse_Resizable,
-
 	Keyboard_Clickable,
 
-	Scroll_X,
-	Scroll_Y,
+	// Pan_X,
+	// Pan_Y,
 
-	Pan_X,
-	Pan_Y,
+	// Scroll_X,
+	// Scroll_Y,
 
-	Screenspace,
-
+	// Screenspace,
 	Count,
 }
 UI_BoxFlags :: bit_set[UI_BoxFlag; u64]
-UI_BoxFlag_Scroll :: UI_BoxFlags { .Scroll_X, .Scroll_Y }
+// UI_BoxFlag_Scroll :: UI_BoxFlags { .Scroll_X, .Scroll_Y }
 
 UI_Cursor :: struct {
 	placeholder : int,
@@ -110,7 +107,10 @@ UI_Box :: struct {
 	text  : StrRunesPair,
 
 	// Regenerated per frame.
-	using links   : DLL_NodeFull( UI_Box ), // first, last, prev, next
+
+	// first, last : The first and last child of this box
+	// prev, next  : The adjacent neighboring boxes who are children of to the same parent
+	using links   : DLL_NodeFull( UI_Box ),
 	parent        : ^UI_Box,
 	num_children  : i32,
 	ancestors     : i32, // This value for rooted widgets gets set to -1 after rendering see ui_box_make() for the reason.
@@ -126,7 +126,7 @@ UI_Box :: struct {
 	style      : UI_Style,
 
 	// Persistent Data
-	first_frame    : b8,
+	first_frame    : b8, // TODO(Ed): Move to end if keeping as b8
 	hot_delta      : f32,
 	active_delta   : f32,
 	disabled_delta : f32,
@@ -148,8 +148,8 @@ UI_Built_Boxes_Array_Size :: 16 * Kilobyte
 
 UI_State :: struct {
 	// TODO(Ed) : Use these
-	build_arenas : [2]Arena,
-	build_arena  : ^ Arena,
+	// build_arenas : [2]Arena,
+	// build_arena  : ^ Arena,
 
 	built_box_count : i32,
 
@@ -165,7 +165,7 @@ UI_State :: struct {
 	// So long as their parent-index is non-negative they'll be rendered
 
 	// Do we need to recompute the layout?
-	layout_dirty  : b32,
+	// layout_dirty  : b32,
 
 	// TODO(Ed) : Look into using a build arena like Ryan does for these possibly (and thus have a linked-list stack)
 	layout_combo_stack : StackFixed( UI_LayoutCombo, UI_Style_Stack_Size ),
@@ -300,7 +300,10 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	}
 	if parent != nil
 	{
-		if parent != ui.root || curr_box.first_frame
+		// There are three possible reasons to just add as usual:
+		// 1. Its not rooted, which means we don't track order
+		// 2. 
+		if parent != ui.root || curr_box.first_frame //|| (prev_box.prev == nil && prev_box.next == nil)
 		{
 			// Only occurs when this is no prior history for rooted boxes
 			// Otherwise regular children always complete this
@@ -335,11 +338,11 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 		{
 			// Make only todo if links are properly wiped on current
 			set_error : AllocatorError
-			if curr_box.prev == nil && prev_box.prev != nil {
+			if curr_box.prev == nil && prev_box.prev != nil && prev_box.ancestors == 1 {
 				curr_box.prev, set_error = zpl_hmap_set( curr_cache, cast(u64) prev_box.prev.key, prev_box.prev ^ )
 				verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
 			}
-			if curr_box.next == nil && prev_box.next != nil {
+			if curr_box.next == nil && prev_box.next != nil && prev_box.ancestors == 1 {
 				curr_box.next, set_error = zpl_hmap_set( curr_cache, cast(u64) prev_box.next.key, prev_box.next ^ )
 				verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
 			}

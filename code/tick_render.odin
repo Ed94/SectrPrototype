@@ -344,14 +344,17 @@ render_screen_ui :: proc()
 		// Sort roots children by top-level order
 
 		current := root.first
-		for ; current != nil; current = ui_box_tranverse_next( current, is_destructive = true )
+		for ; current != nil; current = ui_box_tranverse_next( current, is_destructive = false )
 		{
 			// profile("Box")
 			parent := current.parent
 			if parent == ui.root && current.ancestors == -1 {
+				// current.parent = nil
+				// current.first  = nil
+				// current.last   = nil
 				// This is a deceased rooted box
 				// Ignore it as its not constructed this frame
-				// continue
+				continue
 			}
 
 			style    := current.style
@@ -407,28 +410,6 @@ render_screen_ui :: proc()
 				draw_rectangle_lines( rect_content, current, Color_Debug_UI_Content_Bounds, line_thickness )
 			}
 			// profile_end()
-
-			// if .Mouse_Resizable in current.flags
-			// {
-			// 	// profile("Resize Bounds")
-			// 	resize_border_width  := cast(f32) get_state().config.ui_resize_border_width
-			// 	resize_percent_width := computed_size * (resize_border_width * 1.0/ 200.0)
-			// 	resize_border_non_range := add(current.computed.bounds, range2(
-			// 			{  resize_percent_width.x, -resize_percent_width.x },
-			// 			{ -resize_percent_width.x,  resize_percent_width.x }))
-
-			// 	render_resize := range2(
-			// 		resize_border_non_range.min,
-			// 		resize_border_non_range.max,
-			// 	)
-			// 	rect_resize := rl.Rectangle {
-			// 		render_resize.min.x,
-			// 		render_resize.min.y,
-			// 		render_resize.max.x - render_resize.min.x,
-			// 		render_resize.max.y - render_resize.min.y,
-			// 	}
-			// 	draw_rectangle_lines( rect_padding, current, Color_Red, line_thickness )
-			// }
 
 			point_radius : f32 = 3
 

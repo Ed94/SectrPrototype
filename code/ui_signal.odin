@@ -69,10 +69,11 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		// runtime.debug_trap()
 	}
 
+	// Check to see if this box is active
 	if mouse_clickable && signal.cursor_over && left_pressed && was_hot
 	{
 		top_ancestor := ui_top_ancestor(box)
-		if ui.root.last != top_ancestor && false
+		if ui.root.last != top_ancestor
 		{
 			// dll_full_pop(top_ancestor, top_ancestor.parent)
 			// dll_full_push_back( top_ancestor.parent, top_ancestor, nil )
@@ -81,7 +82,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 			right := top_ancestor.next
 
 			if left != nil {
-				left.next = top_ancestor.prev
+				left.next = top_ancestor.next
 			}
 			else {
 				// We are the first box on root,
@@ -92,10 +93,17 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 
 			if ui.root.last != nil
 			{
-				// ui.root.last - > top_ancestor
-				ui.root.last.next = top_ancestor
-				top_ancestor.prev = ui.root.last
+				prev_last   := ui.root.last
+				ui.root.last = top_ancestor
+
+				prev_last.next    = top_ancestor
+				top_ancestor.prev = prev_last
 				top_ancestor.next = nil
+				if left == nil && right == prev_last
+				{
+					right.prev = nil
+					right.next = top_ancestor
+				}
 			}
 			else
 			{
@@ -105,8 +113,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 				ui.root.first.next = top_ancestor
 				top_ancestor.prev  = ui.root.first
 				top_ancestor.next  = nil
+				ui.root.last = top_ancestor
 			}
-			ui.root.last = top_ancestor
 
 			for curr := right; curr != nil; curr = curr.next {
 				curr.parent_index -= 1
@@ -147,26 +155,26 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		// TODO(Ed) : Add keyboard interaction support
 	}
 
+	// TODO(Ed): Should panning and scrolling get supported here? (problably not...)
 	// TODO(Ed) : Add scrolling support
-	if UI_BoxFlag.Scroll_X in box.flags {
+	// if UI_BoxFlag.Scroll_X in box.flags {
 
-	}
-	if UI_BoxFlag.Scroll_Y in box.flags {
+	// }
+	// if UI_BoxFlag.Scroll_Y in box.flags {
 
-	}
-
+	// }
 	// TODO(Ed) : Add panning support
-	if UI_BoxFlag.Pan_X in box.flags {
+	// if UI_BoxFlag.Pan_X in box.flags {
 
-	}
-	if UI_BoxFlag.Pan_Y in box.flags {
-
-	}
+	// }
+	// if UI_BoxFlag.Pan_Y in box.flags {
+	// }
 
 	is_disabled := UI_BoxFlag.Disabled in box.flags
 	is_hot      := ui.hot    == box.key
 	is_active   := ui.active == box.key
 
+	// TODO(Ed): It should be able to enter hot without mouse_clickable
 	if mouse_clickable && signal.cursor_over && ! is_disabled
 	{
 		hot_vacant    := ui.hot    == UI_Key(0)
