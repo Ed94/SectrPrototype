@@ -17,6 +17,7 @@ UI_ScreenState :: struct
 		pos, size, min_size : Vec2,
 		container           : UI_VBox,
 		is_open             : b32,
+		is_maximized        : b32,
 	},
 }
 
@@ -41,11 +42,12 @@ ui_screen_menu_bar :: proc()
 	{
 		using menu_bar
 		ui_layout( UI_Layout {
-			// flags        = {.Fixed_Position_X, .Fixed_Position_Y, .Fixed_Width, .Fixed_Height},
-			anchor       = {},
-			alignment    = { 0, 1 },
+			flags        = {.Fixed_Position_X, .Fixed_Position_Y, .Fixed_Width, .Fixed_Height, .Origin_At_Anchor_Center},
+			// anchor       = range2({0.5, 0.5}, {0.5, 0.5} ),
+			alignment    = { 0.5, 0.5 },
 			border_width = 1.0,
 			font_size    = 12,
+			// pos = {},
 			pos          = menu_bar.pos,
 			size         = range2( menu_bar.size, {}),
 		})
@@ -56,12 +58,13 @@ ui_screen_menu_bar :: proc()
 			text_color   = Color_White,
 		})
 		// ui_hbox( & container, .Left_To_Right, "App Menu Bar", { .Mouse_Clickable} )
-		container = ui_hbox_begin( .Left_To_Right, "Menu Bar" )
-		ui_parent(container)
+		container = ui_hbox( .Left_To_Right, "Menu Bar" )
+		// ui_parent(container)
 
 		ui_layout( UI_Layout {
 			flags        = {},
 			anchor       = {},
+			text_alignment = {0.5, 0.5},
 			border_width = 1.0,
 			font_size    = 12,
 		})
@@ -101,7 +104,7 @@ ui_screen_menu_bar :: proc()
 		spacer = ui_spacer("Menu Bar: End Spacer")
 		spacer.layout.anchor.ratio.x = 1.0
 
-		ui_hbox_end( container)
+		// ui_hbox_end( container)
 	}
 }
 
@@ -118,18 +121,21 @@ ui_screen_settings_menu :: proc()
 
 	container = ui_vbox_begin( .Top_To_Bottom, "Settings Menu", {.Mouse_Clickable})
 	{
-		using container
-		// flags = {}
-		layout.flags = { .Origin_At_Anchor_Center }
-		layout.pos       = pos
-		layout.alignment = { 0.5, 0.5 }
-		layout.size      = range2( size, {})
-		style.bg_color   = Color_BG_Panel_Translucent
-	}
-	ui_parent(container)
-	{
+		{
+			using container
+			// flags = {}
+			layout.flags     = { .Fixed_Width, .Fixed_Height, .Origin_At_Anchor_Center }
+			layout.pos       = pos
+			layout.alignment = { 0.5, 0.5 }
+			// layout.alignment = {}
+			layout.size      = range2( size, {})
+			style.bg_color   = Color_BG_Panel_Translucent
+		}
+		ui_parent(container)
+
 		ui_layout( UI_Layout {
 			font_size = 16,
+			alignment = {0, 1}
 		})
 		ui_style( UI_Style {
 			bg_color   = Color_Transparent,
@@ -153,9 +159,25 @@ ui_screen_settings_menu :: proc()
 			}
 
 			ui_style(ui_style_peek())
-			theme := ui_style_ref()
-			theme.default.bg_color = Color_GreyRed
-			theme.hot.    bg_color = Color_Red
+			style := ui_style_ref()
+			style.default.bg_color = Color_Black
+			style.hot.bg_color = Color_Frame_Hover
+			maximize_btn := ui_button("Settings Menu: Maximize Btn")
+			{
+				using maximize_btn
+				layout.flags          = {.Fixed_Width}
+				layout.size.min       = {50, 0}
+				layout.text_alignment = {0.5, 0.5}
+				layout.anchor.ratio.x = 1.0
+				if maximize_btn.pressed {
+					settings_menu.is_maximized = ~settings_menu.is_maximized
+				}
+				if settings_menu.is_maximized do text = str_intern("min")
+				else do text = str_intern("max")
+			}
+
+			style.default.bg_color = Color_GreyRed
+			style.hot.    bg_color = Color_Red
 			close_btn := ui_button("Settings Menu: Close Btn")
 			{
 				using close_btn
@@ -169,7 +191,7 @@ ui_screen_settings_menu :: proc()
 				}
 			}
 
-			ui_hbox_end(frame_bar, & size.x)
+			ui_hbox_end(frame_bar)
 		}
 		if frame_bar.active {
 			pos += input.mouse.delta
@@ -178,8 +200,13 @@ ui_screen_settings_menu :: proc()
 		spacer := ui_spacer("Settings Menu: Spacer")
 		spacer.layout.anchor.ratio.y = 1.0
 
-		ui_vbox_end(container, & size.y)
+		ui_vbox_end(container, compute_layout = false )
+	}
+	if settings_menu.is_maximized {
+		using settings_menu.container
+		layout.flags = {.Origin_At_Anchor_Center }
+		layout.pos   = {}
 	}
 
-	ui_resizable_handles( & container, & pos, & size )
+	ui_resizable_handles( & container, & pos, & size)
 }

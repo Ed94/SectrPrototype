@@ -25,16 +25,22 @@ test_draggable :: proc()
 	ui    := ui_context
 
 	draggable_layout := UI_Layout {
-		anchor    = {},
+		flags = {
+			.Fixed_Position_X, .Fixed_Position_Y,
+			.Fixed_Width, .Fixed_Height,
+			.Origin_At_Anchor_Center,
+		},
 		// alignment = { 0.0, 0.5 },
-		alignment      = { 0.5, 0.5 },
+		alignment      = { 0.5, 0 },
 		text_alignment = { 0.0, 0.0 },
 		// alignment = { 1.0, 1.0 },
-		// corner_radii = { 0.3, 0.3, 0.3, 0.3 },
 		pos       = { 0, 0 },
 		size      = range2({ 200, 200 }, {}),
 	}
 	ui_layout( draggable_layout )
+	ui_style( UI_Style {
+		corner_radii = { 0.3, 0.3, 0.3, 0.3 },
+	})
 
 	draggable := ui_widget( "Draggable Box!", UI_BoxFlags { .Mouse_Clickable, .Mouse_Resizable } )
 	if draggable.first_frame {
@@ -72,8 +78,9 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 	parent_layout.padding   = { 5, 10, 5, 5 }
 	parent_layout.pos       = { 0, 0 }
 	parent_layout.flags = {
-		// .Fixed_Position_X, .Fixed_Position_Y,
+		.Fixed_Position_X, .Fixed_Position_Y,
 		.Fixed_Width, .Fixed_Height,
+		.Origin_At_Anchor_Center
 	}
 	ui_layout(parent_layout)
 
@@ -155,7 +162,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 	text_layout.flags = {
 		.Origin_At_Anchor_Center,
 		.Fixed_Position_X, .Fixed_Position_Y,
-		// .Fixed_Width, .Fixed_Height,
+		.Fixed_Width, .Fixed_Height,
 	}
 	text_layout.text_alignment = { 0.0, 0.5 }
 	text_layout.alignment = { 0.0, 1.0 }

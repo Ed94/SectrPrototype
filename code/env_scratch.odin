@@ -17,8 +17,6 @@ DebugData :: struct {
 
 	// UI Vis
 	draw_ui_box_bounds_points : bool,
-	draw_ui_margin_bounds     : bool,
-	draw_ui_anchor_bounds     : bool,
 	draw_UI_padding_bounds    : bool,
 	draw_ui_content_bounds    : bool,
 

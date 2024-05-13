@@ -36,7 +36,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		signal.cursor_pos  = ui_cursor_pos()
 		signal.cursor_over = cast(b8) pos_within_range2( signal.cursor_pos, box.computed.bounds )
 
-		// TODO(Ed): We eventually need to setup a sorted root based on last active history
 		UnderCheck:
 		{
 			if ! signal.cursor_over do break UnderCheck
@@ -45,10 +44,10 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 			if last_root == nil do break UnderCheck
 
 			top_ancestor := ui_top_ancestor(box)
-			if top_ancestor.parent_index != last_root.num_children - 1
+			if top_ancestor.parent_index < last_root.parent_index
 			{
 				for curr := last_root.last; curr != nil && curr.key != box.key; curr = curr.prev {
-					if pos_within_range2( signal.cursor_pos, curr.computed.bounds ) && curr.parent_index > top_ancestor.parent_index {
+					if pos_within_range2( signal.cursor_pos, curr.computed.bounds ) {
 						signal.cursor_over = false
 					}
 				}
@@ -72,7 +71,10 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 
 	if mouse_clickable && signal.cursor_over && left_pressed && was_hot
 	{
-		//TODO(Ed): We need to add the reorder of top-level widgets based on this interaction
+		top_ancestor := ui_top_ancestor(box)
+		
+		dll_full_pop(top_ancestor, top_ancestor.parent)
+		dll_full_push_back( top_ancestor.parent, top_ancestor, nil )
 
 		// runtime.debug_trap()
 		// ui.hot                         = box.key
@@ -212,7 +214,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 				box.style_delta = 0
 			}
 			box.layout = ui_layout_peek().hot
-			box.style = ui_style_peek().hot
+			box.style  = ui_style_peek().hot
 		}
 		if is_active
 		{
@@ -221,7 +223,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 				box.style_delta = 0
 			}
 			box.layout = ui_layout_peek().active
-			box.style = ui_style_peek().active
+			box.style  = ui_style_peek().active
 		}
 		if is_disabled
 		{
@@ -230,7 +232,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 				box.style_delta = 0
 			}
 			box.layout = ui_layout_peek().disabled
-			box.style = ui_style_peek().disabled
+			box.style  = ui_style_peek().disabled
 		}
 
 		if ! is_disabled && ! is_active && ! is_hot {
@@ -242,7 +244,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 				box.style_delta += frame_delta
 			}
 			box.layout = ui_layout_peek().default
-			box.style = ui_style_peek().default
+			box.style  = ui_style_peek().default
 		}
 	}
 

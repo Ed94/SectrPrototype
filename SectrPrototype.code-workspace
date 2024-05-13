@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "code_virtual_view"
+		},
+		{
+			"path": "scripts"
+		}
+	],
+	"settings": {
+		"autoHide.autoHidePanel": false,
+		"autoHide.autoHideSideBar": false,
+		"files.associations": {
+			"*.rmd": "markdown",
+			"type_traits": "cpp",
+			"utf8proc.c": "cpp",
+			"xtr1common": "cpp"
+		}
+	}
+}

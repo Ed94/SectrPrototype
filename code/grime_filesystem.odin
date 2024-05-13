@@ -5,6 +5,8 @@ import "core:fmt"
 import "core:os"
 import "core:runtime"
 
+// Test
+
 file_copy_sync :: proc( path_src, path_dst: string, allocator := context.temp_allocator ) -> b32
 {
   file_size : i64

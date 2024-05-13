@@ -129,7 +129,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		resolution_height =  600
 		refresh_rate      =    0
 
-		cam_min_zoom                 = 0.25
+		cam_min_zoom                 = 0.10
 		cam_max_zoom                 = 30.0
 		cam_zoom_mode                = .Smooth
 		cam_zoom_smooth_snappiness   = 4.0
@@ -198,7 +198,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
 		menu_bar.size = {200, 40}
 
-		settings_menu.min_size = {200, 200}
+		settings_menu.min_size = {250, 200}
 	}
 
 	// Demo project setup
@@ -337,6 +337,10 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		context.temp_allocator = transient_allocator()
 
 		rl.PollInputEvents()
+
+		debug.draw_ui_box_bounds_points = false
+		debug.draw_UI_padding_bounds = false
+		debug.draw_ui_content_bounds = false
 
 		should_close = update( host_delta_time )
 		render()

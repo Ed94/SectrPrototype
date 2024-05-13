@@ -151,12 +151,16 @@ update :: proc( delta_time : f64 ) -> b32
 	// TODO(Ed): This should be per workspace view
 	{
 		// profile("Camera Manual Nav")
-		digital_move_speed : f32 = 200.0
+		digital_move_speed : f32 = 1000.0
 
 		if workspace.zoom_target == 0.0 {
 			workspace.zoom_target = cam.zoom
 		}
 
+		config.cam_max_zoom = 30
+		config.cam_zoom_sensitivity_digital = 0.04
+		config.cam_min_zoom = 0.04
+		config.cam_zoom_mode = .Digital
 		switch config.cam_zoom_mode
 		{
 			case .Smooth:
@@ -175,8 +179,8 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 
 		move_velocity : Vec2 = {
-			+ cast(f32) i32(debug_actions.cam_move_left) - cast(f32) i32(debug_actions.cam_move_right),
-		  + cast(f32) i32(debug_actions.cam_move_up)   - cast(f32) i32(debug_actions.cam_move_down),
+			- cast(f32) i32(debug_actions.cam_move_left) + cast(f32) i32(debug_actions.cam_move_right),
+		  - cast(f32) i32(debug_actions.cam_move_up)   + cast(f32) i32(debug_actions.cam_move_down),
 		}
 		move_velocity *= digital_move_speed * f32(delta_time)
 		cam.target    += move_velocity
@@ -206,11 +210,12 @@ update :: proc( delta_time : f64 ) -> b32
 		frame_style_flags : UI_LayoutFlags = {
 			.Fixed_Position_X, .Fixed_Position_Y,
 			.Fixed_Width, .Fixed_Height,
+			.Origin_At_Anchor_Center,
 		}
 		default_layout := UI_Layout {
 			flags          = frame_style_flags,
 			anchor         = {},
-			alignment      = { 0.0, 0.0 },
+			alignment      = { 0.5, 0.5 },
 			font_size      = 30,
 			text_alignment = { 0.0, 0.0 },
 			// corner_radii   = { 0.2, 0.2, 0.2, 0.2 },
@@ -235,7 +240,7 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_draggable()
 		// test_text_box()
 		// test_parenting( & default_layout, & frame_style_default )
-		test_whitespace_ast( & default_layout, & frame_style_default )
+		// test_whitespace_ast( & default_layout, & frame_style_default )
 	}
 	//endregion Workspace Imgui Tick
 

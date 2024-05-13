@@ -10,6 +10,8 @@ import rl "vendor:raylib"
 
 Str_App_State := "App State"
 
+#region("Memory")
+
 Memory_App : Memory
 
 Memory_Base_Address_Persistent   :: Terabyte * 1
@@ -133,6 +135,10 @@ MemoryConfig :: struct {
 	commit_initial_filebuffer : uint,
 }
 
+#endregion("Memory")
+
+#region("State")
+
 // ALl nobs available for this application
 AppConfig :: struct {
 	using memory : MemoryConfig,
@@ -249,3 +255,5 @@ get_state :: #force_inline proc "contextless" () -> ^ State {
 // get_frametime :: #force_inline proc "contextless" () -> FrameTime {
 // 	return get_state().frametime
 // }
+
+#endregion("State")

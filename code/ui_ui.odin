@@ -110,11 +110,11 @@ UI_Box :: struct {
 	text  : StrRunesPair,
 
 	// Regenerated per frame.
-	using links  : DLL_NodeFull( UI_Box ), // first, last, prev, next
-	parent       : ^UI_Box,
-	num_children : i16,
-	ancestors    : i16,
-	parent_index : i16,
+	using links   : DLL_NodeFull( UI_Box ), // first, last, prev, next
+	parent        : ^UI_Box,
+	num_children  : i32,
+	ancestors     : i32,
+	parent_index  : i32,
 
 	flags    : UI_BoxFlags,
 	computed : UI_Computed,
@@ -131,6 +131,7 @@ UI_Box :: struct {
 	active_delta   : f32,
 	disabled_delta : f32,
 	style_delta    : f32,
+	// root_order_id  : i16,
 
 	// prev_computed : UI_Computed,
 	// prev_style    : UI_Style,v
@@ -143,7 +144,7 @@ UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
 UI_Parent_Stack_Size      :: 512
 // UI_Built_Boxes_Array_Size :: 8
-UI_Built_Boxes_Array_Size :: 4 * Kilobyte
+UI_Built_Boxes_Array_Size :: 16 * Kilobyte
 
 UI_State :: struct {
 	// TODO(Ed) : Use these
@@ -158,6 +159,9 @@ UI_State :: struct {
 
 	null_box : ^UI_Box, // Ryan had this, I don't know why yet.
 	root     : ^UI_Box,
+	// Children of the root node are unique in that they have their order preserved per frame
+	// This is to support overlapping frames
+	// So long as their parent-index is non-negative they'll be rendered
 
 	// Do we need to recompute the layout?
 	layout_dirty  : b32,
@@ -195,9 +199,9 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 		verify( allocation_error == AllocatorError.None, "Failed to allocate box cache" )
 		cache = box_cache
 	}
-
 	ui.curr_cache = (& ui.caches[1])
 	ui.prev_cache = (& ui.caches[0])
+
 	log("ui_startup completed")
 }
 
@@ -242,14 +246,16 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 		set_result : ^ UI_Box
 		set_error  : AllocatorError
-		if prev_box != nil {
+		if prev_box != nil
+		{
 			// Previous history was found, copy over previous state.
 			set_result, set_error = zpl_hmap_set( curr_cache, cast(u64) key, (prev_box ^) )
 		}
 		else {
 			box : UI_Box
-			box.key    = key
-			box.label  = str_intern( label )
+			box.key   = key
+			box.label = str_intern( label )
+			// set_result, set_error = zpl_hmap_set( prev_cache, cast(u64) key, box )
 			set_result, set_error = zpl_hmap_set( curr_cache, cast(u64) key, box )
 		}
 
@@ -259,23 +265,54 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 		curr_box.first_frame = prev_box == nil
 	}
 
-	curr_box.flags  = flags
+	curr_box.flags = flags
 
 	// Clear non-persistent data
 	curr_box.computed.fresh = false
-	curr_box.parent         = nil
 	curr_box.links          = {}
 	curr_box.num_children   = 0
+	curr_box.parent         = nil
+	// curr_box.ancestors      = 0
+	curr_box.parent_index   = -1
 
 	// If there is a parent, setup the relevant references
 	parent := stack_peek( & parent_stack )
+	if curr_box.ancestors == 0 && prev_box != nil
+	{
+		set_error : AllocatorError
+		if prev_box.first != nil {
+			curr_box.first, set_error = zpl_hmap_set( curr_cache, cast(u64) prev_box.first.key, prev_box.first ^ )
+			verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
+		}
+		if prev_box.last != nil {
+			curr_box.last, set_error = zpl_hmap_set( curr_cache, cast(u64) prev_box.last.key, prev_box.last ^ )
+			verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
+		}
+	}
 	if parent != nil
 	{
-		dll_full_push_back( null_box, parent, curr_box )
-		curr_box.parent_index = parent.num_children
-		parent.num_children += 1
-		curr_box.parent      = parent
-		curr_box.ancestors   = parent.ancestors + 1
+		if curr_box.ancestors != 1
+		{
+			dll_full_push_back( parent, curr_box, null_box )
+			curr_box.parent_index = parent.num_children
+			parent.num_children  += 1
+			curr_box.parent       = parent
+			curr_box.ancestors    = parent.ancestors + 1
+		}
+		else if prev_box != nil
+		{
+			// Order was previously restored, restore linkage
+			if prev_box.prev != nil {
+				curr_box.prev = zpl_hmap_get( curr_cache, cast(u64) prev_box.prev.key )
+			}
+			if prev_box.next != nil {
+				curr_box.next = zpl_hmap_get( curr_cache, cast(u64) prev_box.next.key )
+			}
+			curr_box.parent       = ui.root
+			curr_box.ancestors    = 1
+			curr_box.parent_index = ui.root.num_children
+			parent.num_children  += 1
+		}
 	}
 
 	ui.built_box_count += 1
@@ -314,7 +351,7 @@ ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
 		return screen_to_ws_view_pos( input.mouse.pos )
 	}
 	else {
-		return input.mouse.pos 
+		return input.mouse.pos
 	}
 }
 
@@ -327,8 +364,18 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 {
 	profile(#procedure)
 
+	state := get_state()
 	get_state().ui_context = ui
 	using get_state().ui_context
+
+	if root != nil
+	{
+		// Set all top-level widgets to a negative index
+		// This will be used for prunning the rooted_children order
+		// for box := ui.root.first; box != nil; box = box.next {
+		// 	box.parent_index = -1
+		// }
+	}
 
 	temp := prev_cache
 	prev_cache = curr_cache
@@ -342,6 +389,9 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 
 	ui.built_box_count = 0
 	root = ui_box_make( {}, "root#001" )
+	if ui == & state.screen_ui {
+		root.layout.size = range2(Vec2(state.app_window.extent) * 2, {})
+	}
 	ui_parent_push(root)
 }
 

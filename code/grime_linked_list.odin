@@ -97,6 +97,21 @@ dll_push_back :: proc "contextless" ( current_ptr : ^(^ ($ TypeCurr)), node : ^$
 	node.next = nil
 }
 
+dll_pn_pop :: proc "contextless" ( node : ^$Type )
+{
+	if node == nil {
+		return
+	}
+	if node.prev != nil {
+		node.prev.next = nil
+		node.prev = nil
+	}
+	if node.next != nil {
+		node.next.prev = nil
+		node.next = nil
+	}
+}
+
 dll_pop_back :: #force_inline proc "contextless" ( current_ptr : ^(^ ($ Type)) )
 {
 	to_remove : ^Type = (current_ptr ^)
@@ -146,7 +161,27 @@ dll_full_insert_raw ::  proc "contextless" ( null : ^($ Type), parent, pos, node
 	}
 }
 
-dll_full_push_back :: proc "contextless" ( null : ^($ Type), parent, node : ^ Type ) {
+dll_full_pop :: proc "contextless" (  node, parent : ^$Type ) {
+	if node == nil {
+		return
+	}
+	if parent.first == node {
+		parent.first = node.next
+	}
+	if parent.last == node {
+		parent.last = node.prev
+	}
+	if node.prev != nil {
+		node.prev.next = nil
+		node.prev = nil
+	}
+	if node.next != nil {
+		node.next.prev = nil
+		node.next = nil
+	}
+}
+
+dll_full_push_back :: proc "contextless" ( parent, node : ^ $Type, null : ^Type ) {
 	dll_full_insert_raw( null, parent, parent.last, node )
 }
 

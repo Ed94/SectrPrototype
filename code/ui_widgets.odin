@@ -1,5 +1,7 @@
 package sectr
 
+import lalg "core:math/linalg"
+
 UI_Widget :: struct {
 	using box    : ^UI_Box,
 	using signal : UI_Signal,
@@ -20,7 +22,7 @@ ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widge
 	return
 }
 
-//region Horizontal Box
+#region("Horizontal Box")
 /*
 Horizontal Boxes automatically manage a collection of widgets and
 attempt to slot them adjacent to each other along the x-axis.
@@ -52,82 +54,11 @@ ui_hbox_begin :: proc( direction : UI_LayoutDirectionX, label : string, flags : 
 }
 
 // Auto-layout children
-ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil )
+ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil, compute_layout := true )
 {
 	// profile(#procedure)
-
-	// ui_box_compute_layout(hox.widget)
-
-	// ui_layout_children_horizontally( & hbox.box, hbox.direction, width_ref )
-	{
-		hbox_width : f32
-		if width_ref != nil {
-			hbox_width = width_ref ^
-		}
-		else {
-			hbox_width = hbox.computed.content.max.x - hbox.computed.content.min.x
-		}
-
-		// do layout calculations for the children
-		total_stretch_ratio : f32 = 0.0
-		size_req_children   : f32 = 0
-		for child := hbox.first; child != nil; child = child.next
-		{
-			using child.layout
-			scaled_width_by_height : b32 = b32(.Scale_Width_By_Height_Ratio in flags)
-			if .Fixed_Width in flags
-			{
-				if scaled_width_by_height {
-					height := size.max.y != 0 ? size.max.y : hbox_width
-					width  := height * size.min.x
-
-					size_req_children += width
-					continue
-				}
-
-				size_req_children += size.min.x
-				continue
-			}
-
-			total_stretch_ratio += anchor.ratio.x
-		}
-
-		avail_flex_space := hbox_width - size_req_children
-
-		allocate_space :: proc( child : ^UI_Box, total_stretch_ratio, avail_flex_space : f32 )
-		{
-			using child.layout
-			if ! (.Fixed_Width in flags) {
-				size.min.x = anchor.ratio.x * (1 / total_stretch_ratio) * avail_flex_space
-			}
-			flags    |= {.Fixed_Width}
-		}
-
-		space_used : f32 = 0.0
-		switch hbox.direction{
-			case .Right_To_Left:
-				for child := hbox.last; child != nil; child = child.prev {
-					allocate_space(child, total_stretch_ratio, avail_flex_space)
-					using child.layout
-					anchor      = range2({0, 0}, {0, 0})
-					alignment   = { 0, 1 }// - hbox.layout.alignment
-					pos.x       = space_used
-					space_used += size.min.x
-					size.min.y  = hbox.computed.content.max.y - hbox.computed.content.min.y
-				}
-			case .Left_To_Right:
-				for child := hbox.first; child != nil; child = child.next {
-					allocate_space(child, total_stretch_ratio, avail_flex_space)
-					using child.layout
-					anchor      = range2({0, 0}, {0, 0})
-					alignment   = { 0, 1 }
-					pos.x       = space_used
-					space_used += size.min.x
-					size.min.y  = hbox.computed.content.max.y - hbox.computed.content.min.y
-				}
-		}
-	}
-
+	if compute_layout do ui_box_compute_layout(hbox.box)
+	ui_layout_children_horizontally( hbox.box, hbox.direction, width_ref )
 }
 
 @(deferred_out = ui_hbox_end_auto)
@@ -139,18 +70,33 @@ ui_hbox :: #force_inline proc( direction : UI_LayoutDirectionX, label : string, 
 
 // Auto-layout children and pop parent from parent stack
 ui_hbox_end_auto :: proc( hbox : UI_HBox ) {
-	ui_parent_pop()
 	ui_hbox_end(hbox)
+	ui_parent_pop()
 }
-//endregion Horizontal Box
+#endregion("Horizontal Box")
 
-// Adds resizable handles to a widget
-// TODO(Ed): Add centered resize support (use center alignment on shift-click)
-ui_resizable_handles :: proc( parent : ^UI_Widget,
-	pos, size                  : ^Vec2,
-	handle_width               : f32  = 15,
-	handle_color_non_default   : Color = Color_ResizeHandle,
-	handle_color_default       : Color = Color_Transparent,
+#region("Resizable")
+// Parameterized widget def for ui_resizable_handles
+UI_Resizable :: struct {
+	using widget      : UI_Widget,
+	handle_width      : f32,
+	color_non_default : Color,
+	color_default     : Color,
+	left              : bool,
+	right             : bool,
+	top               : bool,
+	bottom            : bool,
+	corner_tr         : bool,
+	corner_tl         : bool,
+	corner_br         : bool,
+	corner_bl         : bool,
+	compute_layout    : bool
+}
+
+ui_resizable_begin :: proc( label : string, flags : UI_BoxFlags = {},
+	handle_width             : f32  = 15,
+	handle_color_non_default : Color = Color_ResizeHandle,
+	handle_color_default     : Color = Color_Transparent,
 	left      := true,
 	right     := true,
 	top       := true,
@@ -158,7 +104,67 @@ ui_resizable_handles :: proc( parent : ^UI_Widget,
 	corner_tr := true,
 	corner_tl := true,
 	corner_br := true,
-	corner_bl := true, )
+	corner_bl := true,
+	compute_layout := true ) -> (resizable : UI_Resizable)
+{
+	resizable.box    = ui_box_make(flags, label)
+	resizable.signal = ui_signal_from_box(resizable.box)
+
+	resizable.handle_width             = handle_width
+	resizable.color_non_default        = handle_color_non_default
+	resizable.color_default            = handle_color_default
+	resizable.left                     = left
+	resizable.right                    = right
+	resizable.top                      = top
+	resizable.bottom                   = bottom
+	resizable.corner_tr                = corner_tr
+	resizable.corner_tl                = corner_tl
+	resizable.corner_br                = corner_br
+	resizable.corner_bl                = corner_bl
+	resizable.compute_layout           = compute_layout
+	return
+}
+
+ui_resizable_end :: proc( resizable : ^UI_Resizable, pos, size : ^Vec2 ) {
+	using resizable
+	ui_resizable_handles( & widget, pos, size,
+		handle_width,
+		color_non_default,
+		color_default,
+		left,
+		right,
+		top,
+		bottom,
+		corner_tr,
+		corner_tl,
+		corner_br,
+		corner_bl,
+		compute_layout)
+}
+
+ui_resizable_begin_auto :: proc() {
+
+}
+
+ui_resizable_end_auto :: proc() {
+
+}
+
+// Adds resizable handles to a widget
+// TODO(Ed): Add centered resize support (use center alignment on shift-click)
+ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
+	handle_width             : f32  = 15,
+	handle_color_non_default : Color = Color_ResizeHandle,
+	handle_color_default     : Color = Color_Transparent,
+	left      := true,
+	right     := true,
+	top       := true,
+	bottom    := true,
+	corner_tr := true,
+	corner_tl := true,
+	corner_br := true,
+	corner_bl := true,
+	compute_layout := true)
 {
 	profile(#procedure)
 	handle_left      : UI_Widget
@@ -284,6 +290,9 @@ ui_resizable_handles :: proc( parent : ^UI_Widget,
 
 	delta     := get_state().input.mouse.delta
 	alignment := & parent.layout.alignment
+
+	if compute_layout do ui_box_compute_layout_children(parent)
+
 	if right     do process_handle_drag( & handle_right,     {  1,  0 }, delta, {0, 0}, pos, size, alignment )
 	if left      do process_handle_drag( & handle_left,      { -1,  0 }, delta, {1, 0}, pos, size, alignment )
 	if top       do process_handle_drag( & handle_top,       {  0,  1 }, delta, {0, 0}, pos, size, alignment )
@@ -293,6 +302,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget,
 	if corner_br do process_handle_drag( & handle_corner_br, {  1, -1 }, delta, {0, 1}, pos, size, alignment )
 	if corner_bl do process_handle_drag( & handle_corner_bl, { -1, -1 }, delta, {1, 1}, pos, size, alignment )
 }
+#endregion("Resizable")
 
 ui_spacer :: proc( label : string ) -> (widget : UI_Widget) {
 	widget.box    = ui_box_make( {.Mouse_Clickable}, label )
@@ -301,6 +311,8 @@ ui_spacer :: proc( label : string ) -> (widget : UI_Widget) {
 	widget.style.bg_color = Color_Transparent
 	return
 }
+
+#region("Text")
 
 ui_text :: proc( label : string, content : StrRunesPair, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
@@ -343,8 +355,9 @@ ui_text_tabs :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 	box.text = tab_str
 	return { box, signal }
 }
+#endregion("Text")
 
-//region Vertical Box
+#region("Vertical Box")
 /*
 Vertical Boxes automatically manage a collection of widgets and
 attempt to slot them adjacent to each other along the y-axis.
@@ -375,77 +388,10 @@ ui_vbox_begin :: proc( direction : UI_LayoutDirectionY, label : string, flags : 
 }
 
 // Auto-layout children
-ui_vbox_end :: proc( vbox : UI_VBox, height_ref : ^f32 = nil ) {
+ui_vbox_end :: proc( vbox : UI_VBox, height_ref : ^f32 = nil, compute_layout := true ) {
 	// profile(#procedure)
-
-	// ui_box_compute_layout(vbox)
-
-	// ui_layout_children_vertically( & hbox.box, hbox.direction, width_ref )
-	{
-		vbox_height : f32
-		if height_ref != nil {
-			vbox_height = height_ref ^
-		}
-		else {
-			vbox_height = vbox.computed.bounds.max.y - vbox.computed.bounds.min.y
-		}
-
-		// do layout calculations for the children
-		total_stretch_ratio : f32 = 0.0
-		size_req_children   : f32 = 0
-		for child := vbox.first; child != nil; child = child.next
-		{
-			using child.layout
-			scaled_width_by_height : b32 = b32(.Scale_Width_By_Height_Ratio in flags)
-			if .Fixed_Height in flags
-			{
-				if scaled_width_by_height {
-					width  := size.max.x != 0 ? size.max.x : vbox_height
-					height := width * size.min.y
-
-					size_req_children += height
-					continue
-				}
-
-				size_req_children += size.min.y
-				continue
-			}
-
-			total_stretch_ratio += anchor.ratio.y
-		}
-
-		avail_flex_space := vbox_height - size_req_children
-
-		allocate_space :: proc( child : ^UI_Box, total_stretch_ratio, avail_flex_space : f32 )
-		{
-			using child.layout
-			if ! (.Fixed_Height in flags) {
-				size.min.y = anchor.ratio.y * (1 / total_stretch_ratio) * avail_flex_space
-			}
-			flags    |= {.Fixed_Height}
-			alignment = {0, 0}
-		}
-
-		space_used : f32 = 0.0
-		switch vbox.direction {
-			case .Top_To_Bottom:
-				for child := vbox.last; child != nil; child = child.prev {
-					allocate_space(child, total_stretch_ratio, avail_flex_space)
-					using child.layout
-					anchor      = range2({0, 0}, {0, 1})
-					pos.y       = space_used
-					space_used += size.min.y
-				}
-			case .Bottom_To_Top:
-				for child := vbox.first; child != nil; child = child.next {
-					allocate_space(child, total_stretch_ratio, avail_flex_space)
-					using child.layout
-					anchor      = range2({0, 0}, {0, 1})
-					pos.y       = space_used
-					space_used += size.min.y
-				}
-		}
-	}
+	if compute_layout do ui_box_compute_layout(vbox)
+	ui_layout_children_vertically( vbox.box, vbox.direction, height_ref )
 }
 
 // Auto-layout children and pop parent from parent stack
@@ -460,4 +406,4 @@ ui_vbox :: #force_inline proc( direction : UI_LayoutDirectionY, label : string, 
 	ui_parent_push(vbox.widget)
 	return
 }
-//endregion Vertical Box
+#endregion("Vertical Box")

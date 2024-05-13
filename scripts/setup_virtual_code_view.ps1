@@ -3,21 +3,9 @@
 cls
 write-host "Build.ps1"
 
-$incremental_checks = Join-Path $PSScriptRoot 'helpers/incremental_checks.ps1'
-. $incremental_checks
-write-host 'incremental_checks.ps1 imported'
-
-$ini_parser = join-path $PSScriptRoot 'helpers/ini.ps1'
-. $ini_parser
-write-host 'ini.ps1 imported'
-
 $path_root       = git rev-parse --show-toplevel
 $path_code       = join-path $path_root       'code'
-$path_build      = join-path $path_root       'build'
 $path_scripts    = join-path $path_root       'scripts'
-$path_thirdparty = join-path $path_root       'thirdparty'
-$path_toolchain  = join-path $path_root       'toolchain'
-$path_odin       = join-path $path_toolchain  'odin'
 
 $path_virtual_view = join-path $path_root 'code_virtual_view'
 
