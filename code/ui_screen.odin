@@ -3,6 +3,12 @@ package sectr
 UI_ScreenState :: struct
 {
 	using base : UI_State,
+
+	floating : UI_FloatingManager,
+
+	// TODO(Ed): The docked should be the base, floating is should be nested within as a 'veiwport' to a 'desktop' or 'canvas'
+	// docked : UI_Docking,
+
 	menu_bar : struct
 	{
 		pos, size    : Vec2,
@@ -28,19 +34,25 @@ ui_screen_tick :: proc() {
 	ui_graph_build( & screen_ui )
 	ui := ui_context
 
-	ui_screen_menu_bar()
-	ui_screen_settings_menu()
+	ui_floating_manager_begin( & screen_ui.floating )
+	{
+		ui_floating("Menu Bar",      ui_screen_menu_bar)
+		ui_floating("Settings Menu", ui_screen_settings_menu)
+	}
+	ui_floating_manager_end()
 }
 
-ui_screen_menu_bar :: proc()
+ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 )
 {
 	profile("App Menu Bar")
 	fmt :: str_fmt_alloc
 
 	using state := get_state()
 	using screen_ui
+	// ui_floating("Menu Bar", No_Captures, proc( captures : rawptr = nil )
 	{
-		using menu_bar
+		using state := get_state();
+		using screen_ui.menu_bar
 		ui_layout( UI_Layout {
 			flags        = {.Fixed_Position_X, .Fixed_Position_Y, .Fixed_Width, .Fixed_Height, .Origin_At_Anchor_Center},
 			// anchor       = range2({0.5, 0.5}, {0.5, 0.5} ),
@@ -48,8 +60,8 @@ ui_screen_menu_bar :: proc()
 			border_width = 1.0,
 			font_size    = 12,
 			// pos = {},
-			pos          = menu_bar.pos,
-			size         = range2( menu_bar.size, {}),
+			pos          = pos,
+			size         = range2( size, {}),
 		})
 		ui_style( UI_Style {
 			bg_color     = { 0, 0, 0, 30 },
@@ -57,9 +69,7 @@ ui_screen_menu_bar :: proc()
 			font         = default_font,
 			text_color   = Color_White,
 		})
-		// ui_hbox( & container, .Left_To_Right, "App Menu Bar", { .Mouse_Clickable} )
 		container = ui_hbox( .Left_To_Right, "Menu Bar" )
-		// ui_parent(container)
 
 		ui_layout( UI_Layout {
 			flags        = {},
@@ -81,7 +91,8 @@ ui_screen_menu_bar :: proc()
 		{
 			using move_box
 			if active {
-				menu_bar.pos += input.mouse.delta
+				pos += input.mouse.delta
+				should_raise = true
 			}
 			layout.anchor.ratio.x = 0.2
 		}
@@ -98,22 +109,21 @@ ui_screen_menu_bar :: proc()
 		}
 		settings_btn.layout.size.min.x = 100
 		if settings_btn.pressed {
-			settings_menu.is_open = true
+			screen_ui.settings_menu.is_open = true
 		}
 
 		spacer = ui_spacer("Menu Bar: End Spacer")
 		spacer.layout.anchor.ratio.x = 1.0
-
-		// ui_hbox_end( container)
 	}
+	return
 }
 
-ui_screen_settings_menu :: proc()
+ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b32)
 {
 	profile("Settings Menu")
 	using state := get_state()
 	using state.screen_ui
-	if ! settings_menu.is_open do return
+	if ! settings_menu.is_open do return false
 
 	using settings_menu
 	if size.x < min_size.x do size.x = min_size.x
@@ -171,6 +181,7 @@ ui_screen_settings_menu :: proc()
 				layout.anchor.ratio.x = 1.0
 				if maximize_btn.pressed {
 					settings_menu.is_maximized = ~settings_menu.is_maximized
+					should_raise = true
 				}
 				if settings_menu.is_maximized do text = str_intern("min")
 				else do text = str_intern("max")
@@ -195,6 +206,7 @@ ui_screen_settings_menu :: proc()
 		}
 		if frame_bar.active {
 			pos += input.mouse.delta
+			should_raise = true
 		}
 
 		spacer := ui_spacer("Settings Menu: Spacer")
@@ -209,4 +221,5 @@ ui_screen_settings_menu :: proc()
 	}
 
 	ui_resizable_handles( & container, & pos, & size)
+	return
 }

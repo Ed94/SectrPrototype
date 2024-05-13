@@ -116,15 +116,10 @@ render_mode_2d_workspace :: proc()
 		state.ui_context = ui
 
 		current := root.first
-		for ; current != nil; current = ui_box_tranverse_next( current, is_destructive = true )
+		for ; current != nil; current = ui_box_tranverse_next( current )
 		{
 			// profile("Box")
 			parent := current.parent
-			if parent == ui.root && current.ancestors == -1 {
-				// This is a deceased rooted box
-				// Ignore it as its not constructed this frame
-				continue
-			}
 
 			layout   := current.layout
 			style    := current.style
@@ -344,18 +339,10 @@ render_screen_ui :: proc()
 		// Sort roots children by top-level order
 
 		current := root.first
-		for ; current != nil; current = ui_box_tranverse_next( current, is_destructive = false )
+		for ; current != nil; current = ui_box_tranverse_next( current )
 		{
 			// profile("Box")
 			parent := current.parent
-			if parent == ui.root && current.ancestors == -1 {
-				// current.parent = nil
-				// current.first  = nil
-				// current.last   = nil
-				// This is a deceased rooted box
-				// Ignore it as its not constructed this frame
-				continue
-			}
 
 			style    := current.style
 			layout   := current.layout

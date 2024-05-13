@@ -274,6 +274,11 @@ to_writer :: proc {
 	str_builder_to_writer,
 }
 
+ui_floating :: proc {
+	ui_floating_just_builder,
+	ui_floating_with_capture,
+}
+
 ui_layout_push :: proc {
 	ui_layout_push_layout,
 	ui_layout_push_theme,

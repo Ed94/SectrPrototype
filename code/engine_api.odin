@@ -193,6 +193,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// Setup the screen ui state
 	{
 		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
+		ui_floating_startup( & screen_ui.floating, persistent_slab_allocator(), 16 * Kilobyte, 16 * Kilobyte, "screen ui floating manager" )
 
 		using screen_ui
 		menu_bar.pos  = { -60, 0 }
@@ -353,7 +354,7 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 	{
 		// profile("Client tick timing processing")
 		config.engine_refresh_hz = uint(monitor_refresh_hz)
-		// config.engine_refresh_hz = 10
+		// config.engine_refresh_hz = 1
 		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
 

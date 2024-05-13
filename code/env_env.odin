@@ -242,7 +242,8 @@ State :: struct {
 	// There are two potential UI contextes for this prototype so far,
 	// the screen-space UI and the current workspace UI.
 	// This is used so that the ui api doesn't need to have the user pass the context every single time.
-	ui_context : ^UI_State,
+	ui_context          : ^UI_State,
+	ui_floating_context : ^UI_FloatingManager,
 
 	// The camera is considered the "context" for coodrinate space operations in rendering
 	cam_context : Camera,
