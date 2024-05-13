@@ -200,6 +200,7 @@ update :: proc( delta_time : f64 ) -> b32
 	ui_screen_tick()
 
 	//region WorkspaceImgui Tick
+	if false
 	{
 		profile("Workspace Imgui")
 

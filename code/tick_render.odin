@@ -110,16 +110,21 @@ render_mode_2d_workspace :: proc()
 		profile("Imgui Render")
 		ui   := & state.project.workspace.ui
 		root := ui.root
-		if root.num_children == 0 {
+		if root == nil || root.num_children == 0 {
 			break ImguiRender
 		}
 		state.ui_context = ui
 
 		current := root.first
-		for ; current != nil; current = ui_box_tranverse_next( current )
+		for ; current != nil; current = ui_box_tranverse_next( current, is_destructive = true )
 		{
 			// profile("Box")
 			parent := current.parent
+			if parent == ui.root && current.ancestors == -1 {
+				// This is a deceased rooted box
+				// Ignore it as its not constructed this frame
+				continue
+			}
 
 			layout   := current.layout
 			style    := current.style
@@ -133,7 +138,7 @@ render_mode_2d_workspace :: proc()
 
 		// TODO(Ed) : Render Borders
 
-		// profile_begin("Calculating Raylib rectangles")
+			// profile_begin("Calculating Raylib rectangles")
 			// render_anchors := range2(
 			// 	ws_view_to_render_pos(computed.anchors.min),
 			// 	ws_view_to_render_pos(computed.anchors.max),
@@ -160,44 +165,44 @@ render_mode_2d_workspace :: proc()
 			rect_bounds  := range2_to_rl_rect( render_bounds )
 			rect_padding := range2_to_rl_rect( render_padding )
 			rect_content := range2_to_rl_rect( render_content )
-		// profile_end()
+			// profile_end()
 
-		// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
-		if style.bg_color.a != 0
-		{
-			draw_rectangle( rect_bounds, current )
-		}
-		if layout.border_width > 0 {
-			draw_rectangle_lines( rect_bounds, current, style.border_color, layout.border_width )
-		}
-		// profile_end()
+			// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
+			if style.bg_color.a != 0
+			{
+				draw_rectangle( rect_bounds, current )
+			}
+			if layout.border_width > 0 {
+				draw_rectangle_lines( rect_bounds, current, style.border_color, layout.border_width )
+			}
+			// profile_end()
 
 			line_thickness := 1 * cam_zoom_ratio
 
-		// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
-		if debug.draw_UI_padding_bounds && equal_range2(computed.content, computed.padding) {
-			draw_rectangle_lines( rect_padding, current, Color_Debug_UI_Padding_Bounds, line_thickness )
-		}
-		else if debug.draw_ui_content_bounds {
-			draw_rectangle_lines( rect_content, current, Color_Debug_UI_Content_Bounds, line_thickness )
-		}
-		// profile_end()
+			// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
+			if debug.draw_UI_padding_bounds && equal_range2(computed.content, computed.padding) {
+				draw_rectangle_lines( rect_padding, current, Color_Debug_UI_Padding_Bounds, line_thickness )
+			}
+			else if debug.draw_ui_content_bounds {
+				draw_rectangle_lines( rect_content, current, Color_Debug_UI_Content_Bounds, line_thickness )
+			}
+			// profile_end()
 
 			point_radius := 3 * cam_zoom_ratio
 
-		// profile_begin("circles")
-		if debug.draw_ui_box_bounds_points
-		{
-			// center := Vec2 {
-			// 	render_bounds.p0.x + computed_size.x * 0.5,
-			// 	render_bounds.p0.y - computed_size.y * 0.5,
-			// }
-			// rl.DrawCircleV( center, point_radius, Color_White )
+			// profile_begin("circles")
+			if debug.draw_ui_box_bounds_points
+			{
+				// center := Vec2 {
+				// 	render_bounds.p0.x + computed_size.x * 0.5,
+				// 	render_bounds.p0.y - computed_size.y * 0.5,
+				// }
+				// rl.DrawCircleV( center, point_radius, Color_White )
 
-			rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
-			rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
-		}
-		// profile_end()
+				rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
+				rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
+			}
+			// profile_end()
 
 			if len(current.text.str) > 0 {
 				ws_view_draw_text( current.text, ws_view_to_render_pos(computed.text_pos * {1, -1}), layout.font_size, style.text_color )
@@ -339,10 +344,15 @@ render_screen_ui :: proc()
 		// Sort roots children by top-level order
 
 		current := root.first
-		for ; current != nil; current = ui_box_tranverse_next( current )
+		for ; current != nil; current = ui_box_tranverse_next( current, is_destructive = true )
 		{
 			// profile("Box")
 			parent := current.parent
+			if parent == ui.root && current.ancestors == -1 {
+				// This is a deceased rooted box
+				// Ignore it as its not constructed this frame
+				// continue
+			}
 
 			style    := current.style
 			layout   := current.layout
@@ -375,28 +385,28 @@ render_screen_ui :: proc()
 			rect_bounds  := range2_to_rl_rect( render_bounds )
 			rect_padding := range2_to_rl_rect( render_padding )
 			rect_content := range2_to_rl_rect( render_content )
-		// profile_end()
+			// profile_end()
 
-		// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
-		if style.bg_color.a != 0
-		{
-			draw_rectangle( rect_bounds, current )
-		}
-		if layout.border_width > 0 {
-			draw_rectangle_lines( rect_bounds, current, style.border_color, layout.border_width )
-		}
-		// profile_end()
+			// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
+			if style.bg_color.a != 0
+			{
+				draw_rectangle( rect_bounds, current )
+			}
+			if layout.border_width > 0 {
+				draw_rectangle_lines( rect_bounds, current, style.border_color, layout.border_width )
+			}
+			// profile_end()
 
 			line_thickness : f32 = 1
 
-		// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
-		if debug.draw_UI_padding_bounds && equal_range2(computed.content, computed.padding) {
-			draw_rectangle_lines( rect_padding, current, Color_Debug_UI_Padding_Bounds, line_thickness )
-		}
-		else if debug.draw_ui_content_bounds {
-			draw_rectangle_lines( rect_content, current, Color_Debug_UI_Content_Bounds, line_thickness )
-		}
-		// profile_end()
+			// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
+			if debug.draw_UI_padding_bounds && equal_range2(computed.content, computed.padding) {
+				draw_rectangle_lines( rect_padding, current, Color_Debug_UI_Padding_Bounds, line_thickness )
+			}
+			else if debug.draw_ui_content_bounds {
+				draw_rectangle_lines( rect_content, current, Color_Debug_UI_Content_Bounds, line_thickness )
+			}
+			// profile_end()
 
 			// if .Mouse_Resizable in current.flags
 			// {
@@ -422,19 +432,19 @@ render_screen_ui :: proc()
 
 			point_radius : f32 = 3
 
-		// profile_begin("circles")
-		if debug.draw_ui_box_bounds_points
-		{
-			// center := Vec2 {
-			// 	render_bounds.p0.x + computed_size.x * 0.5,
-			// 	render_bounds.p0.y - computed_size.y * 0.5,
-			// }
-			// rl.DrawCircleV( center, point_radius, Color_White )
+			// profile_begin("circles")
+			if debug.draw_ui_box_bounds_points
+			{
+				// center := Vec2 {
+				// 	render_bounds.p0.x + computed_size.x * 0.5,
+				// 	render_bounds.p0.y - computed_size.y * 0.5,
+				// }
+				// rl.DrawCircleV( center, point_radius, Color_White )
 
-			rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
-			rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
-		}
-		// profile_end()
+				rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
+				rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
+			}
+			// profile_end()
 
 			if len(current.text.str) > 0 && style.font.key != 0 {
 				draw_text_screenspace( current.text, screen_to_render_pos(computed.text_pos), layout.font_size, style.text_color )

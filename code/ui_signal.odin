@@ -72,9 +72,52 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 	if mouse_clickable && signal.cursor_over && left_pressed && was_hot
 	{
 		top_ancestor := ui_top_ancestor(box)
-		
-		dll_full_pop(top_ancestor, top_ancestor.parent)
-		dll_full_push_back( top_ancestor.parent, top_ancestor, nil )
+		if ui.root.last != top_ancestor && false
+		{
+			// dll_full_pop(top_ancestor, top_ancestor.parent)
+			// dll_full_push_back( top_ancestor.parent, top_ancestor, nil )
+
+			left  := top_ancestor.prev
+			right := top_ancestor.next
+
+			if left != nil {
+				left.next = top_ancestor.prev
+			}
+			else {
+				// We are the first box on root,
+				ui.root.first = right
+			}
+			// right should never be null since top_ancestor is not the last node
+			right.prev = left
+
+			if ui.root.last != nil
+			{
+				// ui.root.last - > top_ancestor
+				ui.root.last.next = top_ancestor
+				top_ancestor.prev = ui.root.last
+				top_ancestor.next = nil
+			}
+			else
+			{
+				//                     vvv
+				// ui.root.first - > ui.root.last
+				ui.root.last       = top_ancestor
+				ui.root.first.next = top_ancestor
+				top_ancestor.prev  = ui.root.first
+				top_ancestor.next  = nil
+			}
+			ui.root.last = top_ancestor
+
+			for curr := right; curr != nil; curr = curr.next {
+				curr.parent_index -= 1
+			}
+
+			// Fix up left & right references
+			// if left != nil && right != nil {
+			// 	right.prev = left
+			// 	left.next  = right
+			// }
+		}
 
 		// runtime.debug_trap()
 		// ui.hot                         = box.key

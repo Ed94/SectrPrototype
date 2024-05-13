@@ -171,6 +171,9 @@ dll_full_pop :: proc "contextless" (  node, parent : ^$Type ) {
 	if parent.last == node {
 		parent.last = node.prev
 	}
+	if parent.first == parent.last {
+		parent.last = nil
+	}
 	if node.prev != nil {
 		node.prev.next = nil
 		node.prev = nil

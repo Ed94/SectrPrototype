@@ -113,7 +113,7 @@ UI_Box :: struct {
 	using links   : DLL_NodeFull( UI_Box ), // first, last, prev, next
 	parent        : ^UI_Box,
 	num_children  : i32,
-	ancestors     : i32,
+	ancestors     : i32, // This value for rooted widgets gets set to -1 after rendering see ui_box_make() for the reason.
 	parent_index  : i32,
 
 	flags    : UI_BoxFlags,
@@ -157,7 +157,8 @@ UI_State :: struct {
 	prev_cache : ^HMapZPL( UI_Box ),
 	curr_cache : ^HMapZPL( UI_Box ),
 
-	null_box : ^UI_Box, // Ryan had this, I don't know why yet.
+	null_box : ^UI_Box, // This was used with the Linked list interface...
+	// TODO(Ed): Should we change our convention for null boxes to use the above and nil as an invalid state?
 	root     : ^UI_Box,
 	// Children of the root node are unique in that they have their order preserved per frame
 	// This is to support overlapping frames
@@ -239,7 +240,17 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 	key := ui_key_from_string( label )
 
+	links_perserved : DLL_NodeFull( UI_Box )
+
 	curr_box : (^ UI_Box)
+	curr_box = zpl_hmap_get( curr_cache, cast(u64) key )
+	if curr_box != nil && curr_box.ancestors == 1 {
+		// top_ancestor has had its neighboring links updated this frame
+		// preserve them from the refresh
+		links_perserved.prev = curr_box.links.prev
+		links_perserved.next = curr_box.links.next
+	}
+
 	prev_box := zpl_hmap_get( prev_cache, cast(u64) key )
 	{
 		// profile("Assigning current box")
@@ -269,15 +280,12 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 	// Clear non-persistent data
 	curr_box.computed.fresh = false
-	curr_box.links          = {}
+	curr_box.links          = links_perserved
 	curr_box.num_children   = 0
-	curr_box.parent         = nil
-	// curr_box.ancestors      = 0
-	curr_box.parent_index   = -1
 
 	// If there is a parent, setup the relevant references
 	parent := stack_peek( & parent_stack )
-	if curr_box.ancestors == 0 && prev_box != nil
+	if parent == nil && ! curr_box.first_frame
 	{
 		set_error : AllocatorError
 		if prev_box.first != nil {
@@ -288,12 +296,36 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 			curr_box.last, set_error = zpl_hmap_set( curr_cache, cast(u64) prev_box.last.key, prev_box.last ^ )
 			verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
 		}
+		curr_box.ancestors = 0
 	}
 	if parent != nil
 	{
-		if curr_box.ancestors != 1
+		if parent != ui.root || curr_box.first_frame
 		{
-			dll_full_push_back( parent, curr_box, null_box )
+			// Only occurs when this is no prior history for rooted boxes
+			// Otherwise regular children always complete this
+			// dll_full_push_back( parent, curr_box, nil )
+			when true
+			{
+				//    |
+				//    v
+				// parent.first <nil>
+				if parent.first == nil {
+					parent.first  = curr_box
+					parent.last   = curr_box
+					curr_box.next = nil
+					curr_box.prev = nil
+				}
+				else {
+					// Positin is set to last, insert at end
+					// <parent.last.prev> <parent.last> curr_box
+					parent.last.next = curr_box
+					curr_box.prev    = parent.last
+					parent.last      = curr_box
+					curr_box.next    = nil
+				}
+			}
+
 			curr_box.parent_index = parent.num_children
 			parent.num_children  += 1
 			curr_box.parent       = parent
@@ -301,16 +333,18 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 		}
 		else if prev_box != nil
 		{
-			// Order was previously restored, restore linkage
-			if prev_box.prev != nil {
-				curr_box.prev = zpl_hmap_get( curr_cache, cast(u64) prev_box.prev.key )
+			// Make only todo if links are properly wiped on current
+			set_error : AllocatorError
+			if curr_box.prev == nil && prev_box.prev != nil {
+				curr_box.prev, set_error = zpl_hmap_set( curr_cache, cast(u64) prev_box.prev.key, prev_box.prev ^ )
+				verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
 			}
-			if prev_box.next != nil {
-				curr_box.next = zpl_hmap_get( curr_cache, cast(u64) prev_box.next.key )
+			if curr_box.next == nil && prev_box.next != nil {
+				curr_box.next, set_error = zpl_hmap_set( curr_cache, cast(u64) prev_box.next.key, prev_box.next ^ )
+				verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
 			}
-			curr_box.parent       = ui.root
+			curr_box.parent       = parent
 			curr_box.ancestors    = 1
-			curr_box.parent_index = ui.root.num_children
 			parent.num_children  += 1
 		}
 	}
@@ -319,8 +353,17 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	return curr_box
 }
 
-ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
+ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box, is_destructive : b32 = false ) -> (^ UI_Box)
 {
+	parent := box.parent
+
+	// Marking this box as deceased with no position in the box graph
+	if is_destructive {
+		// box.parent       = nil
+		box.num_children = -1
+		box.ancestors    = -1
+	}
+
 	// Check to make sure parent is present on the screen, if its not don't bother.
 	// If current has children, do them first
 	using state := get_state()
@@ -336,9 +379,10 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 	if box.next == nil
 	{
 		// There is no more adjacent nodes
-		if box.parent != nil {
+		if box.parent != nil
+		{
 			// Lift back up to parent, and set it to its next.
-			return box.parent.next
+			return parent.next
 		}
 	}
 
@@ -395,7 +439,6 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	ui_parent_push(root)
 }
 
-// TODO(Ed) :: Is this even needed?
 ui_graph_build_end :: proc( ui : ^UI_State )
 {
 	profile(#procedure)

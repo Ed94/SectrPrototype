@@ -195,7 +195,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
 
 		using screen_ui
-		menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
+		menu_bar.pos  = { -60, 0 }
+		// menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
 		menu_bar.size = {200, 40}
 
 		settings_menu.min_size = {250, 200}
@@ -338,9 +339,9 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 
 		rl.PollInputEvents()
 
-		debug.draw_ui_box_bounds_points = false
-		debug.draw_UI_padding_bounds = false
-		debug.draw_ui_content_bounds = false
+		debug.draw_ui_box_bounds_points = true
+		debug.draw_UI_padding_bounds = true
+		debug.draw_ui_content_bounds = true
 
 		should_close = update( host_delta_time )
 		render()
@@ -351,8 +352,8 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 	// Timing
 	{
 		// profile("Client tick timing processing")
-		config.engine_refresh_hz = uint(monitor_refresh_hz)
-		// config.engine_refresh_hz = 10
+		// config.engine_refresh_hz = uint(monitor_refresh_hz)
+		config.engine_refresh_hz = 10
 		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
 

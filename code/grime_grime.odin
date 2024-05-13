@@ -1,6 +1,8 @@
 
 package sectr
 
+#region("Import Aliases")
+
 import "base:builtin"
 	copy :: builtin.copy
 import "base:intrinsics"
@@ -95,13 +97,17 @@ import "thirdparty:backtrace"
 	stacktrace       :: backtrace.trace
 	stacktrace_lines :: backtrace.lines
 
+#endregion("Import Aliases")
+
 OS_Type :: type_of(ODIN_OS)
+
 
 swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
 	return b, a
 }
 
-// Proc Name Overloads Alias table
+#region("Proc overload mappings")
+
 // This has to be done on a per-module basis.
 
 add :: proc {
@@ -298,3 +304,5 @@ wedge :: proc {
 	wedge_vec3,
 	wedge_bivec3,
 }
+
+#endregion("Proc overload mappings")
