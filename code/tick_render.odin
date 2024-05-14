@@ -140,8 +140,6 @@ render_mode_2d_workspace :: proc()
 				ws_view_to_render_pos(computed.content.max),
 			)
 
-			// rect_anchors := range2_to_rl_rect( render_anchors )
-			// rect_margins := range2_to_rl_rect( render_margins )
 			rect_bounds  := range2_to_rl_rect( render_bounds )
 			rect_padding := range2_to_rl_rect( render_padding )
 			rect_content := range2_to_rl_rect( render_content )
@@ -334,12 +332,12 @@ render_screen_ui :: proc()
 
 		for & current in array_to_slice(ui.render_queue)
 		{
-			// profile("Box")
+			profile("Box")
+
 			style    := current.style
 			computed := & current.computed
 
-			computed_size := computed.bounds.p1 - computed.bounds.p0
-
+			profile_begin("Coordinate space conversion")
 			render_bounds := range2(
 				screen_to_render_pos(computed.bounds.min),
 				screen_to_render_pos(computed.bounds.max),
@@ -355,9 +353,9 @@ render_screen_ui :: proc()
 			rect_bounds  := range2_to_rl_rect( render_bounds )
 			rect_padding := range2_to_rl_rect( render_padding )
 			rect_content := range2_to_rl_rect( render_content )
-			// profile_end()
+			profile_end()
 
-			// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
+			profile_begin("raylib drawing")
 			if style.bg_color.a != 0
 			{
 				draw_rectangle( rect_bounds, & current )
@@ -365,7 +363,6 @@ render_screen_ui :: proc()
 			if current.border_width > 0 {
 				draw_rectangle_lines( rect_bounds, & current, style.border_color, current.border_width )
 			}
-			// profile_end()
 
 			line_thickness : f32 = 1
 
@@ -376,13 +373,13 @@ render_screen_ui :: proc()
 			else if debug.draw_ui_content_bounds {
 				draw_rectangle_lines( rect_content, & current, Color_Debug_UI_Content_Bounds, line_thickness )
 			}
-			// profile_end()
 
 			point_radius : f32 = 3
 
 			// profile_begin("circles")
 			if debug.draw_ui_box_bounds_points
 			{
+				computed_size := computed.bounds.p1 - computed.bounds.p0
 				// center := Vec2 {
 				// 	render_bounds.p0.x + computed_size.x * 0.5,
 				// 	render_bounds.p0.y - computed_size.y * 0.5,
@@ -392,11 +389,11 @@ render_screen_ui :: proc()
 				rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
 				rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
 			}
-			// profile_end()
 
 			if len(current.text.str) > 0 && style.font.key != 0 {
 				draw_text_screenspace( current.text, screen_to_render_pos(computed.text_pos), current.font_size, style.text_color )
 			}
+			profile_end()
 		}
 	}
 	//endregion App UI

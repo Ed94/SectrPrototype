@@ -49,7 +49,7 @@ DLL_NodePN :: struct ( $ Type : typeid ) {
 	// },
 }
 
-DLL_NodeFL :: struct ( $ Type : typeid ) #raw_union {
+DLL_NodeFL :: struct ( $ Type : typeid ) {
 	// using _ : struct {
 		first, last : ^Type,
 	// },

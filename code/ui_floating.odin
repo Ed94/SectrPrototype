@@ -113,6 +113,22 @@ ui_floating_build :: proc()
 				continue
 			}
 			lookup.queued = true
+
+			if first == nil {
+				first = lookup
+				continue
+			}
+			else if last == nil {
+				first.next = lookup
+				last       = lookup
+				last.prev  = first
+				continue
+			}
+			else {
+				last.next = lookup
+				last      = lookup
+				continue
+			}
 		}
 		else {
 			lookup.captures = to_enqueue.captures
@@ -120,14 +136,6 @@ ui_floating_build :: proc()
 			lookup.queued   = true
 			continue
 		}
-
-		if first == nil {
-			first = lookup
-			last  = lookup
-			continue
-		}
-		last.next = lookup
-		last      = lookup
 	}
 	array_clear(build_queue)
 
