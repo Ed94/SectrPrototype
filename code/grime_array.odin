@@ -38,11 +38,11 @@ array_underlying_slice :: proc(slice: []($ Type)) -> Array(Type)
 	return array_ptr ^
 }
 
-array_to_slice_num :: proc( using self : Array($ Type) ) -> []Type {
+array_to_slice :: proc( using self : Array($ Type) ) -> []Type {
 	return slice_ptr( data, int(num) )
 }
 
-array_to_slice :: proc( using self : Array($ Type) ) -> []Type {
+array_to_slice_capacity :: proc( using self : Array($ Type) ) -> []Type {
 	return slice_ptr( data, int(capacity))
 }
 
@@ -66,7 +66,7 @@ array_init_reserve :: proc
 	// log( str_fmt_tmp("array reserved: %d", header_size + int(capacity) * size_of(Type) ))
 	if alloc_error != AllocatorError.None do return
 
-	result.header    = cast( ^ArrayHeader(Type)) raw_mem;
+	result.header    = cast( ^ArrayHeader(Type)) raw_mem
 	result.backing   = allocator
 	// result.dbg_name  = dbg_name
 	result.fixed_cap = fixed_cap

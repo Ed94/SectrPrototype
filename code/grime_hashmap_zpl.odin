@@ -4,12 +4,11 @@ The only reason I may need this is due to issues with allocator callbacks or som
 with hot-reloads...
 
 This implementation uses two ZPL-Based Arrays to hold entires and the actual hash table.
-Its algorithim isn't that great, removal of elements is very expensive.
-Growing the hashtable doesn't do a resize on the original arrays properly, leading to completely discarded memory.
-Its recommended to use something closer to raddbg's implementation for greater flexibility.
+Instead of using separate chains, it maintains linked entries within the array.
+Each entry contains a next field, which is an index pointing to the next entry in the same array.
 
-This should only be used if you want the hashtable to also store the values
-and an open-addressing hashtable is for some reason not desired.
+Growing this hashtable is destructive, so it should usually be kept to a fixed-size unless
+the populating operations only occur in one place and from then on its read-only.
 */
 package sectr
 
@@ -36,8 +35,8 @@ HMapZPL_Entry :: struct ( $ Type : typeid) {
 }
 
 HMapZPL :: struct ( $ Type : typeid ) {
-	hashes   : Array( i64 ),
-	entries  : Array( HMapZPL_Entry(Type) ),
+	table   : Array( i64 ),
+	entries : Array( HMapZPL_Entry(Type) ),
 }
 
 zpl_hmap_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( HMapZPL( Type), AllocatorError ) {
@@ -48,15 +47,15 @@ zpl_hmap_init_reserve :: proc
 ( $ Type : typeid, allocator : Allocator, num : u64, dbg_name : string = "" ) -> ( HMapZPL( Type), AllocatorError )
 {
 	result                        : HMapZPL(Type)
-	hashes_result, entries_result : AllocatorError
+	table_result, entries_result : AllocatorError
 
-	result.hashes, hashes_result = array_init_reserve( i64, allocator, num, dbg_name = dbg_name )
-	if hashes_result != AllocatorError.None {
-		ensure( false, "Failed to allocate hashes array" )
-		return result, hashes_result
+	result.table, table_result = array_init_reserve( i64, allocator, num, dbg_name = dbg_name )
+	if table_result != AllocatorError.None {
+		ensure( false, "Failed to allocate table array" )
+		return result, table_result
 	}
-	array_resize( & result.hashes, num )
-	slice.fill( slice_ptr( result.hashes.data, cast(int) result.hashes.num), -1 )
+	array_resize( & result.table, num )
+	slice.fill( slice_ptr( result.table.data, cast(int) result.table.num), -1 )
 
 	result.entries, entries_result = array_init_reserve( HMapZPL_Entry(Type), allocator, num, dbg_name = dbg_name )
 	if entries_result != AllocatorError.None {
@@ -67,17 +66,17 @@ zpl_hmap_init_reserve :: proc
 }
 
 zpl_hmap_clear :: proc( using self : ^ HMapZPL( $ Type ) ) {
-	for id := 0; id < hashes.num; id += 1 {
-		hashes[id] = -1
+	for id := 0; id < table.num; id += 1 {
+		table[id] = -1
 	}
 
-	array_clear( hashes )
+	array_clear( table )
 	array_clear( entries )
 }
 
 zpl_hmap_destroy :: proc( using self : ^ HMapZPL( $ Type ) ) {
-	if hashes.data != nil && hashes.capacity > 0 {
-		array_free( hashes )
+	if table.data != nil && table.capacity > 0 {
+		array_free( table )
 		array_free( entries )
 	}
 }
@@ -119,7 +118,7 @@ zpl_hmap_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 	ensure( false, "ZPL HMAP IS REHASHING" )
 	last_added_index : i64
 
-	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.hashes.backing, new_num, ht.hashes.dbg_name )
+	new_ht, init_result := zpl_hmap_init_reserve( Type, ht.table.backing, new_num, ht.table.dbg_name )
 	if init_result != AllocatorError.None {
 		ensure( false, "New zpl_hmap failed to allocate" )
 		return init_result
@@ -133,7 +132,7 @@ zpl_hmap_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 		last_added_index = zpl_hmap_add_entry( & new_ht, entry.key )
 
 		if find_result.prev_index < 0 {
-			new_ht.hashes.data[ find_result.hash_index ] = last_added_index
+			new_ht.table.data[ find_result.hash_index ] = last_added_index
 		}
 		else {
 			new_ht.entries.data[ find_result.prev_index ].next = last_added_index
@@ -154,20 +153,26 @@ zpl_hmap_rehash_fast :: proc( using self : ^ HMapZPL( $ Type ) )
 	for id := 0; id < entries.num; id += 1 {
 		entries[id].Next = -1;
 	}
-	for id := 0; id < hashes.num; id += 1 {
-		hashes[id] = -1
+	for id := 0; id < table.num; id += 1 {
+		table[id] = -1
 	}
 	for id := 0; id < entries.num; id += 1 {
 		entry       := & entries[id]
 		find_result := zpl_hmap_find( entry.key )
 
 		if find_result.prev_index < 0 {
-			hashes[ find_result.hash_index ] = id
+			table[ find_result.hash_index ] = id
 		}
 		else {
 			entries[ find_result.prev_index ].next = id
 		}
 	}
+}
+
+// Used when the address space of the allocator changes and the backing reference must be updated
+zpl_hmap_reload :: proc( using self : ^HMapZPL($Type), new_backing : Allocator ) {
+	table.backing   = new_backing
+	entries.backing = new_backing
 }
 
 zpl_hmap_remove :: proc( self : ^ HMapZPL( $ Type ), key : u64 ) {
@@ -208,7 +213,7 @@ zpl_hmap_set :: proc( using self : ^ HMapZPL( $ Type), key : u64, value : Type )
 			entries.data[ find_result.prev_index ].next = id
 		}
 		else {
-			hashes.data[ find_result.hash_index ] = id
+			table.data[ find_result.hash_index ] = id
 		}
 	}
 
@@ -223,8 +228,8 @@ zpl_hmap_set :: proc( using self : ^ HMapZPL( $ Type), key : u64, value : Type )
 }
 
 zpl_hmap_slot :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> i64 {
-	for id : i64 = 0; id < hashes.num; id += 1 {
-		if hashes.data[id] == key                {
+	for id : i64 = 0; id < table.num; id += 1 {
+		if table.data[id] == key                {
 			return id
 		}
 	}
@@ -243,9 +248,9 @@ zpl_hmap_find :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> HMapZPL_F
 	// profile(#procedure)
 	result : HMapZPL_FindResult = { -1, -1, -1 }
 
-	if hashes.num > 0 {
-		result.hash_index  = cast(i64)( key % hashes.num )
-		result.entry_index = hashes.data[ result.hash_index ]
+	if table.num > 0 {
+		result.hash_index  = cast(i64)( key % table.num )
+		result.entry_index = table.data[ result.hash_index ]
 
 		verify( result.entry_index < i64(entries.num), "Entry index is larger than the number of entries" )
 
@@ -263,7 +268,7 @@ zpl_hmap_find :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> HMapZPL_F
 }
 
 zpl_hmap_full :: proc( using self : ^ HMapZPL( $ Type) ) -> b32 {
-	critical_load := u64(HMapZPL_CritialLoadScale * cast(f64) hashes.num)
+	critical_load := u64(HMapZPL_CritialLoadScale * cast(f64) table.num)
 	result : b32 = entries.num > critical_load
 	return result
 }

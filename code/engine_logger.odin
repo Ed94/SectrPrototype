@@ -118,7 +118,7 @@ logger_interface :: proc(
 }
 
 log :: proc( msg : string, level := LogLevel.Info, loc := #caller_location ) {
-	core_log.logf( level, msg, location = loc )
+	core_log.log( level, msg, location = loc )
 }
 
 logf :: proc( fmt : string, args : ..any,  level := LogLevel.Info, loc := #caller_location  ) {

@@ -4,6 +4,15 @@ package sectr
 
 import "core:math"
 
+// These are the same as the runtime constants for memory units just using a more general name when not refering to bytes
+
+Kilo :: Kilobyte
+Mega :: Megabyte
+Giga :: Gigabyte
+Tera :: Terabyte
+Peta :: Petabyte
+Exa  :: Exabyte
+
 Axis2 :: enum i32 {
 	Invalid = -1,
 	X       = 0,
@@ -64,7 +73,7 @@ Vec3i   :: [3]i32
 vec2i_to_vec2 :: #force_inline proc "contextless" (v : Vec2i) -> Vec2 {return transmute(Vec2) v}
 vec3i_to_vec3 :: #force_inline proc "contextless" (v : Vec3i) -> Vec3 {return transmute(Vec3) v}
 
-//region Range2
+#region("Range2")
 
 Range2 :: struct #raw_union {
 	using min_max : struct {
@@ -120,4 +129,4 @@ size_range2 :: #force_inline proc "contextless" ( value : Range2 ) -> Vec2 {
 	return { value.p1.x - value.p0.x, value.p0.y - value.p1.y }
 }
 
-//endregion Range2
+#endregion("Range2")

@@ -55,7 +55,8 @@ FontDef :: struct {
 }
 
 FontProviderData :: struct {
-	font_cache : HMapZPL(FontDef),
+	// font_cache : HMapZPL(FontDef),
+	font_cache : HMapChainedPtr(FontDef),
 }
 
 font_provider_startup :: proc()
@@ -65,7 +66,7 @@ font_provider_startup :: proc()
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
 	font_cache_alloc_error : AllocatorError
-	font_cache, font_cache_alloc_error = zpl_hmap_init_reserve( FontDef, persistent_slab_allocator(), 2 )
+	font_cache, font_cache_alloc_error = hmap_chained_init(FontDef, hmap_closest_prime(1 * Kilo), persistent_slab_allocator() )
 	verify( font_cache_alloc_error == AllocatorError.None, "Failed to allocate font_cache" )
 
 	log("font_cache created")
@@ -76,10 +77,11 @@ font_provider_shutdown :: proc()
 {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
-	for id in 0 ..< font_cache.entries.num
+	for & entry in font_cache.lookup
 	{
-		def := & font_cache.entries.data[id].value
+		if entry == nil do continue
 
+		def := entry.value
 		for & px_render in def.size_table {
 			using px_render
 			rl.UnloadFontData( glyphs, count )
@@ -117,11 +119,10 @@ font_load :: proc( path_file : string,
 	}
 
 	key            := cast(u64) crc32( transmute([]byte) desired_id )
-	def, set_error := zpl_hmap_set( & font_cache, key,FontDef {} )
+	def, set_error := hmap_chained_set(font_cache, key, FontDef{})
 	verify( set_error == AllocatorError.None, "Failed to add new font entry to cache" )
 
 	def.path_file    = path_file
-	// def.data         = font_data
 	def.default_size = i32(points_to_pixels(default_size))
 
 	// TODO(Ed): this is slow & eats quite a bit of memory early on. Setup a more on demand load for a specific size.
@@ -175,7 +176,7 @@ to_rl_Font :: proc( id : FontID, size := Font_Use_Default_Size ) -> rl.Font
 
 	even_size := math.round(size * (1.0/f32(Font_Size_Interval))) * f32(Font_Size_Interval)
 	size      := clamp( i32( even_size), 4, Font_Largest_Px_Size )
-	def       := zpl_hmap_get( & font_cache, id.key )
+	def       := hmap_chained_get( font_cache, id.key )
 	size       = size if size != i32(Font_Use_Default_Size) else def.default_size
 
 	id        := (size / Font_Size_Interval) + (size % Font_Size_Interval)

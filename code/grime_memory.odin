@@ -4,7 +4,7 @@ package sectr
 import "core:fmt"
 import "core:mem"
 import "core:mem/virtual"
-import "core:runtime"
+import "base:runtime"
 import "core:os"
 
 kilobytes :: #force_inline proc "contextless" ( kb : $ integer_type ) -> integer_type {

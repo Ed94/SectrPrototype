@@ -32,7 +32,7 @@ string_to_runes_array :: proc( content : string, allocator := context.allocator 
 		return nil, alloc_error
 	}
 
-	runes := array_to_slice(runes_array)
+	runes := array_to_slice_capacity(runes_array)
 
 	idx := 0
 	for codepoint in content {

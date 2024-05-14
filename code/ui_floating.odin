@@ -39,6 +39,14 @@ ui_floating_startup :: proc( self : ^UI_FloatingManager, allocator : Allocator, 
 	return error
 }
 
+ui_floating_reload :: proc( self : ^UI_FloatingManager, allocator : Allocator )
+{
+	using self
+	build_queue.backing     = allocator
+	tracked.entries.backing = allocator
+	tracked.table.backing   = allocator
+}
+
 ui_floating_just_builder :: #force_inline proc( label : string, builder : UI_FloatingBuilder ) -> ^UI_Floating
 {
 	No_Captures : rawptr = nil
@@ -84,7 +92,7 @@ ui_floating_build :: proc()
 	screen_ui := cast(^UI_ScreenState) ui
 	using floating := get_state().ui_floating_context
 
-	for to_enqueue in array_to_slice_num( build_queue)
+	for to_enqueue in array_to_slice( build_queue)
 	{
 		key    := ui_key_from_string(to_enqueue.label)
 		lookup := zpl_hmap_get( & tracked, transmute(u64) key )

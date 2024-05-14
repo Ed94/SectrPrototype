@@ -113,7 +113,7 @@ memtracker_unregister :: proc( tracker : MemoryTracker, to_remove : MemoryTracke
 	temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
 	context.temp_allocator = arena_allocator(& temp_arena)
 
-	entries := array_to_slice_num(tracker.entries)
+	entries := array_to_slice(tracker.entries)
 	for idx in 0..< tracker.entries.num
 	{
 		entry := & entries[idx]
@@ -142,7 +142,7 @@ memtracker_check_for_collisions :: proc ( tracker : MemoryTracker )
 	temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
 	context.temp_allocator = arena_allocator(& temp_arena)
 
-	entries := array_to_slice_num(tracker.entries)
+	entries := array_to_slice(tracker.entries)
 	for idx in 1 ..< tracker.entries.num {
 		// Check to make sure each allocations adjacent entries do not intersect
 		left  := & entries[idx - 1]

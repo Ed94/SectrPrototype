@@ -89,9 +89,9 @@ PWS_ParseError :: struct {
 }
 
 PWS_ParseError_Max         :: 32
-PWS_TokenArray_ReserveSize :: 64 * Kilobyte
-PWS_NodeArray_ReserveSize  :: 64 * Kilobyte
-PWS_LineArray_ReserveSize  :: 64 * Kilobyte
+PWS_TokenArray_ReserveSize :: 128
+PWS_NodeArray_ReserveSize  :: 32 * Kilobyte
+PWS_LineArray_ReserveSize  :: 32
 
 // TODO(Ed) : The ast arrays should be handled by a slab allocator dedicated to PWS_ASTs
 // This can grow in undeterministic ways, persistent will get very polluted otherwise.
@@ -258,6 +258,7 @@ pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseR
 
 	log( str_fmt_tmp( "parsing: %v ...", (len(text) > 30 ? transmute(string) bytes[ :30] : text) ))
 
+	// TODO(Ed): Change this to use a node pool
 	nodes, alloc_error = array_init_reserve( PWS_AST, allocator, PWS_NodeArray_ReserveSize )
 	verify( alloc_error == nil, "Allocation failure creating nodes array")
 

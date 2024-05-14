@@ -116,7 +116,7 @@ render_mode_2d_workspace :: proc()
 		state.ui_context = ui
 
 		current := root.first
-		for & current in array_to_slice_num(ui.render_queue)
+		for & current in array_to_slice(ui.render_queue)
 		{
 			profile("Box")
 			style    := current.style
@@ -332,7 +332,7 @@ render_screen_ui :: proc()
 			break Render_App_UI
 		}
 
-		for & current in array_to_slice_num(ui.render_queue)
+		for & current in array_to_slice(ui.render_queue)
 		{
 			// profile("Box")
 			style    := current.style

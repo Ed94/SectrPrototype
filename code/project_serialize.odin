@@ -4,7 +4,7 @@ import "core:encoding/json"
 import "core:fmt"
 import "core:os"
 import "core:reflect"
-import "core:runtime"
+import "base:runtime"
 import "core:strings"
 
 @(private="file")

@@ -11,8 +11,12 @@
     "enable_fake_methods": true,
     "enable_format": false,
     "enable_hover": true,
-    "enable_semantic_tokens": true,
+    "enable_semantic_tokens": false,
     "enable_snippets": false,
     "enable_references": true,
-    "thread_pool_count": 10
+    "thread_pool_count": 10,
+    "enable_inlay_hints": true,
+    "enable_procedure_context": true,
+    "enable_procedure_snippet": false,
+    "disable_parser_errors": false
 }

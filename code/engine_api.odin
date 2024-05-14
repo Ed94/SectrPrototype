@@ -13,6 +13,7 @@ import    "core:prof/spall"
 import rl "vendor:raylib"
 
 Path_Assets       :: "../assets/"
+Path_Shaders      :: "../shaders/"
 Path_Input_Replay :: "scratch.sectr_replay"
 
 Persistent_Slab_DBG_Name := "Peristent Slab"
@@ -276,12 +277,10 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 
 	slab_reload( persistent_slab, persistent_allocator() )
 
-	font_provider_data.font_cache.hashes.backing  = persistent_slab_allocator()
-	font_provider_data.font_cache.entries.backing = persistent_slab_allocator()
+	hmap_chained_reload( font_provider_data.font_cache, persistent_slab_allocator())
 
 	slab_reload( string_cache.slab, persistent_allocator() )
-	string_cache.table.hashes.backing  = persistent_slab_allocator()
-	string_cache.table.entries.backing = persistent_slab_allocator()
+	zpl_hmap_reload( & string_cache.table, persistent_slab_allocator())
 
 	slab_reload( frame_slab, frame_allocator())
 	slab_reload( transient_slab, transient_allocator())

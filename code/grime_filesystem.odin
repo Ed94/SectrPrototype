@@ -3,7 +3,7 @@ package sectr
 
 import "core:fmt"
 import "core:os"
-import "core:runtime"
+import "base:runtime"
 
 // Test
 

@@ -193,7 +193,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 	label_id := 0
 
 	line_id := 0
-	for line in array_to_slice_num( debug.lorem_parse.lines )
+	for line in array_to_slice( debug.lorem_parse.lines )
 	{
 		if line_id == 0 {
 			line_id += 1

@@ -52,27 +52,6 @@ UI_AnchorPresets :: enum u32 {
 	Count,
 }
 
-UI_BoxFlag :: enum u64 {
-	Disabled,
-
-	Focusable,
-	Click_To_Focus,
-
-	Mouse_Clickable,
-	Keyboard_Clickable,
-
-	// Pan_X,
-	// Pan_Y,
-
-	// Scroll_X,
-	// Scroll_Y,
-
-	// Screenspace,
-	Count,
-}
-UI_BoxFlags :: bit_set[UI_BoxFlag; u64]
-// UI_BoxFlag_Scroll :: UI_BoxFlags { .Scroll_X, .Scroll_Y }
-
 UI_Cursor :: struct {
 	placeholder : int,
 }
@@ -91,13 +70,7 @@ UI_InteractState :: struct {
 
 UI_Key :: distinct u64
 
-UI_RenderBoxInfo :: struct {
-	using computed : UI_Computed,
-	using style    : UI_Style,
-	text         : StrRunesPair,
-	font_size    : UI_Scalar,
-	border_width : UI_Scalar,
-}
+
 
 UI_Scalar :: f32
 
@@ -107,42 +80,6 @@ UI_ScalarConstraint :: struct {
 
 UI_Scalar2 :: [Axis2.Count]UI_Scalar
 
-UI_Box :: struct {
-	// Cache ID
-	key   : UI_Key,
-	// label : string,
-	label : StrRunesPair,
-	text  : StrRunesPair,
-
-	// Regenerated per frame.
-
-	// first, last : The first and last child of this box
-	// prev, next  : The adjacent neighboring boxes who are children of to the same parent
-	using links   : DLL_NodeFull( UI_Box ),
-	parent        : ^UI_Box,
-	num_children  : i32,
-	ancestors     : i32, // This value for rooted widgets gets set to -1 after rendering see ui_box_make() for the reason.
-	parent_index  : i32,
-
-	flags    : UI_BoxFlags,
-	computed : UI_Computed,
-
-	layout : UI_Layout,
-	style  : UI_Style,
-
-	// Persistent Data
-	hot_delta      : f32,
-	active_delta   : f32,
-	disabled_delta : f32,
-	style_delta    : f32,
-	first_frame    : b8,
-	// root_order_id  : i16,
-
-	// prev_computed : UI_Computed,
-	// prev_style    : UI_Style,v
-	// mouse         : UI_InteractState,
-	// keyboard      : UI_InteractState,
-}
 
 // UI_BoxFlags_Stack_Size    :: 512
 UI_Layout_Stack_Size      :: 512
@@ -220,135 +157,14 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 {
 	// We need to repopulate Allocator references
-	for cache in & ui.caches {
-		cache.entries.backing = cache_allocator
-		cache.hashes.backing  = cache_allocator
+	for & cache in & ui.caches {
+		zpl_hmap_reload( & cache, cache_allocator)
 	}
+	ui.render_queue.backing = cache_allocator
 }
 
 // TODO(Ed) : Is this even needed?
 ui_shutdown :: proc() {
-}
-
-ui_box_equal :: #force_inline proc "contextless" ( a, b : ^ UI_Box ) -> b32 {
-	BoxSize :: size_of(UI_Box)
-
-	result : b32 = true
-	result &= a.key   == b.key   // We assume for now the label is the same as the key, if not something is terribly wrong.
-	result &= a.flags == b.flags
-	return result
-}
-
-ui_box_from_key :: #force_inline proc ( cache : ^HMapZPL(UI_Box), key : UI_Key ) -> (^UI_Box) {
-	return zpl_hmap_get( cache, cast(u64) key )
-}
-
-ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
-{
-	// profile(#procedure)
-
-	using ui := get_state().ui_context
-
-	key := ui_key_from_string( label )
-
-	links_perserved : DLL_NodeFull( UI_Box )
-
-	curr_box : (^ UI_Box)
-	prev_box := zpl_hmap_get( prev_cache, cast(u64) key )
-	{
-		// profile("Assigning current box")
-
-		set_result : ^ UI_Box
-		set_error  : AllocatorError
-		if prev_box != nil
-		{
-			// Previous history was found, copy over previous state.
-			set_result, set_error = zpl_hmap_set( curr_cache, cast(u64) key, (prev_box ^) )
-		}
-		else {
-			box : UI_Box
-			box.key   = key
-			box.label = str_intern( label )
-			// set_result, set_error = zpl_hmap_set( prev_cache, cast(u64) key, box )
-			set_result, set_error = zpl_hmap_set( curr_cache, cast(u64) key, box )
-		}
-
-		verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
-		curr_box = set_result
-
-		curr_box.first_frame = prev_box == nil
-	}
-
-	curr_box.flags = flags
-
-	// Clear non-persistent data
-	curr_box.computed.fresh = false
-	curr_box.links          = links_perserved
-	curr_box.num_children   = 0
-
-	// If there is a parent, setup the relevant references
-	parent := stack_peek( & parent_stack )
-	if parent != nil
-	{
-		dll_full_push_back( parent, curr_box, nil )
-		when false
-		{
-			//    |
-			//    v
-			// parent.first <nil>
-			if parent.first == nil {
-				parent.first  = curr_box
-				parent.last   = curr_box
-				curr_box.next = nil
-				curr_box.prev = nil
-			}
-			else {
-				// Positin is set to last, insert at end
-				// <parent.last.prev> <parent.last> curr_box
-				parent.last.next = curr_box
-				curr_box.prev    = parent.last
-				parent.last      = curr_box
-				curr_box.next    = nil
-			}
-		}
-
-		curr_box.parent_index = parent.num_children
-		parent.num_children  += 1
-		curr_box.parent       = parent
-		curr_box.ancestors    = parent.ancestors + 1
-	}
-
-	ui.built_box_count += 1
-	return curr_box
-}
-
-ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
-{
-	parent := box.parent
-
-	// Check to make sure parent is present on the screen, if its not don't bother.
-	// If current has children, do them first
-	using state := get_state()
-	if box.first != nil
-	{
-		is_app_ui := ui_context == & screen_ui
-		if is_app_ui || intersects_range2( view_get_bounds(), box.computed.bounds)
-		{
-			return box.first
-		}
-	}
-
-	if box.next == nil
-	{
-		// There is no more adjacent nodes
-		if box.parent != nil
-		{
-			// Lift back up to parent, and set it to its next.
-			return parent.next
-		}
-	}
-
-	return box.next
 }
 
 ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
