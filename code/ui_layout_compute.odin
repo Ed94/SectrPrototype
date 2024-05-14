@@ -4,15 +4,11 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	ancestors_layout_required : b32 = false,
 	root_layout_required      : b32 = false )
 {
-	profile("Layout Box")
+	// profile("Layout Box")
 	state := get_state()
 	ui    := state.ui_context
 
 	parent := box.parent
-	// TODO(Ed): Add support to premmtively compute ancestor's layouts
-	// if parent != ui.root && ! parent.computed.fresh {
-	// 	ui_box_compute_layout( parent )
-	// }
 
 	style  := box.style
 	layout := & box.layout
@@ -22,14 +18,14 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	// The parent's unadjusted content bounds however are enforced for position,
 	// they cannot be ignored. The user may bypass them by doing the
 	// relative offset math vs world/screen space if they desire.
-	fixed_pos_x  : f32 = cast(f32) int(.Fixed_Position_X in layout.flags)
-	fixed_pos_y  : f32 = cast(f32) int(.Fixed_Position_Y in layout.flags)
-	fixed_width  : f32 = cast(f32) int(.Fixed_Width      in layout.flags)
-	fixed_height : f32 = cast(f32) int(.Fixed_Height     in layout.flags)
+	// fixed_pos_x  : f32 = cast(f32) int(.Fixed_Position_X in layout.flags)
+	// fixed_pos_y  : f32 = cast(f32) int(.Fixed_Position_Y in layout.flags)
+	// fixed_width  : f32 = cast(f32) int(.Fixed_Width      in layout.flags)
+	// fixed_height : f32 = cast(f32) int(.Fixed_Height     in layout.flags)
 
 	size_to_text : bool = .Size_To_Text in layout.flags
 
-	computed       := & box.computed
+	computed := & box.computed
 
 	parent_content      := parent.computed.content
 	parent_content_size := parent_content.max - parent_content.min
@@ -148,9 +144,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		bounds.max - { layout.padding.right, layout.padding.top }    - border_offset,
 	)
 
-	// computed.anchors = anchored_bounds
-	// computed.margins = margined_bounds
-	computed.bounds  = bounds
+	computed.bounds = bounds
 	computed.padding = padding_bounds
 	computed.content = content_bounds
 
@@ -197,7 +191,15 @@ ui_compute_layout :: proc( ui : ^UI_State )
 
 	for current := root.first; current != nil; current = ui_box_tranverse_next( current )
 	{
-		if current.computed.fresh do continue
-		ui_box_compute_layout( current )
+		if ! current.computed.fresh {
+			ui_box_compute_layout( current )
+		}
+		array_append( & ui.render_queue, UI_RenderBoxInfo {
+			current.computed,
+			current.style,
+			current.text,
+			current.layout.font_size,
+			current.layout.border_width,
+		})
 	}
 }

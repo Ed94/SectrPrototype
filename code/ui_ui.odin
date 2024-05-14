@@ -91,6 +91,14 @@ UI_InteractState :: struct {
 
 UI_Key :: distinct u64
 
+UI_RenderBoxInfo :: struct {
+	using computed : UI_Computed,
+	using style    : UI_Style,
+	text         : StrRunesPair,
+	font_size    : UI_Scalar,
+	border_width : UI_Scalar,
+}
+
 UI_Scalar :: f32
 
 UI_ScalarConstraint :: struct {
@@ -119,20 +127,15 @@ UI_Box :: struct {
 	flags    : UI_BoxFlags,
 	computed : UI_Computed,
 
-	// TODO(Ed): Move prev_layout out, this is no longer managed by the core UI, its managed by w/e is constructing the graph
-	prev_layout : UI_Layout,
-	layout      : UI_Layout,
-
-	// TODO(Ed): Move prev_style out, this is no longer managed by the core UI, its managed by w/e is constructing the graph
-	prev_style : UI_Style,
-	style      : UI_Style,
+	layout : UI_Layout,
+	style  : UI_Style,
 
 	// Persistent Data
-	first_frame    : b8, // TODO(Ed): Move to end if keeping as b8
 	hot_delta      : f32,
 	active_delta   : f32,
 	disabled_delta : f32,
 	style_delta    : f32,
+	first_frame    : b8,
 	// root_order_id  : i16,
 
 	// prev_computed : UI_Computed,
@@ -146,7 +149,7 @@ UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
 UI_Parent_Stack_Size      :: 512
 // UI_Built_Boxes_Array_Size :: 8
-UI_Built_Boxes_Array_Size :: 16 * Kilobyte
+UI_Built_Boxes_Array_Size :: 128 * Kilobyte
 
 UI_State :: struct {
 	// TODO(Ed) : Use these
@@ -158,6 +161,8 @@ UI_State :: struct {
 	caches     : [2] HMapZPL( UI_Box ),
 	prev_cache : ^HMapZPL( UI_Box ),
 	curr_cache : ^HMapZPL( UI_Box ),
+
+	render_queue : Array(UI_RenderBoxInfo),
 
 	null_box : ^UI_Box, // This was used with the Linked list interface...
 	// TODO(Ed): Should we change our convention for null boxes to use the above and nil as an invalid state?
@@ -204,6 +209,10 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 	}
 	ui.curr_cache = (& ui.caches[1])
 	ui.prev_cache = (& ui.caches[0])
+
+	allocation_error : AllocatorError
+	ui.render_queue, allocation_error = array_init_reserve( UI_RenderBoxInfo, cache_allocator, UI_Built_Boxes_Array_Size, fixed_cap = true )
+	verify( allocation_error == AllocatorError.None, "Failed to allocate render queue" )
 
 	log("ui_startup completed")
 }
@@ -364,6 +373,8 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	state := get_state()
 	get_state().ui_context = ui
 	using get_state().ui_context
+
+	array_clear( render_queue )
 
 	temp := prev_cache
 	prev_cache = curr_cache

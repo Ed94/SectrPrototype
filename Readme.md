@@ -21,6 +21,7 @@ The dependencies are:
   * Added #region, #endregion directives support for editors
 * Odin repo's base, core, and vendor(raylib) libaries
 * An ini parser
+* backtrace
 
 The client(sectr) module's organization is relatively flat due to the nature of odin's compiler, not allowing for cyclic dependencies across modules, and modules can only be in one directory.
 This makes it difficult to unflatten, not something organic todo in a prototype...
@@ -29,12 +30,13 @@ Even so the notable groups are:
 
 * API : Provides the overarching interface of the app's general behavior. Host uses this to provide the client its necessary data and exection env.
   * Has the following definitions: startup, shutdown, reload, tick, clean_frame
+* Engine : Main loop, logging, client interface for host, etc
 * Env : Core Memory & State definition + orchestration
-* Grime : Name speaks for itself, stuff not directly related to the target features to iterate upon for the prototype.
-  * Defining dependency aliases or procedure overload tables, rolling own allocator, data structures, etc.
 * Font Provider : Manages fonts.
   * When loading fonts, the provider currently uses raylib to generate bitmap glyth sheets for a range of font sizes at once.
   * Goal is to eventually render using SDF shaders.
+* Grime : Name speaks for itself, stuff not directly related to the target features to iterate upon for the prototype.
+  * Defining dependency aliases or procedure overload tables, rolling own allocator, data structures, etc.
 * Input : All human input related features
   * Base input features (polling & related) are platform abstracted from raylib
   * Input Events
@@ -50,8 +52,6 @@ Even so the notable groups are:
 
 Due to the nature of the prototype there are 'sub-groups' such as the codebase being its own ordeal as well as the workspace.
 They'll be elaborated in their own documentation
-
-There is some unused code in `code/__imgui_raddbg`. Its a partial translation of some data structures from raddbg's ui.
 
 ## Gallery
 

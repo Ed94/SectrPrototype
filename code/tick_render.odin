@@ -4,7 +4,7 @@ import "core:fmt"
 
 import rl "vendor:raylib"
 
-draw_rectangle :: #force_inline proc "contextless" ( rect : rl.Rectangle, box : ^UI_Box ) {
+draw_rectangle :: #force_inline proc "contextless" ( rect : rl.Rectangle, box : ^UI_RenderBoxInfo ) {
 	using box
 	if style.corner_radii[0] > 0 {
 		rl.DrawRectangleRounded( rect, style.corner_radii[0], 9, style.bg_color )
@@ -14,7 +14,7 @@ draw_rectangle :: #force_inline proc "contextless" ( rect : rl.Rectangle, box : 
 	}
 }
 
-draw_rectangle_lines :: #force_inline proc "contextless" ( rect : rl.Rectangle, box : ^UI_Box, color : Color, thickness : f32 ) {
+draw_rectangle_lines :: #force_inline proc "contextless" ( rect : rl.Rectangle, box : ^UI_RenderBoxInfo, color : Color, thickness : f32 ) {
 	using box
 	if style.corner_radii[0] > 0 {
 		rl.DrawRectangleRoundedLines( rect, style.corner_radii[0], 9, thickness, color )
@@ -78,8 +78,8 @@ render_mode_2d_workspace :: proc()
 		vp_half_size := viewport_size * 0.5
 		viewport_box := range2( -vp_half_size, vp_half_size )
 		viewport_render := range2(
-			world_to_screen_pos( viewport_box.min),
-			world_to_screen_pos( viewport_box.max),
+			ws_view_to_render_pos( viewport_box.min),
+			ws_view_to_render_pos( viewport_box.max),
 		)
 		viewport_rect := range2_to_rl_rect( viewport_render )
 		rl.DrawTextureRec( debug.viewport_rt.texture, viewport_rect, -vp_half_size, Color_White )
@@ -93,8 +93,8 @@ render_mode_2d_workspace :: proc()
 	when false
 	{
 		render_view := Range2 { pts = {
-			world_to_screen_pos( view_bounds.min),
-			world_to_screen_pos( view_bounds.max),
+			ws_view_to_render_pos( view_bounds.min),
+			ws_view_to_render_pos( view_bounds.max),
 		}}
 		view_rect := rl.Rectangle {
 			render_view.min.x,
@@ -116,32 +116,17 @@ render_mode_2d_workspace :: proc()
 		state.ui_context = ui
 
 		current := root.first
-		for ; current != nil; current = ui_box_tranverse_next( current )
+		for & current in array_to_slice_num(ui.render_queue)
 		{
-			// profile("Box")
-			parent := current.parent
-
-			layout   := current.layout
+			profile("Box")
 			style    := current.style
-			computed := & current.computed
-
-			computed_size := computed.bounds.p1 - computed.bounds.p0
+			computed := current.computed
 
 			if ! intersects_range2( view_bounds, computed.bounds ) {
 				continue
 			}
 
-		// TODO(Ed) : Render Borders
-
-			// profile_begin("Calculating Raylib rectangles")
-			// render_anchors := range2(
-			// 	ws_view_to_render_pos(computed.anchors.min),
-			// 	ws_view_to_render_pos(computed.anchors.max),
-			// )
-			// render_margins := range2(
-			// 	ws_view_to_render_pos(computed.margins.min),
-			// 	ws_view_to_render_pos(computed.margins.max),
-			// )
+			profile_begin("render space calc")
 			render_bounds := range2(
 				ws_view_to_render_pos(computed.bounds.min),
 				ws_view_to_render_pos(computed.bounds.max),
@@ -160,34 +145,31 @@ render_mode_2d_workspace :: proc()
 			rect_bounds  := range2_to_rl_rect( render_bounds )
 			rect_padding := range2_to_rl_rect( render_padding )
 			rect_content := range2_to_rl_rect( render_content )
-			// profile_end()
+			profile_end()
 
-			// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
+			profile_begin("raylib drawing")
 			if style.bg_color.a != 0
 			{
-				draw_rectangle( rect_bounds, current )
+				draw_rectangle( rect_bounds, & current )
 			}
-			if layout.border_width > 0 {
-				draw_rectangle_lines( rect_bounds, current, style.border_color, layout.border_width )
+			if current.border_width > 0 {
+				draw_rectangle_lines( rect_bounds, & current, style.border_color, current.border_width )
 			}
-			// profile_end()
 
 			line_thickness := 1 * cam_zoom_ratio
-
-			// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
 			if debug.draw_UI_padding_bounds && equal_range2(computed.content, computed.padding) {
-				draw_rectangle_lines( rect_padding, current, Color_Debug_UI_Padding_Bounds, line_thickness )
+				draw_rectangle_lines( rect_padding, & current, Color_Debug_UI_Padding_Bounds, line_thickness )
 			}
 			else if debug.draw_ui_content_bounds {
-				draw_rectangle_lines( rect_content, current, Color_Debug_UI_Content_Bounds, line_thickness )
+				draw_rectangle_lines( rect_content, & current, Color_Debug_UI_Content_Bounds, line_thickness )
 			}
-			// profile_end()
 
 			point_radius := 3 * cam_zoom_ratio
 
 			// profile_begin("circles")
 			if debug.draw_ui_box_bounds_points
 			{
+				computed_size := computed.bounds.p1 - computed.bounds.p0
 				// center := Vec2 {
 				// 	render_bounds.p0.x + computed_size.x * 0.5,
 				// 	render_bounds.p0.y - computed_size.y * 0.5,
@@ -199,8 +181,10 @@ render_mode_2d_workspace :: proc()
 			}
 			// profile_end()
 
+			profile_end()
+
 			if len(current.text.str) > 0 {
-				ws_view_draw_text( current.text, ws_view_to_render_pos(computed.text_pos * {1, -1}), layout.font_size, style.text_color )
+				ws_view_draw_text( current.text, ws_view_to_render_pos(computed.text_pos * {1, -1}), current.font_size, style.text_color )
 			}
 		}
 	}
@@ -314,6 +298,18 @@ render_mode_screenspace :: proc ()
 	// debug_text("View Bounds (World): %v", view.pts )
 
 	debug.draw_debug_text_y = 14
+
+	 // Define the triangle vertices and colors
+	 vertices := []f32{
+			// Positions        // Colors (RGBA)
+			-0.5, -0.5, 0.0,    1.0, 0.0, 0.0, 1.0,  // Vertex 1: Red
+			0.5, -0.5, 0.0,    0.0, 1.0, 0.0, 1.0,  // Vertex 2: Green
+			0.0,  0.5, 0.0,    0.0, 0.0, 1.0, 1.0   // Vertex 3: Blue
+	}
+
+	// Begin using the shader to draw
+	// rl.BeginShaderMode(debug.proto_text_shader)
+	// rl.EndShaderMode()
 }
 
 // A non-zoomable static-view for ui
@@ -336,28 +332,14 @@ render_screen_ui :: proc()
 			break Render_App_UI
 		}
 
-		// Sort roots children by top-level order
-
-		current := root.first
-		for ; current != nil; current = ui_box_tranverse_next( current )
+		for & current in array_to_slice_num(ui.render_queue)
 		{
 			// profile("Box")
-			parent := current.parent
-
 			style    := current.style
-			layout   := current.layout
 			computed := & current.computed
 
 			computed_size := computed.bounds.p1 - computed.bounds.p0
 
-			// render_anchors := range2(
-			// 	screen_to_render_pos(computed.anchors.min),
-			// 	screen_to_render_pos(computed.anchors.max),
-			// )
-			// render_margins := range2(
-			// 	screen_to_render_pos(computed.margins.min),
-			// 	screen_to_render_pos(computed.margins.max),
-			// )
 			render_bounds := range2(
 				screen_to_render_pos(computed.bounds.min),
 				screen_to_render_pos(computed.bounds.max),
@@ -370,8 +352,6 @@ render_screen_ui :: proc()
 				screen_to_render_pos(computed.content.min),
 				screen_to_render_pos(computed.content.max),
 			)
-			// rect_anchors := range2_to_rl_rect( render_anchors )
-			// rect_margins := range2_to_rl_rect( render_margins )
 			rect_bounds  := range2_to_rl_rect( render_bounds )
 			rect_padding := range2_to_rl_rect( render_padding )
 			rect_content := range2_to_rl_rect( render_content )
@@ -380,10 +360,10 @@ render_screen_ui :: proc()
 			// profile_begin("rl.DrawRectangleRounded( rect_bounds, style.layout.corner_radii[0], 9, style.bg_color )")
 			if style.bg_color.a != 0
 			{
-				draw_rectangle( rect_bounds, current )
+				draw_rectangle( rect_bounds, & current )
 			}
-			if layout.border_width > 0 {
-				draw_rectangle_lines( rect_bounds, current, style.border_color, layout.border_width )
+			if current.border_width > 0 {
+				draw_rectangle_lines( rect_bounds, & current, style.border_color, current.border_width )
 			}
 			// profile_end()
 
@@ -391,10 +371,10 @@ render_screen_ui :: proc()
 
 			// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
 			if debug.draw_UI_padding_bounds && equal_range2(computed.content, computed.padding) {
-				draw_rectangle_lines( rect_padding, current, Color_Debug_UI_Padding_Bounds, line_thickness )
+				draw_rectangle_lines( rect_padding, & current, Color_Debug_UI_Padding_Bounds, line_thickness )
 			}
 			else if debug.draw_ui_content_bounds {
-				draw_rectangle_lines( rect_content, current, Color_Debug_UI_Content_Bounds, line_thickness )
+				draw_rectangle_lines( rect_content, & current, Color_Debug_UI_Content_Bounds, line_thickness )
 			}
 			// profile_end()
 
@@ -415,7 +395,7 @@ render_screen_ui :: proc()
 			// profile_end()
 
 			if len(current.text.str) > 0 && style.font.key != 0 {
-				draw_text_screenspace( current.text, screen_to_render_pos(computed.text_pos), layout.font_size, style.text_color )
+				draw_text_screenspace( current.text, screen_to_render_pos(computed.text_pos), current.font_size, style.text_color )
 			}
 		}
 	}

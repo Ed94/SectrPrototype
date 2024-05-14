@@ -64,48 +64,25 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		alignment := uint(mem.DEFAULT_ALIGNMENT)
 
 		policy_ptr := & default_slab_policy
-		if false
-		{
-			push( policy_ptr, SlabSizeClass {  16 * Megabyte,   4 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {  32 * Megabyte,  16 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte,  32 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte,  64 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte, 128 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte, 256 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte, 512 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte,   1 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte,   2 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte,   4 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte,   8 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte,  16 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {  64 * Megabyte,  32 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass { 256 * Megabyte,  64 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass { 256 * Megabyte, 128 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass { 512 * Megabyte, 256 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
-		}
-		else
-		{
-			push( policy_ptr, SlabSizeClass {  128 * Kilobyte,   1 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {  256 * Kilobyte,   2 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {  512 * Kilobyte,   4 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {    1 * Megabyte,  16 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {    1 * Megabyte,  32 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {    1 * Megabyte,  64 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {    2 * Megabyte, 128 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {    2 * Megabyte, 256 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {    2 * Megabyte, 512 * Kilobyte, alignment })
-			push( policy_ptr, SlabSizeClass {    2 * Megabyte,   1 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {    2 * Megabyte,   2 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {    4 * Megabyte,   4 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {    8 * Megabyte,   8 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {   16 * Megabyte,  16 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {   32 * Megabyte,  32 * Megabyte, alignment })
-			push( policy_ptr, SlabSizeClass {   64 * Megabyte,  64 * Megabyte, alignment })
-			// push( policy_ptr, SlabSizeClass { 128 * Megabyte, 128 * Megabyte, alignment })
-			// push( policy_ptr, SlabSizeClass { 256 * Megabyte, 256 * Megabyte, alignment })
-			// push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
-		}
+		push( policy_ptr, SlabSizeClass {  128 * Kilobyte,   1 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {  256 * Kilobyte,   2 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {  512 * Kilobyte,   4 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {    1 * Megabyte,  16 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {    1 * Megabyte,  32 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {    1 * Megabyte,  64 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {    2 * Megabyte, 128 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {    2 * Megabyte, 256 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {    2 * Megabyte, 512 * Kilobyte, alignment })
+		push( policy_ptr, SlabSizeClass {    2 * Megabyte,   1 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {    2 * Megabyte,   2 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {    4 * Megabyte,   4 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {    8 * Megabyte,   8 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {   16 * Megabyte,  16 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {   32 * Megabyte,  32 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass {   64 * Megabyte,  64 * Megabyte, alignment })
+		// push( policy_ptr, SlabSizeClass { 128 * Megabyte, 128 * Megabyte, alignment })
+		// push( policy_ptr, SlabSizeClass { 256 * Megabyte, 256 * Megabyte, alignment })
+		// push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
 
 		alloc_error : AllocatorError
 		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = Persistent_Slab_DBG_Name )
@@ -238,7 +215,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		verify( alloc_error == .None, "Faield to parse due to allocation failure" )
 
 		// Render texture test
-		debug.viewport_rt = rl.LoadRenderTexture( 1280, 720 )
+		// debug.viewport_rt = rl.LoadRenderTexture( 1280, 720 )
+
+		// debug.proto_text_shader = rl.LoadShader( "C:/projects/SectrPrototype/code/shaders/text_shader.vs", "C:/projects/SectrPrototype/code/shaders/text_shader.fs" )
 	}
 
 	startup_ms := duration_ms( time.tick_lap_time( & startup_tick))
@@ -340,9 +319,9 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 
 		rl.PollInputEvents()
 
-		debug.draw_ui_box_bounds_points = true
-		debug.draw_UI_padding_bounds = true
-		debug.draw_ui_content_bounds = true
+		debug.draw_ui_box_bounds_points = false
+		debug.draw_UI_padding_bounds = false
+		debug.draw_ui_content_bounds = false
 
 		should_close = update( host_delta_time )
 		render()
@@ -353,8 +332,8 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 	// Timing
 	{
 		// profile("Client tick timing processing")
-		config.engine_refresh_hz = uint(monitor_refresh_hz)
-		// config.engine_refresh_hz = 1
+		// config.engine_refresh_hz = uint(monitor_refresh_hz)
+		config.engine_refresh_hz = 120
 		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
 

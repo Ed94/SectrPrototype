@@ -200,7 +200,6 @@ update :: proc( delta_time : f64 ) -> b32
 	ui_screen_tick()
 
 	//region WorkspaceImgui Tick
-	if false
 	{
 		profile("Workspace Imgui")
 
@@ -241,7 +240,7 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_draggable()
 		// test_text_box()
 		// test_parenting( & default_layout, & frame_style_default )
-		// test_whitespace_ast( & default_layout, & frame_style_default )
+		test_whitespace_ast( & default_layout, & frame_style_default )
 	}
 	//endregion Workspace Imgui Tick
 

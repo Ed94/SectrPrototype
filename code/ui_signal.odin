@@ -13,7 +13,12 @@ UI_Signal :: struct {
 	keyboard_clicked : b8,
 
 	active     : b8,
-	was_active : b8,
+	hot        : b8,
+	disabled   : b8,
+
+	was_active   : b8,
+	was_hot      : b8,
+	was_disabled : b8,
 
 	pressed     : b8,
 	released    : b8,
@@ -205,7 +210,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		if is_hot
 		{
 			if ! was_hot  {
-				box.prev_style  = box.style
 				box.style_delta = 0
 			}
 			box.layout = ui_layout_peek().hot
@@ -214,7 +218,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		if is_active
 		{
 			if ! was_active {
-				box.prev_style  = box.style
 				box.style_delta = 0
 			}
 			box.layout = ui_layout_peek().active
@@ -223,7 +226,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		if is_disabled
 		{
 			if ! was_disabled {
-				box.prev_style  = box.style
 				box.style_delta = 0
 			}
 			box.layout = ui_layout_peek().disabled
@@ -232,7 +234,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 
 		if ! is_disabled && ! is_active && ! is_hot {
 			if  was_disabled || was_active || was_hot {
-				box.prev_style  = box.style
 				box.style_delta = 0
 			}
 			else {

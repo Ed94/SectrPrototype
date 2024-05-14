@@ -36,4 +36,6 @@ DebugData :: struct {
 	// Test 3d Viewport
 	cam_vp      : rl.Camera3D,
 	viewport_rt : rl.RenderTexture,
+
+	proto_text_shader : rl.Shader
 }

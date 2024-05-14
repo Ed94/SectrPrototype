@@ -88,7 +88,7 @@ UI_Layout :: struct {
 	alignment      : Vec2,
 	text_alignment : Vec2,
 
-	font_size : f32,
+	font_size : UI_Scalar,
 
 	margins : UI_LayoutSide,
 	padding : UI_LayoutSide,
@@ -104,8 +104,6 @@ UI_Layout :: struct {
 	// (We can union either varient and just know based on checking if its the screenspace UI)
 	// If the box is a child of the root parent, its automatically in world space and thus will use the tile_pos.
 	// tile_pos : WS_Pos,
-
-	transition_time : f32,
 }
 
 UI_LayoutCombo :: struct #raw_union {

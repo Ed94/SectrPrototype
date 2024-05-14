@@ -1,6 +1,7 @@
 package sectr
 
 import "core:math"
+import "core:strings"
 import "core:unicode/utf8"
 import rl "vendor:raylib"
 
@@ -85,7 +86,7 @@ ws_view_draw_text_string :: proc( content : string, pos : Vec2, size : f32, colo
 	zoom_adjust := px_size * project.workspace.cam.zoom
 
 	rl_font := to_rl_Font(font, zoom_adjust )
-	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.ANISOTROPIC_4X)
+	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
 	rl.DrawTextCodepoints( rl_font,
 		raw_data(runes), cast(i32) len(runes),
 		position = transmute(rl.Vector2) pos,
@@ -95,33 +96,56 @@ ws_view_draw_text_string :: proc( content : string, pos : Vec2, size : f32, colo
 	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
 }
 
-ws_view_draw_text_StrRunesPair :: proc( content : StrRunesPair, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
+when true
 {
-	// profile(#procedure)
-	state := get_state(); using state
+	ws_view_draw_text_StrRunesPair :: proc( content : StrRunesPair, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
+	{
+		profile(#procedure)
+		state := get_state(); using state
 
-	if len( content.str ) == 0 {
-		return
+		if len( content.str ) == 0 {
+			return
+		}
+		font := font
+		if  font.key == Font_Default.key {
+			font = default_font
+		}
+		pos := ws_view_to_render_pos(pos)
+
+		px_size     := size
+		zoom_adjust := px_size * project.workspace.cam.zoom
+		rl_font     := to_rl_Font(font, zoom_adjust )
+		runes       := content.runes
+
+		profile_begin("raylib draw codepoints related")
+		// rl.DrawTextCodepoints( rl_font,
+		// 	raw_data(runes), cast(i32) len(runes),
+		// 	position = transmute(rl.Vector2) pos,
+		// 	fontSize = px_size,
+		// 	spacing  = 0.0,
+		// 	tint     = color );
+		rl.DrawTextEx(rl_font,
+			strings.clone_to_cstring(content.str),
+			position = transmute(rl.Vector2) pos,
+			fontSize = px_size,
+			spacing  = 0.0,
+			tint     = color
+		)
+		profile_end()
 	}
-	font := font
-	if  font.key == Font_Default.key {
-		font = default_font
+}
+else
+{
+	ws_view_draw_text_StrRunesPair :: proc( content : StrRunesPair, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
+	{
+    profile(#procedure)
+    state := get_state(); using state
+
+		// We need an alternative way to draw text to the screen (the above is way to expensive)
+		// Possibly need to watch handmade hero...
+
+
 	}
-	pos := ws_view_to_render_pos(pos)
-
-	px_size     := size
-	zoom_adjust := px_size * project.workspace.cam.zoom
-	rl_font     := to_rl_Font(font, zoom_adjust )
-	runes       := content.runes
-
-	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.ANISOTROPIC_4X)
-	rl.DrawTextCodepoints( rl_font,
-		raw_data(runes), cast(i32) len(runes),
-		position = transmute(rl.Vector2) pos,
-		fontSize = px_size,
-		spacing  = 0.0,
-		tint     = color );
-	rl.SetTextureFilter(rl_font.texture, rl.TextureFilter.POINT)
 }
 
 // Raylib's equivalent doesn't take a length for the string (making it a pain in the ass)

@@ -37,10 +37,6 @@ UI_Style :: struct {
 
 	// TODO(Ed) : Support setting the cursor state
 	cursor : UI_Cursor,
-
-	 // Used with style, prev_style, and style_delta to produce a simple interpolated animation
-	 // Applied in the layout pass & the rendering pass for their associated fields.
-	transition_time : f32,
 }
 
 UI_StyleCombo :: struct #raw_union {
