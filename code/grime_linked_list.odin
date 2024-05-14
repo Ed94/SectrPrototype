@@ -41,23 +41,23 @@ DLL_NodeFull :: struct ( $ Type : typeid ) {
 }
 
 DLL_NodePN :: struct ( $ Type : typeid ) {
-	using _ : struct {
+	// using _ : struct {
 		prev, next : ^Type,
-	},
-	using _ : struct {
-		left, right : ^Type,
-	},
+	// },
+	// using _ : struct {
+		// left, right : ^Type,
+	// },
 }
 
 DLL_NodeFL :: struct ( $ Type : typeid ) #raw_union {
-	using _ : struct {
+	// using _ : struct {
 		first, last : ^Type,
-	},
+	// },
 
 	// TODO(Ed): Review this
-	using _ : struct {
-		bottom, top: ^Type,
-	},
+	// using _ : struct {
+		// bottom, top: ^Type,
+	// },
 }
 
 type_is_node :: #force_inline proc  "contextless" ( $ Type : typeid ) -> bool

@@ -66,7 +66,7 @@ font_provider_startup :: proc()
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
 	font_cache_alloc_error : AllocatorError
-	font_cache, font_cache_alloc_error = hmap_chained_init(FontDef, hmap_closest_prime(1 * Kilo), persistent_slab_allocator() )
+	font_cache, font_cache_alloc_error = hmap_chained_init(FontDef, hmap_closest_prime(1 * Kilo), persistent_allocator(), dbg_name = "font_cache" )
 	verify( font_cache_alloc_error == AllocatorError.None, "Failed to allocate font_cache" )
 
 	log("font_cache created")

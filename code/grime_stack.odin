@@ -87,8 +87,8 @@ stack_allocator_init :: proc( size : int, allocator := context.allocator ) -> ( 
 	stack.size = size
 	stack.data = cast( [^]byte) (cast( [^]StackAllocatorBase) stack.base)[ 1:]
 
-	stack.top    = cast(^StackAllocatorHeader) stack.data
-	stack.bottom = stack.top
+	stack.last  = cast(^StackAllocatorHeader) stack.data
+	stack.first = stack.last
 	return
 }
 
@@ -110,8 +110,8 @@ stack_allocator_init_via_memory :: proc( memory : []byte ) -> ( stack : StackAll
 	stack.size = len(memory) - header_size
 	stack.data = cast( [^]byte ) (cast( [^]StackAllocatorBase) stack.base)[ 1:]
 
-	stack.top    = cast( ^StackAllocatorHeader) stack.data
-	stack.bottom = stack.top
+	stack.last  = cast( ^StackAllocatorHeader) stack.data
+	stack.first = stack.last
 	return
 }
 
@@ -119,16 +119,16 @@ stack_allocator_push :: proc( using self : StackAllocator, block_size, alignment
 {
 	// TODO(Ed): Make sure first push is fine.
 	verify( block_size > Kilobyte, "Attempted to push onto the stack less than a Kilobyte")
-	top_block_ptr := memory_after_header( top )
+	top_block_ptr := memory_after_header( last )
 
-	theoretical_size := cast(int) (uintptr(top_block_ptr) + uintptr(block_size) - uintptr(bottom))
+	theoretical_size := cast(int) (uintptr(top_block_ptr) + uintptr(block_size) - uintptr(first))
 	if theoretical_size > size {
 		// TODO(Ed) : Check if backing allocator supports resize, if it does attempt to grow.
 		return nil, .Out_Of_Memory
 	}
 
-	top_block_slice := slice_ptr( top_block_ptr, top.block_size )
-	next_spot       := uintptr( top_block_ptr) + uintptr(top.block_size)
+	top_block_slice := slice_ptr( top_block_ptr, last.block_size )
+	next_spot       := uintptr( top_block_ptr) + uintptr(last.block_size)
 
 	header_offset_pad := calc_padding_with_header( uintptr(next_spot), uintptr(alignment), size_of(StackAllocatorHeader) )
 	header            := cast( ^StackAllocatorHeader) (next_spot + uintptr(header_offset_pad) - uintptr(size_of( StackAllocatorHeader)))
@@ -139,7 +139,7 @@ stack_allocator_push :: proc( using self : StackAllocator, block_size, alignment
 	curr_block_ptr := memory_after_header( header )
 	curr_block     := slice_ptr( curr_block_ptr, block_size )
 
-	curr_used := cast(int) (uintptr(curr_block_ptr) + uintptr(block_size) - uintptr(self.top))
+	curr_used := cast(int) (uintptr(curr_block_ptr) + uintptr(block_size) - uintptr(self.last))
 	self.peak_used += max( peak_used, curr_used )
 
 	dll_push_back( & base.links.last, header )
@@ -154,28 +154,29 @@ stack_allocator_push :: proc( using self : StackAllocator, block_size, alignment
 stack_allocator_resize_top :: proc( using self : StackAllocator, new_block_size, alignment : int, zero_memory : bool ) -> AllocatorError
 {
 	verify( new_block_size > Kilobyte, "Attempted to resize the last pushed on the stack to less than a Kilobyte")
-	top_block_ptr := memory_after_header( top )
+	top_block_ptr := memory_after_header( last )
 
-	theoretical_size := cast(int) (uintptr(top_block_ptr) + uintptr(top.block_size) - uintptr(bottom))
+	theoretical_size := cast(int) (uintptr(top_block_ptr) + uintptr(last.block_size) - uintptr(first))
 	if theoretical_size > size {
 		// TODO(Ed) : Check if backing allocator supports resize, if it does attempt to grow.
 		return .Out_Of_Memory
 	}
 
-	if zero_memory && new_block_size > top.block_size {
-		added_ptr   := top_block_ptr[ top.block_size:]
-		added_slice := slice_ptr( added_ptr, new_block_size - top.block_size )
+	if zero_memory && new_block_size > last.block_size {
+		added_ptr   := top_block_ptr[ last.block_size:]
+		added_slice := slice_ptr( added_ptr, new_block_size - last.block_size )
 		slice.zero( added_slice )
 	}
 
-	top.block_size = new_block_size
+	last.block_size = new_block_size
 	return .None
 }
 
 stack_allocator_pop :: proc( using self : StackAllocator ) {
-	base.links.top      = top.prev
-	base.links.top.next = nil
+	base.links.last      = last.prev
+	base.links.last.next = nil
 }
+
 
 stack_allocator_proc :: proc(
 	allocator_data : rawptr,
@@ -221,9 +222,9 @@ stack_allocator_proc :: proc(
 		}
 		case .Free_All:
 			// TODO(Ed) : Review that we don't have any header issues with the reset.
-			stack.bottom         = stack.top
-			stack.top.next       = nil
-			stack.top.block_size = 0
+			stack.first           = stack.last
+			stack.last.next       = nil
+			stack.last.block_size = 0
 
 		case .Resize, .Resize_Non_Zeroed:
 		{
@@ -242,7 +243,7 @@ stack_allocator_proc :: proc(
 
 			verify( start <= curr_addr && curr_addr < end, "Out of bounds memory address passed to stack allocator (resize)" )
 
-			block_ptr := memory_after_header( stack.top )
+			block_ptr := memory_after_header( stack.last )
 			if block_ptr != old_memory {
 				ensure( false, "Attempted to reszie a block of memory on the stack other than top most" )
 				return nil, .None

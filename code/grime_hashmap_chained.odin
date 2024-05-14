@@ -52,13 +52,13 @@ hmap_closest_prime :: proc( capacity : uint ) -> uint
 }
 
 hmap_chained_init :: proc( $Type : typeid, lookup_capacity : uint, allocator : Allocator,
-	pool_bucket_cap         : uint   = 0,
+	pool_bucket_cap         : uint   = 1 * Kilo,
 	pool_bucket_reserve_num : uint   = 0,
 	pool_alignment          : uint   = mem.DEFAULT_ALIGNMENT,
 	dbg_name                : string = ""
 ) -> (table : HMapChainedPtr(Type), error : AllocatorError)
 {
-	header_size := size_of(HMapChainedPtr(Type))
+	header_size := size_of(HMapChained(Type))
 	size  := header_size + int(lookup_capacity) * size_of( ^HMapChainedSlot(Type)) + size_of(int)
 
 	raw_mem : rawptr
@@ -73,7 +73,7 @@ hmap_chained_init :: proc( $Type : typeid, lookup_capacity : uint, allocator : A
 		bucket_reserve_num  = pool_bucket_reserve_num,
 		alignment           = pool_alignment,
 		allocator           = allocator,
-		dbg_name            = str_intern(str_fmt_tmp("%: pool", dbg_name)).str
+		dbg_name            = str_intern(str_fmt_tmp("%v: pool", dbg_name)).str
 	)
 	data        := transmute([^] ^HMapChainedSlot(Type)) (transmute( [^]HMapChained(Type)) table.header)[1:]
 	table.lookup = slice_ptr( data, int(lookup_capacity) )

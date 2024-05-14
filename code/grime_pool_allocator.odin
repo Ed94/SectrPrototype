@@ -65,6 +65,9 @@ pool_init :: proc (
 	raw_mem, alloc_error = alloc( header_size, int(alignment), allocator )
 	if alloc_error != .None do return
 
+	ensure(block_size > 0,      "Bad block size provided")
+	ensure(bucket_capacity > 0, "Bad bucket capacity provided")
+
 	pool.header           = cast( ^PoolHeader) raw_mem
 	pool.zero_bucket      = should_zero_buckets
 	pool.backing          = allocator
@@ -304,12 +307,21 @@ pool_reset :: proc( using pool : Pool )
 
 pool_validate :: proc( pool : Pool )
 {
+	when !ODIN_DEBUG do return
 	pool := pool
 	// Make sure all buckets don't show any indication of corruption
 	bucket : ^PoolBucket = pool.bucket_list.first
+
+	if bucket != nil && uintptr(bucket) < 0x10000000000 {
+		ensure(false, str_fmt_tmp("Found a corrupted bucket %p", bucket ))
+	}
 	// Compiler bug ^^ same as pool_reset
 	for ; bucket != nil; bucket = bucket.next
 	{
+		if bucket != nil && uintptr(bucket) < 0x10000000000 {
+			ensure(false, str_fmt_tmp("Found a corrupted bucket %p", bucket ))
+		}
+
 		if ( bucket.blocks == nil ) {
 			ensure(false, str_fmt_tmp("Found a corrupted bucket %p", bucket ))
 		}
