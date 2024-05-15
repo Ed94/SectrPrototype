@@ -163,6 +163,7 @@ hmap_chained_remove :: proc( self : HMapChainedPtr($Type), key : u64 ) -> b32
 // Will preemptively allocate the next slot in the hashtable if its null for the slot.
 hmap_chained_set :: proc( using self : HMapChainedPtr($Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
 {
+	// profile(#procedure)
 	hash_index   := hmap_chained_lookup_id(self, key)
 	surface_slot := lookup[hash_index]
 	set_slot :: #force_inline proc( using self : HMapChainedPtr(Type),

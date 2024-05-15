@@ -210,17 +210,17 @@ update :: proc( delta_time : f64 ) -> b32
 		frame_style_flags : UI_LayoutFlags = {
 			.Fixed_Position_X, .Fixed_Position_Y,
 			.Fixed_Width, .Fixed_Height,
-			.Origin_At_Anchor_Center,
+			// .Origin_At_Anchor_Center,
 		}
 		default_layout := UI_Layout {
 			flags          = frame_style_flags,
 			anchor         = {},
-			alignment      = { 0.5, 0.5 },
+			// alignment      = { 0.5, 0.5 },
 			font_size      = 30,
 			text_alignment = { 0.0, 0.0 },
 			// corner_radii   = { 0.2, 0.2, 0.2, 0.2 },
 			pos            = { 0, 0 },
-			size           = range2( { 1000, 1000 }, {}),
+			// size           = range2( { 1000, 1000 }, {}),
 			// padding = { 20, 20, 20, 20 }
 		}
 		ui_layout( default_layout )

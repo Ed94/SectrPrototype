@@ -50,6 +50,7 @@ ui_hbox_begin :: proc( direction : UI_LayoutDirectionX, label : string, flags : 
 	hbox.direction = direction
 	hbox.box       = ui_box_make( flags, label )
 	hbox.signal    = ui_signal_from_box(hbox.box)
+	// ui_box_compute_layout(hbox)
 	return
 }
 
@@ -181,7 +182,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 
 	layout_bar_width := UI_Layout {
 		flags     = { .Fixed_Width },
-		alignment = {1, 1},
+		alignment = {1, 0},
 		margins   = { handle_width, handle_width, 0, 0 },
 		size      = range2({handle_width, 0}, {}),
 	}
@@ -198,7 +199,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	layout_bar_height.flags     = {.Fixed_Height}
 	layout_bar_height.size.min  = {0, handle_width}
 	layout_bar_height.margins   = { 0, 0, handle_width, handle_width }
-	layout_bar_height.alignment = {0, 0}
+	layout_bar_height.alignment = {0, -1}
 
 	context.user_ptr = & parent.label
 	name :: proc(  ) -> StrRunesPair {
@@ -210,7 +211,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	if right {
 		handle_right  = ui_widget("Settings Menu: Resize Right Handle", flags)
 		handle_right.layout.anchor.left = 1
-		handle_right.layout.alignment   = { 0, 1 }
+		handle_right.layout.alignment   = { 0, 0 }
 	}
 
 	ui_layout(layout_bar_height)
@@ -220,12 +221,12 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 		handle_bottom = ui_widget("Settings Menu: Resize Bottom Border", flags)
 		using handle_bottom.layout
 		anchor.top  = 1
-		alignment   = { 0, 1 }
+		alignment   = { 0, 0 }
 	}
 
 	layout_corner := UI_Layout {
 		flags        = { .Fixed_Width, .Fixed_Height },
-		alignment    = {1, 0},
+		alignment    = {1, -1},
 		size         = range2({handle_width, handle_width}, {}),
 	}
 	style_corner := UI_Style {
@@ -238,18 +239,18 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	if corner_tr {
 		handle_corner_tr = ui_widget("Settings Menu: Corner TR", flags)
 		handle_corner_tr.layout.anchor    = range2({1, 0}, {})
-		handle_corner_tr.layout.alignment = {0, 0}
+		handle_corner_tr.layout.alignment = {0, -1}
 	}
 
 	if corner_bl {
 		handle_corner_bl = ui_widget("Settings Menu: Corner BL", flags)
 		handle_corner_bl.layout.anchor    = range2({}, {0, 1})
-		handle_corner_bl.layout.alignment = { 1, 1 }
+		handle_corner_bl.layout.alignment = { 1, 0 }
 	}
 	if corner_br {
 		handle_corner_br = ui_widget("Settings Menu: Corner BR", flags)
 		handle_corner_br.layout.anchor    = range2({1, 0}, {0, 1})
-		handle_corner_br.layout.alignment = {0, 1}
+		handle_corner_br.layout.alignment = {0, 0}
 	}
 
 	process_handle_drag :: #force_inline proc ( handle : ^UI_Widget,
@@ -291,8 +292,6 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	delta     := get_state().input.mouse.delta
 	alignment := & parent.layout.alignment
 
-	if compute_layout do ui_box_compute_layout_children(parent)
-
 	if right     do process_handle_drag( & handle_right,     {  1,  0 }, delta, {0, 0}, pos, size, alignment )
 	if left      do process_handle_drag( & handle_left,      { -1,  0 }, delta, {1, 0}, pos, size, alignment )
 	if top       do process_handle_drag( & handle_top,       {  0,  1 }, delta, {0, 0}, pos, size, alignment )
@@ -301,6 +300,8 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	if corner_tl do process_handle_drag( & handle_corner_tl, { -1,  1 }, delta, {1, 0}, pos, size, alignment )
 	if corner_br do process_handle_drag( & handle_corner_br, {  1, -1 }, delta, {0, 1}, pos, size, alignment )
 	if corner_bl do process_handle_drag( & handle_corner_bl, { -1, -1 }, delta, {1, 1}, pos, size, alignment )
+
+	ui_box_compute_layout(parent)
 }
 #endregion("Resizable")
 
@@ -379,11 +380,12 @@ UI_VBox :: struct {
 }
 
 // Boilerplate creation
-ui_vbox_begin :: proc( direction : UI_LayoutDirectionY, label : string, flags : UI_BoxFlags = {} ) -> (vbox : UI_VBox) {
+ui_vbox_begin :: proc( direction : UI_LayoutDirectionY, label : string, flags : UI_BoxFlags = {}, compute_layout := false ) -> (vbox : UI_VBox) {
 	// profile(#procedure)
 	vbox.direction = direction
 	vbox.box       = ui_box_make( flags, label )
 	vbox.signal    = ui_signal_from_box( vbox.box )
+	if compute_layout do ui_box_compute_layout(vbox)
 	return
 }
 

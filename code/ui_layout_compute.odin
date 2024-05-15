@@ -129,6 +129,10 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		rel_pos - adjusted_size * alignment,
 		rel_pos + adjusted_size * (vec2_one - alignment),
 	)
+	if ! (.Origin_At_Anchor_Center in layout.flags) {
+		bounds.min -= { 0, adjusted_size.y }
+		bounds.max -= { 0, adjusted_size.y }
+	}
 
 	// Determine Padding's outer bounds
 	border_offset := Vec2	{ layout.border_width, layout.border_width }
@@ -166,8 +170,8 @@ ui_box_compute_layout_children :: proc( box : ^UI_Box )
 {
 	for current := box.first; current != nil; current = ui_box_tranverse_next( current )
 	{
-		if current == box do return
-		if current.computed.fresh do continue
+		// if current == box do return
+		// if current.computed.fresh do continue
 		ui_box_compute_layout( current )
 	}
 }

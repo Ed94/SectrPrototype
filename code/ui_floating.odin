@@ -14,7 +14,8 @@ UI_FloatingBuilder :: #type proc( captures : rawptr ) -> (became_active : b32)
 UI_FloatingManager :: struct {
 	using links : DLL_NodeFL(UI_Floating),
 	build_queue : Array(UI_Floating),
-	tracked     : HMapZPL(UI_Floating),
+	tracked     : HMapChainedPtr(UI_Floating),
+	// tracked     : HMapZPL(UI_Floating),
 }
 
 ui_floating_startup :: proc( self : ^UI_FloatingManager, allocator : Allocator, build_queue_cap, tracked_cap : u64, dbg_name : string = ""  ) -> AllocatorError
@@ -30,7 +31,8 @@ ui_floating_startup :: proc( self : ^UI_FloatingManager, allocator : Allocator, 
 	}
 
 	tracked_dbg_name := str_intern(str_fmt_tmp("%s: tracked", dbg_name))
-	self.tracked, error = zpl_hmap_init_reserve( UI_Floating, allocator, tracked_cap, dbg_name = tracked_dbg_name.str )
+	// self.tracked, error = zpl_hmap_init_reserve( UI_Floating, allocator, tracked_cap, dbg_name = tracked_dbg_name.str )
+	self.tracked, error = hmap_chained_init(UI_Floating, uint(tracked_cap), allocator, dbg_name = tracked_dbg_name.str )
 	if error != AllocatorError.None
 	{
 		ensure(false, "Failed to allocate tracking table")
@@ -43,8 +45,7 @@ ui_floating_reload :: proc( self : ^UI_FloatingManager, allocator : Allocator )
 {
 	using self
 	build_queue.backing     = allocator
-	tracked.entries.backing = allocator
-	tracked.table.backing   = allocator
+	hmap_chained_reload(tracked, allocator)
 }
 
 ui_floating_just_builder :: #force_inline proc( label : string, builder : UI_FloatingBuilder ) -> ^UI_Floating
@@ -95,7 +96,8 @@ ui_floating_build :: proc()
 	for to_enqueue in array_to_slice( build_queue)
 	{
 		key    := ui_key_from_string(to_enqueue.label)
-		lookup := zpl_hmap_get( & tracked, transmute(u64) key )
+		// lookup := zpl_hmap_get( & tracked, transmute(u64) key )
+		lookup := hmap_chained_get( tracked, transmute(u64) key )
 
 		// Check if entry is already present
 		if lookup != nil && lookup.prev != nil && lookup.next != nil {
@@ -107,28 +109,13 @@ ui_floating_build :: proc()
 
 		if lookup == nil {
 			error : AllocatorError
-			lookup, error = zpl_hmap_set( & tracked, transmute(u64) key, to_enqueue )
+			// lookup, error = zpl_hmap_set( & tracked, transmute(u64) key, to_enqueue )
+			lookup, error = hmap_chained_set( tracked, transmute(u64) key, to_enqueue )
 			if error != AllocatorError.None {
 				ensure(false, "Failed to allocate entry to hashtable")
 				continue
 			}
 			lookup.queued = true
-
-			if first == nil {
-				first = lookup
-				continue
-			}
-			else if last == nil {
-				first.next = lookup
-				last       = lookup
-				last.prev  = first
-				continue
-			}
-			else {
-				last.next = lookup
-				last      = lookup
-				continue
-			}
 		}
 		else {
 			lookup.captures = to_enqueue.captures
@@ -136,6 +123,14 @@ ui_floating_build :: proc()
 			lookup.queued   = true
 			continue
 		}
+
+		if first == nil {
+			first = lookup
+			last  = lookup
+			continue
+		}
+		last.next = lookup
+		last      = lookup
 	}
 	array_clear(build_queue)
 

@@ -318,9 +318,9 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 
 		rl.PollInputEvents()
 
-		debug.draw_ui_box_bounds_points = false
-		debug.draw_UI_padding_bounds = false
-		debug.draw_ui_content_bounds = false
+		debug.draw_ui_box_bounds_points = true
+		debug.draw_UI_padding_bounds = true
+		debug.draw_ui_content_bounds = true
 
 		should_close = update( host_delta_time )
 		render()
@@ -332,7 +332,7 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 	{
 		// profile("Client tick timing processing")
 		// config.engine_refresh_hz = uint(monitor_refresh_hz)
-		config.engine_refresh_hz = 120
+		config.engine_refresh_hz = 6
 		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
 
@@ -398,3 +398,4 @@ clean_frame :: proc()
 		verify( alloc_error == .None, "Failed to allocate transient slab" )
 	}
 }
+
