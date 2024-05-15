@@ -170,8 +170,8 @@ ui_box_compute_layout_children :: proc( box : ^UI_Box )
 {
 	for current := box.first; current != nil; current = ui_box_tranverse_next( current )
 	{
-		// if current == box do return
-		// if current.computed.fresh do continue
+		if current == box do return
+		if current.computed.fresh do continue
 		ui_box_compute_layout( current )
 	}
 }

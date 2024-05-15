@@ -32,7 +32,7 @@ render :: proc()
 	render_mode_3d()
 
 	rl.BeginDrawing()
-	rl.ClearBackground( Color_BG )
+	rl.ClearBackground( Color_ThmDark_BG )
 
 	render_mode_2d_workspace()
 	render_mode_screenspace()

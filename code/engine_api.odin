@@ -171,7 +171,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// Setup the screen ui state
 	{
 		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
-		ui_floating_startup( & screen_ui.floating, persistent_slab_allocator(), 16 * Kilobyte, 16 * Kilobyte, "screen ui floating manager" )
+		ui_floating_startup( & screen_ui.floating, persistent_slab_allocator(), 1 * Kilobyte, 1 * Kilobyte, "screen ui floating manager" )
 
 		using screen_ui
 		menu_bar.pos  = { -60, 0 }
@@ -277,7 +277,7 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 
 	slab_reload( persistent_slab, persistent_allocator() )
 
-	hmap_chained_reload( font_provider_data.font_cache, persistent_slab_allocator())
+	hmap_chained_reload( font_provider_data.font_cache, persistent_allocator())
 
 	slab_reload( string_cache.slab, persistent_allocator() )
 	zpl_hmap_reload( & string_cache.table, persistent_slab_allocator())
@@ -318,9 +318,9 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 
 		rl.PollInputEvents()
 
-		debug.draw_ui_box_bounds_points = true
-		debug.draw_UI_padding_bounds = true
-		debug.draw_ui_content_bounds = true
+		debug.draw_ui_box_bounds_points = false
+		debug.draw_UI_padding_bounds = false
+		debug.draw_ui_content_bounds = false
 
 		should_close = update( host_delta_time )
 		render()
@@ -331,8 +331,8 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 	// Timing
 	{
 		// profile("Client tick timing processing")
-		// config.engine_refresh_hz = uint(monitor_refresh_hz)
-		config.engine_refresh_hz = 6
+		config.engine_refresh_hz = uint(monitor_refresh_hz)
+		// config.engine_refresh_hz = 6
 		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
 

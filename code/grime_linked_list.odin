@@ -128,7 +128,7 @@ dll_pop_back :: #force_inline proc "contextless" ( current_ptr : ^(^ ($ Type)) )
 	}
 }
 
-dll_full_insert_raw ::  proc "contextless" ( null : ^($ Type), parent, pos, node : ^Type )
+dll_full_insert_raw ::  proc "contextless" ( null : ^($ Type), parent : ^$ParentType, pos, node : ^Type )
 {
 	if parent.first == null {
 		parent.first = node
@@ -161,7 +161,7 @@ dll_full_insert_raw ::  proc "contextless" ( null : ^($ Type), parent, pos, node
 	}
 }
 
-dll_full_pop :: proc "contextless" (  node, parent : ^$Type ) {
+dll_full_pop :: proc "contextless" (  node : ^$NodeType, parent : ^$ParentType ) {
 	if node == nil {
 		return
 	}
@@ -171,20 +171,19 @@ dll_full_pop :: proc "contextless" (  node, parent : ^$Type ) {
 	if parent.last == node {
 		parent.last = node.prev
 	}
-	if parent.first == parent.last {
-		parent.last = nil
-	}
-	if node.prev != nil {
-		node.prev.next = nil
+	prev := node.prev
+	next := node.next
+	if prev != nil {
+		prev.next = next
 		node.prev = nil
 	}
-	if node.next != nil {
-		node.next.prev = nil
+	if next != nil {
+		next.prev = prev
 		node.next = nil
 	}
 }
 
-dll_full_push_back :: proc "contextless" ( parent, node : ^ $Type, null : ^Type ) {
+dll_full_push_back :: proc "contextless" ( parent : ^$ParentType, node : ^$Type, null : ^Type ) {
 	dll_full_insert_raw( null, parent, parent.last, node )
 }
 

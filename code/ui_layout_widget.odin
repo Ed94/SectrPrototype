@@ -44,9 +44,9 @@ ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_Lay
 	{
 		using child.layout
 		if ! (.Fixed_Width in flags) {
-			size.min.x = anchor.ratio.x * (1 / total_stretch_ratio) * avail_flex_space
+			size.min.x = anchor.ratio.x * (1 / total_stretch_ratio) * avail_flex_space - child.layout.margins.left - child.layout.margins.right
 		}
-		flags    |= {.Fixed_Width}
+		flags |= {.Fixed_Width}
 	}
 
 	space_used : f32 = 0.0
@@ -56,20 +56,16 @@ ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_Lay
 				allocate_space(child, total_stretch_ratio, avail_flex_space)
 				using child.layout
 				anchor      = range2({0, 0}, {0, 0})
-				// alignment   = { 0, 0 }// - hbox.layout.alignment
 				pos.x       = space_used
-				space_used += size.min.x
-				// size.min.y  = container.computed.content.max.y - container.computed.content.min.y
+				space_used += size.min.x + child.layout.margins.left + child.layout.margins.right
 			}
 		case .Left_To_Right:
 			for child := container.first; child != nil; child = child.next {
 				allocate_space(child, total_stretch_ratio, avail_flex_space)
 				using child.layout
 				anchor      = range2({0, 0}, {0, 0})
-				// alignment   = { 0, 0 }
 				pos.x       = space_used
-				space_used += size.min.x
-				// size.min.y  = container.computed.content.max.y - container.computed.content.min.y
+				space_used += size.min.x + child.layout.margins.left + child.layout.margins.right
 			}
 	}
 }
@@ -114,18 +110,19 @@ ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_Layou
 	{
 		using child.layout
 		if ! (.Fixed_Height in flags) {
-			size.min.y = anchor.ratio.y * (1 / total_stretch_ratio) * avail_flex_space
+			size.min.y = (anchor.ratio.y * (1 / total_stretch_ratio) * avail_flex_space)
 		}
 		flags |= {.Fixed_Height}
 	}
 
 	space_used : f32 = 0.0
-	switch direction {
+	switch direction
+	{
 		case .Bottom_To_Top:
 			for child := container.last; child != nil; child = child.prev {
 				allocate_space(child, total_stretch_ratio, avail_flex_space)
 				using child.layout
-				anchor      = range2({0, 0}, {0, 0})
+				anchor      = range2({0,0}, {0, 0})
 				// alignment   = {0, 0}
 				pos.y       = -space_used
 				space_used += size.min.y

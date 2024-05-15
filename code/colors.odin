@@ -27,3 +27,30 @@ Color_3D_BG :: Color { 188, 182 , 170, 255 }
 
 Color_Debug_UI_Padding_Bounds :: Color {  40, 195, 170, 160 }
 Color_Debug_UI_Content_Bounds :: Color { 170, 120, 240, 160 }
+
+// TODO(Ed): The entire rendering pass should be post-processed by a tone curve configurable for the user
+// This is how you properly support any tonality of light or dark themes and not have it be base don the monitors raw output.
+
+// Dark Theme
+
+// Brightest value limited to (text is the only exception):
+Color_ThmDark_BrightLimit :: Color {230, 230, 230, 255}
+// Darkness value limited to (text is the only exception):
+Color_ThmDark_DarkLimit   :: Color {10, 10, 10, 255}
+
+
+Color_ThmDark_BG :: Color {33, 33, 33, 255}
+
+Color_ThmDark_Border_Default :: Color { 64, 64, 64, 255}
+
+Color_ThmDark_Btn_BG_Default :: Color { 40,  40,  40, 255}
+Color_ThmDark_Btn_BG_Hot     :: Color { 60,  60,  70, 255}
+Color_ThmDark_Btn_BG_Active  :: Color { 90, 100, 130, 255}
+
+Color_ThmDark_Text_Default :: Color {120, 117, 115, 255}
+Color_ThmDark_Text_Hot     :: Color {180, 180, 180, 255}
+Color_ThmDark_Text_Active  :: Color {240, 240, 240, 255}
+
+// Light Theme
+
+// LightTheme_BG :: Color { 120, 120, 120, 255 }

@@ -87,8 +87,6 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 	key := ui_key_from_string( label )
 
-	links_perserved : DLL_NodeFull( UI_Box )
-
 	curr_box : (^ UI_Box)
 	prev_box := zpl_hmap_get( prev_cache, cast(u64) key )
 	{
@@ -119,15 +117,17 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 	// Clear non-persistent data
 	curr_box.computed.fresh = false
-	curr_box.links          = links_perserved
+	curr_box.links          = {}
 	curr_box.num_children   = 0
 
 	// If there is a parent, setup the relevant references
 	parent := stack_peek( & parent_stack )
 	if parent != nil
 	{
-		dll_full_push_back( parent, curr_box, nil )
-		when false
+		when false {
+			dll_full_push_back( parent, curr_box, nil )
+		}
+		else
 		{
 			//    |
 			//    v
@@ -160,8 +160,6 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 {
-	parent := box.parent
-
 	// Check to make sure parent is present on the screen, if its not don't bother.
 	// If current has children, do them first
 	using state := get_state()
@@ -179,6 +177,16 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 		// There is no more adjacent nodes
 		if box.parent != nil
 		{
+			parent := box.parent
+			// Attempt to find a parent with a next, otherwise we just return a parent with nil
+			for ; parent.parent != nil;
+			{
+				if parent.next != nil {
+					break
+				}
+				parent = parent.parent
+			}
+
 			// Lift back up to parent, and set it to its next.
 			return parent.next
 		}

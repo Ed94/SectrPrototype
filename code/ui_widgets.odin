@@ -165,7 +165,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	corner_tl := true,
 	corner_br := true,
 	corner_bl := true,
-	compute_layout := true)
+	compute_layout := true) -> (drag_signal : b32)
 {
 	profile(#procedure)
 	handle_left      : UI_Widget
@@ -259,15 +259,15 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 		target_alignment         :  Vec2,
 		pos                      : ^Vec2,
 		size                     : ^Vec2,
-		alignment                : ^Vec2, )
+		alignment                : ^Vec2, ) -> b32
 	{
 		ui := get_state().ui_context
-		if ui.last_pressed_key != handle.key { return }
+		if ui.last_pressed_key != handle.key { return false }
 
 		size_delta := size_delta
 		pos_adjust := size^ * (alignment^ - target_alignment)
 
-		@static was_dragging := false
+		@static was_dragging : b32 = false
 
 		using handle
 		if active
@@ -287,21 +287,23 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			alignment^   = target_alignment
 			was_dragging = false
 		}
+		return was_dragging
 	}
 
 	delta     := get_state().input.mouse.delta
 	alignment := & parent.layout.alignment
 
-	if right     do process_handle_drag( & handle_right,     {  1,  0 }, delta, {0, 0}, pos, size, alignment )
-	if left      do process_handle_drag( & handle_left,      { -1,  0 }, delta, {1, 0}, pos, size, alignment )
-	if top       do process_handle_drag( & handle_top,       {  0,  1 }, delta, {0, 0}, pos, size, alignment )
-	if bottom    do process_handle_drag( & handle_bottom,    {  0, -1 }, delta, {0, 1}, pos, size, alignment )
-	if corner_tr do process_handle_drag( & handle_corner_tr, {  1,  1 }, delta, {0, 0}, pos, size, alignment )
-	if corner_tl do process_handle_drag( & handle_corner_tl, { -1,  1 }, delta, {1, 0}, pos, size, alignment )
-	if corner_br do process_handle_drag( & handle_corner_br, {  1, -1 }, delta, {0, 1}, pos, size, alignment )
-	if corner_bl do process_handle_drag( & handle_corner_bl, { -1, -1 }, delta, {1, 1}, pos, size, alignment )
+	if right     do drag_signal |= process_handle_drag( & handle_right,     {  1,  0 }, delta, {0, 0}, pos, size, alignment )
+	if left      do drag_signal |= process_handle_drag( & handle_left,      { -1,  0 }, delta, {1, 0}, pos, size, alignment )
+	if top       do drag_signal |= process_handle_drag( & handle_top,       {  0,  1 }, delta, {0, 0}, pos, size, alignment )
+	if bottom    do drag_signal |= process_handle_drag( & handle_bottom,    {  0, -1 }, delta, {0, 1}, pos, size, alignment )
+	if corner_tr do drag_signal |= process_handle_drag( & handle_corner_tr, {  1,  1 }, delta, {0, 0}, pos, size, alignment )
+	if corner_tl do drag_signal |= process_handle_drag( & handle_corner_tl, { -1,  1 }, delta, {1, 0}, pos, size, alignment )
+	if corner_br do drag_signal |= process_handle_drag( & handle_corner_br, {  1, -1 }, delta, {0, 1}, pos, size, alignment )
+	if corner_bl do drag_signal |= process_handle_drag( & handle_corner_bl, { -1, -1 }, delta, {1, 1}, pos, size, alignment )
 
 	ui_box_compute_layout(parent)
+	return
 }
 #endregion("Resizable")
 

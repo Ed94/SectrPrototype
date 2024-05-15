@@ -100,7 +100,7 @@ ui_floating_build :: proc()
 		lookup := hmap_chained_get( tracked, transmute(u64) key )
 
 		// Check if entry is already present
-		if lookup != nil && lookup.prev != nil && lookup.next != nil {
+		if lookup != nil && (lookup.next != nil || lookup == last) {
 			lookup.captures = to_enqueue.captures
 			lookup.builder  = to_enqueue.builder
 			lookup.queued   = true
@@ -115,30 +115,36 @@ ui_floating_build :: proc()
 				ensure(false, "Failed to allocate entry to hashtable")
 				continue
 			}
-			lookup.queued = true
 		}
 		else {
 			lookup.captures = to_enqueue.captures
 			lookup.builder  = to_enqueue.builder
-			lookup.queued   = true
-			continue
 		}
-
+		lookup.queued = true
 		if first == nil {
 			first = lookup
 			last  = lookup
 			continue
 		}
-		last.next = lookup
-		last      = lookup
+		if first == last {
+			last       = lookup
+			last.prev  = first
+			first.next = last
+			continue
+		}
+		last.next   = lookup
+		lookup.prev = last
+		last        = lookup
 	}
 	array_clear(build_queue)
 
+	to_raise : ^UI_Floating
 	for entry := first; entry != nil; entry = entry.next
 	{
-		using entry
-		if ! queued
+		if ! entry.queued
 		{
+			ensure(false, "There should be no queue failures yet")
+
 			if entry == first
 			{
 				first      = entry.next
@@ -162,39 +168,45 @@ ui_floating_build :: proc()
 			entry.next = nil
 		}
 
-		if builder( captures ) && entry != last
+		if entry.builder( entry.captures ) && entry != last && to_raise == nil
 		{
-			PopEntry:
-			{
-				if first == nil {
-					first = entry
-					last  = entry
-					break PopEntry
-				}
-				if entry == first
-				{
-					first      = entry.next
-					entry.next = nil
-					break PopEntry
-				}
-				if entry == last
-				{
-					last       = last.prev
-					last.prev  = nil
-					entry.prev = nil
-					break PopEntry
-				}
-
-				left  := entry.prev
-				right := entry.next
-
-				left.next  = right
-				right.prev = left
-			}
-
-			last.next = entry
-			last      = entry
+			to_raise = entry
 		}
-		queued = false
+		entry.queued = false
+	}
+	if to_raise != nil
+	{
+		dll_full_pop( to_raise, floating )
+		dll_full_push_back( floating, to_raise, nil )
+		// PopEntry:
+		// {
+		// 	if first == nil {
+		// 		first = to_raise
+		// 		last  = to_raise
+		// 		break PopEntry
+		// 	}
+		// 	if to_raise == first
+		// 	{
+		// 		first              = to_raise.next
+		// 		to_raise.next.prev = nil
+		// 		break PopEntry
+		// 	}
+		// 	if to_raise == last
+		// 	{
+		// 		// Do nothing no need to modify order
+		// 		return
+		// 	}
+
+		// 	left  := to_raise.prev
+		// 	right := to_raise.next
+
+		// 	left.next  = right
+		// 	right.prev = left
+		// }
+
+		// last.next     = to_raise
+		// to_raise.prev = last
+		// last.next     = nil
+		// last          = to_raise
 	}
 }
