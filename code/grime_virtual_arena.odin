@@ -196,7 +196,7 @@ varena_allocator_proc :: proc(
 	alignment      : int,
 	old_memory     : rawptr,
 	old_size       : int,
-	// location       : SourceCodeLocation = #caller_location
+	location       : SourceCodeLocation = #caller_location
 ) -> ( data : []byte, alloc_error : AllocatorError)
 {
 	arena := cast( ^VArena) allocator_data

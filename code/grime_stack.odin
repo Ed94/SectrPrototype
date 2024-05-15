@@ -185,7 +185,7 @@ stack_allocator_proc :: proc(
 	alignment      : int,
 	old_memory     : rawptr,
 	old_size       : int,
-	// location       : SourceCodeLocation = #caller_location
+	location       : SourceCodeLocation = #caller_location
 ) -> ([]byte, AllocatorError)
 {
 	stack := StackAllocator { cast( ^StackAllocatorBase) allocator_data }
