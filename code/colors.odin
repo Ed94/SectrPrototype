@@ -41,6 +41,12 @@ Color_ThmDark_DarkLimit   :: Color {10, 10, 10, 255}
 
 Color_ThmDark_BG :: Color {33, 33, 33, 255}
 
+Color_ThmDark_Translucent_Panel :: Color { 0, 0, 0, 60}
+
+Color_ThmDark_ResizeHandle_Default :: Color_Transparent
+Color_ThmDark_ResizeHandle_Hot     :: Color { 72, 72, 72, 90}
+Color_ThmDark_ResizeHandle_Active  :: Color { 88, 88, 88, 90}
+
 Color_ThmDark_Border_Default :: Color { 64, 64, 64, 255}
 
 Color_ThmDark_Btn_BG_Default :: Color { 40,  40,  40, 255}

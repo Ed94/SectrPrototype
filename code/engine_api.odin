@@ -318,9 +318,9 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 
 		rl.PollInputEvents()
 
-		debug.draw_ui_box_bounds_points = false
+		debug.draw_ui_box_bounds_points = true
 		debug.draw_UI_padding_bounds = false
-		debug.draw_ui_content_bounds = false
+		debug.draw_ui_content_bounds = true
 
 		should_close = update( host_delta_time )
 		render()
@@ -398,4 +398,3 @@ clean_frame :: proc()
 		verify( alloc_error == .None, "Failed to allocate transient slab" )
 	}
 }
-

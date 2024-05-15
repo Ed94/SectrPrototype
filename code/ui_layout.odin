@@ -8,10 +8,15 @@ import "core:math/linalg"
 
 // Alignment presets
 
-LayoutAlign_OriginTL_TopLeft      :: Vec2{ 0, 1}
-LayoutAlign_OriginTL_TopRight     :: Vec2{-1, 1}
-LayoutAlign_OriginTL_Centered     :: Vec2{ 0, 1}
-LayoutAlign_OriginTL_BottomLeft   :: Vec2{ 0, 1}
+LayoutAlign_OriginTL_Top          :: Vec2{0.5,   0}
+LayoutAlign_OriginTL_TopLeft      :: Vec2{  0,   0}
+LayoutAlign_OriginTL_TopRight     :: Vec2{  1,   0}
+LayoutAlign_OriginTL_Centered     :: Vec2{0.5, 0.5}
+LayoutAlign_OriginTL_Bottom       :: Vec2{0.5,   1}
+LayoutAlign_OriginTL_BottomLeft   :: Vec2{  0,   1}
+LayoutAlign_OriginTL_BottomRight  :: Vec2{  1,   1}
+
+// LayoutAlign_OriginTL_
 
 Layout_OriginCenter_Centered :: Vec2{0.5, 0.5}
 
@@ -130,8 +135,9 @@ UI_LayoutCombo :: struct #raw_union {
 	}
 }
 
-to_ui_layout_side  :: #force_inline proc( pixels : f32 )       -> UI_LayoutSide  { return { pixels, pixels, pixels, pixels } }
-to_ui_layout_combo :: #force_inline proc( layout : UI_Layout ) -> UI_LayoutCombo { return { layouts = {layout, layout, layout, layout} } }
+to_ui_layout_side_f32  :: #force_inline proc( pixels : f32 )       -> UI_LayoutSide  { return { pixels, pixels, pixels, pixels } }
+to_ui_layout_side_vec2 :: #force_inline proc( v      : Vec2)       -> UI_LayoutSide  { return { v.x, v.x, v.y, v.y} }
+to_ui_layout_combo     :: #force_inline proc( layout : UI_Layout ) -> UI_LayoutCombo { return { layouts = {layout, layout, layout, layout} } }
 
 /*
 Layout Interface

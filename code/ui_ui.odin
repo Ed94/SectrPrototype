@@ -70,8 +70,6 @@ UI_InteractState :: struct {
 
 UI_Key :: distinct u64
 
-
-
 UI_Scalar :: f32
 
 UI_ScalarConstraint :: struct {
@@ -177,6 +175,11 @@ ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
 	}
 }
 
+ui_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
+	using state := get_state()
+	return ui_cursor_pos() - state.ui_context.active_start_signal.cursor_pos
+}
+
 ui_ws_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
 	using state := get_state()
 	return screen_to_ws_view_pos(input.mouse.pos) - state.ui_context.active_start_signal.cursor_pos
@@ -190,6 +193,8 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	get_state().ui_context = ui
 	using get_state().ui_context
 
+	stack_clear( & layout_combo_stack )
+	stack_clear( & style_combo_stack )
 	array_clear( render_queue )
 
 	temp := prev_cache

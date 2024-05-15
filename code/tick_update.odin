@@ -210,7 +210,7 @@ update :: proc( delta_time : f64 ) -> b32
 		frame_style_flags : UI_LayoutFlags = {
 			.Fixed_Position_X, .Fixed_Position_Y,
 			.Fixed_Width, .Fixed_Height,
-			// .Origin_At_Anchor_Center,
+			.Origin_At_Anchor_Center,
 		}
 		default_layout := UI_Layout {
 			flags          = frame_style_flags,
@@ -239,7 +239,7 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_hover_n_click()
 		// test_draggable()
 		// test_text_box()
-		// test_parenting( & default_layout, & frame_style_default )
+		test_parenting( & default_layout, & frame_style_default )
 		// test_whitespace_ast( & default_layout, & frame_style_default )
 	}
 	//endregion Workspace Imgui Tick

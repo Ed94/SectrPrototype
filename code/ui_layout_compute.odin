@@ -125,13 +125,22 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	// 6. Determine the box bounds
 	// Adjust Alignment of pivot position
 	alignment := layout.alignment
-	bounds := range2(
-		rel_pos - adjusted_size * alignment,
-		rel_pos + adjusted_size * (vec2_one - alignment),
-	)
+	bounds : Range2
+
 	if ! (.Origin_At_Anchor_Center in layout.flags) {
-		bounds.min -= { 0, adjusted_size.y }
-		bounds.max -= { 0, adjusted_size.y }
+		// The convention offset adjust the box so that the top-left point is at the top left of the anchor's bounds
+		tl_convention_offset := adjusted_size * {0, -1}
+		bounds = range2(
+			rel_pos - adjusted_size * alignment              + tl_convention_offset,
+			rel_pos + adjusted_size * (vec2_one - alignment) + tl_convention_offset,
+		)
+	}
+	else {
+		centered_convention_offset := adjusted_size * -0.5
+		bounds = range2(
+			(rel_pos + centered_convention_offset) - adjusted_size * -alignment            ,
+			(rel_pos + centered_convention_offset) + adjusted_size * (alignment + vec2_one),
+		)
 	}
 
 	// Determine Padding's outer bounds

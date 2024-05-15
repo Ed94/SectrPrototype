@@ -274,6 +274,11 @@ to_writer :: proc {
 	str_builder_to_writer,
 }
 
+to_ui_layout_side :: proc {
+	to_ui_layout_side_f32,
+	to_ui_layout_side_vec2,
+}
+
 ui_floating :: proc {
 	ui_floating_just_builder,
 	ui_floating_with_capture,

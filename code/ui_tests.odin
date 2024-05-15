@@ -73,7 +73,7 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 	// ui_parent(frame)
 	parent_layout := default_layout ^
 	parent_layout.size      = range2( { 300, 300 }, {} )
-	parent_layout.alignment = { 0.5, 0.5 }
+	parent_layout.alignment = { 0.0, 0.0 }
 	// parent_layout.margins   = { 100, 100, 100, 100 }
 	parent_layout.padding   = { 5, 10, 5, 5 }
 	parent_layout.pos       = { 0, 0 }
@@ -103,6 +103,7 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 		parent.layout.pos      = debug.draggable_box_pos
 		parent.layout.size.min = debug.draggable_box_size
 	}
+	ui_resizable_handles( & parent, & debug.draggable_box_pos, & debug.draggable_box_size)
 
 	child_layout := default_layout ^
 	child_layout.size      = range2({ 100, 100 }, { 0, 0 })
@@ -208,11 +209,11 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 			line_hbox.text = StrRunesPair {}
 			ui_parent(line_hbox)
 
-			chunk_layout := text_layout
+			chunk_layout          := text_layout
 			chunk_layout.alignment = { 0.0, 1.0 }
-			chunk_layout.anchor = range2({ 0.0, 0 }, { 0.0, 0 })
-			chunk_layout.pos = {}
-			chunk_layout.flags = { .Fixed_Position_X, .Size_To_Text }
+			chunk_layout.anchor    = range2({ 0.0, 0 }, { 0.0, 0 })
+			chunk_layout.pos       = {}
+			chunk_layout.flags     = { .Fixed_Position_X, .Size_To_Text }
 
 			chunk_style := text_style
 			ui_theme( to_ui_layout_combo(chunk_layout), to_ui_style_combo(chunk_style) )

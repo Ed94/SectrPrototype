@@ -15,7 +15,6 @@ UI_FloatingManager :: struct {
 	using links : DLL_NodeFL(UI_Floating),
 	build_queue : Array(UI_Floating),
 	tracked     : HMapChainedPtr(UI_Floating),
-	// tracked     : HMapZPL(UI_Floating),
 }
 
 ui_floating_startup :: proc( self : ^UI_FloatingManager, allocator : Allocator, build_queue_cap, tracked_cap : u64, dbg_name : string = ""  ) -> AllocatorError
@@ -31,7 +30,6 @@ ui_floating_startup :: proc( self : ^UI_FloatingManager, allocator : Allocator, 
 	}
 
 	tracked_dbg_name := str_intern(str_fmt_tmp("%s: tracked", dbg_name))
-	// self.tracked, error = zpl_hmap_init_reserve( UI_Floating, allocator, tracked_cap, dbg_name = tracked_dbg_name.str )
 	self.tracked, error = hmap_chained_init(UI_Floating, uint(tracked_cap), allocator, dbg_name = tracked_dbg_name.str )
 	if error != AllocatorError.None
 	{
@@ -89,14 +87,12 @@ ui_floating_manager_end :: proc()
 
 ui_floating_build :: proc()
 {
-	ui        := ui_context()
-	screen_ui := cast(^UI_ScreenState) ui
+	ui := ui_context()
 	using floating := get_state().ui_floating_context
 
 	for to_enqueue in array_to_slice( build_queue)
 	{
 		key    := ui_key_from_string(to_enqueue.label)
-		// lookup := zpl_hmap_get( & tracked, transmute(u64) key )
 		lookup := hmap_chained_get( tracked, transmute(u64) key )
 
 		// Check if entry is already present
@@ -109,7 +105,6 @@ ui_floating_build :: proc()
 
 		if lookup == nil {
 			error : AllocatorError
-			// lookup, error = zpl_hmap_set( & tracked, transmute(u64) key, to_enqueue )
 			lookup, error = hmap_chained_set( tracked, transmute(u64) key, to_enqueue )
 			if error != AllocatorError.None {
 				ensure(false, "Failed to allocate entry to hashtable")
@@ -178,35 +173,5 @@ ui_floating_build :: proc()
 	{
 		dll_full_pop( to_raise, floating )
 		dll_full_push_back( floating, to_raise, nil )
-		// PopEntry:
-		// {
-		// 	if first == nil {
-		// 		first = to_raise
-		// 		last  = to_raise
-		// 		break PopEntry
-		// 	}
-		// 	if to_raise == first
-		// 	{
-		// 		first              = to_raise.next
-		// 		to_raise.next.prev = nil
-		// 		break PopEntry
-		// 	}
-		// 	if to_raise == last
-		// 	{
-		// 		// Do nothing no need to modify order
-		// 		return
-		// 	}
-
-		// 	left  := to_raise.prev
-		// 	right := to_raise.next
-
-		// 	left.next  = right
-		// 	right.prev = left
-		// }
-
-		// last.next     = to_raise
-		// to_raise.prev = last
-		// last.next     = nil
-		// last          = to_raise
 	}
 }

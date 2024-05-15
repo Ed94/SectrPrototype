@@ -11,6 +11,8 @@ UI_Signal :: struct {
 	right_clicked    : b8,
 	double_clicked   : b8,
 	keyboard_clicked : b8,
+	left_shift       : b8,
+	left_ctrl        : b8,
 
 	active     : b8,
 	hot        : b8,
@@ -64,6 +66,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 	left_pressed  := pressed( input.mouse.left )
 	left_released := released( input.mouse.left )
 
+	left_shift := pressed(input.keyboard.left_shift)
+
 	mouse_clickable    := UI_BoxFlag.Mouse_Clickable    in box.flags
 	keyboard_clickable := UI_BoxFlag.Keyboard_Clickable in box.flags
 
@@ -84,7 +88,9 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		ui.last_pressed_key   = box.key
 		ui.active_start_style = box.style
 
-		signal.pressed = true
+		signal.pressed      = true
+		signal.left_clicked = b8(left_pressed)
+		signal.left_shift   = b8(left_shift)
 		// TODO(Ed) : Support double-click detection
 	}
 
@@ -129,7 +135,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		hot_vacant    := ui.hot    == UI_Key(0)
 		active_vacant := ui.active == UI_Key(0)
 			//  (active_vacant  is_active)
-		if signal.cursor_over
+		if signal.cursor_over && active_vacant
 		{
 			if ! hot_vacant {
 				prev := ui_box_from_key( ui.curr_cache, ui.hot )

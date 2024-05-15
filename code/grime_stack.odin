@@ -10,6 +10,10 @@ StackFixed :: struct ( $ Type : typeid, $ Size : u32 ) {
 	items : [ Size ] Type,
 }
 
+stack_clear :: #force_inline proc ( using stack : ^StackFixed( $Type, $Size)) {
+	idx = 0
+}
+
 stack_push :: #force_inline proc( using stack : ^ StackFixed( $ Type, $ Size ), value : Type ) {
 	verify( idx < len( items ), "Attempted to push on a full stack" )
 
