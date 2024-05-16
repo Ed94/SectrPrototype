@@ -425,15 +425,16 @@ ui_spacer :: proc( label : string ) -> (widget : UI_Widget) {
 	return
 }
 
-// UI_ScrollBox {
-// 	using widget : UI_Widget,
-// 	scroll_bar   : UI_Widget,
-// 	content      : UI_Widget,
-// }
+UI_ScrollBox :: struct {
+	using widget : UI_Widget,
+	scroll_bar   : UI_Widget,
+	content      : UI_Widget,
+}
 
-// ui_scroll_box :: proc( label : string ) -> (scroll_box : UI_ScrollBox) {
-
-// }
+ui_scroll_box :: proc( label : string, flags : UI_BoxFlags ) -> (scroll_box : UI_ScrollBox) {
+	fatal("NOT IMPLEMENTED")
+	return
+}
 
 // ui_scrollable_view(  )
 
@@ -481,7 +482,10 @@ ui_text_tabs :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 	return { box, signal }
 }
 
-ui_text_wrap_panel :: proc( label : string, flags : UI_BoxFlags = {} )
+ui_text_wrap_panel :: proc( parent : ^UI_Widget )
+{
+	fatal("NOT IMPLEMENTED")
+}
 #endregion("Text")
 
 #region("Vertical Box")

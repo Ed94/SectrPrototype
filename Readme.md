@@ -17,8 +17,9 @@ The host module loads the main module & its memory. Hot-reloading it's dll when 
 
 The dependencies are:
 
-* Odin Compiler (Slightly custom)
+* Odin Compiler (Slightly custom [fork](https://github.com/Ed94/Odin))
   * Added #region, #endregion directives support for editors
+  * I added support for 'monlithic packages' or 'uniform-across-subdirectories packages'. It allows me to organize the main package with sub-directoreis.
 * Odin repo's base, core, and vendor(raylib) libaries
 * An ini parser
 * backtrace

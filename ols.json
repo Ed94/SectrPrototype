@@ -11,7 +11,7 @@
     "enable_fake_methods": true,
     "enable_format": false,
     "enable_hover": true,
-    "enable_semantic_tokens": false,
+    "enable_semantic_tokens": true,
     "enable_snippets": false,
     "enable_references": true,
     "thread_pool_count": 10,

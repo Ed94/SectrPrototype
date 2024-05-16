@@ -117,18 +117,13 @@ push-location $path_root
 
 	function build-prototype
 	{
-		$gen_staged_compiler_codebase = join-path $PSScriptRoot 'gen_staged_compiler_codebase.ps1'
-		$path_code_compiler_staged    = join-path $path_root 'code_compiler_staged'
-
-		. $gen_staged_compiler_codebase
-
-		push-location $path_code_compiler_staged
+		push-location $path_code
 		$project_name = 'sectr'
 
 		write-host "`nBuilding Sectr Prototype`n"
 
-		$module_host  = join-path $path_code_compiler_staged 'host'
-		$module_sectr = $path_code_compiler_staged
+		$module_host  = join-path $path_code 'host'
+		$module_sectr = join-path $path_code 'sectr'
 
 		$pkg_collection_thirdparty = 'thirdparty=' + $path_thirdparty
 
@@ -152,8 +147,8 @@ push-location $path_root
 			}
 
 			write-host 'Building Sectr Module'
-			$module_dll = join-path $path_build ( $project_name + '.dll' )
-			$pdb        = join-path $path_build ( $project_name + '.pdb' )
+			$script:module_dll = join-path $path_build ( $project_name + '.dll' )
+			$pdb               = join-path $path_build ( $project_name + '.pdb' )
 
 			if (test-path $pdb) {
 				remove-item $pdb
@@ -167,7 +162,7 @@ push-location $path_root
 
 			$build_args = @()
 			$build_args += $command_build
-			$build_args += '.'
+			$build_args += './sectr'
 			$build_args += $flag_build_mode_dll
 			$build_args += $flag_output_path + $module_dll
 			$build_args += ($flag_collection + $pkg_collection_thirdparty)
@@ -290,15 +285,9 @@ push-location $path_root
 			}
 			return $built
 		}
-		$host_build_code = build-sectr
+		$host_build_code = build-host
 
 		Pop-Location # path_code
-
-		if ( test-path $path_code_compiler_staged ) {
-			if ( ($host_build_code -ne $module_build_failed) -and ($script:sectr_build_code -ne $module_build_failed) ) {
-				Remove-Item -Path $path_code_compiler_staged -Force -Recurse
-			}
-		}
 	}
 	build-prototype
 pop-location # path_root

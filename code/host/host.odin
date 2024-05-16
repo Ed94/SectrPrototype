@@ -62,7 +62,7 @@ import "core:time"
 	thread_sleep     :: time.sleep
 import "core:prof/spall"
 import rl    "vendor:raylib"
-import sectr "../."
+import sectr "../sectr"
 	VArena                 :: sectr.VArena
 	varena_init            :: sectr.varena_init
 	fatal                  :: sectr.fatal
