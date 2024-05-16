@@ -224,19 +224,19 @@ push-location $path_root
 
 			if ( $host_process_active ) {
 				write-host 'Skipping sectr_host build, process is active'
-				return
+				return $true
 			}
 
 			$dependencies_built = $script:sectr_build_code -ne $module_build_failed
 			if ( -not $dependencies_built ) {
 				write-host 'Skipping sectr_host build, dependencies failed to build'
-				return
+				return $false
 			}
 
 			$should_build = (check-ModuleForChanges $module_host) -or ( $script:sectr_build_code -eq $module_built )
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr_host build, module up to date'
-				return
+				return $true
 			}
 
 			if (test-path $pdb) {
@@ -273,13 +273,32 @@ push-location $path_root
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
 
+			if ( Test-Path $module_dll) {
+				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
+			}
+
 			Invoke-WithColorCodedOutput { & $odin_compiler $build_args }
+
+			if ( Test-Path $module_dll ) {
+				$module_dll_post_build_hash = get-filehash -path $module_dll -Algorithm MD5
+			}
+
+			$built = ($module_dll_pre_build_hash -eq $null) -or ($module_dll_pre_build_hash.Hash -ne $module_dll_post_build_hash.Hash)
+			if ( -not $built ) {
+				write-host 'Failed to build, marking module dirty'
+				mark-ModuleDirty $module_sectr
+			}
+			return $built
 		}
-		build-host
+		$host_build_code = build-sectr
 
 		Pop-Location # path_code
 
-		if ( test-path $path_code_compiler_staged ) { Remove-Item -Path $path_code_compiler_staged -Force -Recurse }
+		if ( test-path $path_code_compiler_staged ) {
+			if ( ($host_build_code -ne $module_build_failed) -and ($script:sectr_build_code -ne $module_build_failed) ) {
+				Remove-Item -Path $path_code_compiler_staged -Force -Recurse
+			}
+		}
 	}
 	build-prototype
 pop-location # path_root
