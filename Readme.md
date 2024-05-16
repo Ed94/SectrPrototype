@@ -1,13 +1,14 @@
 # Sectr Prototype
 
-This prototype aims to flesh out ideas I've wanted to explore futher when it came to code editing and tools for code in general.
+This prototype aims to flesh out ideas I've wanted to explore futher on code editing & related tooling.
 
 The things to explore:
 
 * 2D canvas for laying out code visualized in various types of ASTs
 * WYSIWYG frontend ASTs
 * Making AST editing as versatile as text editing.
-* High-performance generating a large amount of UI widget boxes with proper auto-layout & no perceptible rendering-lag or input lag for interactions (frametimes stable).
+* High-performance UI framework designed & built for AST editing.
+* Generating a large amount of UI widget boxes with proper auto-layout & no perceptible rendering-lag or input lag for interactions (frametimes stable).
 * Model-View-Controller interface between code managed by a 'backend' (both in memory and filesystem) and the UX composition (which has separate filesystem composition).
 
 The project is so far in a "codebase boostrapping" phase.
@@ -19,16 +20,11 @@ The dependencies are:
 
 * Odin Compiler (Slightly custom [fork](https://github.com/Ed94/Odin))
   * Added #region, #endregion directives support for editors
-  * I added support for 'monlithic packages' or 'uniform-across-subdirectories packages'. It allows me to organize the main package with sub-directoreis.
+  * I added support for 'monlithic packages' or 'uniform-across-subdirectories packages'. It allows me to organize the main package with sub-directories.
 * Odin repo's base, core, and vendor(raylib) libaries
 * An ini parser
 * backtrace
 * Powershell (if you want to use my build scripts)
-
-The client(sectr) module's organization is relatively flat due to the nature of odin's compiler, not allowing for cyclic dependencies across modules, and modules can only be in one directory.
-This makes it difficult to unflatten, not something organic todo in a prototype...
-
-I have the codebase by default in a non-idomatic layout that I stage to the compiler beforehand. There is a script(`scripts/gen_staged_compiler_codebase.ps1`) that stages a the idiomatic format of the codebase for the compiler to digest when `scripts/build.ps1` is run.
 
 Major 'codebase modules':
 

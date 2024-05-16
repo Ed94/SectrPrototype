@@ -8,7 +8,7 @@ Reserves the virtual memory spaces for the following:
 
 Currently the prototype has hot-reload always enabled, eventually there will be conditional compliation to omit if when desired.
 */
-package host
+package sectr_host
 
 //region Grime & Dependencies
 import "base:runtime"

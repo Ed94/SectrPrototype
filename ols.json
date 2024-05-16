@@ -7,7 +7,7 @@
         }
     ],
     "odin_command": "C:/projects/SectrPrototype/toolchain/Odin/odin.exe",
-    "enable_document_symbols": false,
+    "enable_document_symbols": true,
     "enable_fake_methods": true,
     "enable_format": false,
     "enable_hover": true,

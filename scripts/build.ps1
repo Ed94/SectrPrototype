@@ -17,6 +17,22 @@ $path_thirdparty = join-path $path_root       'thirdparty'
 $path_toolchain  = join-path $path_root       'toolchain'
 $path_odin       = join-path $path_toolchain  'odin'
 
+#region Arguments
+$force = $null
+
+# This is to be used when Negate's TB backend is working on odin. We'll not want to use clang by default from then on.
+$use_clang = $false
+
+# This is a really lazy way of parsing the args, could use actual params down the line...
+
+if ( $args ) { $args | ForEach-Object {
+switch ($_){
+ "force" { $force = $true }
+ "clang" { $clang = $true }
+}
+}}
+#endregion Arguments
+
 if ( -not( test-path $path_build) ) {
 	new-item -ItemType Directory -Path $path_build
 }
@@ -101,7 +117,6 @@ $msvc_link_default_base_address = 0x180000000
 push-location $path_root
 	$update_deps   = join-path $path_scripts 'update_deps.ps1'
 	$odin_compiler = join-path $path_odin    'odin.exe'
-	$raddbg        = "C:/dev/raddbg/raddbg.exe"
 
 	function Invoke-WithColorCodedOutput { param( [scriptblock] $command )
 		& $command 2>&1 | ForEach-Object {
@@ -124,6 +139,10 @@ push-location $path_root
 
 		$module_host  = join-path $path_code 'host'
 		$module_sectr = join-path $path_code 'sectr'
+		if ($force){
+			mark-ModuleDirty $module_sectr
+			mark-ModuleDirty $module_host
+		}
 
 		$pkg_collection_thirdparty = 'thirdparty=' + $path_thirdparty
 
@@ -147,8 +166,8 @@ push-location $path_root
 			}
 
 			write-host 'Building Sectr Module'
-			$script:module_dll = join-path $path_build ( $project_name + '.dll' )
-			$pdb               = join-path $path_build ( $project_name + '.pdb' )
+			$module_dll = join-path $path_build ( $project_name + '.dll' )
+			$pdb        = join-path $path_build ( $project_name + '.pdb' )
 
 			if (test-path $pdb) {
 				remove-item $pdb
@@ -186,18 +205,11 @@ push-location $path_root
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
 
-			$raddbg_args = @()
-			$raddbg_args += $odin_compiler
-			$raddbg_args += $build_args
-
 			if ( Test-Path $module_dll) {
 				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
 			}
 
-			# write-host $build_args
-
 			Invoke-WithColorCodedOutput -command { & $odin_compiler $build_args }
-			# Invoke-WithColorCodedOutput -command { & $raddbg "$odin_compiler" "$build_args" }
 
 			if ( Test-Path $module_dll ) {
 				$module_dll_post_build_hash = get-filehash -path $module_dll -Algorithm MD5
@@ -219,19 +231,19 @@ push-location $path_root
 
 			if ( $host_process_active ) {
 				write-host 'Skipping sectr_host build, process is active'
-				return $true
+				return
 			}
 
 			$dependencies_built = $script:sectr_build_code -ne $module_build_failed
 			if ( -not $dependencies_built ) {
 				write-host 'Skipping sectr_host build, dependencies failed to build'
-				return $false
+				return
 			}
 
 			$should_build = (check-ModuleForChanges $module_host) -or ( $script:sectr_build_code -eq $module_built )
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr_host build, module up to date'
-				return $true
+				return
 			}
 
 			if (test-path $pdb) {
@@ -268,24 +280,23 @@ push-location $path_root
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
 
-			if ( Test-Path $module_dll) {
-				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
+			if ( Test-Path $executable) {
+				$executable_pre_build_hash = get-filehash -path $executable -Algorithm MD5
 			}
 
 			Invoke-WithColorCodedOutput { & $odin_compiler $build_args }
 
-			if ( Test-Path $module_dll ) {
-				$module_dll_post_build_hash = get-filehash -path $module_dll -Algorithm MD5
+			if ( Test-Path $executable ) {
+				$executable_post_build_hash = get-filehash -path $executable -Algorithm MD5
 			}
 
-			$built = ($module_dll_pre_build_hash -eq $null) -or ($module_dll_pre_build_hash.Hash -ne $module_dll_post_build_hash.Hash)
+			$built = ($executable_pre_build_hash -eq $null) -or ($executable_pre_build_hash.Hash -ne $executable_post_build_hash.Hash)
 			if ( -not $built ) {
 				write-host 'Failed to build, marking module dirty'
-				mark-ModuleDirty $module_sectr
+				mark-ModuleDirty $module_host
 			}
-			return $built
 		}
-		$host_build_code = build-host
+		build-host
 
 		Pop-Location # path_code
 	}
