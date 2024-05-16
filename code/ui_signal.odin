@@ -11,8 +11,8 @@ UI_Signal :: struct {
 	right_clicked    : b8,
 	double_clicked   : b8,
 	keyboard_clicked : b8,
-	left_shift       : b8,
-	left_ctrl        : b8,
+	left_shift_held  : b8,
+	left_ctrl_held   : b8,
 
 	active     : b8,
 	hot        : b8,
@@ -66,7 +66,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 	left_pressed  := pressed( input.mouse.left )
 	left_released := released( input.mouse.left )
 
-	left_shift := pressed(input.keyboard.left_shift)
+	signal.left_shift_held = b8(input.keyboard.left_shift.ended_down)
 
 	mouse_clickable    := UI_BoxFlag.Mouse_Clickable    in box.flags
 	keyboard_clickable := UI_BoxFlag.Keyboard_Clickable in box.flags
@@ -74,9 +74,9 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 	was_hot      := (box.hot_delta    > 0)
 	was_active   := (ui.active == box.key) && (box.active_delta > 0)
 	was_disabled := box.disabled_delta > 0
-	if was_hot {
+	// if was_hot {
 		// runtime.debug_trap()
-	}
+	// }
 
 	// Check to see if this box is active
 	if mouse_clickable && signal.cursor_over && left_pressed && was_hot
@@ -90,7 +90,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 
 		signal.pressed      = true
 		signal.left_clicked = b8(left_pressed)
-		signal.left_shift   = b8(left_shift)
 		// TODO(Ed) : Support double-click detection
 	}
 
@@ -102,7 +101,6 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
 
 		signal.released     = true
-		signal.left_clicked = false
 	}
 
 	if keyboard_clickable

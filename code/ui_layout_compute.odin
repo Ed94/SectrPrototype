@@ -1,6 +1,7 @@
 package sectr
 
 ui_box_compute_layout :: proc( box : ^UI_Box,
+	dont_mark_fresh           : b32 = false,
 	ancestors_layout_required : b32 = false,
 	root_layout_required      : b32 = false )
 {
@@ -43,7 +44,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	* Ignore Parent constraints (can only be clipped)
 
 	If an axis is auto-sized by a ratio of the other axis
-	* 
+	* Using the referenced axis, set the size of the ratio'd axis by that ratio.
 
 	If auto-sized:
 	* Enforce parent size constraint of bounds relative to
@@ -85,13 +86,6 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	adjusted_size.x = max( adjusted_max_size_x, layout.size.min.x)
 	adjusted_size.y = max( adjusted_max_size_y, layout.size.min.y)
 
-	if .Fixed_Width in layout.flags {
-		adjusted_size.x = layout.size.min.x
-	}
-	if .Fixed_Height in layout.flags {
-		adjusted_size.y = layout.size.min.y
-	}
-
 	text_size : Vec2
 	if layout.font_size == computed.text_size.y {
 		text_size = computed.text_size
@@ -102,6 +96,22 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 
 	if size_to_text {
 		adjusted_size = text_size
+	}
+
+	if .Size_To_Content in layout.flags {
+		// Preemtively traverse the children of this parent and have them compute their layout.
+		// This parent will just set its size to the max bounding area of those children.
+		// This will recursively occur if child also depends on their content size from their children, etc.
+		ui_box_compute_layout_children(box)
+		//ui_compute_children_bounding_area(box)
+	}
+
+	// TODO(Ed): Should this force override all of the previous auto-sizing possible?
+	if .Fixed_Width in layout.flags {
+		adjusted_size.x = layout.size.min.x
+	}
+	if .Fixed_Height in layout.flags {
+		adjusted_size.y = layout.size.min.y
 	}
 
 	// 5. Determine relative position
@@ -166,18 +176,19 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		content_size := content_bounds.max - content_bounds.min
 		text_pos : Vec2
 		text_pos = content_bounds.min + { 0, text_size.y }
-		text_pos.x += ( content_size.x - text_size.x ) * layout.text_alignment.x
-		text_pos.y += ( content_size.y - text_size.y ) * layout.text_alignment.y
+		// text_pos.x += ( content_size.x - text_size.x ) * layout.text_alignment.x
+		// text_pos.y += ( content_size.y - text_size.y ) * layout.text_alignment.y
+		text_pos += (content_size - text_size) * layout.text_alignment
 
 		computed.text_size = text_size
 		computed.text_pos  = { text_pos.x, text_pos.y }
 	}
-	computed.fresh = true
+	computed.fresh = true && !dont_mark_fresh
 }
 
 ui_box_compute_layout_children :: proc( box : ^UI_Box )
 {
-	for current := box.first; current != nil; current = ui_box_tranverse_next( current )
+	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next( current )
 	{
 		if current == box do return
 		if current.computed.fresh do continue
@@ -195,10 +206,10 @@ ui_compute_layout :: proc( ui : ^UI_State )
 		computed := & root.computed
 		style    := root.style
 		layout   := & root.layout
-		// if ui == & state.screen_ui {
+		if ui == & state.screen_ui {
 			computed.bounds.min = transmute(Vec2) state.app_window.extent * -1
 			computed.bounds.max = transmute(Vec2) state.app_window.extent
-		// }
+		}
 		computed.content    = computed.bounds
 	}
 

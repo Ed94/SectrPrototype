@@ -1,5 +1,6 @@
 package sectr
 
+import "base:runtime"
 import lalg "core:math/linalg"
 
 UI_Widget :: struct {
@@ -58,7 +59,7 @@ ui_hbox_begin :: proc( direction : UI_LayoutDirectionX, label : string, flags : 
 ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil, compute_layout := true )
 {
 	// profile(#procedure)
-	if compute_layout do ui_box_compute_layout(hbox.box)
+	if compute_layout do ui_box_compute_layout(hbox.box, dont_mark_fresh = true)
 	ui_layout_children_horizontally( hbox.box, hbox.direction, width_ref )
 }
 
@@ -148,7 +149,6 @@ ui_resizable_end_auto :: proc() {
 }
 
 // Adds resizable handles to a widget
-// TODO(Ed): Add centered resize support (use center alignment on shift-click)
 ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	handle_width : f32  = 15,
 	theme        : ^UI_Theme = nil,
@@ -280,12 +280,12 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 		handle_corner_tr.layout.alignment = {0, -1}
 	}
 	if corner_bl {
-		handle_corner_bl = ui_widget("Settings Menu: Corner BL", flags)
+		handle_corner_bl = ui_widget("corner_bottom_left", flags)
 		handle_corner_bl.layout.anchor    = range2({}, {0, 1})
 		handle_corner_bl.layout.alignment = { 1, 0 }
 	}
 	if corner_br {
-		handle_corner_br = ui_widget("Settings Menu: Corner BR", flags)
+		handle_corner_br = ui_widget("corner_bottom_right", flags)
 		handle_corner_br.layout.anchor    = range2({1, 0}, {0, 1})
 		handle_corner_br.layout.alignment = {0, 0}
 	}
@@ -293,26 +293,32 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 
 	process_handle_drag :: #force_inline proc ( handle : ^UI_Widget,
 		direction                :  Vec2,
-		size_delta               :  Vec2,
 		target_alignment         :  Vec2,
 		target_center_aligned    :  Vec2,
 		pos                      : ^Vec2,
 		size                     : ^Vec2,
 		alignment                : ^Vec2, ) -> b32
 	{
-		@static active_context : ^UI_State
-		@static was_dragging : b32 = false
-		@static start_size   : Vec2
+		@static active_context       : ^UI_State
+		@static was_dragging         : b32 = false
+		@static start_size           : Vec2
+		@static prev_left_shift_held : b8
+		@static prev_alignment       : Vec2
 
 		ui := get_state().ui_context
-		if ui.last_pressed_key != handle.key do return false
 		using handle
+		if ui.last_pressed_key != key || (!active && (!released || !was_dragging)) do return false
 
 		direction        := direction
-		target_alignment := target_alignment
+		align_adjsutment := left_shift_held ? target_center_aligned : target_alignment
 
-		size_delta := ui_drag_delta()
-		pos_adjust := size^ * (alignment^ - target_alignment)
+		size_delta  := ui_drag_delta()
+		pos_adjust  := size^ * (alignment^ - align_adjsutment)
+		pos_reverse := size^ * (alignment^ - prev_alignment)
+
+		shift_changed := (left_shift_held != prev_left_shift_held)
+
+		need_to_change_alignment_and_pos := pressed || shift_changed
 
 		if active
 		{
@@ -320,16 +326,41 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			{
 				active_context = ui
 				start_size     = size^
-				if .Origin_At_Anchor_Center in parent.layout.flags {
-					pos_adjust = size^ * 0.5 * direction
-				}
+				prev_left_shift_held = left_shift_held
 			}
-			size^ = start_size + size_delta * direction
-			if pressed {
+			if (.Origin_At_Anchor_Center in parent.layout.flags) && !left_shift_held {
+				pos_adjust  = size^ * 0.5 * direction
+				pos_reverse = size^ * 0.5 * direction
+			}
+
+			latest_size := start_size + size_delta * direction
+
+			if pressed
+			{
 				pos^ -= pos_adjust
 			}
-			else {
-				alignment^ = target_alignment
+			else if shift_changed
+			{
+				if (.Origin_At_Anchor_Center in parent.layout.flags) {
+					pos^      -= pos_reverse
+					alignment^ = !left_shift_held ? target_center_aligned : target_alignment
+				}
+				else
+				{
+					if !left_shift_held {
+						pos^ -= size^ * direction * 0.5
+						alignment^ = target_center_aligned
+					}
+					else {
+						pos^ += size^ * direction * 0.5 // Right
+						alignment^ = target_alignment
+					}
+				}
+			}
+			else
+			{
+				size^      = latest_size
+				alignment^ = align_adjsutment
 			}
 			was_dragging = true
 		}
@@ -338,43 +369,47 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			// This needed to be added as for some reason, this was getting called in screen_ui even when we were resizing with a handle in a worksapce
 			if active_context != ui do return false
 
-			if .Origin_At_Anchor_Center in parent.layout.flags {
-				pos_adjust = size^ * 0.5 * direction
+			if (.Origin_At_Anchor_Center in parent.layout.flags) && !left_shift_held  {
+				pos_adjust  = size^ * 0.5 * direction
+				pos_reverse = size^ * 0.5 * direction
 			}
 			pos^          += pos_adjust
-			alignment^     = target_alignment
+			alignment^     = align_adjsutment
 			was_dragging   = false
 			start_size     = 0
-			active_context = ui
 		}
+		// text = active_context.root.label
+		// style.text_color = Color_White
+
+		prev_left_shift_held = handle.left_shift_held
+		prev_alignment       = align_adjsutment
 		return was_dragging
 	}
 
-	state := get_state()
-	delta     := state.input.mouse.delta //state.ui_context == & state.screen_ui ? state.input.mouse.delta : ui_ws_drag_delta()
+	state     := get_state()
 	alignment := & parent.layout.alignment
 
 	if .Origin_At_Anchor_Center in parent.layout.flags
 	{
-		if right     do drag_signal |= process_handle_drag( & handle_right,     { 1,  0}, delta, { 0.5,    0}, {}, pos, size, alignment )
-		if left      do drag_signal |= process_handle_drag( & handle_left,      {-1,  0}, delta, {-0.5,    0}, {}, pos, size, alignment )
-		if top       do drag_signal |= process_handle_drag( & handle_top,       { 0,  1}, delta, {   0,  0.5}, {}, pos, size, alignment )
-		if bottom    do drag_signal |= process_handle_drag( & handle_bottom,    { 0, -1}, delta, {   0, -0.5}, {}, pos, size, alignment )
-		if corner_tr do drag_signal |= process_handle_drag( & handle_corner_tr, { 1,  1}, delta, { 0.5,  0.5}, {}, pos, size, alignment )
-		if corner_tl do drag_signal |= process_handle_drag( & handle_corner_tl, {-1,  1}, delta, {-0.5,  0.5}, {}, pos, size, alignment )
-		if corner_br do drag_signal |= process_handle_drag( & handle_corner_br, { 1, -1}, delta, { 0.5, -0.5}, {}, pos, size, alignment )
-		if corner_bl do drag_signal |= process_handle_drag( & handle_corner_bl, {-1, -1}, delta, {-0.5, -0.5}, {}, pos, size, alignment )
+		if right     do drag_signal |= process_handle_drag( & handle_right,     { 1,  0}, { 0.5,    0}, {0, 0}, pos, size, alignment )
+		if left      do drag_signal |= process_handle_drag( & handle_left,      {-1,  0}, {-0.5,    0}, {0, 0}, pos, size, alignment )
+		if top       do drag_signal |= process_handle_drag( & handle_top,       { 0,  1}, {   0,  0.5}, {0, 0}, pos, size, alignment )
+		if bottom    do drag_signal |= process_handle_drag( & handle_bottom,    { 0, -1}, {   0, -0.5}, {0, 0}, pos, size, alignment )
+		if corner_tr do drag_signal |= process_handle_drag( & handle_corner_tr, { 1,  1}, { 0.5,  0.5}, {0, 0}, pos, size, alignment )
+		if corner_tl do drag_signal |= process_handle_drag( & handle_corner_tl, {-1,  1}, {-0.5,  0.5}, {0, 0}, pos, size, alignment )
+		if corner_br do drag_signal |= process_handle_drag( & handle_corner_br, { 1, -1}, { 0.5, -0.5}, {0, 0}, pos, size, alignment )
+		if corner_bl do drag_signal |= process_handle_drag( & handle_corner_bl, {-1, -1}, {-0.5, -0.5}, {0, 0}, pos, size, alignment )
 	}
 	else
 	{
-		if right     do drag_signal |= process_handle_drag( & handle_right,     {  1,  0 }, delta, {0,  0}, {}, pos, size, alignment )
-		if left      do drag_signal |= process_handle_drag( & handle_left,      { -1,  0 }, delta, {1,  0}, {}, pos, size, alignment )
-		if top       do drag_signal |= process_handle_drag( & handle_top,       {  0,  1 }, delta, {0, -1}, {}, pos, size, alignment )
-		if bottom    do drag_signal |= process_handle_drag( & handle_bottom,    {  0, -1 }, delta, {0,  0}, {}, pos, size, alignment )
-		if corner_tr do drag_signal |= process_handle_drag( & handle_corner_tr, {  1,  1 }, delta, {0, -1}, {}, pos, size, alignment )
-		if corner_tl do drag_signal |= process_handle_drag( & handle_corner_tl, { -1,  1 }, delta, {1, -1}, {}, pos, size, alignment )
-		if corner_br do drag_signal |= process_handle_drag( & handle_corner_br, {  1, -1 }, delta, {0,  0}, {}, pos, size, alignment )
-		if corner_bl do drag_signal |= process_handle_drag( & handle_corner_bl, { -1, -1 }, delta, {1,  0}, {}, pos, size, alignment )
+		if right     do drag_signal |= process_handle_drag( & handle_right,     {  1,  0 }, {0,  0}, { 0.5,    0}, pos, size, alignment )
+		if left      do drag_signal |= process_handle_drag( & handle_left,      { -1,  0 }, {1,  0}, { 0.5,    0}, pos, size, alignment )
+		if top       do drag_signal |= process_handle_drag( & handle_top,       {  0,  1 }, {0, -1}, { 0.0, -0.5}, pos, size, alignment )
+		if bottom    do drag_signal |= process_handle_drag( & handle_bottom,    {  0, -1 }, {0,  0}, { 0.0, -0.5}, pos, size, alignment )
+		if corner_tr do drag_signal |= process_handle_drag( & handle_corner_tr, {  1,  1 }, {0, -1}, { 0.5, -0.5}, pos, size, alignment )
+		if corner_tl do drag_signal |= process_handle_drag( & handle_corner_tl, { -1,  1 }, {1, -1}, { 0.5, -0.5}, pos, size, alignment )
+		if corner_br do drag_signal |= process_handle_drag( & handle_corner_br, {  1, -1 }, {0,  0}, { 0.5, -0.5}, pos, size, alignment )
+		if corner_bl do drag_signal |= process_handle_drag( & handle_corner_bl, { -1, -1 }, {1,  0}, { 0.5, -0.5}, pos, size, alignment )
 	}
 
 	if drag_signal && compute_layout do ui_box_compute_layout(parent)
@@ -462,14 +497,14 @@ ui_vbox_begin :: proc( direction : UI_LayoutDirectionY, label : string, flags : 
 	vbox.direction = direction
 	vbox.box       = ui_box_make( flags, label )
 	vbox.signal    = ui_signal_from_box( vbox.box )
-	if compute_layout do ui_box_compute_layout(vbox)
+	if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
 	return
 }
 
 // Auto-layout children
 ui_vbox_end :: proc( vbox : UI_VBox, height_ref : ^f32 = nil, compute_layout := true ) {
 	// profile(#procedure)
-	if compute_layout do ui_box_compute_layout(vbox)
+	if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
 	ui_layout_children_vertically( vbox.box, vbox.direction, height_ref )
 }
 

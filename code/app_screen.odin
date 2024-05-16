@@ -179,7 +179,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 		layout.flags = {.Origin_At_Anchor_Center }
 		layout.pos   = {}
 	}
-	should_raise |= ui_resizable_handles( & container, & pos, & size)
+	should_raise |= ui_resizable_handles( & container, & pos, & size/*, compute_layout = true*/)
+	// ui_box_compute_layout(container)
 
 	vbox := ui_vbox_begin( .Top_To_Bottom, "Settings Menu: VBox", {.Mouse_Clickable}, compute_layout = true)
 	{
@@ -198,10 +199,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 		ui_style_ref().hot.bg_color = Color_Blue
 		frame_bar := ui_hbox_begin(.Left_To_Right, "Settings Menu: Frame Bar", { .Mouse_Clickable, .Focusable, .Click_To_Focus })
 		{
-			// frame_bar.style.bg_color    = Color_BG_Panel
 			frame_bar.layout.flags      = {.Fixed_Height}
 			frame_bar.layout.size.min.y = 50
-			// frame_bar.layout.anchor.ratio.y = 0.8
 			ui_parent(frame_bar)
 
 			ui_layout( UI_Layout {
@@ -221,8 +220,6 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 
 			ui_style(ui_style_peek())
 			style := ui_style_ref()
-			// style.default.bg_color = Color_Black
-			// style.hot.bg_color = Color_Frame_Hover
 			maximize_btn := ui_button("Settings Menu: Maximize Btn")
 			{
 				using maximize_btn
@@ -237,9 +234,6 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 				if settings_menu.is_maximized do text = str_intern("min")
 				else do text = str_intern("max")
 			}
-
-			// style.default.bg_color = Color_GreyRed
-			// style.hot.    bg_color = Color_Red
 			close_btn := ui_button("Settings Menu: Close Btn")
 			{
 				using close_btn
@@ -274,6 +268,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 				// bg_color = Color_GreyRed
 		})
 		drop_down_bar := ui_hbox_begin(.Left_To_Right, "settings_menu.vbox: config drop_down_bar", {.Mouse_Clickable})
+		btn : UI_Widget
 		{
 			drop_down_bar.layout.anchor.ratio.y = 0.1
 			{
@@ -289,21 +284,22 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 			}
 			ui_parent(drop_down_bar)
 
-			btn := ui_text("pls", str_intern("Lets figure this out..."))
+			btn = ui_text("pls", str_intern("Lets figure this out..."))
 			{
 				using btn
 				text = str_intern("Config")
 				style.font            = default_font
 				style.text_color      = Color_White
-				layout.flags          = {.Origin_At_Anchor_Center}
-				layout.alignment      = {0.0, 0.0} // ??? (Wtf is this alignment)
+				// layout.flags          = {.Origin_At_Anchor_Center}
+				layout.alignment      = {0.0, 0.0}
 				layout.anchor.ratio.x = 1.0
 				layout.font_size      = 12
 				layout.margins        = {0,0, 15, 0}
 				layout.size.min.y     = 35
 			}
-			ui_hbox_end(drop_down_bar, compute_layout = false)
-			ui_box_compute_layout(btn)
+			um := ui_spacer("um...")
+			um.layout.anchor.ratio.x = 1.0
+			ui_hbox_end(drop_down_bar, compute_layout = true)
 		}
 
 		// ui_layout(UI_Layout {
@@ -315,15 +311,10 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 		// res_width_hbox := ui_hbox_begin(.Left_To_Right, "settings_menu.vbox: config.resolution_width: hbox", {})
 		// ui_parent(res_width_hbox)
 
-		// ui_layout_ref().default.flags = {.Fixed_Width, .Fixed_Height, .Fixed_Position_Y}
-		// ui_layout_ref().default.size.min = {50, 50}
 		spacer := ui_spacer("Settings Menu: Spacer")
 		spacer.layout.anchor.ratio.y = 1.0
-		// spacer.layout.flags = {.Origin_At_Anchor_Center}
-		// spacer.layout.alignment = {0.5, 0.5}
-		// spacer.style.bg_color = Color_Red
 
-		ui_vbox_end(vbox, compute_layout = true )
+		ui_vbox_end(vbox, compute_layout = false )
 	}
 	return
 }

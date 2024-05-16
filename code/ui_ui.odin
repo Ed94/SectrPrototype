@@ -208,7 +208,7 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	}
 
 	ui.built_box_count = 0
-	root = ui_box_make( {}, "root#001" )
+	root = ui_box_make( {}, str_intern(str_fmt_tmp("%s: root#001", ui == & state.screen_ui ? "Screen" : "Workspace" )).str)
 	if ui == & state.screen_ui {
 		root.layout.size = range2(Vec2(state.app_window.extent) * 2, {})
 	}
@@ -270,6 +270,10 @@ ui_parent_pop :: proc() {
 
 @(deferred_none = ui_parent_pop)
 ui_parent :: #force_inline proc( ui : ^UI_Box) { ui_parent_push( ui ) }
+
+ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box {
+	return zpl_hmap_get( ui_context().prev_cache, cast(u64) box.key )
+}
 
 // Topmost ancestor that is not the root
 ui_top_ancestor :: #force_inline proc "contextless" ( box : ^UI_Box ) -> (^UI_Box) {
