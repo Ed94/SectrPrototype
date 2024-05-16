@@ -26,6 +26,8 @@ The dependencies are:
 The client(sectr) module's organization is relatively flat due to the nature of odin's compiler, not allowing for cyclic dependencies across modules, and modules can only be in one directory.
 This makes it difficult to unflatten, not something organic todo in a prototype...
 
+I have the codebase by default in a non-idomatic layout that I stage to the compiler beforehand. There is a script(`scripts/gen_staged_compiler_codebase.ps1`) that stages a the idiomatic format of the codebase for the compiler to digest when `scripts/build.ps1` is run.
+
 Even so the notable groups are:
 
 * API : Provides the overarching interface of the app's general behavior. Host uses this to provide the client its necessary data and exection env.

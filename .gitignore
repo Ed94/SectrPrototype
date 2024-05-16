@@ -4,4 +4,4 @@ build/**
 logs
 .ark
 logs*.zip
-code_virtual_view
+code_compiler_staged

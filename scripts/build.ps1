@@ -117,13 +117,18 @@ push-location $path_root
 
 	function build-prototype
 	{
-		push-location $path_code
+		$gen_staged_compiler_codebase = join-path $PSScriptRoot 'gen_staged_compiler_codebase.ps1'
+		$path_code_compiler_staged    = join-path $path_root 'code_compiler_staged'
+
+		. $gen_staged_compiler_codebase
+
+		push-location $path_code_compiler_staged
 		$project_name = 'sectr'
 
 		write-host "`nBuilding Sectr Prototype`n"
 
-		$module_host  = join-path $path_code 'host'
-		$module_sectr = $path_code
+		$module_host  = join-path $path_code_compiler_staged 'host'
+		$module_sectr = $path_code_compiler_staged
 
 		$pkg_collection_thirdparty = 'thirdparty=' + $path_thirdparty
 
@@ -273,6 +278,8 @@ push-location $path_root
 		build-host
 
 		Pop-Location # path_code
+
+		if ( test-path $path_code_compiler_staged ) { Remove-Item -Path $path_code_compiler_staged -Force -Recurse }
 	}
 	build-prototype
 pop-location # path_root
