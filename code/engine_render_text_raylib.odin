@@ -150,7 +150,7 @@ else
 
 // Raylib's equivalent doesn't take a length for the string (making it a pain in the ass)
 // So this is a 1:1 copy except it takes Odin strings
-measure_text_size :: proc( text : string, font : FontID, font_size := Font_Use_Default_Size, spacing : f32 ) -> Vec2
+measure_text_size_raylib :: proc( text : string, font : FontID, font_size := Font_Use_Default_Size, spacing : f32 ) -> Vec2
 {
 	// profile(#procedure)
 	px_size := math.round( points_to_pixels( font_size ) )

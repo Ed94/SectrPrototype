@@ -425,6 +425,18 @@ ui_spacer :: proc( label : string ) -> (widget : UI_Widget) {
 	return
 }
 
+// UI_ScrollBox {
+// 	using widget : UI_Widget,
+// 	scroll_bar   : UI_Widget,
+// 	content      : UI_Widget,
+// }
+
+// ui_scroll_box :: proc( label : string ) -> (scroll_box : UI_ScrollBox) {
+
+// }
+
+// ui_scrollable_view(  )
+
 #region("Text")
 
 ui_text :: proc( label : string, content : StrRunesPair, flags : UI_BoxFlags = {} ) -> UI_Widget
@@ -468,6 +480,8 @@ ui_text_tabs :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 	box.text = tab_str
 	return { box, signal }
 }
+
+ui_text_wrap_panel :: proc( label : string, flags : UI_BoxFlags = {} )
 #endregion("Text")
 
 #region("Vertical Box")

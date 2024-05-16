@@ -4,6 +4,17 @@ import "core:fmt"
 
 import rl "vendor:raylib"
 
+range2_to_rl_rect :: #force_inline proc "contextless"( range : Range2 ) -> rl.Rectangle
+{
+	rect := rl.Rectangle {
+		range.min.x,
+		range.max.y,
+		abs(range.max.x - range.min.x),
+		abs(range.max.y - range.min.y),
+	}
+	return rect
+}
+
 draw_rectangle :: #force_inline proc "contextless" ( rect : rl.Rectangle, box : ^UI_RenderBoxInfo ) {
 	using box
 	if style.corner_radii[0] > 0 {
@@ -211,9 +222,9 @@ render_mode_screenspace :: proc ()
 	render_screen_ui()
 
 	fps_msg       := str_fmt_tmp( "FPS: %f", fps_avg)
-	fps_msg_width := measure_text_size( fps_msg, default_font, 16.0, 0.0 ).x
+	fps_msg_width := measure_text_size( fps_msg, default_font, 12.0, 0.0 ).x
 	fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 } - { 5, 5 }
-	debug_draw_text( fps_msg, fps_msg_pos, 16.0, color = rl.GREEN )
+	debug_draw_text( fps_msg, fps_msg_pos, 12.0, color = rl.GREEN )
 
 	debug_text :: proc( format : string, args : ..any )
 	{
@@ -232,7 +243,7 @@ render_mode_screenspace :: proc ()
 		position.y -= debug.draw_debug_text_y
 
 		content := str_fmt_buffer( draw_text_scratch[:], format, ..args )
-		debug_draw_text( content, position, 14.0 )
+		debug_draw_text( content, position, 12.0 )
 
 		debug.draw_debug_text_y += 14
 	}
@@ -293,7 +304,6 @@ render_mode_screenspace :: proc ()
 	}
 
 	view := view_get_bounds()
-	// debug_text("View Bounds (World): %v", view.pts )
 
 	debug.draw_debug_text_y = 14
 
@@ -304,10 +314,6 @@ render_mode_screenspace :: proc ()
 			0.5, -0.5, 0.0,    0.0, 1.0, 0.0, 1.0,  // Vertex 2: Green
 			0.0,  0.5, 0.0,    0.0, 0.0, 1.0, 1.0   // Vertex 3: Blue
 	}
-
-	// Begin using the shader to draw
-	// rl.BeginShaderMode(debug.proto_text_shader)
-	// rl.EndShaderMode()
 }
 
 // A non-zoomable static-view for ui
@@ -366,7 +372,6 @@ render_screen_ui :: proc()
 
 			line_thickness : f32 = 1
 
-			// profile_begin("rl.DrawRectangleRoundedLines: padding & content")
 			if debug.draw_UI_padding_bounds && equal_range2(computed.content, computed.padding) {
 				draw_rectangle_lines( rect_padding, & current, Color_Debug_UI_Padding_Bounds, line_thickness )
 			}
@@ -376,16 +381,17 @@ render_screen_ui :: proc()
 
 			point_radius : f32 = 3
 
-			// profile_begin("circles")
 			if debug.draw_ui_box_bounds_points
 			{
 				computed_size := computed.bounds.p1 - computed.bounds.p0
-				// center := Vec2 {
-				// 	render_bounds.p0.x + computed_size.x * 0.5,
-				// 	render_bounds.p0.y - computed_size.y * 0.5,
-				// }
-				// rl.DrawCircleV( center, point_radius, Color_White )
-
+				if false
+				{
+					center := Vec2 {
+						render_bounds.p0.x + computed_size.x * 0.5,
+						render_bounds.p0.y - computed_size.y * 0.5,
+					}
+					rl.DrawCircleV( center, point_radius, Color_White )
+				}
 				rl.DrawCircleV( render_bounds.p0, point_radius, Color_Red )
 				rl.DrawCircleV( render_bounds.p1, point_radius, Color_Blue )
 			}

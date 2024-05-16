@@ -8,25 +8,9 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	// profile("Layout Box")
 	state := get_state()
 	ui    := state.ui_context
-
-	parent := box.parent
-
-	style  := box.style
-	layout := & box.layout
-
-	// These are used to choose via multiplication weather to apply
-	// position & size constraints of the parent.
-	// The parent's unadjusted content bounds however are enforced for position,
-	// they cannot be ignored. The user may bypass them by doing the
-	// relative offset math vs world/screen space if they desire.
-	// fixed_pos_x  : f32 = cast(f32) int(.Fixed_Position_X in layout.flags)
-	// fixed_pos_y  : f32 = cast(f32) int(.Fixed_Position_Y in layout.flags)
-	// fixed_width  : f32 = cast(f32) int(.Fixed_Width      in layout.flags)
-	// fixed_height : f32 = cast(f32) int(.Fixed_Height     in layout.flags)
+	using box
 
 	size_to_text : bool = .Size_To_Text in layout.flags
-
-	computed := & box.computed
 
 	parent_content      := parent.computed.content
 	parent_content_size := parent_content.max - parent_content.min
@@ -98,6 +82,13 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		adjusted_size = text_size
 	}
 
+	if .Scale_Width_By_Height_Ratio in layout.flags {
+		adjusted_size.x = adjusted_size.y * layout.size.min.x
+	}
+	if .Scale_Height_By_Width_Ratio in layout.flags {
+		adjusted_size.y = adjusted_size.x * layout.size.min.y
+	}
+
 	if .Size_To_Content in layout.flags {
 		// Preemtively traverse the children of this parent and have them compute their layout.
 		// This parent will just set its size to the max bounding area of those children.
@@ -135,8 +126,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	// 6. Determine the box bounds
 	// Adjust Alignment of pivot position
 	alignment := layout.alignment
-	bounds : Range2
-
+	bounds    : Range2
 	if ! (.Origin_At_Anchor_Center in layout.flags) {
 		// The convention offset adjust the box so that the top-left point is at the top left of the anchor's bounds
 		tl_convention_offset := adjusted_size * {0, -1}
@@ -153,6 +143,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		)
 	}
 
+	// 7. Padding & Content
 	// Determine Padding's outer bounds
 	border_offset := Vec2	{ layout.border_width, layout.border_width }
 
@@ -167,21 +158,20 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		bounds.max - { layout.padding.right, layout.padding.top }    - border_offset,
 	)
 
-	computed.bounds = bounds
+	computed.bounds  = bounds
 	computed.padding = padding_bounds
 	computed.content = content_bounds
 
+	// 8. Text position & size
 	if len(box.text.str) > 0
 	{
 		content_size := content_bounds.max - content_bounds.min
 		text_pos : Vec2
 		text_pos = content_bounds.min + { 0, text_size.y }
-		// text_pos.x += ( content_size.x - text_size.x ) * layout.text_alignment.x
-		// text_pos.y += ( content_size.y - text_size.y ) * layout.text_alignment.y
 		text_pos += (content_size - text_size) * layout.text_alignment
 
 		computed.text_size = text_size
-		computed.text_pos  = { text_pos.x, text_pos.y }
+		computed.text_pos  = text_pos
 	}
 	computed.fresh = true && !dont_mark_fresh
 }
@@ -196,7 +186,7 @@ ui_box_compute_layout_children :: proc( box : ^UI_Box )
 	}
 }
 
-ui_compute_layout :: proc( ui : ^UI_State )
+ui_core_compute_layout :: proc( ui : ^UI_State )
 {
 	profile(#procedure)
 	state := get_state()

@@ -99,13 +99,6 @@ import "thirdparty:backtrace"
 
 #endregion("Import Aliases")
 
-OS_Type :: type_of(ODIN_OS)
-
-
-swap :: proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) {
-	return b, a
-}
-
 #region("Proc overload mappings")
 
 // This has to be done on a per-module basis.
@@ -161,6 +154,10 @@ inverse_mag :: proc {
 is_power_of_two :: proc {
 	is_power_of_two_u32,
 	is_power_of_two_uintptr,
+}
+
+measure_text_size :: proc {
+	measure_text_size_raylib,
 }
 
 mov_avg_exp :: proc {
@@ -279,6 +276,11 @@ to_ui_layout_side :: proc {
 	to_ui_layout_side_vec2,
 }
 
+ui_compute_layout :: proc {
+	ui_core_compute_layout,
+	ui_box_compute_layout,
+}
+
 ui_floating :: proc {
 	ui_floating_just_builder,
 	ui_floating_with_capture,
@@ -316,3 +318,7 @@ wedge :: proc {
 }
 
 #endregion("Proc overload mappings")
+
+OS_Type :: type_of(ODIN_OS)
+
+swap :: #force_inline proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) { return b, a }

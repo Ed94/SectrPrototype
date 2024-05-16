@@ -116,20 +116,21 @@ ui_floating_build :: proc()
 			lookup.builder  = to_enqueue.builder
 		}
 		lookup.queued = true
-		if first == nil {
-			first = lookup
-			last  = lookup
-			continue
-		}
-		if first == last {
-			last       = lookup
-			last.prev  = first
-			first.next = last
-			continue
-		}
-		last.next   = lookup
-		lookup.prev = last
-		last        = lookup
+		dll_full_push_back(floating, lookup, nil )
+	// 	if first == nil {
+	// 		first = lookup
+	// 		last  = lookup
+	// 		continue
+	// 	}
+	// 	if first == last {
+	// 		last       = lookup
+	// 		last.prev  = first
+	// 		first.next = last
+	// 		continue
+	// 	}
+	// 	last.next   = lookup
+	// 	lookup.prev = last
+	// 	last        = lookup
 	}
 	array_clear(build_queue)
 

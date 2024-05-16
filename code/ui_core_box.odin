@@ -1,6 +1,7 @@
 package sectr
 
-UI_BoxFlag :: enum u64 {
+UI_BoxFlag :: enum u64
+{
 	Disabled,
 
 	Focusable,
@@ -9,13 +10,6 @@ UI_BoxFlag :: enum u64 {
 	Mouse_Clickable,
 	Keyboard_Clickable,
 
-	// Pan_X,
-	// Pan_Y,
-
-	// Scroll_X,
-	// Scroll_Y,
-
-	// Screenspace,
 	Count,
 }
 UI_BoxFlags :: bit_set[UI_BoxFlag; u64]
@@ -24,9 +18,9 @@ UI_BoxFlags :: bit_set[UI_BoxFlag; u64]
 UI_RenderBoxInfo :: struct {
 	using computed : UI_Computed,
 	using style    : UI_Style,
-	text         : StrRunesPair,
-	font_size    : UI_Scalar,
-	border_width : UI_Scalar,
+	text           : StrRunesPair,
+	font_size      : UI_Scalar,
+	border_width   : UI_Scalar,
 }
 
 UI_Box :: struct {
@@ -60,8 +54,6 @@ UI_Box :: struct {
 	first_frame    : b8,
 	// root_order_id  : i16,
 
-	// prev_computed : UI_Computed,
-	// prev_style    : UI_Style,v
 	// mouse         : UI_InteractState,
 	// keyboard      : UI_InteractState,
 }
@@ -82,16 +74,13 @@ ui_box_from_key :: #force_inline proc ( cache : ^HMapZPL(UI_Box), key : UI_Key )
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 {
 	// profile(#procedure)
-
 	using ui := get_state().ui_context
-
 	key := ui_key_from_string( label )
 
 	curr_box : (^ UI_Box)
 	prev_box := zpl_hmap_get( prev_cache, cast(u64) key )
 	{
 		// profile("Assigning current box")
-
 		set_result : ^ UI_Box
 		set_error  : AllocatorError
 		if prev_box != nil
@@ -103,17 +92,14 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 			box : UI_Box
 			box.key   = key
 			box.label = str_intern( label )
-			// set_result, set_error = zpl_hmap_set( prev_cache, cast(u64) key, box )
 			set_result, set_error = zpl_hmap_set( curr_cache, cast(u64) key, box )
 		}
 
 		verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
-		curr_box = set_result
-
+		curr_box             = set_result
 		curr_box.first_frame = prev_box == nil
+		curr_box.flags       = flags
 	}
-
-	curr_box.flags = flags
 
 	// Clear non-persistent data
 	curr_box.computed.fresh = false
@@ -124,30 +110,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	parent := stack_peek( & parent_stack )
 	if parent != nil
 	{
-		when true {
-			dll_full_push_back( parent, curr_box, nil )
-		}
-		else
-		{
-			//    |
-			//    v
-			// parent.first <nil>
-			if parent.first == nil {
-				parent.first  = curr_box
-				parent.last   = curr_box
-				curr_box.next = nil
-				curr_box.prev = nil
-			}
-			else {
-				// Positin is set to last, insert at end
-				// <parent.last.prev> <parent.last> curr_box
-				parent.last.next = curr_box
-				curr_box.prev    = parent.last
-				parent.last      = curr_box
-				curr_box.next    = nil
-			}
-		}
-
+		dll_full_push_back( parent, curr_box, nil )
 		curr_box.parent_index = parent.num_children
 		parent.num_children  += 1
 		curr_box.parent       = parent
@@ -160,37 +123,31 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 {
-	// Check to make sure parent is present on the screen, if its not don't bother.
-	// If current has children, do them first
 	using state := get_state()
+	// If current has children, do them first
 	if box.first != nil
 	{
+		// Check to make sure parent is present on the screen, if its not don't bother.
 		is_app_ui := ui_context == & screen_ui
-		if is_app_ui || intersects_range2( view_get_bounds(), box.computed.bounds)
+		if intersects_range2( view_get_bounds(), box.computed.bounds)
 		{
 			return box.first
 		}
 	}
 
-	if box.next == nil
-	{
-		// There is no more adjacent nodes
-		if box.parent != nil
-		{
-			parent := box.parent
-			// Attempt to find a parent with a next, otherwise we just return a parent with nil
-			for ; parent.parent != nil;
-			{
-				if parent.next != nil {
-					break
-				}
-				parent = parent.parent
-			}
+	if box.next != nil do return box.next
+	// There is no more adjacent nodes
 
-			// Lift back up to parent, and set it to its next.
-			return parent.next
+	parent := box.parent
+	// Attempt to find a parent with a next, otherwise we just return a parent with nil
+	for ; parent.parent != nil;
+	{
+		if parent.next != nil {
+			break
 		}
+		parent = parent.parent
 	}
 
-	return box.next
+	// Lift back up to parent, and set it to its next.
+	return parent.next
 }

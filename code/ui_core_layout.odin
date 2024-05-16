@@ -76,7 +76,6 @@ UI_LayoutFlag :: enum u32 {
 	Fixed_Width,
 	Fixed_Height,
 
-	// TODO(Ed): Implement this!
 	// Enforces the widget will have a width specified as a ratio of its height (use the size.min/max.x to specify the scalar)
 	// If you wish for the width to stay fixed couple with the Fixed_Width flag
 	Scale_Width_By_Height_Ratio,
@@ -96,6 +95,9 @@ UI_LayoutFlag :: enum u32 {
 	Size_To_Text,
 
 	// TODO(Ed): Implement this!
+	// ?Note(Ed): This can get pretty complicated... Maybe its better to leave this to composition of boxes.
+	// ?A text wrapping panel can organize text and wrap it via procedrually generated lines in a hbox/vbox.
+	// ?It would be a non-issue so long as the text rendering bottleneck is resolved.
 	// Wrap text around the box, text_alignment specifies the justification for its compostion when wrapping.
 	Text_Wrap,
 

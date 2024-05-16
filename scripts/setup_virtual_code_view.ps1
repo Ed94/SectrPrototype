@@ -38,12 +38,16 @@ foreach ($file in $files)
     }
 	else
 	{
-        # For files without a namespace, create a symbolic link in the root of the original code's path in virtual view
-        $linkPath = Join-Path $path_virtual_view $fileName
-        if (-not (Test-Path $linkPath)) {
-            New-Item -ItemType SymbolicLink -Path $linkPath -Value $file.FullName
-        }
-    }
+		# For files without a namespace, maintain the directory structure in the virtual view
+		$relativePath = $file.FullName.Substring($path_code.Length + 1)
+		$linkPath     = Join-Path $path_virtual_view $relativePath
+		$linkDir      = Split-Path -Parent $linkPath
+
+		if (-not (Test-Path $linkDir)) {
+			New-Item -ItemType Directory -Path $linkDir -Force
+		}
+		New-Item -ItemType SymbolicLink -Path $linkPath -Value $file.FullName
+	}
 }
 
 Write-Host "Virtual view created successfully."

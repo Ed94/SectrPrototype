@@ -32,25 +32,25 @@ Side :: enum i32 {
 // 	Count,
 // }
 
-UI_AnchorPresets :: enum u32 {
-	Top_Left,
-	Top_Right,
-	Bottom_Right,
-	Bottom_Left,
-	Center_Left,
-	Center_Top,
-	Center_Right,
-	Center_Bottom,
-	Center,
-	Left_Wide,
-	Top_Wide,
-	Right_Wide,
-	Bottom_Wide,
-	VCenter_Wide,
-	HCenter_Wide,
-	Full,
-	Count,
-}
+// UI_AnchorPresets :: enum u32 {
+// 	Top_Left,
+// 	Top_Right,
+// 	Bottom_Right,
+// 	Bottom_Left,
+// 	Center_Left,
+// 	Center_Top,
+// 	Center_Right,
+// 	Center_Bottom,
+// 	Center,
+// 	Left_Wide,
+// 	Top_Wide,
+// 	Right_Wide,
+// 	Bottom_Wide,
+// 	VCenter_Wide,
+// 	HCenter_Wide,
+// 	Full,
+// 	Count,
+// }
 
 UI_Cursor :: struct {
 	placeholder : int,
@@ -136,8 +136,7 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 	ui := ui
 	ui^ = {}
 
-	// cache.ref in ui.caches.ref
-	for & cache in (& ui.caches) {
+	for & cache in ui.caches {
 		box_cache, allocation_error := zpl_hmap_init_reserve( UI_Box, cache_allocator, UI_Built_Boxes_Array_Size )
 		verify( allocation_error == AllocatorError.None, "Failed to allocate box cache" )
 		cache = box_cache
@@ -155,7 +154,7 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 {
 	// We need to repopulate Allocator references
-	for & cache in & ui.caches {
+	for & cache in ui.caches {
 		zpl_hmap_reload( & cache, cache_allocator)
 	}
 	ui.render_queue.backing = cache_allocator
@@ -180,11 +179,6 @@ ui_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
 	return ui_cursor_pos() - state.ui_context.active_start_signal.cursor_pos
 }
 
-ui_ws_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
-	using state := get_state()
-	return screen_to_ws_view_pos(input.mouse.pos) - state.ui_context.active_start_signal.cursor_pos
-}
-
 ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 {
 	profile(#procedure)
@@ -197,10 +191,7 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	stack_clear( & style_combo_stack )
 	array_clear( render_queue )
 
-	temp := prev_cache
-	prev_cache = curr_cache
-	curr_cache = temp
-	// curr_cache, prev_cache = swap( curr_cache, prev_cache )
+	curr_cache, prev_cache = swap( curr_cache, prev_cache )
 
 	if ui.active == UI_Key(0) {
 		//ui.hot = UI_Key(0)
@@ -228,9 +219,7 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 }
 
 @(deferred_in = ui_graph_build_end)
-ui_graph_build :: proc( ui : ^ UI_State ) {
-	ui_graph_build_begin( ui )
-}
+ui_graph_build :: #force_inline proc( ui : ^ UI_State ) { ui_graph_build_begin( ui ) }
 
 ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_Key
 {
@@ -254,26 +243,13 @@ ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_
 	return key
 }
 
-ui_parent_push :: proc( ui : ^ UI_Box ) {
-	stack := & get_state().ui_context.parent_stack
-	stack_push( & get_state().ui_context.parent_stack, ui )
-}
-
-ui_parent_pop :: proc() {
-	// If size_to_content is set, we need to compute the layout now.
-
-	// Check to make sure that the parent's children are the same for this frame,
-	// if its not we need to mark the layout as dirty.
-
-	stack_pop( & get_state().ui_context.parent_stack )
-}
+ui_parent_push :: #force_inline proc( ui : ^ UI_Box ) { stack_push( & ui_context().parent_stack, ui ) }
+ui_parent_pop  :: #force_inline proc()                { stack_pop(  & get_state().ui_context.parent_stack ) }
 
 @(deferred_none = ui_parent_pop)
 ui_parent :: #force_inline proc( ui : ^UI_Box) { ui_parent_push( ui ) }
 
-ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box {
-	return zpl_hmap_get( ui_context().prev_cache, cast(u64) box.key )
-}
+ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return zpl_hmap_get( ui_context().prev_cache, cast(u64) box.key ) }
 
 // Topmost ancestor that is not the root
 ui_top_ancestor :: #force_inline proc "contextless" ( box : ^UI_Box ) -> (^UI_Box) {
