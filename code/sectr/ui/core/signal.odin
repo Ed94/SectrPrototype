@@ -36,6 +36,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 
 	frame_delta := frametime_delta32()
 
+	prev_box := ui_prev_cached_box(box)
+
 	signal := UI_Signal {}
 
 	// Cursor Collision
@@ -72,8 +74,8 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 	keyboard_clickable := UI_BoxFlag.Keyboard_Clickable in box.flags
 	is_focusable       := .Focusable in box.flags
 
-	was_active   := (ui.active == box.key) && (box.active_delta > 0)
-	was_hot      := (box.hot_delta    > 0)
+	was_active   := box.active_delta > 0
+	was_hot      := box.hot_delta    > 0
 	was_disabled := box.disabled_delta > 0
 
 	is_focused_locked := is_focusable ? was_active : false

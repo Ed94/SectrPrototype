@@ -103,7 +103,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	for & input in input_data {
 		using input
 		error : AllocatorError
-		keyboard_events.keys_pressed, error  = array_init_reserve(KeyboardKey, persistent_slab_allocator(), Kilo)
+		keyboard_events.keys_pressed, error  = array_init_reserve(KeyCode, persistent_slab_allocator(), Kilo)
 		ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.keys_pressed array")
 		keyboard_events.chars_pressed, error = array_init_reserve(rune, persistent_slab_allocator(), Kilo)
 		ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.chars_pressed array")
@@ -346,7 +346,7 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 	// Timing
 	{
 		// profile("Client tick timing processing")
-		config.engine_refresh_hz = uint(monitor_refresh_hz)
+		// config.engine_refresh_hz = uint(monitor_refresh_hz)
 		// config.engine_refresh_hz = 6
 		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS

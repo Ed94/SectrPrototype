@@ -266,18 +266,23 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					style.corner_radii[0] = 0.35
 				}
 				@static value_str : Array(rune)
-				if value_str.data == nil {
+				if value_str.header == nil {
 					error : AllocatorError
 					value_str, error = array_init_reserve(rune, persistent_slab_allocator(), Kilo)
-					ensure(error != AllocatorError.None, "Failed to allocate array for value_str of input_box")
-					array_append( & value_str, rune('_'))
+					ensure(error == AllocatorError.None, "Failed to allocate array for value_str of input_box")
+				}
+				if input_box.pressed {
+					array_clear( value_str )
 				}
 				if input_box.active {
 					array_append( & value_str, input.keyboard_events.chars_pressed )
 					array_clear( input.keyboard_events.chars_pressed )
 				}
 				else if input_box.was_active {
-
+					value, success := parse_uint(to_string(array_to_slice(value_str)))
+					if success {
+						config.engine_refresh_hz = value
+					}
 				}
 				else {
 					array_clear( value_str)
@@ -286,7 +291,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 				// input_box
 				{
 					ui_parent(input_box)
-					value_txt := ui_text("settings_menu.engine_refresh.refresh_value", to_str_runes_pair(value_str))
+					value_txt := ui_text("settings_menu.engine_refresh.refresh_value", to_str_runes_pair(array_to_slice(value_str)))
 					value_txt.layout.text_alignment = vec2(1, 0.5)
 				}
 

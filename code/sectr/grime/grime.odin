@@ -75,6 +75,10 @@ import "core:os"
 	file_write         :: os.write
 import "core:path/filepath"
 	file_name_from_path :: filepath.short_stem
+import "core:strconv"
+	parse_f32  :: strconv.parse_f32
+	parse_u64  :: strconv.parse_u64
+	parse_uint :: strconv.parse_uint
 import str "core:strings"
 	StringBuilder          :: str.Builder
 	str_builder_from_bytes :: str.builder_from_bytes
@@ -261,6 +265,11 @@ to_string :: proc {
 	str_builder_to_string,
 }
 
+to_str_runes_pair :: proc {
+	to_str_runes_pair_via_runes,
+	to_str_runes_pair_via_string,
+}
+
 vec3 :: proc {
 	vec3_via_f32s,
 	bivec3_to_vec3,
@@ -283,7 +292,6 @@ to_ui_layout_side :: proc {
 }
 
 ui_compute_layout :: proc {
-	ui_core_compute_layout,
 	ui_box_compute_layout,
 }
 

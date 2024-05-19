@@ -23,9 +23,8 @@ StrRunesPair :: struct {
 	str   : string,
 	runes : []rune,
 }
-to_str_runes_pair :: proc ( content : string ) -> StrRunesPair {
-	return { content, to_runes(content) }
-}
+to_str_runes_pair_via_string :: #force_inline proc ( content : string ) -> StrRunesPair { return { content, to_runes(content) }  }
+to_str_runes_pair_via_runes  :: #force_inline proc ( content : []rune ) -> StrRunesPair { return { to_string(content), content } }
 
 StringCache :: struct {
 	slab      : Slab,

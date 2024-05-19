@@ -206,17 +206,6 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	ui_parent_push(root)
 }
 
-ui_core_compute_layout :: proc( ui : ^UI_State )
-{
-	profile(#procedure)
-	state := get_state()
-
-
-
-
-}
-
-
 ui_graph_build_end :: proc( ui : ^UI_State )
 {
 	profile(#procedure)
@@ -239,8 +228,6 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 		}
 		for current := root.first; current != nil; current = ui_box_tranverse_next( current )
 		{
-			
-
 			if ! current.computed.fresh {
 				ui_box_compute_layout( current )
 			}
@@ -289,8 +276,6 @@ ui_parent_pop  :: #force_inline proc()                { stack_pop(  & get_state(
 
 @(deferred_none = ui_parent_pop)
 ui_parent :: #force_inline proc( ui : ^UI_Box) { ui_parent_push( ui ) }
-
-ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return zpl_hmap_get( ui_context().prev_cache, cast(u64) box.key ) }
 
 // Topmost ancestor that is not the root
 ui_top_ancestor :: #force_inline proc "contextless" ( box : ^UI_Box ) -> (^UI_Box) {

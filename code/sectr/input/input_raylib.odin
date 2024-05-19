@@ -31,22 +31,21 @@ poll_input :: proc( old, new : ^ InputState )
 				entry_old := & old.keyboard.keys[id - 1]
 				entry_new := & new.keyboard.keys[id - 1]
 
-				key_id := cast(KeyboardKey) id
+				key_id := cast(KeyCode) id
 
 				is_down := cast(b32) rl.IsKeyDown( to_raylib_key(id) )
 				input_process_digital_btn( entry_old, entry_new, is_down )
 			}
 		}
 
-		DeadBound_1 :: 0x0A
-		DeadBound_2 :: 0x2E
+		DeadBound_1 :: 0x02
+		DeadBound_2 :: 0x0F
 		DeadBound_3 :: 0x19
-		DeadBound_4 :: 0x3F
-		check_range( old, new, cast(i32) KeyboardKey.enter,     DeadBound_1 )
-		check_range( old, new, cast(i32) KeyboardKey.caps_lock, DeadBound_2 )
-		check_range( old, new, cast(i32) KeyboardKey.escape,    DeadBound_3 )
-		check_range( old, new, cast(i32) KeyboardKey.backtick,  DeadBound_4 )
-		check_range( old, new, cast(i32) KeyboardKey.A,         cast(i32) KeyboardKey.count )
+		DeadBound_4 :: 0x3A
+		check_range( old, new, cast(i32) KeyCode.backspace, DeadBound_2 )
+		check_range( old, new, cast(i32) KeyCode.caps_lock, DeadBound_3 )
+		check_range( old, new, cast(i32) KeyCode.pause,     DeadBound_4 )
+		check_range( old, new, cast(i32) KeyCode.semicolon, cast(i32) KeyCode.count )
 
 		swap( & old.keyboard_events.keys_pressed, & new.keyboard_events.keys_pressed )
 		swap( & old.keyboard_events.chars_pressed, & new.keyboard_events.chars_pressed )
@@ -98,242 +97,157 @@ play_input :: proc( replay_file : os.Handle, input : ^ InputState ) {
 	}
 }
 
-to_key_from_raylib :: proc( key : rl.KeyboardKey ) -> KeyboardKey {
-	@static lookup_table := [?] KeyboardKey {
-		KeyboardKey.null,
-		KeyboardKey.enter,
-		KeyboardKey.tab,
-		KeyboardKey.space,
-		KeyboardKey.bracket_open,
-		KeyboardKey.bracket_close,
-		KeyboardKey.semicolon,
-		KeyboardKey.apostrophe,
-		KeyboardKey.comma,
-		KeyboardKey.period,
-		cast(KeyboardKey) 0, // 0x0A
-		cast(KeyboardKey) 0, // 0x0B
-		cast(KeyboardKey) 0, // 0x0C
-		cast(KeyboardKey) 0, // 0x0D
-		cast(KeyboardKey) 0, // 0x0E
-		cast(KeyboardKey) 0, // 0x0F
-		KeyboardKey.caps_lock,
-		KeyboardKey.scroll_lock,
-		KeyboardKey.num_lock,
-		KeyboardKey.left_alt,
-		KeyboardKey.left_shit,
-		KeyboardKey.left_control,
-		KeyboardKey.right_alt,
-		KeyboardKey.right_shift,
-		KeyboardKey.right_control,
-		cast(KeyboardKey) 0, // 0x0F
-		cast(KeyboardKey) 0, // 0x0F
-		cast(KeyboardKey) 0, // 0x0F
-		cast(KeyboardKey) 0, // 0x0F
-		cast(KeyboardKey) 0, // 0x0F
-		cast(KeyboardKey) 0, // 0x0F
-		cast(KeyboardKey) 0, // 0x0F
-		KeyboardKey.escape,
-		KeyboardKey.F1,
-		KeyboardKey.F2,
-		KeyboardKey.F3,
-		KeyboardKey.F4,
-		KeyboardKey.F5,
-		KeyboardKey.F7,
-		KeyboardKey.F8,
-		KeyboardKey.F9,
-		KeyboardKey.F10,
-		KeyboardKey.F11,
-		KeyboardKey.F12,
-		KeyboardKey.print_screen,
-		KeyboardKey.pause,
-		cast(KeyboardKey) 0, // 0x2E
-		KeyboardKey.backtick,
-		KeyboardKey.nrow_0,
-		KeyboardKey.nrow_1,
-		KeyboardKey.nrow_2,
-		KeyboardKey.nrow_3,
-		KeyboardKey.nrow_4,
-		KeyboardKey.nrow_5,
-		KeyboardKey.nrow_6,
-		KeyboardKey.nrow_7,
-		KeyboardKey.nrow_8,
-		KeyboardKey.nrow_9,
-		KeyboardKey.hyphen,
-		KeyboardKey.equals,
-		KeyboardKey.backspace,
-		KeyboardKey.backslash,
-		KeyboardKey.slash,
-		cast(KeyboardKey) 0, // 0x3F
-		cast(KeyboardKey) 0, // 0x40
-		KeyboardKey.A,
-		KeyboardKey.B,
-		KeyboardKey.C,
-		KeyboardKey.D,
-		KeyboardKey.E,
-		KeyboardKey.F,
-		KeyboardKey.G,
-		KeyboardKey.H,
-		KeyboardKey.I,
-		KeyboardKey.J,
-		KeyboardKey.K,
-		KeyboardKey.L,
-		KeyboardKey.M,
-		KeyboardKey.N,
-		KeyboardKey.O,
-		KeyboardKey.P,
-		KeyboardKey.Q,
-		KeyboardKey.R,
-		KeyboardKey.S,
-		KeyboardKey.T,
-		KeyboardKey.U,
-		KeyboardKey.V,
-		KeyboardKey.W,
-		KeyboardKey.X,
-		KeyboardKey.Y,
-		KeyboardKey.Z,
-		KeyboardKey.insert,
-		KeyboardKey.delete,
-		KeyboardKey.home,
-		KeyboardKey.end,
-		KeyboardKey.page_up,
-		KeyboardKey.page_down,
-		KeyboardKey.npad_0,
-		KeyboardKey.npad_1,
-		KeyboardKey.npad_2,
-		KeyboardKey.npad_3,
-		KeyboardKey.npad_4,
-		KeyboardKey.npad_5,
-		KeyboardKey.npad_6,
-		KeyboardKey.npad_7,
-		KeyboardKey.npad_8,
-		KeyboardKey.npad_9,
-		KeyboardKey.npad_decimal,
-		KeyboardKey.npad_equals,
-		KeyboardKey.npad_plus,
-		KeyboardKey.npad_minus,
-		KeyboardKey.npad_multiply,
-		KeyboardKey.npad_divide,
-		KeyboardKey.npad_enter, }
-		return lookup_table[key]
-}
-
 to_raylib_key :: proc( key : i32 ) -> rl.KeyboardKey
 {
-	@static raylib_key_lookup_table := [?] rl.KeyboardKey {
-		rl.KeyboardKey.KEY_NULL,
-		rl.KeyboardKey.ENTER,
-		rl.KeyboardKey.TAB,
-		rl.KeyboardKey.SPACE,
-		rl.KeyboardKey.LEFT_BRACKET,
-		rl.KeyboardKey.RIGHT_BRACKET,
-		rl.KeyboardKey.SEMICOLON,
-		rl.KeyboardKey.APOSTROPHE,
-		rl.KeyboardKey.COMMA,
-		rl.KeyboardKey.PERIOD,
-		cast(rl.KeyboardKey) 0, // 0x0A
-		cast(rl.KeyboardKey) 0, // 0x0B
-		cast(rl.KeyboardKey) 0, // 0x0C
-		cast(rl.KeyboardKey) 0, // 0x0D
-		cast(rl.KeyboardKey) 0, // 0x0E
-		cast(rl.KeyboardKey) 0, // 0x0F
-		rl.KeyboardKey.CAPS_LOCK,
-		rl.KeyboardKey.SCROLL_LOCK,
-		rl.KeyboardKey.NUM_LOCK,
-		rl.KeyboardKey.LEFT_ALT,
-		rl.KeyboardKey.LEFT_SHIFT,
-		rl.KeyboardKey.LEFT_CONTROL,
-		rl.KeyboardKey.RIGHT_ALT,
-		rl.KeyboardKey.RIGHT_SHIFT,
-		rl.KeyboardKey.RIGHT_CONTROL,
-		cast(rl.KeyboardKey) 0, // 0x0F
-		cast(rl.KeyboardKey) 0, // 0x0F
-		cast(rl.KeyboardKey) 0, // 0x0F
-		cast(rl.KeyboardKey) 0, // 0x0F
-		cast(rl.KeyboardKey) 0, // 0x0F
-		cast(rl.KeyboardKey) 0, // 0x0F
-		cast(rl.KeyboardKey) 0, // 0x0F
-		rl.KeyboardKey.ESCAPE,
-		rl.KeyboardKey.F1,
-		rl.KeyboardKey.F2,
-		rl.KeyboardKey.F3,
-		rl.KeyboardKey.F4,
-		rl.KeyboardKey.F5,
-		rl.KeyboardKey.F7,
-		rl.KeyboardKey.F8,
-		rl.KeyboardKey.F9,
-		rl.KeyboardKey.F10,
-		rl.KeyboardKey.F11,
-		rl.KeyboardKey.F12,
-		rl.KeyboardKey.PRINT_SCREEN,
-		rl.KeyboardKey.PAUSE,
-		cast(rl.KeyboardKey) 0, // 0x2E
-		rl.KeyboardKey.GRAVE,
-		cast(rl.KeyboardKey) '0',
-		cast(rl.KeyboardKey) '1',
-		cast(rl.KeyboardKey) '2',
-		cast(rl.KeyboardKey) '3',
-		cast(rl.KeyboardKey) '4',
-		cast(rl.KeyboardKey) '5',
-		cast(rl.KeyboardKey) '6',
-		cast(rl.KeyboardKey) '7',
-		cast(rl.KeyboardKey) '8',
-		cast(rl.KeyboardKey) '9',
-		rl.KeyboardKey.MINUS,
-		rl.KeyboardKey.EQUAL,
-		rl.KeyboardKey.BACKSPACE,
-		rl.KeyboardKey.BACKSLASH,
-		rl.KeyboardKey.SLASH,
-		cast(rl.KeyboardKey) 0, // 0x3F
-		cast(rl.KeyboardKey) 0, // 0x40
-		rl.KeyboardKey.A,
-		rl.KeyboardKey.B,
-		rl.KeyboardKey.C,
-		rl.KeyboardKey.D,
-		rl.KeyboardKey.E,
-		rl.KeyboardKey.F,
-		rl.KeyboardKey.G,
-		rl.KeyboardKey.H,
-		rl.KeyboardKey.I,
-		rl.KeyboardKey.J,
-		rl.KeyboardKey.K,
-		rl.KeyboardKey.L,
-		rl.KeyboardKey.M,
-		rl.KeyboardKey.N,
-		rl.KeyboardKey.O,
-		rl.KeyboardKey.P,
-		rl.KeyboardKey.Q,
-		rl.KeyboardKey.R,
-		rl.KeyboardKey.S,
-		rl.KeyboardKey.T,
-		rl.KeyboardKey.U,
-		rl.KeyboardKey.V,
-		rl.KeyboardKey.W,
-		rl.KeyboardKey.X,
-		rl.KeyboardKey.Y,
-		rl.KeyboardKey.Z,
-		rl.KeyboardKey.INSERT,
-		rl.KeyboardKey.DELETE,
-		rl.KeyboardKey.HOME,
-		rl.KeyboardKey.END,
-		rl.KeyboardKey.PAGE_UP,
-		rl.KeyboardKey.PAGE_DOWN,
-		rl.KeyboardKey.KP_0,
-		rl.KeyboardKey.KP_1,
-		rl.KeyboardKey.KP_2,
-		rl.KeyboardKey.KP_3,
-		rl.KeyboardKey.KP_4,
-		rl.KeyboardKey.KP_5,
-		rl.KeyboardKey.KP_6,
-		rl.KeyboardKey.KP_7,
-		rl.KeyboardKey.KP_8,
-		rl.KeyboardKey.KP_9,
-		rl.KeyboardKey.KP_DECIMAL,
-		rl.KeyboardKey.KP_EQUAL,
-		rl.KeyboardKey.KP_ADD,
-		rl.KeyboardKey.KP_SUBTRACT,
-		rl.KeyboardKey.KP_MULTIPLY,
-		rl.KeyboardKey.KP_DIVIDE,
-		rl.KeyboardKey.KP_ENTER, }
+	@static raylib_key_lookup_table := [KeyCode.count] rl.KeyboardKey {
+		rl.KeyboardKey.KEY_NULL, // 0x00
+
+		cast(rl.KeyboardKey) 0, // 0x01
+
+		cast(rl.KeyboardKey) 0, // 0x02
+		cast(rl.KeyboardKey) 0, // 0x03
+		cast(rl.KeyboardKey) 0, // 0x04
+		cast(rl.KeyboardKey) 0, // 0x05
+		cast(rl.KeyboardKey) 0, // 0x06
+		cast(rl.KeyboardKey) 0, // 0x07
+
+		rl.KeyboardKey.BACKSPACE, // 0x08
+		rl.KeyboardKey.TAB,       // 0x09
+
+		rl.KeyboardKey.RIGHT,     // 0x0A
+		rl.KeyboardKey.LEFT,      // 0x0B
+		rl.KeyboardKey.DOWN,      // 0x0C
+		rl.KeyboardKey.UP,        // 0x0D
+
+		rl.KeyboardKey.ENTER,     // 0x0E
+
+		cast(rl.KeyboardKey) 0,   // 0x0F
+
+		rl.KeyboardKey.CAPS_LOCK,    // 0x10
+		rl.KeyboardKey.SCROLL_LOCK,  // 0x11
+		rl.KeyboardKey.NUM_LOCK,     // 0x12
+
+		rl.KeyboardKey.LEFT_ALT,      // 0x13
+		rl.KeyboardKey.LEFT_SHIFT,    // 0x14
+		rl.KeyboardKey.LEFT_CONTROL,  // 0x15
+		rl.KeyboardKey.RIGHT_ALT,     // 0x16
+		rl.KeyboardKey.RIGHT_SHIFT,   // 0x17
+		rl.KeyboardKey.RIGHT_CONTROL, // 0x18
+
+		cast(rl.KeyboardKey) 0, // 0x19
+
+		rl.KeyboardKey.PAUSE,      // 0x1A
+		rl.KeyboardKey.ESCAPE,     // 0x1B
+		rl.KeyboardKey.HOME,       // 0x1C
+		rl.KeyboardKey.END,        // 0x1D
+		rl.KeyboardKey.PAGE_UP,    // 0x1E
+		rl.KeyboardKey.PAGE_DOWN,  // 0x1F
+		rl.KeyboardKey.SPACE,      // 0x20
+
+		cast(rl.KeyboardKey) '!',  // 0x21
+		cast(rl.KeyboardKey) '"',  // 0x22
+		cast(rl.KeyboardKey) '#',  // 0x23
+		cast(rl.KeyboardKey) '$',  // 0x24
+		cast(rl.KeyboardKey) '%',  // 0x25
+		cast(rl.KeyboardKey) '&',  // 0x26
+		cast(rl.KeyboardKey) '\'', // 0x27
+		cast(rl.KeyboardKey) '(',  // 0x28
+		cast(rl.KeyboardKey) ')',  // 0x29
+		cast(rl.KeyboardKey) '*',  // 0x2A
+		cast(rl.KeyboardKey) '+',  // 0x2B
+		cast(rl.KeyboardKey) ',',  // 0x2C
+		cast(rl.KeyboardKey) '-',  // 0x2D
+		cast(rl.KeyboardKey) '.',  // 0x2E
+		cast(rl.KeyboardKey) '/',  // 0x2F
+
+		cast(rl.KeyboardKey) '0',  // 0x30
+		cast(rl.KeyboardKey) '1',  // 0x31
+		cast(rl.KeyboardKey) '2',  // 0x32
+		cast(rl.KeyboardKey) '3',  // 0x33
+		cast(rl.KeyboardKey) '4',  // 0x34
+		cast(rl.KeyboardKey) '5',  // 0x35
+		cast(rl.KeyboardKey) '6',  // 0x36
+		cast(rl.KeyboardKey) '7',  // 0x37
+		cast(rl.KeyboardKey) '8',  // 0x38
+		cast(rl.KeyboardKey) '9',  // 0x39
+
+		cast(rl.KeyboardKey) 0,   // 0x3A
+
+		cast(rl.KeyboardKey) ';', // 0x3B
+		cast(rl.KeyboardKey) '<', // 0x3C
+		cast(rl.KeyboardKey) '=', // 0x3D
+		cast(rl.KeyboardKey) '>', // 0x3E
+		cast(rl.KeyboardKey) '?', // 0x3F
+		cast(rl.KeyboardKey) '@', // 0x40
+
+		rl.KeyboardKey.A, // 0x41
+		rl.KeyboardKey.B, // 0x42
+		rl.KeyboardKey.C, // 0x43
+		rl.KeyboardKey.D, // 0x44
+		rl.KeyboardKey.E, // 0x45
+		rl.KeyboardKey.F, // 0x46
+		rl.KeyboardKey.G, // 0x47
+		rl.KeyboardKey.H, // 0x48
+		rl.KeyboardKey.I, // 0x49
+		rl.KeyboardKey.J, // 0x4A
+		rl.KeyboardKey.K, // 0x4B
+		rl.KeyboardKey.L, // 0x4C
+		rl.KeyboardKey.M, // 0x4D
+		rl.KeyboardKey.N, // 0x4E
+		rl.KeyboardKey.O, // 0x4F
+		rl.KeyboardKey.P, // 0x50
+		rl.KeyboardKey.Q, // 0x51
+		rl.KeyboardKey.R, // 0x52
+		rl.KeyboardKey.S, // 0x53
+		rl.KeyboardKey.T, // 0x54
+		rl.KeyboardKey.U, // 0x55
+		rl.KeyboardKey.V, // 0x56
+		rl.KeyboardKey.W, // 0x57
+		rl.KeyboardKey.X, // 0x58
+		rl.KeyboardKey.Y, // 0x59
+		rl.KeyboardKey.Z, // 0x5A
+
+		rl.KeyboardKey.LEFT_BRACKET,   // 0x5B
+		rl.KeyboardKey.BACKSLASH,      // 0x5C
+		rl.KeyboardKey.RIGHT_BRACKET,  // 0x5D
+		cast(rl.KeyboardKey) '^',      // 0x5E
+		rl.KeyboardKey.GRAVE,          // 0x5F
+		cast(rl.KeyboardKey) '`',      // 0x60
+
+		rl.KeyboardKey.KP_0,        // 0x61
+		rl.KeyboardKey.KP_1,        // 0x62
+		rl.KeyboardKey.KP_2,        // 0x63
+		rl.KeyboardKey.KP_3,        // 0x64
+		rl.KeyboardKey.KP_4,        // 0x65
+		rl.KeyboardKey.KP_5,        // 0x66
+		rl.KeyboardKey.KP_6,        // 0x67
+		rl.KeyboardKey.KP_7,        // 0x68
+		rl.KeyboardKey.KP_8,        // 0x69
+		rl.KeyboardKey.KP_9,        // 0x6A
+		rl.KeyboardKey.KP_DECIMAL,  // 0x6B
+		rl.KeyboardKey.KP_EQUAL,    // 0x6C
+		rl.KeyboardKey.KP_ADD,      // 0x6D
+		rl.KeyboardKey.KP_SUBTRACT, // 0x6E
+		rl.KeyboardKey.KP_MULTIPLY, // 0x6F
+		rl.KeyboardKey.KP_DIVIDE,   // 0x70
+		rl.KeyboardKey.KP_ENTER,    // 0x71
+
+		rl.KeyboardKey.F1,  // 0x72
+		rl.KeyboardKey.F2,  // 0x73
+		rl.KeyboardKey.F3,  // 0x74
+		rl.KeyboardKey.F4,  // 0x75
+		rl.KeyboardKey.F5,  // 0x76
+		rl.KeyboardKey.F6,  // 0x77
+		rl.KeyboardKey.F7,  // 0x78
+		rl.KeyboardKey.F8,  // 0x79
+		rl.KeyboardKey.F9,  // 0x7A
+		rl.KeyboardKey.F10, // 0x7B
+		rl.KeyboardKey.F11, // 0x7C
+		rl.KeyboardKey.F12, // 0x7D
+
+		rl.KeyboardKey.INSERT, // 0x7E
+		rl.KeyboardKey.DELETE, // 0x7F
+	}
 	return raylib_key_lookup_table[ key ]
 }
 
@@ -347,4 +261,100 @@ to_raylib_mouse_btn :: proc( btn : i32 ) -> rl.MouseButton {
 		rl.MouseButton.BACK,
 		rl.MouseButton.EXTRA, }
 	return raylib_mouse_btn_lookup_table[ btn ]
+}
+
+to_key_from_raylib :: proc( ray_key : rl.KeyboardKey ) -> (key : KeyCode) {
+
+	switch (ray_key) {
+		case .KEY_NULL     : key = cast(KeyCode) ray_key
+
+		case .SPACE,
+				cast(rl.KeyboardKey) '!',
+				cast(rl.KeyboardKey) '"',
+				cast(rl.KeyboardKey) '#',
+				cast(rl.KeyboardKey) '$',
+				cast(rl.KeyboardKey) '%',
+				cast(rl.KeyboardKey) '&',
+				.APOSTROPHE,
+				cast(rl.KeyboardKey) '(',
+				cast(rl.KeyboardKey) ')',
+				cast(rl.KeyboardKey) '*',
+				cast(rl.KeyboardKey) '+',
+				.COMMA, .MINUS, .PERIOD, .SLASH,
+				.ZERO, .ONE, .TWO, .THREE, .FOUR, .FIVE, .SIX, .SEVEN, .EIGHT, .NINE,
+				.SEMICOLON,.EQUAL,
+				.A, .B, .C, .D, .E, .F, .G, .H, .I, .J, .K, .L, .M, .N, .O, .P, .Q, .R, .S, .T, .U, .V, .W, .X, .Y, .Z,
+				.LEFT_BRACKET, .BACKSLASH, .RIGHT_BRACKET, cast(rl.KeyboardKey) '_', .GRAVE :
+			key = cast(KeyCode) ray_key
+
+		case .ESCAPE        : key = KeyCode.escape
+		case .ENTER         : key = KeyCode.enter
+		case .TAB           : key = KeyCode.tab
+		case .BACKSPACE     : key = KeyCode.backspace
+
+		case .INSERT        : key = KeyCode.insert
+		case .DELETE        : key = KeyCode.delete
+
+		case .RIGHT         : key = KeyCode.right
+		case .LEFT          : key = KeyCode.left
+		case .UP            : key = KeyCode.up
+		case .DOWN          : key = KeyCode.down
+
+		case .PAGE_UP       : key = KeyCode.page_up
+		case .PAGE_DOWN     : key = KeyCode.page_down
+		case .HOME          : key = KeyCode.home
+		case .END           : key = KeyCode.end
+		case .CAPS_LOCK     : key = KeyCode.caps_lock
+		case .SCROLL_LOCK   : key = KeyCode.scroll_lock
+		case .NUM_LOCK      : key = KeyCode.num_lock
+		case .PRINT_SCREEN  : key = KeyCode.ignored
+		case .PAUSE         : key = KeyCode.pause
+
+		case .F1            : key = KeyCode.F1
+		case .F2            : key = KeyCode.F2
+		case .F3            : key = KeyCode.F3
+		case .F4            : key = KeyCode.F4
+		case .F5            : key = KeyCode.F5
+		case .F6            : key = KeyCode.F6
+		case .F7            : key = KeyCode.F7
+		case .F8            : key = KeyCode.F8
+		case .F9            : key = KeyCode.F9
+		case .F10           : key = KeyCode.F10
+		case .F11           : key = KeyCode.F11
+		case .F12           : key = KeyCode.F12
+
+		case .LEFT_SHIFT    : key = KeyCode.left_shift
+		case .LEFT_CONTROL  : key = KeyCode.left_control
+		case .LEFT_ALT      : key = KeyCode.left_alt
+		case .LEFT_SUPER    : key = KeyCode.ignored
+		case .RIGHT_SHIFT   : key = KeyCode.right_shift
+		case .RIGHT_CONTROL : key = KeyCode.right_control
+		case .RIGHT_ALT     : key = KeyCode.right_alt
+		case .RIGHT_SUPER   : key = KeyCode.ignored
+		case .KB_MENU       : key = KeyCode.ignored
+
+		case .KP_0          : key = KeyCode.kpad_0
+		case .KP_1          : key = KeyCode.kpad_1
+		case .KP_2          : key = KeyCode.kpad_2
+		case .KP_3          : key = KeyCode.kpad_3
+		case .KP_4          : key = KeyCode.kpad_4
+		case .KP_5          : key = KeyCode.kpad_5
+		case .KP_6          : key = KeyCode.kpad_6
+		case .KP_7          : key = KeyCode.kpad_7
+		case .KP_8          : key = KeyCode.kpad_8
+		case .KP_9          : key = KeyCode.kpad_9
+
+		case .KP_DECIMAL    : key = KeyCode.kpad_decimal
+		case .KP_DIVIDE     : key = KeyCode.kpad_divide
+		case .KP_MULTIPLY   : key = KeyCode.kpad_multiply
+		case .KP_SUBTRACT   : key = KeyCode.kpad_minus
+		case .KP_ADD        : key = KeyCode.kpad_plus
+		case .KP_ENTER      : key = KeyCode.kpad_enter
+		case .KP_EQUAL      : key = KeyCode.kpad_equals
+
+		case .BACK          : key = KeyCode.ignored
+		case .VOLUME_UP     : key = KeyCode.ignored
+		case .VOLUME_DOWN   : key = KeyCode.ignored
+	}
+	return
 }

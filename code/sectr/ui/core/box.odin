@@ -128,6 +128,8 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	return curr_box
 }
 
+ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return zpl_hmap_get( ui_context().prev_cache, cast(u64) box.key ) }
+
 ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 {
 	using state := get_state()
