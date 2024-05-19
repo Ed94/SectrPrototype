@@ -17,7 +17,7 @@ ui_widget :: proc( label : string, flags : UI_BoxFlags ) -> (widget : UI_Widget)
 
 ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widget)
 {
-	btn_flags := UI_BoxFlags { .Mouse_Clickable, .Focusable, .Click_To_Focus }
+	btn_flags := UI_BoxFlags { .Mouse_Clickable }
 	btn.box    = ui_box_make( btn_flags | flags, label )
 	btn.signal = ui_signal_from_box( btn.box )
 	return
@@ -197,6 +197,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 		}
 		else
 		{
+			app_color := app_color_theme()
 			layout := UI_Layout {
 				flags          = flags,
 				anchor         = range2({},{}),
@@ -215,7 +216,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 				corner_radii = {5, 0, 0, 0},
 				blur_size    = 0,
 				font         = get_state().default_font,
-				text_color   = Color_ThmDark_Text_Default,
+				text_color   = app_color.text_default,
 				cursor       = {},
 			}
 			layout_combo = to_ui_layout_combo(layout)
@@ -223,12 +224,12 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			{
 				using layout_combo.hot
 				using style_combo.hot
-				bg_color = Color_ThmDark_ResizeHandle_Hot
+				bg_color = app_color.resize_hndl_hot
 			}
 			{
 				using layout_combo.active
 				using style_combo.active
-				bg_color = Color_ThmDark_ResizeHandle_Active
+				bg_color = app_color.resize_hndl_active
 			}
 		}
 		theme := UI_Theme {
@@ -364,7 +365,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			}
 			was_dragging = true
 		}
-		else if released && was_dragging
+		else if released// && was_dragging
 		{
 			// This needed to be added as for some reason, this was getting called in screen_ui even when we were resizing with a handle in a worksapce
 			if active_context != ui do return false

@@ -107,6 +107,12 @@ add :: proc {
 	add_range2,
 }
 
+array_append :: proc {
+	array_append_value,
+	array_append_array,
+	array_append_slice,
+}
+
 bivec3 :: proc {
 	bivec3_via_f32s,
 	vec3_to_bivec3,

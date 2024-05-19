@@ -15,6 +15,10 @@ UI_BoxFlag :: enum u64
 UI_BoxFlags :: bit_set[UI_BoxFlag; u64]
 // UI_BoxFlag_Scroll :: UI_BoxFlags { .Scroll_X, .Scroll_Y }
 
+UI_NavLinks :: struct {
+	left, right, up, down : ^UI_Box,
+}
+
 UI_RenderBoxInfo :: struct {
 	using computed : UI_Computed,
 	using style    : UI_Style,
@@ -26,11 +30,14 @@ UI_RenderBoxInfo :: struct {
 UI_Box :: struct {
 	// Cache ID
 	key   : UI_Key,
-	// label : string,
 	label : StrRunesPair,
 	text  : StrRunesPair,
 
 	// Regenerated per frame.
+
+	nav : UI_NavLinks,
+	// signal_callback : #type proc(),
+
 
 	// first, last : The first and last child of this box
 	// prev, next  : The adjacent neighboring boxes who are children of to the same parent
@@ -129,7 +136,7 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 	{
 		// Check to make sure parent is present on the screen, if its not don't bother.
 		is_app_ui := ui_context == & screen_ui
-		if intersects_range2( view_get_bounds(), box.computed.bounds)
+		if intersects_range2( ui_view_bounds(), box.computed.bounds)
 		{
 			return box.first
 		}

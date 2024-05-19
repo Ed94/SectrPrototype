@@ -16,13 +16,17 @@ LayoutAlign_OriginTL_Bottom       :: Vec2{0.5,   1}
 LayoutAlign_OriginTL_BottomLeft   :: Vec2{  0,   1}
 LayoutAlign_OriginTL_BottomRight  :: Vec2{  1,   1}
 
-// LayoutAlign_OriginTL_
 
 Layout_OriginCenter_Centered :: Vec2{0.5, 0.5}
 
-
-
-
+UI_Align_Presets_Struct :: struct {
+	origin_tl_centered : Vec2,
+	text_centered  : Vec2,
+}
+UI_Align_Presets :: UI_Align_Presets_Struct {
+	origin_tl_centered = {0.5, 0.5},
+	text_centered      = {0.5, 0.5},
+}
 
 
 // The UI_Box's actual positioning and sizing

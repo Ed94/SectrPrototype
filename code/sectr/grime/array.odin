@@ -75,7 +75,7 @@ array_init_reserve :: proc
 	return
 }
 
-array_append :: proc( self : ^Array( $ Type), value : Type ) -> AllocatorError
+array_append_value :: proc( self : ^Array( $ Type), value : Type ) -> AllocatorError
 {
 	// profile(#procedure)
 	if self.header.num == self.header.capacity
@@ -91,11 +91,11 @@ array_append :: proc( self : ^Array( $ Type), value : Type ) -> AllocatorError
 	return AllocatorError.None
 }
 
-array_append_slice :: proc( using self : ^Array( $ Type ), items : []Type ) -> AllocatorError
+array_append_array :: proc( using self: ^Array( $ Type), other : Array(Type)) -> AllocatorError
 {
-	if num + len(items) > capacity
+	if num + other.num > capacity
 	{
-		grow_result := array_grow( self, capacity )
+		grow_result := array_grow( self, num + other.num )
 		if grow_result != AllocatorError.None {
 			return grow_result
 		}
@@ -106,9 +106,31 @@ array_append_slice :: proc( using self : ^Array( $ Type ), items : []Type ) -> A
 
 	// TODO(Ed) : VERIFY VIA DEBUG THIS COPY IS FINE.
 	target := ptr_offset( data, num )
-	copy( slice_ptr(target, capacity - num), items )
+	copy( slice_ptr(target, int(capacity - num)), array_to_slice(other) )
 
-	num += len(items)
+	num += other.num
+	return AllocatorError.None
+}
+
+array_append_slice :: proc( using self : ^Array( $ Type ), items : []Type ) -> AllocatorError
+{
+	items_num :=u64(len(items))
+	if num + items_num > capacity
+	{
+		grow_result := array_grow( self, num + items_num )
+		if grow_result != AllocatorError.None {
+			return grow_result
+		}
+	}
+
+	// Note(Ed) : Original code from gencpp
+	// libc.memcpy( ptr_offset(data, num), raw_data(items), len(items) * size_of(Type) )
+
+	// TODO(Ed) : VERIFY VIA DEBUG THIS COPY IS FINE.
+	target := ptr_offset( data, num )
+	copy( slice_ptr(target, int(capacity - num)), items )
+
+	num += items_num
 	return AllocatorError.None
 }
 

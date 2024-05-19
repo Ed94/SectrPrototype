@@ -43,7 +43,7 @@ render :: proc()
 	render_mode_3d()
 
 	rl.BeginDrawing()
-	rl.ClearBackground( Color_ThmDark_BG )
+	rl.ClearBackground( app_color_theme().bg )
 
 	render_mode_2d_workspace()
 	render_mode_screenspace()
@@ -252,7 +252,7 @@ render_mode_screenspace :: proc ()
 	{
 		// debug_text( "Screen Width : %v", rl.GetScreenWidth () )
 		// debug_text( "Screen Height: %v", rl.GetScreenHeight() )
-		debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
+		// debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
 		debug_text( "frametime                 : %f ms", frametime_delta_ms )
 		// debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
 		if replay.mode == ReplayMode.Record {
@@ -261,9 +261,8 @@ render_mode_screenspace :: proc ()
 		if replay.mode == ReplayMode.Playback {
 			debug_text( "Replaying Input")
 		}
+		// debug_text("Zoom Target: %v", project.workspace.zoom_target)
 	}
-
-	debug_text("Zoom Target: %v", project.workspace.zoom_target)
 
 	if debug.mouse_vis {
 		debug_text("Mouse Vertical Wheel: %v", input.mouse.vertical_wheel )
@@ -277,34 +276,39 @@ render_mode_screenspace :: proc ()
 
 	ui := & project.workspace.ui
 
-	debug_text("Box Count (Workspace): %v", ui.built_box_count )
+	if false
+	{
+		debug_text("Box Count (Workspace): %v", ui.built_box_count )
 
-	hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
-	active_box := ui_box_from_key( ui.curr_cache, ui.active )
-	if hot_box != nil {
-		debug_text("Worksapce Hot    Box   : %v", hot_box.label.str )
-		debug_text("Workspace Hot    Range2: %v", hot_box.computed.bounds.pts)
-	}
-	if active_box != nil{
-		debug_text("Workspace Active Box: %v", active_box.label.str )
+		hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
+		active_box := ui_box_from_key( ui.curr_cache, ui.active )
+		if hot_box != nil {
+			debug_text("Worksapce Hot    Box   : %v", hot_box.label.str )
+			debug_text("Workspace Hot    Range2: %v", hot_box.computed.bounds.pts)
+		}
+		if active_box != nil{
+			debug_text("Workspace Active Box: %v", active_box.label.str )
+		}
 	}
 
 	ui = & screen_ui
 
-	debug_text("Box Count: %v", ui.built_box_count )
+	if true
+	{
+		debug_text("Box Count: %v", ui.built_box_count )
 
-	hot_box    = ui_box_from_key( ui.curr_cache, ui.hot )
-	active_box = ui_box_from_key( ui.curr_cache, ui.active )
-	if hot_box != nil {
-		debug_text("Hot    Box   : %v", hot_box.label.str )
-		debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
-	}
-	if active_box != nil{
-		debug_text("Active Box: %v", active_box.label.str )
+		hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
+		active_box := ui_box_from_key( ui.curr_cache, ui.active )
+		if hot_box != nil {
+			debug_text("Hot    Box   : %v", hot_box.label.str )
+			debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
+		}
+		if active_box != nil{
+			debug_text("Active Box: %v", active_box.label.str )
+		}
 	}
 
 	view := view_get_bounds()
-
 	debug.draw_debug_text_y = 14
 
 	 // Define the triangle vertices and colors

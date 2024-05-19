@@ -31,32 +31,114 @@ Color_Debug_UI_Content_Bounds :: Color { 170, 120, 240, 160 }
 // TODO(Ed): The entire rendering pass should be post-processed by a tone curve configurable for the user
 // This is how you properly support any tonality of light or dark themes and not have it be base don the monitors raw output.
 
-// Dark Theme
+AppColorTheme :: struct {
+	light_limit,
+	dark_limit,
 
-// Brightest value limited to (text is the only exception):
-Color_ThmDark_BrightLimit :: Color {230, 230, 230, 255}
-// Darkness value limited to (text is the only exception):
-Color_ThmDark_DarkLimit   :: Color {10, 10, 10, 255}
+	bg,
 
+	border_default,
 
-Color_ThmDark_BG :: Color {33, 33, 33, 255}
+	btn_bg_default,
+	btn_bg_hot,
+	btn_bg_active,
 
-Color_ThmDark_Translucent_Panel :: Color { 0, 0, 0, 60}
+	input_box_bg,
+	input_box_bg_hot,
+	input_box_bg_active,
 
-Color_ThmDark_ResizeHandle_Default :: Color_Transparent
-Color_ThmDark_ResizeHandle_Hot     :: Color { 72, 72, 72, 90}
-Color_ThmDark_ResizeHandle_Active  :: Color { 88, 88, 88, 90}
+	resize_hndl_default,
+	resize_hndl_hot,
+	resize_hndl_active,
 
-Color_ThmDark_Border_Default :: Color { 64, 64, 64, 255}
+	table_even_bg_color,
+	table_odd_bg_color,
 
-Color_ThmDark_Btn_BG_Default :: Color { 40,  40,  40, 255}
-Color_ThmDark_Btn_BG_Hot     :: Color { 60,  60,  70, 255}
-Color_ThmDark_Btn_BG_Active  :: Color { 90, 100, 130, 255}
+	text_default,
+	text_hot,
+	text_active,
 
-Color_ThmDark_Text_Default :: Color {120, 117, 115, 255}
-Color_ThmDark_Text_Hot     :: Color {180, 180, 180, 255}
-Color_ThmDark_Text_Active  :: Color {240, 240, 240, 255}
+	translucent_panel,
 
-// Light Theme
+	window_bar_border,
+	window_bar_bg,
+	window_btn_close_bg_hot,
 
-// LightTheme_BG :: Color { 120, 120, 120, 255 }
+	window_panel_bg,
+	window_panel_border \
+	: Color
+}
+
+App_Thm_Dusk :: AppColorTheme {
+	light_limit = Color {125, 125, 125, 255},
+	dark_limit  = Color { 10, 10, 10, 255},
+
+	bg = Color {33, 33, 33, 255},
+
+	border_default = Color { 64, 64, 64, 255},
+
+	btn_bg_default = Color { 40,  40,  40, 255},
+	btn_bg_hot     = Color { 60,  60,  70, 255},
+	btn_bg_active  = Color { 90, 100, 130, 255},
+
+	input_box_bg        = Color { 20, 20, 20, 255},
+	input_box_bg_hot    = Color { 25, 25, 25, 255},
+	input_box_bg_active = Color { 15, 15, 15, 255},
+
+	resize_hndl_default = Color_Transparent,
+	resize_hndl_hot     = Color { 72, 72, 72, 90},
+	resize_hndl_active  = Color { 88, 88, 88, 90},
+
+	table_even_bg_color = Color { 35, 35, 35, 255},
+	table_odd_bg_color  = Color { 30, 30, 30, 255},
+
+	text_default = Color {120, 117, 115, 255},
+	text_hot     = Color {180, 180, 180, 255},
+	text_active  = Color {240, 240, 240, 255},
+
+	translucent_panel = Color { 10, 10, 10, 50},
+
+	window_bar_border       = Color { 64, 64, 64, 255}, // border_default
+	window_bar_bg           = Color{35, 35, 35, 255},
+	window_btn_close_bg_hot = Color{45, 35, 35, 255},
+
+	window_panel_bg     = Color { 10, 10, 10, 50}, // translucent_panel
+	window_panel_border = Color{24, 24, 24, 255},
+}
+
+App_Thm_Light :: AppColorTheme {
+	light_limit = Color {195, 195, 195, 255},
+	dark_limit  = Color { 60,  60,  60, 255},
+
+	bg = Color {135, 135, 135, 255},
+
+	border_default = Color { 174, 174, 174, 255},
+
+	btn_bg_default = Color { 160, 160, 160, 255},
+	btn_bg_hot     = Color { 145, 145, 155, 255},
+	btn_bg_active  = Color { 124, 124, 136, 255},
+
+	input_box_bg        = Color {115, 115, 115, 255},
+	input_box_bg_hot    = Color {125, 125, 125, 255},
+	input_box_bg_active = Color {105, 105, 105, 255},
+
+	resize_hndl_default = Color_Transparent,
+	resize_hndl_hot     = Color { 95, 95, 95, 90},
+	resize_hndl_active  = Color { 80, 80, 80, 90},
+
+	table_even_bg_color = Color {150, 150, 150, 255},
+	table_odd_bg_color  = Color {160, 160, 160, 255},
+
+	text_default = Color { 55,  55,  55, 255},
+	text_hot     = Color { 85,  85,  85, 255},
+	text_active  = Color { 45,  45,  49, 255},
+
+	translucent_panel = Color { 110, 110, 110, 50},
+
+	window_bar_border       = Color{ 174, 174, 174, 255}, // border_default
+	window_bar_bg           = Color{ 155, 155, 155, 255},
+	window_btn_close_bg_hot = Color{ 145, 135, 135, 255},
+
+	window_panel_bg     = Color {135, 135, 135, 50}, // translucent_panel
+	window_panel_border = Color{184, 184, 184, 255},
+}

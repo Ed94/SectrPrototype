@@ -70,13 +70,13 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 
 	mouse_clickable    := UI_BoxFlag.Mouse_Clickable    in box.flags
 	keyboard_clickable := UI_BoxFlag.Keyboard_Clickable in box.flags
+	is_focusable       := .Focusable in box.flags
 
-	was_hot      := (box.hot_delta    > 0)
 	was_active   := (ui.active == box.key) && (box.active_delta > 0)
+	was_hot      := (box.hot_delta    > 0)
 	was_disabled := box.disabled_delta > 0
-	// if was_hot {
-		// runtime.debug_trap()
-	// }
+
+	is_focused_locked := is_focusable ? was_active : false
 
 	// Check to see if this box is active
 	if mouse_clickable && signal.cursor_over && left_pressed && was_hot
@@ -93,14 +93,14 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 		// TODO(Ed) : Support double-click detection
 	}
 
-	if mouse_clickable && ! signal.cursor_over && left_released
+	if ! is_focused_locked && was_active && mouse_clickable && ! signal.cursor_over && left_released
 	{
 		box.active_delta = 0
 
 		ui.active = UI_Key(0)
 		ui.active_mouse[MouseBtn.Left] = UI_Key(0)
 
-		signal.released     = true
+		signal.released = true
 	}
 
 	if keyboard_clickable
@@ -109,6 +109,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 	}
 
 	// TODO(Ed): Should panning and scrolling get supported here? (problably not...)
+	// We can just report the scroll amount in the signal and have the scrollbox widget handle it
 	// TODO(Ed) : Add scrolling support
 	// if UI_BoxFlag.Scroll_X in box.flags {
 
@@ -123,39 +124,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 	// if UI_BoxFlag.Pan_Y in box.flags {
 	// }
 
-	is_disabled := UI_BoxFlag.Disabled in box.flags
-	is_hot      := ui.hot    == box.key
-	is_active   := ui.active == box.key
-
-	// TODO(Ed): It should be able to enter hot without mouse_clickable
-	if mouse_clickable && signal.cursor_over && ! is_disabled
-	{
-		hot_vacant    := ui.hot    == UI_Key(0)
-		active_vacant := ui.active == UI_Key(0)
-			//  (active_vacant  is_active)
-		if signal.cursor_over && active_vacant
-		{
-			if ! hot_vacant {
-				prev := ui_box_from_key( ui.curr_cache, ui.hot )
-				prev.hot_delta = 0
-			}
-			// prev_hot := zpl_hmap_get( ui.prev_cache, u64(ui.hot) )
-			// prev_hot_label := prev_hot != nil ? prev_hot.label.str : ""
-			// log( str_fmt_tmp("Detected HOT via CURSOR OVER: %v is_hot: %v is_active: %v prev_hot: %v", box.label.str, is_hot, is_active, prev_hot_label ))
-			ui.hot = box.key
-			is_hot = true
-
-			ui.hot_start_style = box.style
-		}
-	}
-	else if ! signal.cursor_over && was_hot
-	{
-		ui.hot        = UI_Key(0)
-		is_hot        = false
-		box.hot_delta = 0
-	}
-
-	if mouse_clickable && signal.cursor_over && left_released
+	if ! is_focused_locked && was_active && mouse_clickable && signal.cursor_over && left_released
 	{
 		box.active_delta = 0
 
@@ -169,6 +138,39 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 			ui.last_clicked     = box.key
 		}
 	}
+
+	is_disabled := UI_BoxFlag.Disabled in box.flags
+	is_hot      := ui.hot    == box.key
+	is_active   := ui.active == box.key
+
+	// TODO(Ed): It should be able to enter hot without mouse_clickable
+	if mouse_clickable && signal.cursor_over && ! is_disabled
+	{
+		hot_vacant    := ui.hot == UI_Key(0)
+		// active_vacant := ui.active == UI_Key(0)
+		if signal.cursor_over //&& active_vacant
+		{
+			if ! hot_vacant {
+				prev := ui_box_from_key( ui.curr_cache, ui.hot )
+				prev.hot_delta = 0
+			}
+			// prev_hot := zpl_hmap_get( ui.prev_cache, u64(ui.hot) )
+			// prev_hot_label := prev_hot != nil ? prev_hot.label.str : ""
+			// log( str_fmt_tmp("Detected HOT via CURSOR OVER: %v is_hot: %v is_active: %v prev_hot: %v", box.label.str, is_hot, is_active, prev_hot_label ))
+			ui.hot = box.key
+			is_hot = true
+
+			ui.hot_start_style = box.style
+			signal.hot = true
+		}
+	}
+	else if ! signal.cursor_over && was_hot
+	{
+		ui.hot        = UI_Key(0)
+		is_hot        = false
+		box.hot_delta = 0
+	}
+
 	// profile_end()
 
 	// State Deltas update

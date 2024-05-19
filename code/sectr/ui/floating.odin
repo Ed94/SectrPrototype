@@ -117,20 +117,6 @@ ui_floating_build :: proc()
 		}
 		lookup.queued = true
 		dll_full_push_back(floating, lookup, nil )
-	// 	if first == nil {
-	// 		first = lookup
-	// 		last  = lookup
-	// 		continue
-	// 	}
-	// 	if first == last {
-	// 		last       = lookup
-	// 		last.prev  = first
-	// 		first.next = last
-	// 		continue
-	// 	}
-	// 	last.next   = lookup
-	// 	lookup.prev = last
-	// 	last        = lookup
 	}
 	array_clear(build_queue)
 
@@ -140,28 +126,7 @@ ui_floating_build :: proc()
 		if ! entry.queued
 		{
 			ensure(false, "There should be no queue failures yet")
-
-			if entry == first
-			{
-				first      = entry.next
-				entry.next = nil
-				continue
-			}
-			if entry == last
-			{
-				last       = last.prev
-				last.prev  = nil
-				entry.prev = nil
-				continue
-			}
-
-			left  := entry.prev
-			right := entry.next
-
-			left.next  = right
-			right.prev = left
-			entry.prev = nil
-			entry.next = nil
+			dll_full_pop(to_raise, floating)
 		}
 
 		if entry.builder( entry.captures ) && entry != last && to_raise == nil

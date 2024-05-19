@@ -101,6 +101,8 @@ Range2 :: struct #raw_union {
 
 UnitRange2 :: distinct Range2
 
+range2_zero :: Range2 {}
+
 range2 :: #force_inline proc "contextless" ( a, b : Vec2 ) -> Range2 {
 	result := Range2 { pts = { a, b } }
 	return result

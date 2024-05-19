@@ -1,5 +1,7 @@
 package sectr
 
+import "base:runtime"
+
 /*
 Widget Layout Ops
 */
@@ -13,6 +15,7 @@ ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_Lay
 	else {
 		container_width = container.computed.content.max.x - container.computed.content.min.x
 	}
+	container_height := container.computed.content.max.y - container.computed.content.min.y
 
 	// do layout calculations for the children
 	total_stretch_ratio : f32 = 0.0
@@ -21,16 +24,13 @@ ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_Lay
 	{
 		using child.layout
 		scaled_width_by_height : b32 = b32(.Scale_Width_By_Height_Ratio in flags)
+		if .Scale_Width_By_Height_Ratio in flags
+		{
+			size_req_children += size.min.x * container_height
+			continue
+		}
 		if .Fixed_Width in flags
 		{
-			if scaled_width_by_height {
-				height := size.max.y != 0 ? size.max.y : container_width
-				width  := height * size.min.x
-
-				size_req_children += width
-				continue
-			}
-
 			size_req_children += size.min.x
 			continue
 		}
@@ -40,32 +40,45 @@ ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_Lay
 
 	avail_flex_space := container_width - size_req_children
 
-	allocate_space :: proc( child : ^UI_Box, total_stretch_ratio, avail_flex_space : f32 )
+	allocate_space :: proc( child : ^UI_Box, total_stretch_ratio, avail_flex_space, container_height : f32 ) -> (space_allocated : f32)
 	{
 		using child.layout
-		if ! (.Fixed_Width in flags) {
-			size.min.x = anchor.ratio.x * (1 / total_stretch_ratio) * avail_flex_space - child.layout.margins.left - child.layout.margins.right
+		if .Scale_Width_By_Height_Ratio in flags {
+			size.min.y      = container_height
+			space_allocated = size.min.x * container_height
 		}
+		else if ! (.Fixed_Width in flags) {
+			size.min.x      = anchor.ratio.x * (1 / total_stretch_ratio) * avail_flex_space
+			space_allocated = size.min.x
+		}
+		else {
+			space_allocated = size.min.x
+		}
+		space_allocated -= child.layout.margins.left - child.layout.margins.right
+		size.min.x      -= child.layout.margins.left - child.layout.margins.right
 		flags |= {.Fixed_Width}
+		return
 	}
 
 	space_used : f32 = 0.0
 	switch direction{
 		case .Right_To_Left:
 			for child := container.last; child != nil; child = child.prev {
-				allocate_space(child, total_stretch_ratio, avail_flex_space)
 				using child.layout
-				anchor      = range2({0, 0}, {0, 0})
-				pos.x       = space_used
-				space_used += size.min.x + child.layout.margins.left + child.layout.margins.right
+				child_width := allocate_space(child, total_stretch_ratio, avail_flex_space, container_height)
+				anchor       = range2({0, 0}, {0, 0})
+				width : f32
+				pos.x        = space_used
+				space_used  += child_width + child.layout.margins.left + child.layout.margins.right
 			}
 		case .Left_To_Right:
 			for child := container.first; child != nil; child = child.next {
-				allocate_space(child, total_stretch_ratio, avail_flex_space)
 				using child.layout
-				anchor      = range2({0, 0}, {0, 0})
-				pos.x       = space_used
-				space_used += size.min.x + child.layout.margins.left + child.layout.margins.right
+				child_width := allocate_space(child, total_stretch_ratio, avail_flex_space, container_height)
+				anchor       = range2({0, 0}, {0, 0})
+				width : f32
+				pos.x        = space_used
+				space_used  += child_width + child.layout.margins.left + child.layout.margins.right
 			}
 	}
 }
@@ -123,9 +136,8 @@ ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_Layou
 				allocate_space(child, total_stretch_ratio, avail_flex_space)
 				using child.layout
 				anchor      = range2({0,0}, {0, 0})
-				// alignment   = {0, 0}
 				pos.y       = -space_used
-				space_used += size.min.y
+				space_used += size.min.y + child.layout.margins.top + child.layout.margins.bottom
 				size.min.x  = container.computed.content.max.x + container.computed.content.min.x
 			}
 		case .Top_To_Bottom:
@@ -133,9 +145,8 @@ ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_Layou
 				allocate_space(child, total_stretch_ratio, avail_flex_space)
 				using child.layout
 				anchor      = range2({0, 0}, {0, 0})
-				// alignment   = {0, 0}
 				pos.y       = -space_used
-				space_used += size.min.y
+				space_used += size.min.y + child.layout.margins.top + child.layout.margins.bottom
 				size.min.x  = container.computed.content.max.x - container.computed.content.min.x
 			}
 	}

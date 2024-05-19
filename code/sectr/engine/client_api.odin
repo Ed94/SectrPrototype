@@ -60,7 +60,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	Memory_App.state = state
 	using state
 
-	// Setup Persistent Slab
+	// Setup Persistent Slabs & String Cache
 	{
 		alignment := uint(mem.DEFAULT_ALIGNMENT)
 
@@ -93,14 +93,24 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		verify( alloc_error == .None, "Failed to allocate transient slab" )
 
 		transient_clear_time = 120 // Seconds, 2 Minutes
+
+		string_cache = str_cache_init()
 	}
 
-	string_cache = str_cache_init()
-
+	// Setup input frame poll references
 	input      = & input_data[1]
 	input_prev = & input_data[0]
+	for & input in input_data {
+		using input
+		error : AllocatorError
+		keyboard_events.keys_pressed, error  = array_init_reserve(KeyboardKey, persistent_slab_allocator(), Kilo)
+		ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.keys_pressed array")
+		keyboard_events.chars_pressed, error = array_init_reserve(rune, persistent_slab_allocator(), Kilo)
+		ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.chars_pressed array")
+	}
 
 	// Configuration Load
+	// TODO(Ed): Make this actually load from an ini
 	{
 		using config
 		resolution_width  = 1000
@@ -119,6 +129,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		timing_fps_moving_avg_alpha = 0.9
 
 		ui_resize_border_width = 5
+
+		color_theme = App_Thm_Dusk
 	}
 
 	Desired_OS_Scheduler_MS :: 1
@@ -182,6 +194,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	}
 
 	// Demo project setup
+	// TODO(Ed): This will eventually have to occur when the user either creates or loads a workspace. I don't know 
 	{
 		using project
 		path           = str_intern("./")
@@ -318,10 +331,12 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 
 		rl.PollInputEvents()
 
-		debug.draw_ui_box_bounds_points = true
+		debug.draw_ui_box_bounds_points = false
 		debug.draw_UI_padding_bounds = false
-		debug.draw_ui_content_bounds = true
+		debug.draw_ui_content_bounds = false
 
+		config.color_theme = App_Thm_Light
+		// config.color_theme = App_Thm_Dusk
 		should_close = update( host_delta_time )
 		render()
 

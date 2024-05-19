@@ -85,8 +85,15 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	if .Scale_Width_By_Height_Ratio in layout.flags {
 		adjusted_size.x = adjusted_size.y * layout.size.min.x
 	}
+	else if .Fixed_Width in layout.flags {
+		adjusted_size.x = layout.size.min.x
+	}
+
 	if .Scale_Height_By_Width_Ratio in layout.flags {
 		adjusted_size.y = adjusted_size.x * layout.size.min.y
+	}
+	else if .Fixed_Height in layout.flags {
+		adjusted_size.y = layout.size.min.y
 	}
 
 	if .Size_To_Content in layout.flags {
@@ -95,14 +102,6 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		// This will recursively occur if child also depends on their content size from their children, etc.
 		ui_box_compute_layout_children(box)
 		//ui_compute_children_bounding_area(box)
-	}
-
-	// TODO(Ed): Should this force override all of the previous auto-sizing possible?
-	if .Fixed_Width in layout.flags {
-		adjusted_size.x = layout.size.min.x
-	}
-	if .Fixed_Height in layout.flags {
-		adjusted_size.y = layout.size.min.y
 	}
 
 	// 5. Determine relative position
@@ -186,34 +185,3 @@ ui_box_compute_layout_children :: proc( box : ^UI_Box )
 	}
 }
 
-ui_core_compute_layout :: proc( ui : ^UI_State )
-{
-	profile(#procedure)
-	state := get_state()
-
-	root := ui.root
-	{
-		computed := & root.computed
-		style    := root.style
-		layout   := & root.layout
-		if ui == & state.screen_ui {
-			computed.bounds.min = transmute(Vec2) state.app_window.extent * -1
-			computed.bounds.max = transmute(Vec2) state.app_window.extent
-		}
-		computed.content    = computed.bounds
-	}
-
-	for current := root.first; current != nil; current = ui_box_tranverse_next( current )
-	{
-		if ! current.computed.fresh {
-			ui_box_compute_layout( current )
-		}
-		array_append( & ui.render_queue, UI_RenderBoxInfo {
-			current.computed,
-			current.style,
-			current.text,
-			current.layout.font_size,
-			current.layout.border_width,
-		})
-	}
-}

@@ -159,6 +159,8 @@ AppConfig :: struct {
 	timing_fps_moving_avg_alpha : f32,
 
 	ui_resize_border_width : f32,
+
+	color_theme : AppColorTheme,
 }
 
 AppWindow :: struct {
@@ -256,5 +258,8 @@ get_state :: #force_inline proc "contextless" () -> ^ State {
 // get_frametime :: #force_inline proc "contextless" () -> FrameTime {
 // 	return get_state().frametime
 // }
+
+app_config      :: #force_inline proc "contextless" () -> AppConfig     { return get_state().config }
+app_color_theme :: #force_inline proc "contextless" () -> AppColorTheme { return get_state().config.color_theme }
 
 #endregion("State")

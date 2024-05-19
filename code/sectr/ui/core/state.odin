@@ -206,14 +206,55 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	ui_parent_push(root)
 }
 
+ui_core_compute_layout :: proc( ui : ^UI_State )
+{
+	profile(#procedure)
+	state := get_state()
+
+
+
+
+}
+
+
 ui_graph_build_end :: proc( ui : ^UI_State )
 {
 	profile(#procedure)
+	state := get_state()
 
 	ui_parent_pop() // Should be ui_context.root
 
-	// Regenerate the computed layout if dirty
-	ui_compute_layout( ui )
+	Post_Build_Graph_Traversal:
+	{
+		root := ui.root
+		{
+			computed := & root.computed
+			style    := root.style
+			layout   := & root.layout
+			if ui == & state.screen_ui {
+				computed.bounds.min = transmute(Vec2) state.app_window.extent * -1
+				computed.bounds.max = transmute(Vec2) state.app_window.extent
+			}
+			computed.content    = computed.bounds
+		}
+		for current := root.first; current != nil; current = ui_box_tranverse_next( current )
+		{
+			
+
+			if ! current.computed.fresh {
+				ui_box_compute_layout( current )
+			}
+
+			// Enqueue for rendering
+			array_append( & ui.render_queue, UI_RenderBoxInfo {
+				current.computed,
+				current.style,
+				current.text,
+				current.layout.font_size,
+				current.layout.border_width,
+			})
+		}
+	}
 
 	get_state().ui_context = nil
 }
@@ -257,6 +298,16 @@ ui_top_ancestor :: #force_inline proc "contextless" ( box : ^UI_Box ) -> (^UI_Bo
 	ancestor := box
 	for ; ancestor.parent != root; ancestor = ancestor.parent {}
 	return ancestor
+}
+
+ui_view_bounds :: #force_inline proc "contextless" () -> (range : Range2) {
+	using state := get_state();
+	if ui_context == & screen_ui {
+		return screen_get_bounds()
+	}
+	else {
+		return view_get_bounds()
+	}
 }
 
 ui_context :: #force_inline proc() -> ^UI_State { return get_state().ui_context }
