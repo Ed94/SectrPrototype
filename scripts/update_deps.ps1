@@ -9,19 +9,22 @@ $path_toolchain  = join-path $path_root 'toolchain'
 $url_backtrace_repo = 'https://github.com/Ed94/back.git'
 $url_ini_parser     = 'https://github.com/laytan/odin-ini-parser.git'
 $url_odin_repo      = 'https://github.com/Ed94/Odin.git'
+$url_sokol          = 'https://github.com/Ed94/sokol-odin.git'
+
 $path_backtrace     = join-path $path_thirdparty 'backtrace'
 $path_ini_parser    = join-path $path_thirdparty 'ini'
 $path_odin          = join-path $path_toolchain  'Odin'
+$path_sokol         = join-path $path_thirdparty 'sokol'
 
 $incremental_checks = Join-Path $PSScriptRoot 'helpers/incremental_checks.ps1'
 . $incremental_checks
 
-if ( -not(Test-Path $path_thirdparty) ) {
-	new-item -ItemType Directory -Path $path_thirdparty
-}
-if ( -not(Test-Path $path_toolchain) ) {
-	new-item -ItemType Directory -Path $path_toolchain
-}
+$misc = join-path $PSScriptRoot 'helpers/misc.ps1'
+. $misc
+
+$result = verify-path $path_build
+$result = verify-path $path_thirdparty
+$result = verify-path $path_toolchain
 
 $binaries_dirty = $false
 
@@ -41,11 +44,6 @@ function Update-GitRepo
 	{
 		write-host "Cloining repo from $url to $path"
 		git clone $url $path
-
-		$path_scripts = join-path $path 'scripts'
-		push-locaiton $path_scripts
-		& .\build_and_run_gen_src_pass.ps1
-		pop-location
 
 		write-host "Building $url"
 		push-location $path
@@ -71,11 +69,6 @@ function Update-GitRepo
 	write-host 'Pulling...'
 	git -C $path pull
 
-	$path_scripts = join-path $path 'scripts'
-	push-location $path_scripts
-	& .\build_and_run_gen_src_pass.ps1
-	pop-location
-
 	write-host "Building $url"
 	push-location $path
 	& $build_command
@@ -88,12 +81,11 @@ function Update-GitRepo
 
 push-location $path_thirdparty
 
-
-Update-GitRepo -path $path_odin -url $url_odin_repo -build_command '.\build.bat'
+Update-GitRepo -path $path_odin  -url $url_odin_repo -build_command '.\scripts\build.ps1'
+Update-GitRepo -path $path_sokol -url $url_sokol     -build_command '.\build_windows.ps1'
 
 if (Test-Path -Path $path_ini_parser)
 {
-	# Write-Host "Checking for updates on the ini-parser"
 	git -C $path_ini_parser pull
 }
 else
