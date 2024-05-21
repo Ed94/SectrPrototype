@@ -329,7 +329,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			handle_left = ui_widget(name("resize_handle_left"), flags )
 			handle_left.layout.anchor.left  = 0
 			handle_left.layout.anchor.right = 1
-			handle_left.layout.alignment    = {1, 0}
+			handle_left.layout.alignment    = { 1, 0 }
 		}
 		if right {
 			handle_right = ui_widget(name("resize_handle_right"), flags )
@@ -339,32 +339,33 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 		if top {
 			handle_top = ui_widget(name("resize_handle_top"), flags )
 			handle_top.layout.anchor.bottom = 1
-			handle_top.layout.alignment     = {0, -1}
+			handle_top.layout.alignment     = { 0, 0 }
 		}
 		if bottom {
 			handle_bottom = ui_widget("resize_handle_bottom", flags)
 			handle_bottom.layout.anchor.top  = 1
-			handle_bottom.layout.alignment   = { 0, 0 }
+			handle_bottom.layout.alignment   = { 0, 1 }
 		}
 		theme_handle( theme, {0,0}, {handle_width, handle_width}, {.Fixed_Width, .Fixed_Height} )
 		if corner_tl {
 			handle_corner_tl = ui_widget(name("corner_top_left"), flags)
-			handle_corner_tl.layout.alignment = {1, -1}
+			handle_corner_tl.layout.anchor.bottom = 1
+			handle_corner_tl.layout.alignment     = { 1, 0 }
 		}
 		if corner_tr {
 			handle_corner_tr = ui_widget(name("corner_top_right"), flags)
-			handle_corner_tr.layout.anchor    = range2({1, 0}, {})
-			handle_corner_tr.layout.alignment = {0, -1}
+			handle_corner_tr.layout.anchor    = range2({1, 1}, {})
+			handle_corner_tr.layout.alignment = { 0, 0 }
 		}
 		if corner_bl {
 			handle_corner_bl = ui_widget("corner_bottom_left", flags)
 			handle_corner_bl.layout.anchor    = range2({}, {0, 1})
-			handle_corner_bl.layout.alignment = { 1, 0 }
+			handle_corner_bl.layout.alignment = { 1, 1 }
 		}
 		if corner_br {
 			handle_corner_br = ui_widget("corner_bottom_right", flags)
 			handle_corner_br.layout.anchor    = range2({1, 0}, {0, 1})
-			handle_corner_br.layout.alignment = {0, 0}
+			handle_corner_br.layout.alignment = { 0, 1 }
 		}
 	}
 

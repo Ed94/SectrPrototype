@@ -139,24 +139,27 @@ ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_Layou
 		return
 	}
 
-	space_used : f32 = 0.0
 	switch direction
 	{
-		case .Bottom_To_Top:
-			for child := container.last; child != nil; child = child.prev {
-				using child.layout
-				child_height := allocate_space(child, total_stretch_ratio, avail_flex_space, container_width)
-				anchor        = range2({0,0}, {0, 0})
-				pos.y         = -space_used
-				space_used   += child_height + child.layout.margins.top + child.layout.margins.bottom
-			}
 		case .Top_To_Bottom:
+			space_used : f32 = 0
 			for child := container.first; child != nil; child = child.next {
 				using child.layout
 				child_height := allocate_space(child, total_stretch_ratio, avail_flex_space, container_width)
-				anchor      = range2({0, 0}, {0, 0})
-				pos.y       = -space_used
-				space_used += child_height + child.layout.margins.top + child.layout.margins.bottom
+				anchor      = range2({0, 1}, {0, 0})
+				alignment   = {0, 1}
+				pos.y       = space_used
+				space_used -= child_height - child.layout.margins.top - child.layout.margins.bottom
+			}
+		case .Bottom_To_Top:
+			space_used : f32 = 0
+			for child := container.first; child != nil; child = child.next {
+				using child.layout
+				child_height := allocate_space(child, total_stretch_ratio, avail_flex_space, container_width)
+				anchor        = range2({0,0}, {0, 0})
+				alignment     = {0, 0}
+				pos.y         = space_used
+				space_used   += child_height - child.layout.margins.top - child.layout.margins.bottom
 			}
 	}
 }

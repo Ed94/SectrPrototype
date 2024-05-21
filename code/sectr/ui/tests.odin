@@ -108,7 +108,7 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 
 	child_layout := default_layout ^
 	child_layout.size      = range2({ 100, 100 }, { 0, 0 })
-	child_layout.alignment = { 1.0, 1.0 }
+	child_layout.alignment = { 0.0, 0.0 }
 	// child_layout.margins   = { 20, 20, 20, 20 }
 	child_layout.padding   = { 5, 5, 5, 5 }
 	// child_layout.anchor    = range2({ 0.2, 0.1 }, { 0.1, 0.15 })
