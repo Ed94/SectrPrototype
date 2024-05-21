@@ -338,9 +338,9 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		debug.draw_UI_padding_bounds = false
 		debug.draw_ui_content_bounds = false
 
-		// config.color_theme = App_Thm_Light
+		config.color_theme = App_Thm_Light
 		// config.color_theme = App_Thm_Dusk
-		config.color_theme = App_Thm_Dark
+		// config.color_theme = App_Thm_Dark
 		should_close = update( host_delta_time )
 		render()
 

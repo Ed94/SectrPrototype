@@ -88,7 +88,7 @@ UI_LayoutFlag :: enum u32 {
 	Scale_Height_By_Width_Ratio,
 
 	// Sets the (0, 0) position of the child box to the parents anchor's center (post-margins bounds)
-	// By Default, the origin is at the top left of the anchor's bounds
+	// By Default, the origin is at the top left of the anchor's bounds (traditional)
 	Origin_At_Anchor_Center,
 
 	// TODO(Ed): Implement this!

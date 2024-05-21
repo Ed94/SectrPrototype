@@ -76,7 +76,7 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 	parent_layout.size      = range2( { 300, 300 }, {} )
 	parent_layout.alignment = { 0.0, 0.0 }
 	// parent_layout.margins   = { 100, 100, 100, 100 }
-	parent_layout.padding   = { 5, 10, 5, 5 }
+	// parent_layout.padding   = { 5, 10, 5, 5 }
 	parent_layout.pos       = { 0, 0 }
 	parent_layout.flags = {
 		.Fixed_Position_X, .Fixed_Position_Y,
@@ -108,7 +108,7 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 
 	child_layout := default_layout ^
 	child_layout.size      = range2({ 100, 100 }, { 0, 0 })
-	child_layout.alignment = { 1.0, 0.0 }
+	child_layout.alignment = { 1.0, 1.0 }
 	// child_layout.margins   = { 20, 20, 20, 20 }
 	child_layout.padding   = { 5, 5, 5, 5 }
 	// child_layout.anchor    = range2({ 0.2, 0.1 }, { 0.1, 0.15 })

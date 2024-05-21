@@ -106,11 +106,11 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 
 	// 5. Determine relative position
 
-	origin_center   := margined_bounds_origin
-	origin_top_left := Vec2 { margined_bounds.min.x, margined_bounds.max.y }
+	origin_center      := margined_bounds_origin
+	origin_top_left    := Vec2 { margined_bounds.min.x, margined_bounds.max.y }
+	origin_bottom_left := Vec2 { margined_bounds.min.x, margined_bounds.min.y }
 
-	origin := .Origin_At_Anchor_Center in layout.flags ? origin_center : origin_top_left
-
+	origin  := .Origin_At_Anchor_Center in layout.flags ? origin_center : origin_bottom_left
 	rel_pos := origin + layout.pos
 
 	if .Fixed_Position_X in layout.flags {
@@ -127,11 +127,10 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	alignment := layout.alignment
 	bounds    : Range2
 	if ! (.Origin_At_Anchor_Center in layout.flags) {
-		// The convention offset adjust the box so that the top-left point is at the top left of the anchor's bounds
-		tl_convention_offset := adjusted_size * {0, -1}
+		// alignment *= -1 // Inversing so that it goes toward top-right.
 		bounds = range2(
-			rel_pos - adjusted_size * alignment              + tl_convention_offset,
-			rel_pos + adjusted_size * (vec2_one - alignment) + tl_convention_offset,
+			rel_pos - adjusted_size * alignment             ,
+			rel_pos + adjusted_size * (vec2_one - alignment),
 		)
 	}
 	else {
@@ -184,4 +183,3 @@ ui_box_compute_layout_children :: proc( box : ^UI_Box )
 		ui_box_compute_layout( current )
 	}
 }
-

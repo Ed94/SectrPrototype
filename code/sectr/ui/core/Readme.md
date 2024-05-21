@@ -5,3 +5,6 @@ This will keep track of here whats needed for it to work wihtout the rest of thi
 
 * Provide UI input state or "events" in its own data stucture at the beginning of `ui_build_graph`:
 * 
+
+
+TODO(Ed): I'm not sure what to make the default coordinate space for this widget

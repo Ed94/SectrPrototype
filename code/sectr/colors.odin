@@ -98,11 +98,11 @@ App_Thm_Dark :: AppColorTheme {
 
 	translucent_panel = Color { 30, 30, 30, 50},
 
-	window_bar_border       = Color{74, 74, 74, 255}, // border_default
+	window_bar_border       = Color{74, 74, 74, 255},
 	window_bar_bg           = Color{32, 32, 32, 255},
 	window_btn_close_bg_hot = Color{65, 45, 45, 255},
 
-	window_panel_bg     = Color{ 20, 20, 20, 50}, // translucent_panel
+	window_panel_bg     = Color{ 20, 20, 20, 50},
 	window_panel_border = Color{ 84, 84, 84, 255},
 }
 
