@@ -1,0 +1,22 @@
+{
+	"folders":
+	[
+		{
+			"path": ".",
+		}
+	],
+	"settings":
+	{
+		"LSP":
+		{
+			"ols":
+			{
+				"enabled": true,
+			},
+			"odin":
+			{
+				"enabled": true
+			},
+		},
+	},
+}

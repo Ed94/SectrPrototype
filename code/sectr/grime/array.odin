@@ -68,7 +68,7 @@ array_init_reserve :: proc
 
 	result.header    = cast( ^ArrayHeader(Type)) raw_mem
 	result.backing   = allocator
-	// result.dbg_name  = dbg_name
+	result.dbg_name  = dbg_name
 	result.fixed_cap = fixed_cap
 	result.capacity  = capacity
 	result.data      = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) result.header)[ 1:]
@@ -123,10 +123,6 @@ array_append_slice :: proc( using self : ^Array( $ Type ), items : []Type ) -> A
 		}
 	}
 
-	// Note(Ed) : Original code from gencpp
-	// libc.memcpy( ptr_offset(data, num), raw_data(items), len(items) * size_of(Type) )
-
-	// TODO(Ed) : VERIFY VIA DEBUG THIS COPY IS FINE.
 	target := ptr_offset( data, num )
 	copy( slice_ptr(target, int(capacity - num)), items )
 

@@ -124,7 +124,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		cam_zoom_sensitivity_digital = 0.2
 		cam_zoom_sensitivity_smooth  = 4.0
 
-		engine_refresh_hz = 30
+		engine_refresh_hz = 0
 
 		timing_fps_moving_avg_alpha = 0.9
 
@@ -162,7 +162,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// Determining current monitor and setting the target frametime based on it..
 		monitor_id         = rl.GetCurrentMonitor()
 		monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
-		log( str_fmt_tmp( "Set target FPS to: %v", monitor_refresh_hz ) )
+
+		if config.engine_refresh_hz == 0 {
+			config.engine_refresh_hz = uint(monitor_refresh_hz)
+		}
 	}
 
 	// Basic Font Setup
@@ -188,7 +191,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		using screen_ui
 		menu_bar.pos  = { -60, 0 }
 		// menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
-		menu_bar.size = {200, 40}
+		menu_bar.size = {140, 40}
 
 		settings_menu.min_size = {250, 200}
 	}
@@ -335,8 +338,9 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		debug.draw_UI_padding_bounds = false
 		debug.draw_ui_content_bounds = false
 
-		config.color_theme = App_Thm_Light
+		// config.color_theme = App_Thm_Light
 		// config.color_theme = App_Thm_Dusk
+		config.color_theme = App_Thm_Dark
 		should_close = update( host_delta_time )
 		render()
 

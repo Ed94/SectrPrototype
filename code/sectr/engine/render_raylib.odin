@@ -221,11 +221,6 @@ render_mode_screenspace :: proc ()
 
 	render_screen_ui()
 
-	fps_msg       := str_fmt_tmp( "FPS: %f", fps_avg)
-	fps_msg_width := measure_text_size( fps_msg, default_font, 12.0, 0.0 ).x
-	fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 } - { 5, 5 }
-	debug_draw_text( fps_msg, fps_msg_pos, 12.0, color = rl.GREEN )
-
 	debug_text :: proc( format : string, args : ..any )
 	{
 		@static draw_text_scratch : [Kilobyte * 64]u8
@@ -248,8 +243,13 @@ render_mode_screenspace :: proc ()
 		debug.draw_debug_text_y += 14
 	}
 
-	// Debug Text
+	if debug.debug_text_vis
 	{
+		fps_msg       := str_fmt_tmp( "FPS: %f", fps_avg)
+		fps_msg_width := measure_text_size( fps_msg, default_font, 12.0, 0.0 ).x
+		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 } - { 5, 5 }
+		debug_draw_text( fps_msg, fps_msg_pos, 12.0, color = rl.GREEN )
+
 		// debug_text( "Screen Width : %v", rl.GetScreenWidth () )
 		// debug_text( "Screen Height: %v", rl.GetScreenHeight() )
 		// debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
@@ -262,61 +262,52 @@ render_mode_screenspace :: proc ()
 			debug_text( "Replaying Input")
 		}
 		// debug_text("Zoom Target: %v", project.workspace.zoom_target)
-	}
 
-	if debug.mouse_vis {
-		debug_text("Mouse Vertical Wheel: %v", input.mouse.vertical_wheel )
-		debug_text("Mouse Delta                    : %v", input.mouse.delta )
-		debug_text("Mouse Position (Render)        : %v", input.mouse.raw_pos )
-		debug_text("Mouse Position (Screen)        : %v", input.mouse.pos )
-		debug_text("Mouse Position (Workspace View): %v", screen_to_ws_view_pos(input.mouse.pos) )
-		rl.DrawCircleV( input.mouse.raw_pos,                    10, Color_White_A125 )
-		rl.DrawCircleV( screen_to_render_pos(input.mouse.pos),  2, Color_BG )
-	}
-
-	ui := & project.workspace.ui
-
-	if false
-	{
-		debug_text("Box Count (Workspace): %v", ui.built_box_count )
-
-		hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
-		active_box := ui_box_from_key( ui.curr_cache, ui.active )
-		if hot_box != nil {
-			debug_text("Worksapce Hot    Box   : %v", hot_box.label.str )
-			debug_text("Workspace Hot    Range2: %v", hot_box.computed.bounds.pts)
+		if debug.mouse_vis {
+			debug_text("Mouse Vertical Wheel: %v", input.mouse.vertical_wheel )
+			debug_text("Mouse Delta                    : %v", input.mouse.delta )
+			debug_text("Mouse Position (Render)        : %v", input.mouse.raw_pos )
+			debug_text("Mouse Position (Screen)        : %v", input.mouse.pos )
+			debug_text("Mouse Position (Workspace View): %v", screen_to_ws_view_pos(input.mouse.pos) )
+			rl.DrawCircleV( input.mouse.raw_pos,                    10, Color_White_A125 )
+			rl.DrawCircleV( screen_to_render_pos(input.mouse.pos),  2, Color_BG )
 		}
-		if active_box != nil{
-			debug_text("Workspace Active Box: %v", active_box.label.str )
+
+		ui := & project.workspace.ui
+
+		if true
+		{
+			debug_text("Box Count (Workspace): %v", ui.built_box_count )
+
+			hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
+			active_box := ui_box_from_key( ui.curr_cache, ui.active )
+			if hot_box != nil {
+				debug_text("Worksapce Hot    Box   : %v", hot_box.label.str )
+				debug_text("Workspace Hot    Range2: %v", hot_box.computed.bounds.pts)
+			}
+			if active_box != nil{
+				debug_text("Workspace Active Box: %v", active_box.label.str )
+			}
 		}
-	}
 
-	ui = & screen_ui
+		ui = & screen_ui
 
-	if true
-	{
-		debug_text("Box Count: %v", ui.built_box_count )
+		if true
+		{
+			debug_text("Box Count: %v", ui.built_box_count )
 
-		hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
-		active_box := ui_box_from_key( ui.curr_cache, ui.active )
-		if hot_box != nil {
-			debug_text("Hot    Box   : %v", hot_box.label.str )
-			debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
+			hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
+			active_box := ui_box_from_key( ui.curr_cache, ui.active )
+			if hot_box != nil {
+				debug_text("Hot    Box   : %v", hot_box.label.str )
+				debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
+			}
+			if active_box != nil{
+				debug_text("Active Box: %v", active_box.label.str )
+			}
 		}
-		if active_box != nil{
-			debug_text("Active Box: %v", active_box.label.str )
-		}
-	}
 
-	view := view_get_bounds()
-	debug.draw_debug_text_y = 14
-
-	 // Define the triangle vertices and colors
-	 vertices := []f32{
-			// Positions        // Colors (RGBA)
-			-0.5, -0.5, 0.0,    1.0, 0.0, 0.0, 1.0,  // Vertex 1: Red
-			0.5, -0.5, 0.0,    0.0, 1.0, 0.0, 1.0,  // Vertex 2: Green
-			0.0,  0.5, 0.0,    0.0, 0.0, 1.0, 1.0   // Vertex 3: Blue
+		debug.draw_debug_text_y = 14
 	}
 }
 

@@ -3,6 +3,9 @@ package sectr
 import "base:runtime"
 import lalg "core:math/linalg"
 
+// Problably cursed way to setup a 'scope' for a widget
+ui_build :: #force_inline proc( captures : $Type, $maker : #type proc(captures : Type) -> $ReturnType ) -> ReturnType { return maker(captures) }
+
 UI_Widget :: struct {
 	using box    : ^UI_Box,
 	using signal : UI_Signal,
@@ -23,6 +26,80 @@ ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widge
 	return
 }
 
+#region("Drop Down")
+/* TODO(Ed): Don't feel very good about the abstraction...
+*/
+UI_DropDown :: struct {
+	btn     : UI_Widget,
+	title   : UI_Widget,
+	vbox    : UI_VBox,
+	is_open : bool,
+}
+
+@(deferred_out = ui_drop_down_end_auto)
+ui_drop_down :: proc( drop_down : ^UI_DropDown, label : string, title_text : StrRunesPair,
+	direction         := UI_LayoutDirectionY.Top_To_Bottom,
+	btn_flags         := UI_BoxFlags{},
+	vb_flags          := UI_BoxFlags{},
+	vb_compute_layout := true,
+	btn_theme   : ^UI_Theme = nil,
+	title_theme : ^UI_Theme = nil
+) -> (deferred : ^UI_DropDown)
+{
+	deferred = drop_down
+	ui_drop_down_begin(drop_down, label, title_text, direction, btn_flags, vb_flags, btn_theme, title_theme)
+	if ! drop_down.is_open do return
+	ui_parent_push(drop_down.vbox)
+	return
+}
+
+// Its assumed that the drop down has a vertical box parent already pushed
+ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text : StrRunesPair,
+	direction := UI_LayoutDirectionY.Top_To_Bottom,
+	btn_flags := UI_BoxFlags{},
+	vb_flags  := UI_BoxFlags{},
+	btn_theme   : ^UI_Theme = nil,
+	title_theme : ^UI_Theme = nil,
+	vb_compute_layout := true )
+{
+	using drop_down
+
+	if btn_theme == nil do push(theme_drop_down_btn)
+	else                do push(btn_theme ^)
+	defer                  ui_theme_pop()
+	btn = ui_button( str_intern_fmt("%s.btn", label).str );
+	{
+		btn.layout.padding.left = 4
+		ui_parent(btn)
+
+		if title_theme == nil do push(theme_text)
+		else                  do push(title_theme ^)
+		defer                    ui_theme_pop()
+		title = ui_text( str_intern_fmt("%s.btn.title", label).str, title_text)
+	}
+
+	if btn.pressed {
+		is_open = !is_open
+	}
+	if is_open == false do return
+
+	scope(theme_transparent)
+	vbox = ui_vbox_begin( direction, str_intern_fmt("%v : vbox", label).str, compute_layout = vb_compute_layout )
+	vbox.layout.anchor.ratio.y = 1.0
+}
+
+ui_drop_down_end :: proc( drop_down : ^UI_DropDown ) {
+	if ! drop_down.is_open do return
+	ui_vbox_end(drop_down.vbox)
+}
+
+ui_drop_down_end_auto :: proc( drop_down : ^UI_DropDown) {
+	if ! drop_down.is_open do return
+	ui_vbox_end(drop_down.vbox, compute_layout = true)
+	ui_parent_pop()
+}
+#endregion("Drop Down")
+
 #region("Horizontal Box")
 /*
 Horizontal Boxes automatically manage a collection of widgets and
@@ -39,13 +116,11 @@ The hbox will use the anchor's (range2) ratio.x value to determine the "stretch 
 Keep in mind the stretch ratio is only respected if no size.min.x value is violated for each of the widgets.
 */
 
-// Horizontal Widget
 UI_HBox :: struct {
 	using widget : UI_Widget,
 	direction    : UI_LayoutDirectionX,
 }
 
-// Boilerplate creation
 ui_hbox_begin :: proc( direction : UI_LayoutDirectionX, label : string, flags : UI_BoxFlags = {} ) -> (hbox : UI_HBox) {
 	// profile(#procedure)
 	hbox.direction = direction
@@ -171,7 +246,6 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	handle_corner_tl : UI_Widget
 	handle_corner_br : UI_Widget
 	handle_corner_bl : UI_Widget
-	ui_parent(parent)
 
 	@(deferred_none = ui_theme_pop)
 	theme_handle :: proc( base : ^UI_Theme, margins, size : Vec2, flags : UI_LayoutFlags = {})
@@ -247,50 +321,52 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	}
 	context.user_ptr = & parent.label
 
-	#region("Handle & Corner construction")
-	theme_handle( theme, {handle_width, 0}, {handle_width,0})
-	if left {
-		handle_left = ui_widget(name("resize_handle_left"), flags )
-		handle_left.layout.anchor.left  = 0
-		handle_left.layout.anchor.right = 1
-		handle_left.layout.alignment    = {1, 0}
+	Handle_Construction:
+	{
+		ui_parent(parent)
+		theme_handle( theme, {handle_width, 0}, {handle_width,0})
+		if left {
+			handle_left = ui_widget(name("resize_handle_left"), flags )
+			handle_left.layout.anchor.left  = 0
+			handle_left.layout.anchor.right = 1
+			handle_left.layout.alignment    = {1, 0}
+		}
+		if right {
+			handle_right = ui_widget(name("resize_handle_right"), flags )
+			handle_right.layout.anchor.left = 1
+		}
+		theme_handle( theme, {0, handle_width}, {0, handle_width})
+		if top {
+			handle_top = ui_widget(name("resize_handle_top"), flags )
+			handle_top.layout.anchor.bottom = 1
+			handle_top.layout.alignment     = {0, -1}
+		}
+		if bottom {
+			handle_bottom = ui_widget("resize_handle_bottom", flags)
+			handle_bottom.layout.anchor.top  = 1
+			handle_bottom.layout.alignment   = { 0, 0 }
+		}
+		theme_handle( theme, {0,0}, {handle_width, handle_width}, {.Fixed_Width, .Fixed_Height} )
+		if corner_tl {
+			handle_corner_tl = ui_widget(name("corner_top_left"), flags)
+			handle_corner_tl.layout.alignment = {1, -1}
+		}
+		if corner_tr {
+			handle_corner_tr = ui_widget(name("corner_top_right"), flags)
+			handle_corner_tr.layout.anchor    = range2({1, 0}, {})
+			handle_corner_tr.layout.alignment = {0, -1}
+		}
+		if corner_bl {
+			handle_corner_bl = ui_widget("corner_bottom_left", flags)
+			handle_corner_bl.layout.anchor    = range2({}, {0, 1})
+			handle_corner_bl.layout.alignment = { 1, 0 }
+		}
+		if corner_br {
+			handle_corner_br = ui_widget("corner_bottom_right", flags)
+			handle_corner_br.layout.anchor    = range2({1, 0}, {0, 1})
+			handle_corner_br.layout.alignment = {0, 0}
+		}
 	}
-	if right {
-		handle_right = ui_widget(name("resize_handle_right"), flags )
-		handle_right.layout.anchor.left = 1
-	}
-	theme_handle( theme, {0, handle_width}, {0, handle_width})
-	if top {
-		handle_top = ui_widget(name("resize_handle_top"), flags )
-		handle_top.layout.anchor.bottom = 1
-		handle_top.layout.alignment     = {0, -1}
-	}
-	if bottom {
-		handle_bottom = ui_widget("resize_handle_bottom", flags)
-		handle_bottom.layout.anchor.top  = 1
-		handle_bottom.layout.alignment   = { 0, 0 }
-	}
-	theme_handle( theme, {0,0}, {handle_width, handle_width}, {.Fixed_Width, .Fixed_Height} )
-	if corner_tl {
-		handle_corner_tl = ui_widget(name("corner_top_left"), flags)
-		handle_corner_tl.layout.alignment = {1, -1}
-	}
-	if corner_tr {
-		handle_corner_tr = ui_widget(name("corner_top_right"), flags)
-		handle_corner_tr.layout.anchor    = range2({1, 0}, {})
-		handle_corner_tr.layout.alignment = {0, -1}
-	}
-	if corner_bl {
-		handle_corner_bl = ui_widget("corner_bottom_left", flags)
-		handle_corner_bl.layout.anchor    = range2({}, {0, 1})
-		handle_corner_bl.layout.alignment = { 1, 0 }
-	}
-	if corner_br {
-		handle_corner_br = ui_widget("corner_bottom_right", flags)
-		handle_corner_br.layout.anchor    = range2({1, 0}, {0, 1})
-		handle_corner_br.layout.alignment = {0, 0}
-	}
-	#endregion("Handle & Corner construction")
 
 	process_handle_drag :: #force_inline proc ( handle : ^UI_Widget,
 		direction                :  Vec2,
@@ -318,8 +394,6 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 		pos_reverse := size^ * (alignment^ - prev_alignment)
 
 		shift_changed := (left_shift_held != prev_left_shift_held)
-
-		need_to_change_alignment_and_pos := pressed || shift_changed
 
 		if active
 		{
@@ -379,8 +453,6 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			was_dragging   = false
 			start_size     = 0
 		}
-		// text = active_context.root.label
-		// style.text_color = Color_White
 
 		prev_left_shift_held = handle.left_shift_held
 		prev_alignment       = align_adjsutment
@@ -433,14 +505,13 @@ UI_ScrollBox :: struct {
 }
 
 ui_scroll_box :: proc( label : string, flags : UI_BoxFlags ) -> (scroll_box : UI_ScrollBox) {
-	fatal("NOT IMPLEMENTED")
+
 	return
 }
 
 // ui_scrollable_view(  )
 
 #region("Text")
-
 ui_text :: proc( label : string, content : StrRunesPair, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	// profile(#procedure)
@@ -510,7 +581,6 @@ UI_VBox :: struct {
 	direction    : UI_LayoutDirectionY,
 }
 
-// Boilerplate creation
 ui_vbox_begin :: proc( direction : UI_LayoutDirectionY, label : string, flags : UI_BoxFlags = {}, compute_layout := false ) -> (vbox : UI_VBox) {
 	// profile(#procedure)
 	vbox.direction = direction

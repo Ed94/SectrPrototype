@@ -8,6 +8,7 @@ DebugData :: struct {
 	square_size : i32,
 	square_pos  : rl.Vector2,
 
+	debug_text_vis    : b32,
 	draw_debug_text_y : f32,
 
 	cursor_locked     : b32,

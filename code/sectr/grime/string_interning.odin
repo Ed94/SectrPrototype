@@ -1,13 +1,12 @@
 /*
-This is a quick and dirty string table.
-IT uses the HMapZPL for the hashtable of strings, and the string's content is stored in a dedicated slab.
-
-Future Plans (IF needed for performance):
-The goal is to eventually swap out the slab with possilby a dedicated growing vmem arena for the strings.
-The table would be swapped with a table stored in the general slab and uses either linear probing or open addressing
+String Intering Table using its own dedicated slab & chained hashtable
 
 If linear probing, the hash node list per table bucket is store with the strigns in the same arena.
 If open addressing, we just keep the open addressed array of node slots in the general slab (but hopefully better perf)
+
+TODO(Ed): Move the string cache to its own virtual arena?
+Its going to be used heavily and we can better utilize memory that way.
+The arena can deal with alignment just fine or we can pad in a min amount per string.
 */
 package sectr
 
@@ -18,6 +17,10 @@ import "core:strings"
 
 StringKey   :: distinct u64
 RunesCached :: []rune
+
+// TODO(Ed): There doesn't seem to be a need for caching the runes.
+// It seems like no one has had a bottleneck just iterating through the code points on demand when needed.
+// So we should problably scrap storing them that way.
 
 StrRunesPair :: struct {
 	str   : string,
@@ -36,9 +39,10 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 
 	policy     : SlabPolicy
 	policy_ptr := & policy
-	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             16, alignment })
-	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             32, alignment })
-	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             64, alignment })
+	// push( policy_ptr, SlabSizeClass {  64 * Kilobyte,              8, alignment })
+	// push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             16, alignment })
+	push( policy_ptr, SlabSizeClass { 128 * Kilobyte,             32, alignment })
+	push( policy_ptr, SlabSizeClass { 128 * Kilobyte,             64, alignment })
 	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,            128, alignment })
 	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,            256, alignment })
 	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,            512, alignment })
@@ -69,9 +73,7 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 str_intern_key    :: #force_inline proc( content : string ) ->  StringKey      { return cast(StringKey) crc32( transmute([]byte) content ) }
 str_intern_lookup :: #force_inline proc( key : StringKey )  -> (^StrRunesPair) { return zpl_hmap_get( & get_state().string_cache.table, transmute(u64) key ) }
 
-str_intern :: proc(
-	content : string
-) -> StrRunesPair
+str_intern :: proc( content : string ) -> StrRunesPair
 {
 	// profile(#procedure)
 	cache := & get_state().string_cache
@@ -108,6 +110,10 @@ str_intern :: proc(
 	// profile_end()
 
 	return (result ^)
+}
+
+str_intern_fmt :: #force_inline proc( format : string, args : ..any, allocator := context.allocator ) -> StrRunesPair {
+	return str_intern(str_fmt_alloc(format, args, allocator = allocator))
 }
 
 // runes_intern :: proc( content : []rune ) -> StrRunesPair

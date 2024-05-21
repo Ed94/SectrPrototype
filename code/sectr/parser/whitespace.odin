@@ -91,7 +91,7 @@ PWS_ParseError :: struct {
 PWS_ParseError_Max         :: 32
 PWS_TokenArray_ReserveSize :: 128
 PWS_NodeArray_ReserveSize  :: 32 * Kilobyte
-PWS_LineArray_ReserveSize  :: 32
+PWS_LineArray_ReserveSize  :: 32 * Kilobyte
 
 // TODO(Ed) : The ast arrays should be handled by a slab allocator dedicated to PWS_ASTs
 // This can grow in undeterministic ways, persistent will get very polluted otherwise.

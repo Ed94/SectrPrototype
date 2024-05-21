@@ -8,6 +8,7 @@ test_hover_n_click :: proc()
 	state := get_state(); using state
 
 	first_btn := ui_button( "FIRST BOX!" )
+	first_btn.layout.size.min = {1000, 1000}
 	if first_btn.left_clicked || debug.frame_2_created {
 		debug.frame_2_created = true
 
@@ -37,8 +38,8 @@ test_draggable :: proc()
 		pos       = { 0, 0 },
 		size      = range2({ 200, 200 }, {}),
 	}
-	ui_layout( draggable_layout )
-	ui_style( UI_Style {
+	scope( draggable_layout )
+	scope( UI_Style {
 		corner_radii = { 0.3, 0.3, 0.3, 0.3 },
 	})
 
@@ -82,10 +83,10 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 		.Fixed_Width, .Fixed_Height,
 		.Origin_At_Anchor_Center
 	}
-	ui_layout(parent_layout)
+	scope(parent_layout)
 
 	parent_style := frame_style_default ^
-	ui_style(parent_style)
+	scope(parent_style)
 
 	parent :=	ui_widget( "Parent", { .Mouse_Clickable })
 	ui_parent_push(parent)
@@ -107,7 +108,7 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 
 	child_layout := default_layout ^
 	child_layout.size      = range2({ 100, 100 }, { 0, 0 })
-	child_layout.alignment = { 0.0, 0.0 }
+	child_layout.alignment = { 1.0, 0.0 }
 	// child_layout.margins   = { 20, 20, 20, 20 }
 	child_layout.padding   = { 5, 5, 5, 5 }
 	// child_layout.anchor    = range2({ 0.2, 0.1 }, { 0.1, 0.15 })
@@ -119,7 +120,7 @@ test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_S
 
 	child_style := frame_style_default ^
 	child_style.bg_color = Color_GreyRed
-	ui_theme(child_layout, child_style)
+	scope(child_layout, child_style)
 	child := ui_widget( "Child", { .Mouse_Clickable })
 	ui_parent_pop()
 }
@@ -174,7 +175,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 	text_style_combo.disabled.bg_color = Color_Frame_Disabled
 	text_style_combo.hot.bg_color      = Color_Frame_Hover
 	text_style_combo.active.bg_color   = Color_Frame_Select
-	ui_theme( text_layout, text_style )
+	scope( text_layout, text_style )
 
 	alloc_error : AllocatorError; success : bool
 	// debug.lorem_content, success = os.read_entire_file( debug.path_lorem, frame_allocator() )
@@ -216,7 +217,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 			chunk_layout.flags     = { .Fixed_Position_X, .Size_To_Text }
 
 			chunk_style := text_style
-			ui_theme( to_ui_layout_combo(chunk_layout), to_ui_style_combo(chunk_style) )
+			scope( chunk_layout, chunk_style )
 
 			head := line.first
 			for ; head != nil;
@@ -289,7 +290,10 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 			text_layout.pos.y += size_range2(line_hbox.computed.bounds).y
 		}
 		else {
-			text_layout.pos.y += size_range2( (& widgets.data[ widgets.num - 1 ]).computed.bounds ).y
+			widget := & widgets.data[ widgets.num - 1 ]
+			if widget.box != nil {
+				text_layout.pos.y += size_range2( widget.computed.bounds ).y
+			}
 		}
 
 		line_id += 1

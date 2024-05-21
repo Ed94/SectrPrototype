@@ -113,8 +113,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	curr_box.links          = {}
 	curr_box.num_children   = 0
 
-	// If there is a parent, setup the relevant references
-	parent := stack_peek( & parent_stack )
+	parent := ui_parent_peek()
 	if parent != nil
 	{
 		dll_full_push_back( parent, curr_box, nil )

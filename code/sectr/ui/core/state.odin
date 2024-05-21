@@ -274,6 +274,8 @@ ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_
 ui_parent_push :: #force_inline proc( ui : ^ UI_Box ) { stack_push( & ui_context().parent_stack, ui ) }
 ui_parent_pop  :: #force_inline proc()                { stack_pop(  & get_state().ui_context.parent_stack ) }
 
+ui_parent_peek :: #force_inline proc() -> ^UI_Box { return stack_peek( & ui_context().parent_stack )}
+
 @(deferred_none = ui_parent_pop)
 ui_parent :: #force_inline proc( ui : ^UI_Box) { ui_parent_push( ui ) }
 

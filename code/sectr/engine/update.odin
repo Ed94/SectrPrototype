@@ -17,7 +17,8 @@ DebugActions :: struct {
 	record_replay      : b32,
 	play_replay        : b32,
 
-	show_mouse_pos : b32,
+	show_debug_text : b32,
+	show_mouse_pos  : b32,
 
 	mouse_select : b32,
 
@@ -48,7 +49,8 @@ poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 	record_replay     = base_replay_bind &&   keyboard.right_shift.ended_down
 	play_replay       = base_replay_bind && ! keyboard.right_shift.ended_down
 
-	show_mouse_pos = keyboard.right_alt.ended_down && pressed(keyboard.M)
+	show_debug_text = keyboard.right_alt.ended_down && pressed(keyboard.T)
+	show_mouse_pos  = keyboard.right_alt.ended_down && pressed(keyboard.M)
 
 	mouse_select = pressed(mouse.left)
 
@@ -146,6 +148,9 @@ update :: proc( delta_time : f64 ) -> b32
 	if debug_actions.show_mouse_pos {
 		debug.mouse_vis = !debug.mouse_vis
 	}
+	if debug_actions.show_debug_text {
+		debug.debug_text_vis = !debug.debug_text_vis
+	}
 
 	//region 2D Camera Manual Nav
 	// TODO(Ed): This should be per workspace view
@@ -223,17 +228,17 @@ update :: proc( delta_time : f64 ) -> b32
 			// size           = range2( { 1000, 1000 }, {}),
 			// padding = { 20, 20, 20, 20 }
 		}
-		ui_layout( default_layout )
+		scope( default_layout )
 		frame_style_default := UI_Style {
 			bg_color   = Color_BG_TextBox,
 			font       = default_font,
 			text_color = Color_White,
 		}
-		frame_theme := to_ui_style_combo(frame_style_default)
-		frame_theme.disabled.bg_color = Color_Frame_Disabled
-		frame_theme.hot.     bg_color = Color_Frame_Hover
-		frame_theme.active.  bg_color = Color_Frame_Select
-		ui_style( frame_theme )
+		frame_style := to_ui_style_combo(frame_style_default)
+		frame_style.disabled.bg_color = Color_Frame_Disabled
+		frame_style.hot.     bg_color = Color_Frame_Hover
+		frame_style.active.  bg_color = Color_Frame_Select
+		scope( frame_style )
 
 		config.ui_resize_border_width = 2.5
 		// test_hover_n_click()

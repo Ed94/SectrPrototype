@@ -66,7 +66,7 @@ ui_style_push_style :: #force_inline proc( style : UI_Style )      { push( & get
 ui_style_push_combo :: #force_inline proc( combo : UI_StyleCombo ) { push( & get_state().ui_context.style_combo_stack, combo ) }
 ui_style_pop        :: #force_inline proc()                        { pop(  & get_state().ui_context.style_combo_stack ) }
 
-@(deferred_none = ui_style_pop) ui_style_via_style :: #force_inline proc( style : UI_Style )      { ui_style_push( style) }
-@(deferred_none = ui_style_pop) ui_style_via_combo :: #force_inline proc( combo : UI_StyleCombo ) { ui_style_push( combo) }
+@(deferred_none = ui_style_pop) ui_style_scope_via_style :: #force_inline proc( style : UI_Style )      { ui_style_push( style) }
+@(deferred_none = ui_style_pop) ui_style_scope_via_combo :: #force_inline proc( combo : UI_StyleCombo ) { ui_style_push( combo) }
 
 ui_style_set :: #force_inline proc ( style : UI_Style, preset : UI_StylePreset ) { stack_peek_ref( & get_state().ui_context.style_combo_stack ).array[preset] = style }

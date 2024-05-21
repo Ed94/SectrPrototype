@@ -160,10 +160,10 @@ ui_layout_peek :: #force_inline proc() ->  UI_LayoutCombo { return stack_peek( &
 ui_layout_ref  :: #force_inline proc() -> ^UI_LayoutCombo { return stack_peek_ref( & get_state().ui_context.layout_combo_stack) }
 
 ui_layout_push_layout :: #force_inline proc( layout : UI_Layout )     { push( & get_state().ui_context.layout_combo_stack, to_ui_layout_combo(layout)) }
-ui_layout_push_theme  :: #force_inline proc( combo : UI_LayoutCombo ) { push( & get_state().ui_context.layout_combo_stack, combo ) }
+ui_layout_push_combo  :: #force_inline proc( combo : UI_LayoutCombo ) { push( & get_state().ui_context.layout_combo_stack, combo ) }
 ui_layout_pop         :: #force_inline proc()                         { pop(  & get_state().ui_context.layout_combo_stack ) }
 
-@(deferred_none = ui_layout_pop) ui_layout_via_layout :: #force_inline proc( layout : UI_Layout )      { ui_layout_push( layout) }
-@(deferred_none = ui_layout_pop) ui_layout_via_combo  :: #force_inline proc( combo  : UI_LayoutCombo ) { ui_layout_push( combo) }
+@(deferred_none = ui_layout_pop) ui_layout_scope_via_layout :: #force_inline proc( layout : UI_Layout )      { ui_layout_push( layout) }
+@(deferred_none = ui_layout_pop) ui_layout_scope_via_combo  :: #force_inline proc( combo  : UI_LayoutCombo ) { ui_layout_push( combo) }
 
 ui_set_layout :: #force_inline proc( layout : UI_Layout, preset : UI_StylePreset ) { stack_peek_ref( & get_state().ui_context.layout_combo_stack).array[preset] = layout }

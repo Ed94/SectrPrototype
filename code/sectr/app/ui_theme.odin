@@ -4,11 +4,13 @@ package sectr
 UI Themes: Comprise of UI_Box's layout & style
 
 Provides presets for themes and their interface for manipulating the combo stacks in UI_State in pairs
+
+The preset UI_Theme structs are populated using theme_<name> procedures.
+There are boilerplate procedures that do ui_theme( theme_<name>()) for the user as ui_theme_<name>().
 */
 // TODO(Ed): Eventually this will have a configuration wizard, and we'll save the presets
 
-@(deferred_none = ui_theme_pop)
-ui_theme_btn :: proc()
+theme_button :: proc() -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
@@ -54,12 +56,10 @@ ui_theme_btn :: proc()
 		theme  = UI_Theme { layout_combo, style_combo }
 		loaded = true
 	}
-	ui_layout_push(theme.layout)
-	ui_style_push(theme.style)
+	return theme
 }
 
-@(deferred_none = ui_theme_pop)
-ui_theme_drop_down :: proc()
+theme_drop_down_btn :: proc() -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
@@ -106,16 +106,14 @@ ui_theme_drop_down :: proc()
 		theme  = UI_Theme { layout_combo, style_combo }
 		loaded = true
 	}
-	ui_layout_push(theme.layout)
-	ui_style_push(theme.style)
+	return theme
 }
 
-@(deferred_none = ui_theme_pop)
-ui_theme_table_row :: proc(is_even : bool)
+theme_table_row :: proc( is_even : bool ) -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
-	// if ! loaded
+	if ! loaded
 	{
 		app_color := app_color_theme()
 		table_bg : Color
@@ -163,16 +161,14 @@ ui_theme_table_row :: proc(is_even : bool)
 		theme  = UI_Theme { layout_combo, style_combo }
 		loaded = true
 	}
-	ui_layout_push(theme.layout)
-	ui_style_push(theme.style)
+	return theme
 }
 
-@(deferred_none = ui_theme_pop)
-ui_theme_window_bar :: proc()
+theme_window_bar :: proc() -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
-	if ! loaded || true
+	if ! loaded
 	{
 		app_color := app_color_theme()
 		layout := UI_Layout {
@@ -217,12 +213,10 @@ ui_theme_window_bar :: proc()
 		theme  = UI_Theme { layout_combo, style_combo }
 		loaded = true
 	}
-	ui_layout_push(theme.layout)
-	ui_style_push(theme.style)
+	return theme
 }
 
-@(deferred_none = ui_theme_pop)
-ui_theme_window_bar_title :: proc()
+theme_window_bar_title :: proc() -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
@@ -267,12 +261,10 @@ ui_theme_window_bar_title :: proc()
 		theme  = UI_Theme { layout_combo, style_combo }
 		loaded = true
 	}
-	ui_layout_push(theme.layout)
-	ui_style_push(theme.style)
+	return theme
 }
 
-@(deferred_none = ui_theme_pop)
-ui_theme_window_bar_btn :: proc()
+theme_window_bar_btn :: proc() -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
@@ -318,12 +310,10 @@ ui_theme_window_bar_btn :: proc()
 		theme  = UI_Theme { layout_combo, style_combo }
 		loaded = true
 	}
-	ui_layout_push(theme.layout)
-	ui_style_push(theme.style)
+	return theme
 }
 
-@(deferred_none = ui_theme_pop)
-ui_theme_window_panel :: proc()
+theme_window_panel :: proc() -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
@@ -368,12 +358,10 @@ ui_theme_window_panel :: proc()
 		theme  = UI_Theme { layout_combo, style_combo }
 		loaded = true
 	}
-	ui_layout_push(theme.layout)
-	ui_style_push(theme.style)
+	return theme
 }
 
-@(deferred_none = ui_theme_pop)
-ui_theme_transparent :: proc()
+theme_transparent :: proc() -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
@@ -418,12 +406,10 @@ ui_theme_transparent :: proc()
 		theme  = UI_Theme { layout_combo, style_combo }
 		loaded = true
 	}
-	ui_layout_push(theme.layout)
-	ui_style_push(theme.style)
+	return theme
 }
 
-@(deferred_none = ui_theme_pop)
-ui_theme_text :: proc()
+theme_text :: proc() -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
@@ -468,6 +454,5 @@ ui_theme_text :: proc()
 		theme  = UI_Theme { layout_combo, style_combo }
 		loaded = true
 	}
-	ui_layout_push(theme.layout)
-	ui_style_push(theme.style)
+	return theme
 }

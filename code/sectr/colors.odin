@@ -69,6 +69,43 @@ AppColorTheme :: struct {
 	: Color
 }
 
+App_Thm_Dark :: AppColorTheme {
+	light_limit = Color {185, 185, 185, 255},
+	dark_limit  = Color { 6, 6, 6, 255},
+
+	bg = Color {16, 16, 16, 255},
+
+	border_default = Color { 54, 54, 54, 255},
+
+	btn_bg_default = Color {  32,  32,  32, 255},
+	btn_bg_hot     = Color {  80,  80, 100, 255},
+	btn_bg_active  = Color { 100, 130, 180, 255},
+
+	input_box_bg        = Color { 20, 20, 20, 255},
+	input_box_bg_hot    = Color { 25, 25, 25, 255},
+	input_box_bg_active = Color { 15, 15, 15, 255},
+
+	resize_hndl_default = Color_Transparent,
+	resize_hndl_hot     = Color { 72, 72, 72, 90},
+	resize_hndl_active  = Color { 88, 88, 88, 90},
+
+	table_even_bg_color = Color { 35, 35, 35, 255},
+	table_odd_bg_color  = Color { 30, 30, 30, 255},
+
+	text_default = Color {140, 137, 135, 255},
+	text_hot     = Color {210, 210, 210, 255},
+	text_active  = Color {255, 255, 255, 255},
+
+	translucent_panel = Color { 30, 30, 30, 50},
+
+	window_bar_border       = Color{74, 74, 74, 255}, // border_default
+	window_bar_bg           = Color{32, 32, 32, 255},
+	window_btn_close_bg_hot = Color{65, 45, 45, 255},
+
+	window_panel_bg     = Color{ 20, 20, 20, 50}, // translucent_panel
+	window_panel_border = Color{ 84, 84, 84, 255},
+}
+
 App_Thm_Dusk :: AppColorTheme {
 	light_limit = Color {125, 125, 125, 255},
 	dark_limit  = Color { 10, 10, 10, 255},
