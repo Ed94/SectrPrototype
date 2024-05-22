@@ -61,7 +61,7 @@ test_draggable :: proc()
 	draggable.layout.pos  = debug.draggable_box_pos
 	draggable.layout.size.min = debug.draggable_box_size
 
-	draggable.text       = { str_fmt_alloc("%v", debug.draggable_box_pos), {} }
+	draggable.text       = { str_fmt("%v", debug.draggable_box_pos), {} }
 	draggable.text.runes = to_runes(draggable.text.str)
 }
 
@@ -203,7 +203,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 		}
 
 		ui_layout( text_layout )
-		line_hbox := ui_widget(str_fmt_alloc( "line %v", line_id ), {.Mouse_Clickable})
+		line_hbox := ui_widget(str_fmt( "line %v", line_id ), {.Mouse_Clickable})
 
 		if line_hbox.key == ui.hot
 		{
@@ -228,14 +228,14 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 				#partial switch head.type
 				{
 					case .Visible:
-						label := str_intern( str_fmt_alloc( "%v %v", head.content.str, label_id ))
+						label := str_intern( str_fmt( "%v %v", head.content.str, label_id ))
 						widget = ui_text( label.str, head.content )
 						label_id += 1
 
 						chunk_layout.pos.x += size_range2( widget.computed.bounds ).x
 
 					case .Spaces:
-						label := str_intern( str_fmt_alloc( "%v %v", "space", label_id ))
+						label := str_intern( str_fmt( "%v %v", "space", label_id ))
 						widget = ui_text_spaces( label.str )
 						label_id += 1
 
@@ -247,7 +247,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 						chunk_layout.pos.x += size_range2( widget.computed.bounds ).x
 
 					case .Tabs:
-						label := str_intern( str_fmt_alloc( "%v %v", "tab", label_id ))
+						label := str_intern( str_fmt( "%v %v", "tab", label_id ))
 						widget = ui_text_tabs( label.str )
 						label_id += 1
 

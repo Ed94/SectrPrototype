@@ -51,7 +51,7 @@ zpl_hmap_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( HMapZPL( Ty
 zpl_hmap_init_reserve :: proc
 ( $ Type : typeid, allocator : Allocator, num : u64, dbg_name : string = "" ) -> ( HMapZPL( Type), AllocatorError )
 {
-	result                        : HMapZPL(Type)
+	result                       : HMapZPL(Type)
 	table_result, entries_result : AllocatorError
 
 	result.table, table_result = array_init_reserve( i64, allocator, num, dbg_name = dbg_name )

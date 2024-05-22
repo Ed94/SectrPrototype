@@ -113,7 +113,7 @@ str_intern :: proc( content : string ) -> StrRunesPair
 }
 
 str_intern_fmt :: #force_inline proc( format : string, args : ..any, allocator := context.allocator ) -> StrRunesPair {
-	return str_intern(str_fmt_alloc(format, args, allocator = allocator))
+	return str_intern(str_fmt(format, args, allocator = allocator))
 }
 
 // runes_intern :: proc( content : []rune ) -> StrRunesPair

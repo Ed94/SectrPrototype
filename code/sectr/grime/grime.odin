@@ -27,9 +27,9 @@ import "core:hash"
 import "core:hash/xxhash"
 	xxh32 :: xxhash.XXH32
 import fmt_io "core:fmt"
-	str_fmt          :: fmt_io.printf
+	str_fmt_out      :: fmt_io.printf
 	str_fmt_tmp      :: fmt_io.tprintf
-	str_fmt_alloc    :: fmt_io.aprintf
+	str_fmt          :: fmt_io.aprintf // Decided to make aprintf the default. (It will always be the default allocator)
 	str_fmt_builder  :: fmt_io.sbprintf
 	str_fmt_buffer   :: fmt_io.bprintf
 	str_to_file_ln   :: fmt_io.fprintln

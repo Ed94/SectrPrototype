@@ -21,7 +21,7 @@ ui_floating_startup :: proc( self : ^UI_FloatingManager, allocator : Allocator, 
 {
 	error : AllocatorError
 
-	queue_dbg_name := str_intern(str_fmt_tmp("%s: build_queue", dbg_name))
+	queue_dbg_name := str_intern(str_fmt("%s: build_queue", dbg_name))
 	self.build_queue, error = array_init_reserve( UI_Floating, allocator, build_queue_cap, dbg_name = queue_dbg_name.str )
 	if error != AllocatorError.None
 	{
@@ -29,7 +29,7 @@ ui_floating_startup :: proc( self : ^UI_FloatingManager, allocator : Allocator, 
 		return error
 	}
 
-	tracked_dbg_name := str_intern(str_fmt_tmp("%s: tracked", dbg_name))
+	tracked_dbg_name := str_intern(str_fmt("%s: tracked", dbg_name))
 	self.tracked, error = hmap_chained_init(UI_Floating, uint(tracked_cap), allocator, dbg_name = tracked_dbg_name.str )
 	if error != AllocatorError.None
 	{

@@ -53,9 +53,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		transient    = transient_mem
 		files_buffer = files_buffer_mem
 
-		context.allocator      = persistent_allocator()
+		// The policy for startup & any other persistent scopes is that the default allocator is transient.
+		// Any persistent allocations are explicitly specified.
+		context.allocator      = transient_allocator()
 		context.temp_allocator = transient_allocator()
-		// TODO(Ed) : Put on the transient allocator a slab allocator (transient slab)
 	}
 
 	state := new( State, persistent_allocator() )
@@ -197,7 +198,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
-		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" }, transient_allocator() )
+		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
 		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 		default_font = font_firacode
 		log( "Default font loaded" )
@@ -245,7 +246,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
 		}
 
-		debug.path_lorem = str_fmt_alloc("C:/projects/SectrPrototype/examples/Lorem Ipsum.txt", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum.txt", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
 		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
@@ -367,6 +368,8 @@ tick_work_frame :: #force_inline proc()
 			verify( alloc_error == .None, "Failed to allocate frame slab" )
 		}
 
+		// The policy for the work tick is that the default allocator is the frame's slab.
+		// Transient's is the temp allocator.
 		context.allocator      = frame_slab_allocator()
 		context.temp_allocator = transient_allocator()
 
@@ -390,6 +393,8 @@ tick_work_frame :: #force_inline proc()
 tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_ms : f64, host_delta_ns : Duration )
 {
 	state := get_state(); using state
+	context.allocator      = frame_slab_allocator()
+	context.temp_allocator = transient_allocator()
 
 	// profile("Client tick timing processing")
 	// config.engine_refresh_hz = uint(monitor_refresh_hz)
@@ -433,7 +438,7 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 	fps_avg          = 1 / (frametime_avg_ms * MS_To_S)
 
 	if frametime_elapsed_ms > 60.0 {
-		log( str_fmt_tmp("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
+		log( str_fmt("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
 	}
 
 	profile_begin("sokol_app: post_client_tick")

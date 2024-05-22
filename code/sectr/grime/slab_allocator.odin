@@ -84,7 +84,7 @@ slab_init_pools :: proc ( using self : Slab, policy : ^SlabPolicy, bucket_reserv
 	for id in 0 ..< policy.idx {
 		using size_class := policy.items[id]
 
-		pool_dbg_name     := str_fmt_alloc("%v pool[%v]", dbg_name, block_size, allocator = backing)
+		pool_dbg_name     := str_fmt("%v pool[%v]", dbg_name, block_size, allocator = backing)
 		pool, alloc_error := pool_init( should_zero_buckets, block_size, bucket_capacity, bucket_reserve_num, block_alignment, backing, pool_dbg_name )
 		if alloc_error != .None do return alloc_error
 

@@ -172,7 +172,7 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 	pool := pool
 	if pool.current_bucket != nil {
 		if ( pool.current_bucket.blocks == nil ) {
-			ensure( false, str_fmt_tmp("(corruption) current_bucket was wiped %p", pool.current_bucket) )
+			ensure( false, str_fmt("(corruption) current_bucket was wiped %p", pool.current_bucket) )
 		}
 		// verify( pool.current_bucket.blocks != nil, str_fmt_tmp("(corruption) current_bucket was wiped %p", pool.current_bucket) )
 	}
@@ -313,17 +313,17 @@ pool_validate :: proc( pool : Pool )
 	bucket : ^PoolBucket = pool.bucket_list.first
 
 	if bucket != nil && uintptr(bucket) < 0x10000000000 {
-		ensure(false, str_fmt_tmp("Found a corrupted bucket %p", bucket ))
+		ensure(false, str_fmt("Found a corrupted bucket %p", bucket ))
 	}
 	// Compiler bug ^^ same as pool_reset
 	for ; bucket != nil; bucket = bucket.next
 	{
 		if bucket != nil && uintptr(bucket) < 0x10000000000 {
-			ensure(false, str_fmt_tmp("Found a corrupted bucket %p", bucket ))
+			ensure(false, str_fmt("Found a corrupted bucket %p", bucket ))
 		}
 
 		if ( bucket.blocks == nil ) {
-			ensure(false, str_fmt_tmp("Found a corrupted bucket %p", bucket ))
+			ensure(false, str_fmt("Found a corrupted bucket %p", bucket ))
 		}
 	}
 }
@@ -346,7 +346,7 @@ pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32
 			misalignment := (block_address - start) % uintptr(block_size)
 			if misalignment != 0 {
 				ensure(false, "pool_validate_ownership: This data is within this pool's buckets, however its not aligned to the start of a block")
-				log(str_fmt_tmp("Block address: %p Misalignment: %p closest: %p",
+				log(str_fmt("Block address: %p Misalignment: %p closest: %p",
 					transmute(rawptr)block_address,
 					transmute(rawptr)misalignment,
 					rawptr(block_address - misalignment)))

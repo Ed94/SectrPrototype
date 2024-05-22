@@ -245,7 +245,7 @@ render_mode_screenspace :: proc ()
 
 	if debug.debug_text_vis
 	{
-		fps_msg       := str_fmt_tmp( "FPS: %f", fps_avg)
+		fps_msg       := str_fmt( "FPS: %f", fps_avg)
 		fps_msg_width := measure_text_size( fps_msg, default_font, 12.0, 0.0 ).x
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 } - { 5, 5 }
 		debug_draw_text( fps_msg, fps_msg_pos, 12.0, color = rl.GREEN )

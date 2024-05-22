@@ -307,7 +307,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 
 	name :: proc( label : string ) -> string {
 		parent_label := (transmute(^string) context.user_ptr) ^
-		return str_intern(str_fmt_alloc("%v: %v", parent_label, label )).str
+		return str_intern(str_fmt("%v: %v", parent_label, label )).str
 	}
 	context.user_ptr = & parent.label
 

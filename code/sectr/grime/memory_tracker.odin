@@ -73,17 +73,17 @@ memtracker_register :: proc( tracker : ^MemoryTracker, new_entry : MemoryTracker
 
 		if (entry.end < new_entry.start)
 		{
-			msg := str_fmt_tmp("Memory tracker(%v) detected a collision:\nold_entry: %v\nnew_entry: %v", tracker.name, entry, new_entry)
+			msg := str_fmt("Memory tracker(%v) detected a collision:\nold_entry: %v\nnew_entry: %v", tracker.name, entry, new_entry)
 			ensure( false, msg )
 			memtracker_dump_entries(tracker ^)
 		}
 		array_append_at( & tracker.entries, new_entry, idx )
-		log(str_fmt_tmp("%v : Registered: %v", tracker.name, new_entry) )
+		log(str_fmt("%v : Registered: %v", tracker.name, new_entry) )
 		return
 	}
 
 	array_append( & tracker.entries, new_entry )
-	log(str_fmt_tmp("%v : Registered: %v", tracker.name, new_entry) )
+	log(str_fmt("%v : Registered: %v", tracker.name, new_entry) )
 }
 
 memtracker_register_auto_name :: proc( tracker : ^MemoryTracker, start, end : rawptr )
@@ -119,17 +119,17 @@ memtracker_unregister :: proc( tracker : MemoryTracker, to_remove : MemoryTracke
 		entry := & entries[idx]
 		if entry.start == to_remove.start {
 			if (entry.end == to_remove.end || to_remove.end == nil) {
-				log(str_fmt_tmp("%v: Unregistered: %v", tracker.name, to_remove));
+				log(str_fmt("%v: Unregistered: %v", tracker.name, to_remove));
 				array_remove_at(tracker.entries, idx)
 				return
 			}
 
-			ensure(false, str_fmt_tmp("%v: Found an entry with the same start address but end address was different:\nentry   : %v\nto_remove: %v", tracker.name, entry, to_remove))
+			ensure(false, str_fmt("%v: Found an entry with the same start address but end address was different:\nentry   : %v\nto_remove: %v", tracker.name, entry, to_remove))
 			memtracker_dump_entries(tracker)
 		}
 	}
 
-	ensure(false, str_fmt_tmp("%v: Attempted to unregister an entry that was not tracked: %v", tracker.name, to_remove))
+	ensure(false, str_fmt("%v: Attempted to unregister an entry that was not tracked: %v", tracker.name, to_remove))
 	memtracker_dump_entries(tracker)
 }
 
@@ -150,7 +150,7 @@ memtracker_check_for_collisions :: proc ( tracker : MemoryTracker )
 
 		collided := left.start > right.start || left.end > right.end
 		if collided {
-			msg := str_fmt_tmp("%v: Memory tracker detected a collision:\nleft: %v\nright: %v", tracker.name, left, right)
+			msg := str_fmt("%v: Memory tracker detected a collision:\nleft: %v\nright: %v", tracker.name, left, right)
 			memtracker_dump_entries(tracker)
 		}
 	}
@@ -167,6 +167,6 @@ memtracker_dump_entries :: proc( tracker : MemoryTracker )
 	log( "Dumping Memory Tracker:")
 	for idx in 0 ..< tracker.entries.num {
 		entry := & tracker.entries.data[idx]
-		log( str_fmt_tmp("%v", entry) )
+		log( str_fmt("%v", entry) )
 	}
 }

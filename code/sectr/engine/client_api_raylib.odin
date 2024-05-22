@@ -52,7 +52,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		transient    = transient_mem
 		files_buffer = files_buffer_mem
 
-		context.allocator      = persistent_allocator()
+		context.allocator      = transient_allocator()
 		context.temp_allocator = transient_allocator()
 		// TODO(Ed) : Put on the transient allocator a slab allocator (transient slab)
 	}
@@ -224,7 +224,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
 		}
 
-		debug.path_lorem = str_fmt_alloc("C:/projects/SectrPrototype/examples/Lorem Ipsum.txt", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum.txt", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
 		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
@@ -393,7 +393,8 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		fps_avg          = 1 / (frametime_avg_ms * MS_To_S)
 
 		if frametime_elapsed_ms > 60.0 {
-			log( str_fmt_tmp("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
+			context.allocator = transient_allocator()
+			log( str_fmt("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
 		}
 	}
 	return should_close

@@ -20,7 +20,7 @@ thread__highres_wait :: proc( desired_ms : f64, loc := #caller_location ) -> b32
 
 	timer := win32.CreateWaitableTimerExW( nil, nil, win32.CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, win32.TIMER_ALL_ACCESS )
 	if timer == nil {
-		msg := str_fmt_tmp("Failed to create win32 timer - ErrorCode: %v", win32.GetLastError() )
+		msg := str_fmt("Failed to create win32 timer - ErrorCode: %v", win32.GetLastError() )
 		log( msg, LogLevel.Warning, loc)
 		return false
 	}
@@ -28,7 +28,7 @@ thread__highres_wait :: proc( desired_ms : f64, loc := #caller_location ) -> b32
 	due_time := win32.LARGE_INTEGER(desired_ms * MS_To_NS)
 	result := win32.SetWaitableTimerEx( timer, & due_time, 0, nil, nil, nil, 0 )
 	if ! result {
-		msg := str_fmt_tmp("Failed to set win32 timer - ErrorCode: %v", win32.GetLastError() )
+		msg := str_fmt("Failed to set win32 timer - ErrorCode: %v", win32.GetLastError() )
 		log( msg, LogLevel.Warning, loc)
 		return false
 	}
@@ -43,22 +43,22 @@ thread__highres_wait :: proc( desired_ms : f64, loc := #caller_location ) -> b32
 	switch wait_result
 	{
 		case WAIT_ABANDONED:
-			msg := str_fmt_tmp("Failed to wait for win32 timer - Error: WAIT_ABANDONED" )
+			msg := str_fmt("Failed to wait for win32 timer - Error: WAIT_ABANDONED" )
 			log( msg, LogLevel.Error, loc)
 			return false
 
 		case WAIT_IO_COMPLETION:
-			msg := str_fmt_tmp("Waited for win32 timer: Ended by APC queued to the thread" )
+			msg := str_fmt("Waited for win32 timer: Ended by APC queued to the thread" )
 			log( msg, LogLevel.Error, loc)
 			return false
 
 		case WAIT_OBJECT_0:
-			msg := str_fmt_tmp("Waited for win32 timer- Reason : WAIT_OBJECT_0" )
+			msg := str_fmt("Waited for win32 timer- Reason : WAIT_OBJECT_0" )
 			log( msg, loc = loc)
 			return false
 
 		case WAIT_FAILED:
-			msg := str_fmt_tmp("Waited for win32 timer failed - ErrorCode: $v", win32.GetLastError() )
+			msg := str_fmt("Waited for win32 timer failed - ErrorCode: $v", win32.GetLastError() )
 			log( msg, LogLevel.Error, loc)
 			return false
 	}

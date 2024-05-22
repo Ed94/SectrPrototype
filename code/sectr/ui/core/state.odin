@@ -180,7 +180,7 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	}
 
 	ui.built_box_count = 0
-	root = ui_box_make( {}, str_intern(str_fmt_tmp("%s: root#001", ui == & state.screen_ui ? "Screen" : "Workspace" )).str)
+	root = ui_box_make( {}, str_intern(str_fmt("%s: root#001", ui == & state.screen_ui ? "Screen" : "Workspace" )).str)
 	if ui == & state.screen_ui {
 		root.layout.size = range2(Vec2(state.app_window.extent) * 2, {})
 	}

@@ -265,7 +265,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					else
 					{
 						array_clear( value_str)
-						array_append( & value_str, to_runes(str_fmt_alloc("%v", config.engine_refresh_hz)))
+						array_append( & value_str, to_runes(str_fmt("%v", config.engine_refresh_hz)))
 					}
 					ui_parent(input_box)
 

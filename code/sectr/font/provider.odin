@@ -97,11 +97,11 @@ font_load :: proc( path_file : string,
 ) -> FontID
 {
 	profile(#procedure)
-	log( str_fmt_tmp("Loading font: %v", path_file))
+	log( str_fmt("Loading font: %v", path_file))
 	font_provider_data := & get_state().font_provider_data; using font_provider_data
 
-	font_data, read_succeded : = os.read_entire_file( path_file, context.temp_allocator )
-	verify( b32(read_succeded), str_fmt_tmp("Failed to read font file for: %v", path_file) )
+	font_data, read_succeded : = os.read_entire_file( path_file )
+	verify( b32(read_succeded), str_fmt("Failed to read font file for: %v", path_file) )
 	font_data_size := cast(i32) len(font_data)
 
 	desired_id := desired_id
@@ -145,7 +145,7 @@ font_load :: proc( path_file : string,
 			codepoints     = nil,
 			codepointCount = count,
 			type = rl.FontType.DEFAULT )
-		verify( glyphs != nil, str_fmt_tmp("Failed to load glyphs for font: %v at desired size: %v", desired_id, size ) )
+		verify( glyphs != nil, str_fmt("Failed to load glyphs for font: %v at desired size: %v", desired_id, size ) )
 
 		atlas  := rl.GenImageFontAtlas( glyphs, & recs, count, size, padding, i32(Font_Atlas_Packing_Method.Raylib_Basic) )
 		texture = rl.LoadTextureFromImage( atlas )
@@ -164,7 +164,6 @@ font_load :: proc( path_file : string,
 		rl.UnloadImage( atlas )
 	}
 
-	free_all( context.temp_allocator )
 	return { key, desired_id }
 }
 
