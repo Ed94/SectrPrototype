@@ -100,14 +100,7 @@ UI_State :: struct {
 	render_queue : Array(UI_RenderBoxInfo),
 
 	null_box : ^UI_Box, // This was used with the Linked list interface...
-	// TODO(Ed): Should we change our convention for null boxes to use the above and nil as an invalid state?
 	root     : ^UI_Box,
-	// Children of the root node are unique in that they have their order preserved per frame
-	// This is to support overlapping frames
-	// So long as their parent-index is non-negative they'll be rendered
-
-	// Do we need to recompute the layout?
-	// layout_dirty  : b32,
 
 	// TODO(Ed) : Look into using a build arena like Ryan does for these possibly (and thus have a linked-list stack)
 	layout_combo_stack : StackFixed( UI_LayoutCombo, UI_Style_Stack_Size ),
@@ -130,6 +123,8 @@ UI_State :: struct {
 	last_pressed_key    : [MouseBtn.count] UI_Key,
 	last_pressed_key_us : [MouseBtn.count] f32,
 }
+
+#region("Lifetime")
 
 ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_reserve_size : u64 */ )
 {
@@ -164,20 +159,6 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 ui_shutdown :: proc() {
 }
 
-ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
-	using state := get_state()
-	if ui_context == & state.project.workspace.ui {
-		return screen_to_ws_view_pos( input.mouse.pos )
-	}
-	else {
-		return input.mouse.pos
-	}
-}
-
-ui_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
-	using state := get_state()
-	return ui_cursor_pos() - state.ui_context.active_start_signal.cursor_pos
-}
 
 ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 {
@@ -249,6 +230,22 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 @(deferred_in = ui_graph_build_end)
 ui_graph_build :: #force_inline proc( ui : ^ UI_State ) { ui_graph_build_begin( ui ) }
 
+#endregion("Lifetime")
+
+#region("Caching")
+// Mainly referenced from RAD Debugger
+
+// TODO(Ed): Need to setup the proper hashing convention for strings the other reference imguis use.
+ui_hash_from_string :: proc ( value : string ) -> u64 {
+	fatal("NOT IMPLEMENTED")
+	return 0
+}
+
+ui_hash_part_from_key_string :: proc ( content : string ) -> string {
+	fatal("NOT IMPLEMENTED")
+	return ""
+}
+
 ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_Key
 {
 	// profile(#procedure)
@@ -269,6 +266,22 @@ ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_
 	}
 
 	return key
+}
+#endregion("Caching")
+
+ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
+	using state := get_state()
+	if ui_context == & state.project.workspace.ui {
+		return screen_to_ws_view_pos( input.mouse.pos )
+	}
+	else {
+		return input.mouse.pos
+	}
+}
+
+ui_drag_delta :: #force_inline proc "contextless" () -> Vec2 {
+	using state := get_state()
+	return ui_cursor_pos() - state.ui_context.active_start_signal.cursor_pos
 }
 
 ui_parent_push :: #force_inline proc( ui : ^ UI_Box ) { stack_push( & ui_context().parent_stack, ui ) }

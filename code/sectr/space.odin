@@ -106,8 +106,8 @@ CameraZoomMode :: enum u32 {
 
 // TODO(Ed) : I'm not sure making the size and extent types distinct has made things easier or more difficult in Odin..
 // The lack of operator overloads is going to make any sort of nice typesystem
-// for doing lots of math or phyiscs more error prone or filled with proc wrappers
-AreaSize :: distinct Vec2
+// for doing lots of math or phyiscs more error prone or filled with proc overload mapppings
+AreaSize :: Vec2
 
 Bounds2 :: struct {
 	top_left, bottom_right: Vec2,

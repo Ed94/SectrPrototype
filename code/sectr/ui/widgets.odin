@@ -27,8 +27,6 @@ ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widge
 }
 
 #region("Drop Down")
-/* TODO(Ed): Don't feel very good about the abstraction...
-*/
 UI_DropDown :: struct {
 	btn     : UI_Widget,
 	title   : UI_Widget,
@@ -213,14 +211,6 @@ ui_resizable_end :: proc( resizable : ^UI_Resizable, pos, size : ^Vec2 ) {
 		corner_br,
 		corner_bl,
 		compute_layout)
-}
-
-ui_resizable_begin_auto :: proc() {
-
-}
-
-ui_resizable_end_auto :: proc() {
-
 }
 
 // Adds resizable handles to a widget
@@ -505,12 +495,11 @@ UI_ScrollBox :: struct {
 	content      : UI_Widget,
 }
 
+// TODO(Ed): Implement
 ui_scroll_box :: proc( label : string, flags : UI_BoxFlags ) -> (scroll_box : UI_ScrollBox) {
 
 	return
 }
-
-// ui_scrollable_view(  )
 
 #region("Text")
 ui_text :: proc( label : string, content : StrRunesPair, flags : UI_BoxFlags = {} ) -> UI_Widget

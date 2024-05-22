@@ -7,13 +7,6 @@ import "core:c/libc"
 import "core:mem"
 import "core:slice"
 
-// Array :: struct ( $ Type : typeid ) {
-// 	bakcing : Allocator,
-// 	capacity  : u64,
-// 	num       : u64,
-// 	data      : [^]Type,
-// }
-
 ArrayHeader :: struct ( $ Type : typeid ) {
 	backing   : Allocator,
 	dbg_name  : string,
@@ -105,6 +98,7 @@ array_append_array :: proc( using self: ^Array( $ Type), other : Array(Type)) ->
 	// libc.memcpy( ptr_offset(data, num), raw_data(items), len(items) * size_of(Type) )
 
 	// TODO(Ed) : VERIFY VIA DEBUG THIS COPY IS FINE.
+	ensure(false, "time to check....")
 	target := ptr_offset( data, num )
 	copy( slice_ptr(target, int(capacity - num)), array_to_slice(other) )
 
@@ -177,6 +171,7 @@ array_append_at_slice :: proc( using self : ^Array( $ Type ), items : []Type, id
 	// libc.memcpy ( src, raw_data(items), len(items) * size_of(Type) )
 
 	// TODO(Ed) : VERIFY VIA DEBUG THIS COPY IS FINE
+	ensure(false, "time to check....")
 	target := & data[id + len(items)]
 	dst    := slice_ptr( target, num - id - len(items) )
 	src    := slice_ptr( & data[id], num - id )
@@ -189,15 +184,15 @@ array_append_at_slice :: proc( using self : ^Array( $ Type ), items : []Type, id
 
 // array_back :: proc( )
 
-array_push_back :: proc( using self : Array( $ Type)) -> b32 {
-	if num == capacity {
-		return false
-	}
+// array_push_back :: proc( using self : Array( $ Type)) -> b32 {
+// 	if num == capacity {
+// 		return false
+// 	}
 
-	data[ num ] = value
-	num        += 1
-	return true
-}
+// 	data[ num ] = value
+// 	num        += 1
+// 	return true
+// }
 
 array_clear :: proc "contextless" ( using self : Array( $ Type ), zero_data : b32 = false ) {
 	if zero_data {

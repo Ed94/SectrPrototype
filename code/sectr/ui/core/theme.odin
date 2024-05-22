@@ -1,5 +1,12 @@
 package sectr
 
+/*
+Themes: While technically in UI_State we only store the layout and style combo pairs in separate stacks, most of the time
+widgets will want to push or pop a (layout_combo, style_combo) pair during construction.
+
+Themes provide that ease of use.
+*/
+
 UI_ThemePtr :: struct {
 	layout : ^UI_LayoutCombo,
 	style  : ^UI_StyleCombo,

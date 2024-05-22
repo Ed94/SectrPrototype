@@ -142,7 +142,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		rl.SetConfigFlags( {
 			rl.ConfigFlag.WINDOW_RESIZABLE,
-			// rl.ConfigFlag.WINDOW_TOPMOST,
+			rl.ConfigFlag.WINDOW_TOPMOST,
 		})
 
 		window_width  : i32 = cast(i32) config.resolution_width
@@ -329,7 +329,7 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 			verify( alloc_error == .None, "Failed to allocate frame slab" )
 		}
 
-		context.allocator      = frame_allocator()
+		context.allocator      = frame_slab_allocator()
 		context.temp_allocator = transient_allocator()
 
 		rl.PollInputEvents()
@@ -338,9 +338,10 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		debug.draw_UI_padding_bounds = false
 		debug.draw_ui_content_bounds = false
 
-		config.color_theme = App_Thm_Light
+		// config.color_theme = App_Thm_Light
 		// config.color_theme = App_Thm_Dusk
-		// config.color_theme = App_Thm_Dark
+		config.color_theme = App_Thm_Dark
+
 		should_close = update( host_delta_time )
 		render()
 

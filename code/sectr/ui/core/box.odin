@@ -34,10 +34,8 @@ UI_Box :: struct {
 	text  : StrRunesPair,
 
 	// Regenerated per frame.
-
 	nav : UI_NavLinks,
 	// signal_callback : #type proc(),
-
 
 	// first, last : The first and last child of this box
 	// prev, next  : The adjacent neighboring boxes who are children of to the same parent
@@ -60,9 +58,6 @@ UI_Box :: struct {
 	style_delta    : f32,
 	first_frame    : b8,
 	// root_order_id  : i16,
-
-	// mouse         : UI_InteractState,
-	// keyboard      : UI_InteractState,
 }
 
 ui_box_equal :: #force_inline proc "contextless" ( a, b : ^ UI_Box ) -> b32 {

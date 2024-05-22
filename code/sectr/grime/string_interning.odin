@@ -39,8 +39,8 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 
 	policy     : SlabPolicy
 	policy_ptr := & policy
-	// push( policy_ptr, SlabSizeClass {  64 * Kilobyte,              8, alignment })
-	// push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             16, alignment })
+	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,              8, alignment })
+	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             16, alignment })
 	push( policy_ptr, SlabSizeClass { 128 * Kilobyte,             32, alignment })
 	push( policy_ptr, SlabSizeClass { 128 * Kilobyte,             64, alignment })
 	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,            128, alignment })

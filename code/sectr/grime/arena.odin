@@ -2,7 +2,7 @@
 The default arena allocator Odin provides does fragmented resizes even for the last most allocated block getting resized.
 This is an alternative to alleviates that.
 
-TODO(Ed): Implement?
+TODO(Ed): Implement? Maybe we should trash this I' haven't seen a need to step away from using odin's
 */
 package sectr
 
@@ -18,8 +18,6 @@ sub_arena_init :: proc( address : ^byte, size : int ) -> ( ^ Arena) {
 	arena_init( sub_arena, mem_slice )
 	return sub_arena
 }
-
-// TODO(Ed) : Once this is done (ArenaFixed), rename to just Arena as we're not going to use the core implementation
 
 ArenaFixedHeader :: struct {
 	data      : []byte,

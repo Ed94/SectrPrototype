@@ -8,7 +8,7 @@ import str "core:strings"
 import "core:time"
 import core_log "core:log"
 
-Max_Logger_Message_Width :: 300
+Max_Logger_Message_Width :: 180
 
 LogLevel :: core_log.Level
 
@@ -127,5 +127,5 @@ log :: proc( msg : string, level := LogLevel.Info, loc := #caller_location ) {
 
 logf :: proc( fmt : string, args : ..any,  level := LogLevel.Info, loc := #caller_location  ) {
 	// context.allocator = transient_allocator()
-	core_log.logf( level, fmt, args, location = loc )
+	core_log.logf( level, fmt, ..args, location = loc )
 }

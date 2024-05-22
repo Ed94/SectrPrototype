@@ -65,21 +65,23 @@ ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_Lay
 
 	space_used : f32 = 0.0
 	switch direction{
-		case .Right_To_Left:
-			for child := container.last; child != nil; child = child.prev {
-				using child.layout
-				child_width := allocate_space(child, total_stretch_ratio, avail_flex_space, container_height)
-				anchor       = range2({0, 0}, {0, 0})
-				pos.x        = space_used
-				space_used  += child_width + child.layout.margins.left + child.layout.margins.right
-			}
 		case .Left_To_Right:
 			for child := container.first; child != nil; child = child.next {
 				using child.layout
 				child_width := allocate_space(child, total_stretch_ratio, avail_flex_space, container_height)
 				anchor       = range2({0, 0}, {0, 0})
+				alignment    = {0, 0}
 				pos.x        = space_used
 				space_used  += child_width + child.layout.margins.left + child.layout.margins.right
+			}
+		case .Right_To_Left:
+			for child := container.first; child != nil; child = child.next {
+				using child.layout
+				child_width := allocate_space(child, total_stretch_ratio, avail_flex_space, container_height)
+				anchor       = range2({1, 0}, {0, 0})
+				alignment    = {1, 0}
+				pos.x        = space_used
+				space_used  -= child_width + child.layout.margins.left + child.layout.margins.right
 			}
 	}
 }
@@ -139,10 +141,10 @@ ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_Layou
 		return
 	}
 
+	space_used : f32 = 0
 	switch direction
 	{
 		case .Top_To_Bottom:
-			space_used : f32 = 0
 			for child := container.first; child != nil; child = child.next {
 				using child.layout
 				child_height := allocate_space(child, total_stretch_ratio, avail_flex_space, container_width)
@@ -152,7 +154,6 @@ ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_Layou
 				space_used -= child_height - child.layout.margins.top - child.layout.margins.bottom
 			}
 		case .Bottom_To_Top:
-			space_used : f32 = 0
 			for child := container.first; child != nil; child = child.next {
 				using child.layout
 				child_height := allocate_space(child, total_stretch_ratio, avail_flex_space, container_width)

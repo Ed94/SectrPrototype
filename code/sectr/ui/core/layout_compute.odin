@@ -174,6 +174,11 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	computed.fresh = true && !dont_mark_fresh
 }
 
+ui_compute_children_bounding_area :: proc ( box : ^UI_Box )
+{
+	// TODO(Ed): Implement this so we can have the .Size_To_Content flag supported.
+}
+
 ui_box_compute_layout_children :: proc( box : ^UI_Box )
 {
 	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next( current )

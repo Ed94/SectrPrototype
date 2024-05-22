@@ -77,10 +77,10 @@ vec3i_to_vec3 :: #force_inline proc "contextless" (v : Vec3i) -> Vec3 {return tr
 
 Range2 :: struct #raw_union {
 	using min_max : struct {
-		min, max : Vec2
+		min, max : Vec2,
 	},
 	using pts : struct {
-		p0, p1 : Vec2
+		p0, p1 : Vec2,
 	},
 	using xy : struct {
 		x0, y0 : f32,

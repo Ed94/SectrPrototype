@@ -2,6 +2,11 @@
 This is an alternative to Odin's default map type.
 The only reason I may need this is due to issues with allocator callbacks or something else going on
 with hot-reloads...
+---------------------------------------------------------------------------------------------------------
+5-21-2024 Update: Still haven't taken the time to see why but just to add the original case for the above
+was I believe exclusively when I didn't set the base addresss of vmem
+OR when I was attempting to use Casey's brute force replay feature with memory.
+---------------------------------------------------------------------------------------------------------
 
 This implementation uses two ZPL-Based Arrays to hold entires and the actual hash table.
 Instead of using separate chains, it maintains linked entries within the array.

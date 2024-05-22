@@ -1,11 +1,10 @@
-// TODO(Ed) : Move this to a grime package
 package sectr
+
+// TODO(Ed): Review these when os2 is done.
 
 import "core:fmt"
 import "core:os"
 import "base:runtime"
-
-// Test
 
 file_copy_sync :: proc( path_src, path_dst: string, allocator := context.temp_allocator ) -> b32
 {

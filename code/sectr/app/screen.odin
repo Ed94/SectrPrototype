@@ -282,11 +282,6 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 				}
 			}
 
-			// scope(theme_transparent)
-			// spacer := ui_spacer("settings_menu.engine_refresh.end_spacer")
-			// spacer.layout.flags      = {.Fixed_Height}
-			// spacer.layout.size.min.y = 10
-
 			Min_Zoom:
 			{
 				scope( theme_table_row(is_even = true))

@@ -59,3 +59,4 @@ They'll be elaborated in their own documentation
 ![img](docs/assets/Code_2024-05-04_12-55-53.png)
 ![img](docs/assets/sectr_host_2024-05-11_22-34-15.png)
 ![img](docs/assets/sectr_host_2024-05-15_03-32-36.png)
+![img](docs/assets/Code_2024-05-21_23-15-16.gif)
