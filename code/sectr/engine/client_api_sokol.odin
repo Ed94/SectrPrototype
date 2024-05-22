@@ -170,6 +170,13 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		sokol_app.pre_client_init(desc)
 		sokol_app.client_init()
 
+		// if config.engine_refresh_hz == 0 {
+		// 	config.engine_refresh_hz = sokol_app.frame_duration()
+		// }
+		if config.engine_refresh_hz == 0 {
+			config.engine_refresh_hz = 165
+		}
+
 		// rl.Odin_SetMalloc( RL_MALLOC )
 
 		// rl.SetConfigFlags( {
@@ -440,7 +447,7 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		sokol_app.post_client_frame()
 		profile_end()
 	}
-	return should_close
+	return ! should_close
 }
 
 @export
