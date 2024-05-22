@@ -1,6 +1,7 @@
 package sectr
 
 import "base:runtime"
+import "core:time"
 import str "core:strings"
 
 import sokol_app "thirdparty:sokol/app"
@@ -11,10 +12,29 @@ sokol_app_init_callback :: proc "c" () {
 }
 
 // This is being filled in but we're directly controlling the lifetime of sokol_app's execution.
-// Thus we have no need for it todo frame callbacks
+// So this will only get called during resize events (on Win32 at least)
 sokol_app_frame_callback :: proc "c" () {
 	context = get_state().sokol_context
-	log("sokol_app: SHOULD NOT HAVE CALLED THE FRAME CALLABCK")
+
+	state := get_state()
+
+	sokol_width  := sokol_app.widthf()
+	sokol_height := sokol_app.heightf()
+
+	window := & state.app_window
+	if	int(window.extent.x) != int(sokol_width) || int(window.extent.y) != int(sokol_height) {
+		window.extent.x = sokol_width
+		window.extent.y = sokol_height
+		log("sokol_app: Event-based frame callback triggered (detected a resize")
+	}
+
+	// sokol_app is the only good reference for a frame-time at this point.
+	sokol_delta_ms := sokol_app.frame_delta()
+	sokol_delta_ns := transmute(Duration) sokol_delta_ms * MS_To_NS
+
+	client_tick := time.tick_now()
+	tick_work_frame()
+	tick_frametime( & client_tick, sokol_delta_ms, sokol_delta_ns )
 }
 
 sokol_app_cleanup_callback :: proc "c" () {
@@ -61,9 +81,17 @@ sokol_app_log_callback :: proc "c" (
 		cloned_fname = str.clone_from_cstring(filename_or_null, context.temp_allocator)
 	}
 
-	logf( "%-80s %v : %s::%s", cloned_msg, cloned_fname, str.clone_from_cstring(tag), level = odin_level )
+	cloned_tag := str.clone_from_cstring(tag, context.temp_allocator)
+	logf( "%-80s %s::%v", cloned_msg, cloned_tag, line_nr, level = odin_level )
 }
 
-sokol_app_event_callback :: proc "c" (event : ^sokol_app.Event) {
-
+sokol_app_event_callback :: proc "c" (event : ^sokol_app.Event)
+{
+	state := get_state(); using state
+	context = sokol_context
+	if event.type == sokol_app.Event_Type.DISPLAY_CHANGED {
+		logf("sokol_app - event: Display changed")
+		logf("refresh rate: %v", sokol_app.refresh_rate());
+		monitor_refresh_hz := sokol_app.refresh_rate()
+	}
 }

@@ -170,41 +170,21 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		sokol_app.pre_client_init(desc)
 		sokol_app.client_init()
 
+		window := & state.app_window
+		window.extent.x = sokol_app.widthf()
+		window.extent.y = sokol_app.heightf()
+
+		// TODO(Ed): We don't need monitor tracking until we have multi-window support (which I don't think I'll do for this prototype)
+		// Sokol doesn't provide it.
+		// config.current_monitor    = sokol_app.monitor_id()
+		monitor_refresh_hz = sokol_app.refresh_rate()
+
 		// if config.engine_refresh_hz == 0 {
 		// 	config.engine_refresh_hz = sokol_app.frame_duration()
 		// }
 		if config.engine_refresh_hz == 0 {
-			config.engine_refresh_hz = 165
+			config.engine_refresh_hz = uint(monitor_refresh_hz)
 		}
-
-		// rl.Odin_SetMalloc( RL_MALLOC )
-
-		// rl.SetConfigFlags( {
-		// 	rl.ConfigFlag.WINDOW_RESIZABLE,
-		// 	rl.ConfigFlag.WINDOW_TOPMOST,
-		// })
-
-		// window_width  : i32 = cast(i32) config.resolution_width
-		// window_height : i32 = cast(i32) config.resolution_height
-		// win_title     : cstring = "Sectr Prototype"
-		// rl.InitWindow( window_width, window_height, win_title )
-		// log( "Raylib initialized and window opened" )
-
-		// window := & state.app_window
-		// window.extent.x = f32(window_width)  * 0.5
-		// window.extent.y = f32(window_height) * 0.5
-
-		// We do not support non-uniform DPI.
-		// window.dpi_scale = rl.GetWindowScaleDPI().x
-		// window.ppcm      = os_default_ppcm * window.dpi_scale
-
-		// Determining current monitor and setting the target frametime based on it..
-		// monitor_id         = rl.GetCurrentMonitor()
-		// monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
-
-		// if config.engine_refresh_hz == 0 {
-		// 	config.engine_refresh_hz = uint(monitor_refresh_hz)
-		// }
 	}
 
 	// Basic Font Setup
@@ -351,7 +331,7 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 }
 
 @export
-tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
+tick :: proc( host_delta_time_ms : f64, host_delta_ns : Duration ) -> b32
 {
 	should_close : b32
 
@@ -364,7 +344,17 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 	state := get_state(); using state
 
 	client_tick := time.tick_now()
-	{
+	tick_work_frame()
+	tick_frametime( & client_tick, host_delta_time_ms, host_delta_ns )
+	return ! should_close
+}
+
+
+// Lifted out of tick so that sokol_app_frame_callback can do it as well.
+tick_work_frame :: #force_inline proc()
+{
+		context.logger = to_odin_logger( & Memory_App.logger )
+		state := get_state(); using state
 		profile("Work frame")
 
 		// Setup Frame Slab
@@ -394,60 +384,61 @@ tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
 		// render()
 
 		// rl.SwapScreenBuffer()
-	}
+}
 
-	// Timing
+// Lifted out of tick so that sokol_app_frame_callback can do it as well.
+tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_ms : f64, host_delta_ns : Duration )
+{
+	state := get_state(); using state
+
+	// profile("Client tick timing processing")
+	// config.engine_refresh_hz = uint(monitor_refresh_hz)
+	// config.engine_refresh_hz = 6
+	frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
+	sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
+
+	frametime_delta_ns      = time.tick_lap_time( client_tick )
+	frametime_delta_ms      = duration_ms( frametime_delta_ns )
+	frametime_delta_seconds = duration_seconds( host_delta_ns )
+	frametime_elapsed_ms    = frametime_delta_ms + host_delta_time_ms
+
+	if frametime_elapsed_ms < frametime_target_ms
 	{
-		// profile("Client tick timing processing")
-		// config.engine_refresh_hz = uint(monitor_refresh_hz)
-		// config.engine_refresh_hz = 6
-		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
-		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
+		sleep_ms       := frametime_target_ms - frametime_elapsed_ms
+		pre_sleep_tick := time.tick_now()
 
-		frametime_delta_ns      = time.tick_lap_time( & client_tick )
-		frametime_delta_ms      = duration_ms( frametime_delta_ns )
-		frametime_delta_seconds = duration_seconds( frametime_delta_ns )
-		frametime_elapsed_ms    = frametime_delta_ms + host_delta_time
+		if sleep_ms > 0 {
+			thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
+			// thread__highres_wait( sleep_ms )
+		}
 
-		if frametime_elapsed_ms < frametime_target_ms
-		{
-			sleep_ms       := frametime_target_ms - frametime_elapsed_ms
-			pre_sleep_tick := time.tick_now()
+		sleep_delta_ns := time.tick_lap_time( & pre_sleep_tick)
+		sleep_delta_ms := duration_ms( sleep_delta_ns )
 
-			if sleep_ms > 0 {
-				thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
-				// thread__highres_wait( sleep_ms )
-			}
+		if sleep_delta_ms < sleep_ms {
+			// log( str_fmt_tmp("frametime sleep was off by: %v ms", sleep_delta_ms - sleep_ms ))
+		}
 
-			sleep_delta_ns := time.tick_lap_time( & pre_sleep_tick)
-			sleep_delta_ms := duration_ms( sleep_delta_ns )
-
-			if sleep_delta_ms < sleep_ms {
-				// log( str_fmt_tmp("frametime sleep was off by: %v ms", sleep_delta_ms - sleep_ms ))
-			}
+		frametime_elapsed_ms += sleep_delta_ms
+		for ; frametime_elapsed_ms < frametime_target_ms; {
+			sleep_delta_ns = time.tick_lap_time( & pre_sleep_tick)
+			sleep_delta_ms = duration_ms( sleep_delta_ns )
 
 			frametime_elapsed_ms += sleep_delta_ms
-			for ; frametime_elapsed_ms < frametime_target_ms; {
-				sleep_delta_ns = time.tick_lap_time( & pre_sleep_tick)
-				sleep_delta_ms = duration_ms( sleep_delta_ns )
-
-				frametime_elapsed_ms += sleep_delta_ms
-			}
 		}
-
-		config.timing_fps_moving_avg_alpha = 0.99
-		frametime_avg_ms = mov_avg_exp( f64(config.timing_fps_moving_avg_alpha), frametime_elapsed_ms, frametime_avg_ms )
-		fps_avg          = 1 / (frametime_avg_ms * MS_To_S)
-
-		if frametime_elapsed_ms > 60.0 {
-			log( str_fmt_tmp("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
-		}
-
-		profile_begin("sokol_app: post_client_tick")
-		sokol_app.post_client_frame()
-		profile_end()
 	}
-	return ! should_close
+
+	config.timing_fps_moving_avg_alpha = 0.99
+	frametime_avg_ms = mov_avg_exp( f64(config.timing_fps_moving_avg_alpha), frametime_elapsed_ms, frametime_avg_ms )
+	fps_avg          = 1 / (frametime_avg_ms * MS_To_S)
+
+	if frametime_elapsed_ms > 60.0 {
+		log( str_fmt_tmp("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
+	}
+
+	profile_begin("sokol_app: post_client_tick")
+	sokol_app.post_client_frame()
+	profile_end()
 }
 
 @export

@@ -63,7 +63,7 @@ poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 }
 
 frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
-	return cast(f32) get_state().frametime_delta_seconds
+	return cast(f32) get_state().frametime_avg_ms
 }
 
 update :: proc( delta_time : f64 ) -> b32

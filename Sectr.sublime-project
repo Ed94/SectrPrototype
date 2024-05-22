@@ -12,6 +12,7 @@
 			"ols":
 			{
 				"enabled": true,
+				"enable_snippets": false,
 			},
 			"odin":
 			{

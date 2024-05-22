@@ -250,7 +250,8 @@ State :: struct {
 	// The camera is considered the "context" for coodrinate space operations in rendering
 	cam_context : Camera,
 
-	sokol_context : runtime.Context,
+	sokol_frame_count : i64,
+	sokol_context     : runtime.Context,
 }
 
 get_state :: #force_inline proc "contextless" () -> ^ State {
