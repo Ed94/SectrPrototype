@@ -65,7 +65,8 @@ logger_interface :: proc(
 
 	first_line_length := len(text) > Max_Logger_Message_Width ? Max_Logger_Message_Width : len(text)
 	first_line        := transmute(string) text[ 0 : first_line_length ]
-	str_fmt_builder( & builder, "%-*s ", Max_Logger_Message_Width, first_line )
+	// str_fmt_builder( & builder, "%-s ", Max_Logger_Message_Width, first_line )
+	str_fmt_builder( & builder, "%-180s ", first_line )
 
 	// Signature
 	{

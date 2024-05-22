@@ -41,6 +41,11 @@ stack_peek :: #force_inline proc "contextless" ( using stack : ^StackFixed( $ Ty
 	return items[last]
 }
 
+stack_push_contextless :: #force_inline proc "contextless" ( stack : ^StackFixed( $Type, $Size), value : Type ) {
+	items[idx]  = value
+	idx        += 1
+}
+
 //endregion Fixed Stack
 
 //region Stack Allocator

@@ -351,7 +351,5 @@ main :: proc()
 
 	log("Succesfuly closed")
 	file_close( logger.file )
-	// TODO(Ed) : Add string interning!!!!!!!!!
-	// file_rename( logger.file_path, path_logger_finalized )
 	file_rename( str_fmt_buffer( fmt_backing[:], "%s/sectr.log",  Path_Logs), path_logger_finalized )
 }

@@ -12,6 +12,7 @@ import    "core:time"
 import    "core:prof/spall"
 import rl "vendor:raylib"
 
+when false {
 Path_Assets       :: "../assets/"
 Path_Shaders      :: "../shaders/"
 Path_Input_Replay :: "scratch.sectr_replay"
@@ -418,3 +419,5 @@ clean_frame :: proc()
 		verify( alloc_error == .None, "Failed to allocate transient slab" )
 	}
 }
+
+} // when false
