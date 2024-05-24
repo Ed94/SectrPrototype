@@ -277,7 +277,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 						layout.text_alignment = {0, 0.5}
 						layout.anchor.left    = 1.0
 						layout.flags          = {.Fixed_Width}
-						layout.size.min       = cast(Vec2) measure_text_size( value_txt.text.str, value_txt.style.font, value_txt.layout.font_size, 0 )
+						// layout.size.min       = cast(Vec2) measure_text_size( value_txt.text.str, value_txt.style.font, value_txt.layout.font_size, 0 )
 					}
 				}
 			}

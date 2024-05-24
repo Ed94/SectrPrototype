@@ -143,10 +143,10 @@ dot :: proc {
 	dot_unitv3_vs,
 }
 
-ws_view_draw_text :: proc {
-	ws_view_draw_text_string,
-	ws_view_draw_text_StrRunesPair,
-}
+// ws_view_draw_text :: proc {
+// 	ws_view_draw_text_string,
+// 	ws_view_draw_text_StrRunesPair,
+// }
 
 from_bytes :: proc {
 	str_builder_from_bytes,
@@ -166,9 +166,9 @@ is_power_of_two :: proc {
 	is_power_of_two_uintptr,
 }
 
-measure_text_size :: proc {
-	measure_text_size_raylib,
-}
+// measure_text_size :: proc {
+// 	measure_text_size_raylib,
+// }
 
 mov_avg_exp :: proc {
 	mov_avg_exp_f32,
@@ -274,9 +274,9 @@ to_quat128 :: proc {
 	rotor3_to_quat128,
 }
 
-to_rl_rect :: proc {
-	range2_to_rl_rect,
-}
+// to_rl_rect :: proc {
+// 	range2_to_rl_rect,
+// }
 
 to_runes :: proc {
 	string_to_runes,

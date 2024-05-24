@@ -70,17 +70,17 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	adjusted_size.x = max( adjusted_max_size_x, layout.size.min.x)
 	adjusted_size.y = max( adjusted_max_size_y, layout.size.min.y)
 
-	text_size : Vec2
-	if layout.font_size == computed.text_size.y {
-		text_size = computed.text_size
-	}
-	else {
-		text_size = cast(Vec2) measure_text_size( box.text.str, style.font, layout.font_size, 0 )
-	}
+	// text_size : Vec2
+	// if layout.font_size == computed.text_size.y {
+	// 	text_size = computed.text_size
+	// }
+	// else {
+	// 	text_size = cast(Vec2) measure_text_size( box.text.str, style.font, layout.font_size, 0 )
+	// }
 
-	if size_to_text {
-		adjusted_size = text_size
-	}
+	// if size_to_text {
+	// 	adjusted_size = text_size
+	// }
 
 	if .Scale_Width_By_Height_Ratio in layout.flags {
 		adjusted_size.x = adjusted_size.y * layout.size.min.x
@@ -161,16 +161,16 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	computed.content = content_bounds
 
 	// 8. Text position & size
-	if len(box.text.str) > 0
-	{
-		content_size := content_bounds.max - content_bounds.min
-		text_pos : Vec2
-		text_pos = content_bounds.min + { 0, text_size.y }
-		text_pos += (content_size - text_size) * layout.text_alignment
+	// if len(box.text.str) > 0
+	// {
+	// 	content_size := content_bounds.max - content_bounds.min
+	// 	text_pos : Vec2
+	// 	text_pos = content_bounds.min + { 0, text_size.y }
+	// 	text_pos += (content_size - text_size) * layout.text_alignment
 
-		computed.text_size = text_size
-		computed.text_pos  = text_pos
-	}
+	// 	computed.text_size = text_size
+	// 	computed.text_pos  = text_pos
+	// }
 	computed.fresh = true && !dont_mark_fresh
 }
 

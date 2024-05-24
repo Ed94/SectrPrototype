@@ -66,6 +66,7 @@ frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
 	return cast(f32) get_state().frametime_avg_ms
 }
 
+//TODO(Ed): Just use avg delta not this.
 update :: proc( delta_time : f64 ) -> b32
 {
 	profile(#procedure)

@@ -2,6 +2,7 @@ package sectr
 
 // Scratch space
 
+import sokol_gfx "thirdparty:sokol/gfx"
 import rl "vendor:raylib"
 
 DebugData :: struct {
@@ -38,5 +39,10 @@ DebugData :: struct {
 	cam_vp      : rl.Camera3D,
 	viewport_rt : rl.RenderTexture,
 
-	proto_text_shader : rl.Shader
+	gfx_clear_demo_pass_action : sokol_gfx.Pass_Action,
+	gfx_tri_demo_state : struct {
+		pipeline    : sokol_gfx.Pipeline,
+    bindings    : sokol_gfx.Bindings,
+    pass_action : sokol_gfx.Pass_Action,
+	}
 }

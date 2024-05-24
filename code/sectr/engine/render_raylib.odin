@@ -4,6 +4,7 @@ import "core:fmt"
 
 import rl "vendor:raylib"
 
+when false {
 range2_to_rl_rect :: #force_inline proc "contextless"( range : Range2 ) -> rl.Rectangle
 {
 	rect := rl.Rectangle {
@@ -399,3 +400,4 @@ render_screen_ui :: proc()
 	}
 	//endregion App UI
 }
+} // when false

@@ -5,6 +5,7 @@ import "core:strings"
 import "core:unicode/utf8"
 import rl "vendor:raylib"
 
+when false {
 debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color : rl.Color = rl.WHITE, font : FontID = Font_Default )
 {
 	// profile(#procedure)
@@ -222,3 +223,4 @@ measure_text_size_raylib :: proc( text : string, font : FontID, font_size := Fon
 
 	return text_size
 }
+} // when false

@@ -11,7 +11,10 @@ import    "core:strings"
 import    "core:time"
 import    "core:prof/spall"
 
-import sokol_app "thirdparty:sokol/app"
+import sokol_app          "thirdparty:sokol/app"
+import sokol_gfx          "thirdparty:sokol/gfx"
+import sokol_app_gfx_glue "thirdparty:sokol/glue"
+
 import rl "vendor:raylib"
 
 Path_Assets       :: "../assets/"
@@ -188,6 +191,79 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		}
 	}
 
+	// Setup sokol_gfx
+	{
+		glue_env := sokol_app_gfx_glue.environment()
+
+		desc := sokol_gfx.Desc {
+			buffer_pool_size      = 128,
+			image_pool_size       = 128,
+			sampler_pool_size     = 64,
+			shader_pool_size      = 32,
+			pipeline_pool_size    = 64,
+			// pass_pool_size       = 16, // (No longer exists)
+			attachments_pool_size = 16,
+			uniform_buffer_size   = 4 * Megabyte,
+			max_commit_listeners  = Kilo,
+			allocator             = { sokol_gfx_alloc, sokol_gfx_free, nil },
+			logger                = { sokol_gfx_log_callback, nil },
+			environment           = glue_env,
+		}
+		sokol_gfx.setup(desc)
+
+		backend := sokol_gfx.query_backend()
+		switch backend
+		{
+        case .D3D11:          logf("sokol_gfx: using D3D11 backend")
+        case .GLCORE, .GLES3: logf("sokol_gfx: using GL backend")
+
+        case .METAL_MACOS, .METAL_IOS, .METAL_SIMULATOR:
+        	logf("sokol_gfx: using Metal backend")
+
+        case .WGPU:  logf("sokol_gfx: using WebGPU backend")
+        case .DUMMY: logf("sokol_gfx: using dummy backend")
+		}
+
+		// Learning examples
+		{
+
+			debug.gfx_clear_demo_pass_action.colors[0] = {
+				load_action = .CLEAR,
+				clear_value = { 1, 0, 0, 1 }
+			}
+			vertices := [?]f32 {
+	      // positions      // colors
+	       0.0,  0.5, 0.5,  1.0, 0.0, 0.0, 1.0,
+	       0.5, -0.5, 0.5,  0.0, 1.0, 0.0, 1.0,
+	      -0.5, -0.5, 0.5,  0.0, 0.0, 1.0, 1.0,
+	    }
+
+    	tri_shader_attr_vs_position :: 0
+			tri_shader_attr_vs_color0   :: 1
+
+	    using debug.gfx_tri_demo_state
+	    bindings.vertex_buffers[0] = sokol_gfx.make_buffer( sokol_gfx.Buffer_Desc {
+	    	data = {
+	    		ptr  = & vertices,
+		    	size = size_of(vertices)
+	    	}
+	    })
+	    pipeline = sokol_gfx.make_pipeline( sokol_gfx.Pipeline_Desc {
+	    	shader = sokol_gfx.make_shader( triangle_shader_desc(backend)),
+	    	layout = sokol_gfx.Vertex_Layout_State {
+	    		attrs = {
+	    			tri_shader_attr_vs_position = { format = .FLOAT3 },
+	    			tri_shader_attr_vs_color0   = { format = .FLOAT4 },
+	    		}
+	    	}
+	    })
+	    pass_action.colors[0] = {
+    		load_action = .CLEAR,
+    		clear_value = { 0, 0, 0, 1 }
+	    }
+		}
+	}
+
 	// Basic Font Setup
 	if false
 	{
@@ -205,7 +281,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	}
 
 	// Setup the screen ui state
-	if false
+	if true
 	{
 		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
 		ui_floating_startup( & screen_ui.floating, persistent_slab_allocator(), 1 * Kilobyte, 1 * Kilobyte, "screen ui floating manager" )
@@ -220,7 +296,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	// Demo project setup
 	// TODO(Ed): This will eventually have to occur when the user either creates or loads a workspace. I don't know 
-	if false
+	if true
 	{
 		using project
 		path           = str_intern("./")
@@ -345,48 +421,55 @@ tick :: proc( host_delta_time_ms : f64, host_delta_ns : Duration ) -> b32
 	state := get_state(); using state
 
 	client_tick := time.tick_now()
-	tick_work_frame()
+	should_close |= tick_work_frame( host_delta_time_ms)
 	tick_frametime( & client_tick, host_delta_time_ms, host_delta_ns )
+
+	profile_begin("sokol_app: post_client_tick")
+	sokol_app.post_client_frame()
+	profile_end()
 	return ! should_close
 }
 
 
 // Lifted out of tick so that sokol_app_frame_callback can do it as well.
-tick_work_frame :: #force_inline proc()
+tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 {
-		context.logger = to_odin_logger( & Memory_App.logger )
-		state := get_state(); using state
-		profile("Work frame")
+	context.logger = to_odin_logger( & Memory_App.logger )
+	state := get_state(); using state
+	profile("Work frame")
 
-		// Setup Frame Slab
-		{
-			alloc_error : AllocatorError
-			frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0,
-				allocator           = frame_allocator(),
-				dbg_name            = Frame_Slab_DBG_Name,
-				should_zero_buckets = true )
-			verify( alloc_error == .None, "Failed to allocate frame slab" )
-		}
+	should_close : b32
 
-		// The policy for the work tick is that the default allocator is the frame's slab.
-		// Transient's is the temp allocator.
-		context.allocator      = frame_slab_allocator()
-		context.temp_allocator = transient_allocator()
+	// Setup Frame Slab
+	{
+		alloc_error : AllocatorError
+		frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0,
+			allocator           = frame_allocator(),
+			dbg_name            = Frame_Slab_DBG_Name,
+			should_zero_buckets = true )
+		verify( alloc_error == .None, "Failed to allocate frame slab" )
+	}
 
-		// rl.PollInputEvents()
+	// The policy for the work tick is that the default allocator is the frame's slab.
+	// Transient's is the temp allocator.
+	context.allocator      = frame_slab_allocator()
+	context.temp_allocator = transient_allocator()
 
-		debug.draw_ui_box_bounds_points = false
-		debug.draw_UI_padding_bounds = false
-		debug.draw_ui_content_bounds = false
+	// rl.PollInputEvents()
 
-		// config.color_theme = App_Thm_Light
-		// config.color_theme = App_Thm_Dusk
-		config.color_theme = App_Thm_Dark
+	debug.draw_ui_box_bounds_points = false
+	debug.draw_UI_padding_bounds = false
+	debug.draw_ui_content_bounds = false
 
-		// should_close |= update( host_delta_time )
-		// render()
+	// config.color_theme = App_Thm_Light
+	// config.color_theme = App_Thm_Dusk
+	config.color_theme = App_Thm_Dark
 
-		// rl.SwapScreenBuffer()
+	should_close |= update( host_delta_time_ms )
+	render()
+
+	// rl.SwapScreenBuffer()
+	return should_close
 }
 
 // Lifted out of tick so that sokol_app_frame_callback can do it as well.
@@ -440,10 +523,6 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 	if frametime_elapsed_ms > 60.0 {
 		log( str_fmt("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
 	}
-
-	profile_begin("sokol_app: post_client_tick")
-	sokol_app.post_client_frame()
-	profile_end()
 }
 
 @export
