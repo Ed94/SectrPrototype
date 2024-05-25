@@ -6,8 +6,6 @@ import "core:math/linalg"
 import "core:os"
 import str "core:strings"
 
-import rl "vendor:raylib"
-
 DebugActions :: struct {
 	load_project   : b32,
 	save_project   : b32,
@@ -75,12 +73,9 @@ update :: proc( delta_time : f64 ) -> b32
 	workspace := & project.workspace
 	cam       := & workspace.cam
 
-	if rl.IsWindowResized() {
-		window := & state.app_window
-		window.extent.x = f32(rl.GetScreenWidth())  * 0.5
-		window.extent.y = f32(rl.GetScreenHeight()) * 0.5
-
-		project.workspace.cam.offset = transmute(Vec2) window.extent
+	window := & state.app_window
+	if window.resized {
+		project.workspace.cam.view = transmute(Vec2) window.extent
 	}
 
 	state.input, state.input_prev = swap( state.input, state.input_prev )
@@ -189,13 +184,13 @@ update :: proc( delta_time : f64 ) -> b32
 		  - cast(f32) i32(debug_actions.cam_move_up)   + cast(f32) i32(debug_actions.cam_move_down),
 		}
 		move_velocity *= digital_move_speed * f32(delta_time)
-		cam.target    += move_velocity
+		cam.position  += move_velocity
 
 		if debug_actions.cam_mouse_pan
 		{
 			if is_within_screenspace(input.mouse.pos) {
 				pan_velocity := input.mouse.delta * vec2(1, -1) * ( 1 / cam.zoom )
-				cam.target   -= pan_velocity
+				cam.position -= pan_velocity
 			}
 		}
 	}
@@ -252,6 +247,7 @@ update :: proc( delta_time : f64 ) -> b32
 
 	debug.last_mouse_pos = input.mouse.pos
 
-	should_shutdown : b32 = ! cast(b32) rl.WindowShouldClose()
+	// should_shutdown : b32 = ! cast(b32) rl.WindowShouldClose()
+	should_shutdown : b32 = false
 	return should_shutdown
 }

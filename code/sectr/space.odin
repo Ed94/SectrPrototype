@@ -6,8 +6,6 @@ Ultimately the user's window ppcm (pixels-per-centimeter) determins how all virt
 */
 package sectr
 
-import rl "vendor:raylib"
-
 // The points to pixels and pixels to points are our only reference to accurately converting
 // an object from world space to screen-space.
 // This prototype engine will have all its spacial unit base for distances in virtual pixels.
@@ -97,7 +95,13 @@ range2_pixels_to_cm :: #force_inline proc "contextless"( range : Range2 ) -> Ran
 
 //endregion
 
-Camera :: rl.Camera2D
+Camera :: struct {
+	view     : Extents2,
+	position : Vec2,
+	zoom     : f32,
+}
+
+Camera_Default := Camera { zoom = 1 }
 
 CameraZoomMode :: enum u32 {
 	Digital,
@@ -117,8 +121,8 @@ BoundsCorners2 :: struct {
 	top_left, top_right, bottom_left, bottom_right: Vec2,
 }
 
-Extents2  :: distinct Vec2
-Extents2i :: distinct Vec2i
+Extents2  :: Vec2
+Extents2i :: Vec2i
 
 WS_Pos :: struct {
 	tile_id : Vec2i,
@@ -162,8 +166,8 @@ view_get_bounds :: #force_inline proc "contextless"() -> Range2 {
 	cam            := & project.workspace.cam
 	screen_extent  := state.app_window.extent
 	cam_zoom_ratio := 1.0 / cam.zoom
-	bottom_left  := Vec2 { cam.target.x, -cam.target.y } + Vec2 { -screen_extent.x, -screen_extent.y} * cam_zoom_ratio
-	top_right    := Vec2 { cam.target.x, -cam.target.y } + Vec2 {  screen_extent.x,  screen_extent.y} * cam_zoom_ratio
+	bottom_left  := Vec2 { cam.position.x, -cam.position.y } + Vec2 { -screen_extent.x, -screen_extent.y} * cam_zoom_ratio
+	top_right    := Vec2 { cam.position.x, -cam.position.y } + Vec2 {  screen_extent.x,  screen_extent.y} * cam_zoom_ratio
 	return range2( bottom_left, top_right )
 }
 
@@ -173,10 +177,10 @@ view_get_corners :: #force_inline proc "contextless"() -> BoundsCorners2 {
 	cam            := & project.workspace.cam
 	cam_zoom_ratio := 1.0 / cam.zoom
 	screen_extent  := state.app_window.extent * cam_zoom_ratio
-	top_left     := cam.target + Vec2 { -screen_extent.x,  screen_extent.y }
-	top_right    := cam.target + Vec2 {  screen_extent.x,  screen_extent.y }
-	bottom_left  := cam.target + Vec2 { -screen_extent.x, -screen_extent.y }
-	bottom_right := cam.target + Vec2 {  screen_extent.x, -screen_extent.y }
+	top_left     := cam.position + Vec2 { -screen_extent.x,  screen_extent.y }
+	top_right    := cam.position + Vec2 {  screen_extent.x,  screen_extent.y }
+	bottom_left  := cam.position + Vec2 { -screen_extent.x, -screen_extent.y }
+	bottom_right := cam.position + Vec2 {  screen_extent.x, -screen_extent.y }
 	return { top_left, top_right, bottom_left, bottom_right }
 }
 
@@ -196,7 +200,7 @@ render_to_ws_view_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
 screen_to_ws_view_pos :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
 	state := get_state(); using state
 	cam   := & project.workspace.cam
-	result := Vec2 { cam.target.x, -cam.target.y}  + Vec2 { pos.x, pos.y } * (1 / cam.zoom)
+	result := Vec2 { cam.position.x, -cam.position.y}  + Vec2 { pos.x, pos.y } * (1 / cam.zoom)
 	return result
 }
 

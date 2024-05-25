@@ -134,7 +134,7 @@ pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResu
 
 	rune_type :: proc( codepoint : rune ) -> PWS_TokenType
 	{
-		using self := context_ext( PWS_LexerData)
+		using self := context_usr( PWS_LexerData)
 
 		switch codepoint
 		{
@@ -177,7 +177,7 @@ pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResu
 
 	make_token :: proc ( byte_offset : int ) -> AllocatorError
 	{
-		self := context_ext( PWS_LexerData); using self
+		self := context_usr( PWS_LexerData); using self
 
 		if previous_rune == Rune_Carriage_Return && current_rune != Rune_Line_Feed {
 			ensure(false, "Rouge Carriage Return")
@@ -268,7 +268,7 @@ pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseR
 	//region Helper procs
 	eat_line :: #force_inline proc()
 	{
-		self := context_ext( PWS_ParseData); using self
+		self := context_usr( PWS_ParseData); using self
 		tok := cast( ^PWS_Token) head
 
 		line.type    = .Line

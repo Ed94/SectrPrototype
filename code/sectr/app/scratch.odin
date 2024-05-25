@@ -3,11 +3,10 @@ package sectr
 // Scratch space
 
 import sokol_gfx "thirdparty:sokol/gfx"
-import rl "vendor:raylib"
 
 DebugData :: struct {
 	square_size : i32,
-	square_pos  : rl.Vector2,
+	square_pos  : Vec2,
 
 	debug_text_vis    : b32,
 	draw_debug_text_y : f32,
@@ -34,10 +33,6 @@ DebugData :: struct {
 	path_lorem    : string,
 	lorem_content : []byte,
 	lorem_parse   : PWS_ParseResult,
-
-	// Test 3d Viewport
-	cam_vp      : rl.Camera3D,
-	viewport_rt : rl.RenderTexture,
 
 	gfx_clear_demo_pass_action : sokol_gfx.Pass_Action,
 	gfx_tri_demo_state : struct {

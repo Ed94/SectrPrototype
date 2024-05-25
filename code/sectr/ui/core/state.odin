@@ -86,6 +86,7 @@ UI_Parent_Stack_Size      :: 512
 // UI_Built_Boxes_Array_Size :: 8
 UI_Built_Boxes_Array_Size :: 128 * Kilobyte
 
+// TODO(Ed): Rename to UI_Context
 UI_State :: struct {
 	// TODO(Ed) : Use these
 	// build_arenas : [2]Arena,

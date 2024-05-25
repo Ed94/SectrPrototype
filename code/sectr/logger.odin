@@ -118,15 +118,22 @@ logger_interface :: proc(
 	str_to_file_ln( logger.file, to_string(builder) )
 }
 
-// TODO(Ed): Use a fixed size block allocation for message formatting used by core_log
-// This will prevent stack overflows with the virtual arena debug logs at worst case and not need to do
-// some inline arena allocation on-site such as with the memory tracker
+
+// This buffer is used below excluisvely to prevent any allocator recusion when verbose logging from allocators.
+Logger_Allocator_Buffer : [32 * Kilobyte]u8
 
 log :: proc( msg : string, level := LogLevel.Info, loc := #caller_location ) {
+	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+	context.allocator      = arena_allocator(& temp_arena)
+	context.temp_allocator = arena_allocator(& temp_arena)
+
 	core_log.log( level, msg, location = loc )
 }
 
 logf :: proc( fmt : string, args : ..any,  level := LogLevel.Info, loc := #caller_location  ) {
-	// context.allocator = transient_allocator()
+	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+	context.allocator      = arena_allocator(& temp_arena)
+	context.temp_allocator = arena_allocator(& temp_arena)
+
 	core_log.logf( level, fmt, ..args, location = loc )
 }

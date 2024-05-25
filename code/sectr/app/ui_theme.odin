@@ -116,12 +116,12 @@ theme_table_row :: proc( is_even : bool ) -> UI_Theme
 	if ! loaded
 	{
 		app_color := app_color_theme()
-		table_bg : Color
+		table_bg : RGBA8
 		if is_even {
-			table_bg = app_color.table_even_bg_color
+			table_bg = app_color.table_even_bg
 		}
 		else {
-			table_bg = app_color.table_odd_bg_color
+			table_bg = app_color.table_odd_bg
 		}
 		layout := UI_Layout {
 			flags          = {},

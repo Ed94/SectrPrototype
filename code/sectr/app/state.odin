@@ -6,8 +6,6 @@ import "core:mem"
 import "core:mem/virtual"
 import "core:os"
 
-import rl "vendor:raylib"
-
 Str_App_State := "App State"
 
 #region("Memory")
@@ -167,6 +165,7 @@ AppWindow :: struct {
 	extent    : Extents2, // Window half-size
 	dpi_scale : f32,      // Dots per inch scale (provided by raylib via glfw)
 	ppcm      : f32,      // Dots per centimetre
+	resized   : b32,      // Extent changed this frame
 }
 
 FontData :: struct {
@@ -241,9 +240,14 @@ State :: struct {
 	font_rec_mono_semicasual_reg : FontID,
 	default_font                 : FontID,
 
+
+	// Context tracking
+	// These are used as implicit contextual states when doing immediate mode interfaces
+	// or for event callbacks that need their context assigned
+
 	// There are two potential UI contextes for this prototype so far,
 	// the screen-space UI and the current workspace UI.
-	// This is used so that the ui api doesn't need to have the user pass the context every single time.
+	// This is used so that the ui api doesn't need to have the user pass the context through every proc.
 	ui_context          : ^UI_State,
 	ui_floating_context : ^UI_FloatingManager,
 

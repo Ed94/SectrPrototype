@@ -13,7 +13,7 @@ vec2_json_unmarshal :: proc( value : ^ json.Value ) -> Vec2 {
 	}
 }
 
-color_json_unmarshal :: proc( value : ^ json.Value ) -> Color {
+color_json_unmarshal :: proc( value : ^ json.Value ) -> RGBA8 {
 	json_color := value.(json.Array)
 	r := u8(json_color[0].(json.Float))
 	g := u8(json_color[1].(json.Float))

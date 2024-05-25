@@ -17,8 +17,8 @@ UI_StylePreset :: enum u32 {
 }
 
 UI_Style :: struct {
-	bg_color     : Color,
-	border_color : Color,
+	bg_color     : RGBA8,
+	border_color : RGBA8,
 
 	// TODO(Ed): We cannot support individual corners unless we add it to raylib (or finally change the rendering backend)
 	corner_radii : [Corner.Count]f32,
@@ -33,7 +33,7 @@ UI_Style :: struct {
 	// shader : UI_Shader,
 
 	font       : FontID,
-	text_color : Color,
+	text_color : RGBA8,
 
 	// TODO(Ed) : Support setting the cursor state
 	cursor : UI_Cursor,

@@ -10,9 +10,11 @@ import    "core:slice"
 import    "core:strings"
 import    "core:time"
 import    "core:prof/spall"
-import rl "vendor:raylib"
 
-when false {
+import sokol_app          "thirdparty:sokol/app"
+import sokol_gfx          "thirdparty:sokol/gfx"
+import sokol_app_gfx_glue "thirdparty:sokol/glue"
+
 Path_Assets       :: "../assets/"
 Path_Shaders      :: "../shaders/"
 Path_Input_Replay :: "scratch.sectr_replay"
@@ -52,9 +54,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		transient    = transient_mem
 		files_buffer = files_buffer_mem
 
+		// The policy for startup & any other persistent scopes is that the default allocator is transient.
+		// Any persistent allocations are explicitly specified.
 		context.allocator      = transient_allocator()
 		context.temp_allocator = transient_allocator()
-		// TODO(Ed) : Put on the transient allocator a slab allocator (transient slab)
 	}
 
 	state := new( State, persistent_allocator() )
@@ -99,15 +102,17 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	}
 
 	// Setup input frame poll references
-	input      = & input_data[1]
-	input_prev = & input_data[0]
-	for & input in input_data {
-		using input
-		error : AllocatorError
-		keyboard_events.keys_pressed, error  = array_init_reserve(KeyCode, persistent_slab_allocator(), Kilo)
-		ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.keys_pressed array")
-		keyboard_events.chars_pressed, error = array_init_reserve(rune, persistent_slab_allocator(), Kilo)
-		ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.chars_pressed array")
+	{
+		input      = & input_data[1]
+		input_prev = & input_data[0]
+		for & input in input_data {
+			using input
+			error : AllocatorError
+			keyboard_events.keys_pressed, error  = array_init_reserve(KeyCode, persistent_slab_allocator(), Kilo)
+			ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.keys_pressed array")
+			keyboard_events.chars_pressed, error = array_init_reserve(rune, persistent_slab_allocator(), Kilo)
+			ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.chars_pressed array")
+		}
 	}
 
 	// Configuration Load
@@ -137,39 +142,130 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	Desired_OS_Scheduler_MS :: 1
 	sleep_is_granular = set__scheduler_granularity( Desired_OS_Scheduler_MS )
 
-	// Rough setup of window with rl stuff
+	// Setup for sokol_app
 	{
-		// rl.Odin_SetMalloc( RL_MALLOC )
+		sokol_context = context
+		desc := sokol_app.Desc {
+			init_cb    = sokol_app_init_callback,
+			frame_cb   = sokol_app_frame_callback,
+			cleanup_cb = sokol_app_cleanup_callback,
+			event_cb   = sokol_app_event_callback,
 
-		rl.SetConfigFlags( {
-			rl.ConfigFlag.WINDOW_RESIZABLE,
-			rl.ConfigFlag.WINDOW_TOPMOST,
-		})
+			width  = cast(c.int) config.resolution_width,
+			height = cast(c.int) config.resolution_height,
 
-		window_width  : i32 = cast(i32) config.resolution_width
-		window_height : i32 = cast(i32) config.resolution_height
-		win_title     : cstring = "Sectr Prototype"
-		rl.InitWindow( window_width, window_height, win_title )
-		log( "Raylib initialized and window opened" )
+			sample_count     = 0,
+			// swap_interval = config.monitor_refresh_hz,
+
+			high_dpi     = false,
+			fullscreen   = false,
+			alpha        = false,
+
+			window_title = "Sectr Prototype",
+			// icon = { sokol_app.sokol_default },
+
+			enable_clipboard = false, // TODO(Ed): Implmeent this
+			enable_dragndrop = false, // TODO(Ed): Implmeent this
+
+			logger    = { sokol_app_log_callback, nil },
+			allocator = { sokol_app_alloc, sokol_app_free, nil },
+		}
+
+		sokol_app.pre_client_init(desc)
+		sokol_app.client_init()
 
 		window := & state.app_window
-		window.extent.x = f32(window_width)  * 0.5
-		window.extent.y = f32(window_height) * 0.5
+		window.extent.x = sokol_app.widthf()
+		window.extent.y = sokol_app.heightf()
 
-		// We do not support non-uniform DPI.
-		window.dpi_scale = rl.GetWindowScaleDPI().x
-		window.ppcm      = os_default_ppcm * window.dpi_scale
+		// TODO(Ed): We don't need monitor tracking until we have multi-window support (which I don't think I'll do for this prototype)
+		// Sokol doesn't provide it.
+		// config.current_monitor    = sokol_app.monitor_id()
+		monitor_refresh_hz = sokol_app.refresh_rate()
 
-		// Determining current monitor and setting the target frametime based on it..
-		monitor_id         = rl.GetCurrentMonitor()
-		monitor_refresh_hz = rl.GetMonitorRefreshRate( monitor_id )
-
+		// if config.engine_refresh_hz == 0 {
+		// 	config.engine_refresh_hz = sokol_app.frame_duration()
+		// }
 		if config.engine_refresh_hz == 0 {
 			config.engine_refresh_hz = uint(monitor_refresh_hz)
 		}
 	}
 
+	// Setup sokol_gfx
+	{
+		glue_env := sokol_app_gfx_glue.environment()
+
+		desc := sokol_gfx.Desc {
+			buffer_pool_size      = 128,
+			image_pool_size       = 128,
+			sampler_pool_size     = 64,
+			shader_pool_size      = 32,
+			pipeline_pool_size    = 64,
+			// pass_pool_size       = 16, // (No longer exists)
+			attachments_pool_size = 16,
+			uniform_buffer_size   = 4 * Megabyte,
+			max_commit_listeners  = Kilo,
+			allocator             = { sokol_gfx_alloc, sokol_gfx_free, nil },
+			logger                = { sokol_gfx_log_callback, nil },
+			environment           = glue_env,
+		}
+		sokol_gfx.setup(desc)
+
+		backend := sokol_gfx.query_backend()
+		switch backend
+		{
+        case .D3D11:          logf("sokol_gfx: using D3D11 backend")
+        case .GLCORE, .GLES3: logf("sokol_gfx: using GL backend")
+
+        case .METAL_MACOS, .METAL_IOS, .METAL_SIMULATOR:
+        	logf("sokol_gfx: using Metal backend")
+
+        case .WGPU:  logf("sokol_gfx: using WebGPU backend")
+        case .DUMMY: logf("sokol_gfx: using dummy backend")
+		}
+
+		// Learning examples
+		{
+
+			debug.gfx_clear_demo_pass_action.colors[0] = {
+				load_action = .CLEAR,
+				clear_value = { 1, 0, 0, 1 }
+			}
+			vertices := [?]f32 {
+	      // positions      // colors
+	       0.0,  0.5, 0.5,  1.0, 0.0, 0.0, 1.0,
+	       0.5, -0.5, 0.5,  0.0, 1.0, 0.0, 1.0,
+	      -0.5, -0.5, 0.5,  0.0, 0.0, 1.0, 1.0,
+	    }
+
+    	tri_shader_attr_vs_position :: 0
+			tri_shader_attr_vs_color0   :: 1
+
+	    using debug.gfx_tri_demo_state
+	    bindings.vertex_buffers[0] = sokol_gfx.make_buffer( sokol_gfx.Buffer_Desc {
+	    	data = {
+	    		ptr  = & vertices,
+		    	size = size_of(vertices)
+	    	}
+	    })
+	    pipeline = sokol_gfx.make_pipeline( sokol_gfx.Pipeline_Desc {
+	    	shader = sokol_gfx.make_shader( triangle_shader_desc(backend)),
+	    	layout = sokol_gfx.Vertex_Layout_State {
+	    		attrs = {
+	    			tri_shader_attr_vs_position = { format = .FLOAT3 },
+	    			tri_shader_attr_vs_color0   = { format = .FLOAT4 },
+	    		}
+	    	}
+	    })
+	    pass_action.colors[0] = {
+    		load_action = .CLEAR,
+    		clear_value = { 0, 0, 0, 1 }
+	    }
+		}
+	}
+
 	// Basic Font Setup
+	if false
 	{
 		font_provider_startup()
 		// path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
@@ -178,13 +274,14 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
-		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" }, transient_allocator() )
+		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
 		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 		default_font = font_firacode
 		log( "Default font loaded" )
 	}
 
 	// Setup the screen ui state
+	if true
 	{
 		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
 		ui_floating_startup( & screen_ui.floating, persistent_slab_allocator(), 1 * Kilobyte, 1 * Kilobyte, "screen ui floating manager" )
@@ -199,6 +296,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	// Demo project setup
 	// TODO(Ed): This will eventually have to occur when the user either creates or loads a workspace. I don't know 
+	if true
 	{
 		using project
 		path           = str_intern("./")
@@ -207,9 +305,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		{
 			using project.workspace
 			cam = {
-				target   = { 0, 0 },
-				offset   = transmute(Vec2) app_window.extent,
-				rotation = 0,
+				position = { 0, 0 },
+				view     = transmute(Vec2) app_window.extent,
+				// rotation = 0,
 				zoom     = 1.0,
 			}
 			// cam = {
@@ -262,7 +360,9 @@ sectr_shutdown :: proc()
 		file_close( Memory_App.replay.active_file )
 	}
 
-	font_provider_shutdown()
+	// font_provider_shutdown()
+
+	sokol_app.post_client_cleanup()
 
 	log("Module shutdown complete")
 }
@@ -308,96 +408,121 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 }
 
 @export
-tick :: proc( host_delta_time : f64, host_delta_ns : Duration ) -> b32
+tick :: proc( host_delta_time_ms : f64, host_delta_ns : Duration ) -> b32
 {
+	should_close : b32
+
+	profile_begin("sokol_app: pre_client_tick")
+	should_close |= cast(b32) sokol_app.pre_client_frame()
+	profile_end()
+
 	profile( "Client Tick" )
 	context.logger = to_odin_logger( & Memory_App.logger )
 	state := get_state(); using state
 
+	client_tick := time.tick_now()
+	should_close |= tick_work_frame( host_delta_time_ms)
+	tick_frametime( & client_tick, host_delta_time_ms, host_delta_ns )
+
+	profile_begin("sokol_app: post_client_tick")
+	sokol_app.post_client_frame()
+	profile_end()
+	return ! should_close
+}
+
+
+// Lifted out of tick so that sokol_app_frame_callback can do it as well.
+tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
+{
+	context.logger = to_odin_logger( & Memory_App.logger )
+	state := get_state(); using state
+	profile("Work frame")
+
 	should_close : b32
 
-	client_tick := time.tick_now()
+	// Setup Frame Slab
 	{
-		profile("Work frame")
-
-		// Setup Frame Slab
-		{
-			alloc_error : AllocatorError
-			frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0,
-				allocator           = frame_allocator(),
-				dbg_name            = Frame_Slab_DBG_Name,
-				should_zero_buckets = true )
-			verify( alloc_error == .None, "Failed to allocate frame slab" )
-		}
-
-		context.allocator      = frame_slab_allocator()
-		context.temp_allocator = transient_allocator()
-
-		rl.PollInputEvents()
-
-		debug.draw_ui_box_bounds_points = false
-		debug.draw_UI_padding_bounds = false
-		debug.draw_ui_content_bounds = false
-
-		// config.color_theme = App_Thm_Light
-		// config.color_theme = App_Thm_Dusk
-		config.color_theme = App_Thm_Dark
-
-		should_close = update( host_delta_time )
-		render()
-
-		rl.SwapScreenBuffer()
+		alloc_error : AllocatorError
+		frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0,
+			allocator           = frame_allocator(),
+			dbg_name            = Frame_Slab_DBG_Name,
+			should_zero_buckets = true )
+		verify( alloc_error == .None, "Failed to allocate frame slab" )
 	}
 
-	// Timing
+	// The policy for the work tick is that the default allocator is the frame's slab.
+	// Transient's is the temp allocator.
+	context.allocator      = frame_slab_allocator()
+	context.temp_allocator = transient_allocator()
+
+	// rl.PollInputEvents()
+
+	debug.draw_ui_box_bounds_points = false
+	debug.draw_UI_padding_bounds = false
+	debug.draw_ui_content_bounds = false
+
+	// config.color_theme = App_Thm_Light
+	// config.color_theme = App_Thm_Dusk
+	config.color_theme = App_Thm_Dark
+
+	should_close |= update( host_delta_time_ms )
+	render()
+
+	// rl.SwapScreenBuffer()
+	return should_close
+}
+
+// Lifted out of tick so that sokol_app_frame_callback can do it as well.
+tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_ms : f64, host_delta_ns : Duration )
+{
+	state := get_state(); using state
+	context.allocator      = frame_slab_allocator()
+	context.temp_allocator = transient_allocator()
+
+	// profile("Client tick timing processing")
+	// config.engine_refresh_hz = uint(monitor_refresh_hz)
+	// config.engine_refresh_hz = 6
+	frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
+	sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
+
+	frametime_delta_ns      = time.tick_lap_time( client_tick )
+	frametime_delta_ms      = duration_ms( frametime_delta_ns )
+	frametime_delta_seconds = duration_seconds( host_delta_ns )
+	frametime_elapsed_ms    = frametime_delta_ms + host_delta_time_ms
+
+	if frametime_elapsed_ms < frametime_target_ms
 	{
-		// profile("Client tick timing processing")
-		// config.engine_refresh_hz = uint(monitor_refresh_hz)
-		// config.engine_refresh_hz = 6
-		frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
-		sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
+		sleep_ms       := frametime_target_ms - frametime_elapsed_ms
+		pre_sleep_tick := time.tick_now()
 
-		frametime_delta_ns      = time.tick_lap_time( & client_tick )
-		frametime_delta_ms      = duration_ms( frametime_delta_ns )
-		frametime_delta_seconds = duration_seconds( frametime_delta_ns )
-		frametime_elapsed_ms    = frametime_delta_ms + host_delta_time
+		if sleep_ms > 0 {
+			thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
+			// thread__highres_wait( sleep_ms )
+		}
 
-		if frametime_elapsed_ms < frametime_target_ms
-		{
-			sleep_ms       := frametime_target_ms - frametime_elapsed_ms
-			pre_sleep_tick := time.tick_now()
+		sleep_delta_ns := time.tick_lap_time( & pre_sleep_tick)
+		sleep_delta_ms := duration_ms( sleep_delta_ns )
 
-			if sleep_ms > 0 {
-				thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
-				// thread__highres_wait( sleep_ms )
-			}
+		if sleep_delta_ms < sleep_ms {
+			// log( str_fmt_tmp("frametime sleep was off by: %v ms", sleep_delta_ms - sleep_ms ))
+		}
 
-			sleep_delta_ns := time.tick_lap_time( & pre_sleep_tick)
-			sleep_delta_ms := duration_ms( sleep_delta_ns )
-
-			if sleep_delta_ms < sleep_ms {
-				// log( str_fmt_tmp("frametime sleep was off by: %v ms", sleep_delta_ms - sleep_ms ))
-			}
+		frametime_elapsed_ms += sleep_delta_ms
+		for ; frametime_elapsed_ms < frametime_target_ms; {
+			sleep_delta_ns = time.tick_lap_time( & pre_sleep_tick)
+			sleep_delta_ms = duration_ms( sleep_delta_ns )
 
 			frametime_elapsed_ms += sleep_delta_ms
-			for ; frametime_elapsed_ms < frametime_target_ms; {
-				sleep_delta_ns = time.tick_lap_time( & pre_sleep_tick)
-				sleep_delta_ms = duration_ms( sleep_delta_ns )
-
-				frametime_elapsed_ms += sleep_delta_ms
-			}
-		}
-
-		config.timing_fps_moving_avg_alpha = 0.99
-		frametime_avg_ms = mov_avg_exp( f64(config.timing_fps_moving_avg_alpha), frametime_elapsed_ms, frametime_avg_ms )
-		fps_avg          = 1 / (frametime_avg_ms * MS_To_S)
-
-		if frametime_elapsed_ms > 60.0 {
-			context.allocator = transient_allocator()
-			log( str_fmt("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
 		}
 	}
-	return should_close
+
+	config.timing_fps_moving_avg_alpha = 0.99
+	frametime_avg_ms = mov_avg_exp( f64(config.timing_fps_moving_avg_alpha), frametime_elapsed_ms, frametime_avg_ms )
+	fps_avg          = 1 / (frametime_avg_ms * MS_To_S)
+
+	if frametime_elapsed_ms > 60.0 {
+		log( str_fmt("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
+	}
 }
 
 @export
@@ -420,5 +545,3 @@ clean_frame :: proc()
 		verify( alloc_error == .None, "Failed to allocate transient slab" )
 	}
 }
-
-} // when false

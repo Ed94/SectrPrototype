@@ -26,8 +26,9 @@ sokol_app_frame_callback :: proc "c" () {
 
 	window := & state.app_window
 	if	int(window.extent.x) != int(sokol_width) || int(window.extent.y) != int(sokol_height) {
-		window.extent.x = sokol_width
-		window.extent.y = sokol_height
+		window.resized = true
+		window.extent.x = sokol_width  * 0.5
+		window.extent.y = sokol_height * 0.5
 		log("sokol_app: Event-based frame callback triggered (detected a resize")
 	}
 
@@ -38,6 +39,8 @@ sokol_app_frame_callback :: proc "c" () {
 	client_tick := time.tick_now()
 	should_close |= tick_work_frame( sokol_delta_ms )
 	tick_frametime( & client_tick, sokol_delta_ms, sokol_delta_ns )
+
+	window.resized = false
 }
 
 sokol_app_cleanup_callback :: proc "c" () {
