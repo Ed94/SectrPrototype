@@ -111,6 +111,7 @@ $flag_msvc_link_disable_dynamic_base = '/DYNAMICBASE:NO'
 $flag_msvc_link_base_address         = '/BASE:'
 $flag_msvc_link_fixed_base_address   = '/FIXED'
 $flag_msvc_link_stack_size           = '/STACK'
+$flag_msvc_link_debug                = '/DEBUG'
 
 $msvc_link_default_base_address = 0x180000000
 
@@ -174,6 +175,7 @@ push-location $path_root
 			}
 
 			$linker_args = ""
+			# $linker_args += ( $flag_msvc_link_debug + ' ' )
 			$linker_args += ( $flag_msvc_link_disable_dynamic_base + ' ' )
 			$linker_args += ( $flag_msvc_link_fixed_base_address   + ' ' )
 			$linker_args += ( $flag_msvc_link_base_address + '0x20000000000' )

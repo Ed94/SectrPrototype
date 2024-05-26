@@ -394,7 +394,7 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 
 	slab_reload( persistent_slab, persistent_allocator() )
 
-	hmap_chained_reload( font_provider_data.font_cache, persistent_allocator())
+	// hmap_chained_reload( font_provider_data.font_cache, persistent_allocator())
 
 	slab_reload( string_cache.slab, persistent_allocator() )
 	zpl_hmap_reload( & string_cache.table, persistent_slab_allocator())
