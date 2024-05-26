@@ -66,12 +66,12 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 	cache.slab, alloc_error = slab_init( & policy, allocator = persistent_allocator(), dbg_name = dbg_name )
 	verify(alloc_error == .None, "Failed to initialize the string cache" )
 
-	cache.table, alloc_error = zpl_hmap_init_reserve( StrRunesPair, persistent_allocator(), 4 * Megabyte, dbg_name )
+	cache.table, alloc_error = hamp_zpl_init_reserve( StrRunesPair, persistent_allocator(), 4 * Megabyte, dbg_name )
 	return
 }
 
 str_intern_key    :: #force_inline proc( content : string ) ->  StringKey      { return cast(StringKey) crc32( transmute([]byte) content ) }
-str_intern_lookup :: #force_inline proc( key : StringKey )  -> (^StrRunesPair) { return zpl_hmap_get( & get_state().string_cache.table, transmute(u64) key ) }
+str_intern_lookup :: #force_inline proc( key : StringKey )  -> (^StrRunesPair) { return hamp_zpl_get( & get_state().string_cache.table, transmute(u64) key ) }
 
 str_intern :: proc( content : string ) -> StrRunesPair
 {
@@ -79,7 +79,7 @@ str_intern :: proc( content : string ) -> StrRunesPair
 	cache := & get_state().string_cache
 
 	key    := str_intern_key(content)
-	result := zpl_hmap_get( & cache.table, transmute(u64) key )
+	result := hamp_zpl_get( & cache.table, transmute(u64) key )
 	if result != nil {
 		return (result ^)
 	}
@@ -101,8 +101,8 @@ str_intern :: proc( content : string ) -> StrRunesPair
 
 		slab_validate_pools( get_state().persistent_slab )
 
-		// result, alloc_error = zpl_hmap_set( & cache.table, key, StrRunesPair { transmute(string) byte_slice(str_mem, length), runes } )
-		result, alloc_error = zpl_hmap_set( & cache.table, transmute(u64) key, StrRunesPair { transmute(string) str_mem, runes } )
+		// result, alloc_error = hamp_zpl_set( & cache.table, key, StrRunesPair { transmute(string) byte_slice(str_mem, length), runes } )
+		result, alloc_error = hamp_zpl_set( & cache.table, transmute(u64) key, StrRunesPair { transmute(string) str_mem, runes } )
 		verify( alloc_error == .None, "String cache had a backing allocator error" )
 
 		slab_validate_pools( get_state().persistent_slab )

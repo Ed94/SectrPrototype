@@ -70,7 +70,7 @@ ui_box_equal :: #force_inline proc "contextless" ( a, b : ^ UI_Box ) -> b32 {
 }
 
 ui_box_from_key :: #force_inline proc ( cache : ^HMapZPL(UI_Box), key : UI_Key ) -> (^UI_Box) {
-	return zpl_hmap_get( cache, cast(u64) key )
+	return hamp_zpl_get( cache, cast(u64) key )
 }
 
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
@@ -80,7 +80,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	key := ui_key_from_string( label )
 
 	curr_box : (^ UI_Box)
-	prev_box := zpl_hmap_get( prev_cache, cast(u64) key )
+	prev_box := hamp_zpl_get( prev_cache, cast(u64) key )
 	{
 		// profile("Assigning current box")
 		set_result : ^ UI_Box
@@ -88,16 +88,16 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 		if prev_box != nil
 		{
 			// Previous history was found, copy over previous state.
-			set_result, set_error = zpl_hmap_set( curr_cache, cast(u64) key, (prev_box ^) )
+			set_result, set_error = hamp_zpl_set( curr_cache, cast(u64) key, (prev_box ^) )
 		}
 		else {
 			box : UI_Box
 			box.key   = key
 			box.label = str_intern( label )
-			set_result, set_error = zpl_hmap_set( curr_cache, cast(u64) key, box )
+			set_result, set_error = hamp_zpl_set( curr_cache, cast(u64) key, box )
 		}
 
-		verify( set_error == AllocatorError.None, "Failed to set zpl_hmap due to allocator error" )
+		verify( set_error == AllocatorError.None, "Failed to set hamp_zpl due to allocator error" )
 		curr_box             = set_result
 		curr_box.first_frame = prev_box == nil
 		curr_box.flags       = flags
@@ -122,7 +122,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 	return curr_box
 }
 
-ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return zpl_hmap_get( ui_context().prev_cache, cast(u64) box.key ) }
+ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return hamp_zpl_get( ui_context().prev_cache, cast(u64) box.key ) }
 
 ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 {

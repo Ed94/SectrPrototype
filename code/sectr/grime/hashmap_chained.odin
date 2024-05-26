@@ -2,7 +2,6 @@
 Separate chaining hashtable with tombstone (vacancy aware)
 
 This is an alternative to odin's map and the zpl hashtable I first used for this codebase.
-I haven't felt the need to go back to dealing with odin's map for my edge case hot reload/memory replay failure.
 
 So this is a hahstable loosely based at what I saw in the raddbg codebase.
 It uses a fixed-size lookup table for the base layer of entries that can be chained.

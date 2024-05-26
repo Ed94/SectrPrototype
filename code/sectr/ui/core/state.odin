@@ -133,7 +133,7 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 	ui^ = {}
 
 	for & cache in ui.caches {
-		box_cache, allocation_error := zpl_hmap_init_reserve( UI_Box, cache_allocator, UI_Built_Boxes_Array_Size )
+		box_cache, allocation_error := hamp_zpl_init_reserve( UI_Box, cache_allocator, UI_Built_Boxes_Array_Size )
 		verify( allocation_error == AllocatorError.None, "Failed to allocate box cache" )
 		cache = box_cache
 	}
@@ -151,7 +151,7 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 {
 	// We need to repopulate Allocator references
 	for & cache in ui.caches {
-		zpl_hmap_reload( & cache, cache_allocator)
+		hamp_zpl_reload( & cache, cache_allocator)
 	}
 	ui.render_queue.backing = cache_allocator
 }

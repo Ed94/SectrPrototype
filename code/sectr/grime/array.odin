@@ -1,6 +1,12 @@
-// Based on gencpp's and thus zpl's Array implementation
-// Made becasue of the map issue with fonts during hot-reload.
-// I didn't want to make the HMapZPL impl with the [dynamic] array for now to isolate the hot-reload issue (when I was diagnoising)
+/*
+Based on gencpp's and thus zpl's Array implementation
+Made becasue of the map issue with fonts during hot-reload.
+I didn't want to make the HMapZPL impl with the [dynamic] array for now to isolate the hot-reload issue (when I was diagnoising)
+
+Update 5-26-2024:
+TODO(Ed): Raw_Dynamic_Array is defined within base:runtime/core.odin and exposes what we need for worst case hot-reloads.
+So its best to go back to regular dynamic arrays at some point.
+*/
 package sectr
 
 import "core:c/libc"
