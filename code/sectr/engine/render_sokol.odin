@@ -7,8 +7,11 @@ render :: proc()
 {
 	state := get_state(); using state
 
+	do_nothing : bool
+	do_nothing = false
+
 	// Clear Demo
-	if false
+	if true
 	{
 	  green_value := debug.gfx_clear_demo_pass_action.colors[0].clear_value.g + 0.01
 	  debug.gfx_clear_demo_pass_action.colors[0].clear_value.g = green_value > 1.0 ? 0.0 : green_value

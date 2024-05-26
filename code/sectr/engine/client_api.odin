@@ -381,11 +381,33 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	transient    = transient_mem
 	files_buffer = files_buffer_mem
 
-	context.allocator      = persistent_allocator()
+	context.allocator      = transient_allocator()
 	context.temp_allocator = transient_allocator()
 
 	Memory_App.state = get_state()
 	using state
+
+	sokol_context = context
+
+	Sokol:
+	{
+		desc_app := sokol_app.DescReload {
+			init_cb    = sokol_app_init_callback,
+			frame_cb   = sokol_app_frame_callback,
+			cleanup_cb = sokol_app_cleanup_callback,
+			event_cb   = sokol_app_event_callback,
+
+			logger    = { sokol_app_log_callback, nil },
+			allocator = { sokol_app_alloc, sokol_app_free, nil },
+		}
+		sokol_app.client_reload( desc_app )
+
+		desc_gfx := sokol_gfx.DescReload {
+			allocator = { sokol_gfx_alloc, sokol_gfx_free, nil },
+			logger    = { sokol_gfx_log_callback, nil },
+		}
+		sokol_gfx.client_reload( desc_gfx )
+	}
 
 	// Procedure Addresses are not preserved on hot-reload. They must be restored for persistent data.
 	// The only way to alleviate this is to either do custom handles to allocators
