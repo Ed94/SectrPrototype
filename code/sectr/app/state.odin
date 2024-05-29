@@ -218,6 +218,8 @@ State :: struct {
 	app_window : AppWindow,
 	screen_ui  : UI_ScreenState,
 
+	render_data : RenderState,
+
 	monitor_id         : i32,
 	monitor_refresh_hz : i32,
 

@@ -7,14 +7,18 @@ $path_thirdparty = join-path $path_root 'thirdparty'
 $path_toolchain  = join-path $path_root 'toolchain'
 
 $url_backtrace_repo = 'https://github.com/Ed94/back.git'
+$url_freetype       = 'https://github.com/Ed94/odin-freetype.git'
 $url_ini_parser     = 'https://github.com/laytan/odin-ini-parser.git'
 $url_odin_repo      = 'https://github.com/Ed94/Odin.git'
 $url_sokol          = 'https://github.com/Ed94/sokol-odin.git'
+$url_sokol_tools    = 'https://github.com/floooh/sokol-tools-bin.git'
 
 $path_backtrace     = join-path $path_thirdparty 'backtrace'
+$path_freetype      = join-path $path_thirdparty   'freetype'
 $path_ini_parser    = join-path $path_thirdparty 'ini'
 $path_odin          = join-path $path_toolchain  'Odin'
 $path_sokol         = join-path $path_thirdparty 'sokol'
+$path_sokol_tools   = join-path $path_thirdparty 'sokol-tools'
 
 $incremental_checks = Join-Path $PSScriptRoot 'helpers/incremental_checks.ps1'
 . $incremental_checks
@@ -84,25 +88,22 @@ push-location $path_thirdparty
 Update-GitRepo -path $path_odin  -url $url_odin_repo -build_command '.\scripts\build.ps1'
 Update-GitRepo -path $path_sokol -url $url_sokol     -build_command '.\build_windows.ps1'
 
-if (Test-Path -Path $path_ini_parser)
-{
-	git -C $path_ini_parser pull
-}
-else
-{
-	Write-Host "Cloning ini repository..."
-	git clone $url_ini_parser $path_ini_parser
+function clone-gitrepo { param( [string] $path, [string] $url )
+	if (test-path $path) {
+		git -C $path pull
+	}
+	else {
+		Write-Host "Cloning $url ..."
+		git clone $url $path
+	}
 }
 
-if (test-path $path_backtrace)
-{
-	git -C $path_backtrace pull
-}
-else
-{
-	Write-Host "Cloning backtrace repository..."
-	git clone $url_backtrace_repo $path_backtrace
-}
+
+clone-gitrepo $path_backtrace   $url_backtrace_repo
+clone-gitrepo $path_freetype    $url_freetype
+clone-gitrepo $path_ini_parser  $url_ini_parser
+clone-gitrepo $path_ini_parser  $url_ini_parser
+clone-gitrepo $path_sokol_tools $url_sokol_tools
 
 $path_vendor        = join-path $path_odin          'vendor'
 $path_vendor_raylib = join-path $path_vendor        'raylib'

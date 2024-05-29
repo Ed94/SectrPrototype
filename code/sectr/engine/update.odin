@@ -198,9 +198,10 @@ update :: proc( delta_time : f64 ) -> b32
 
 	// TODO(Ed): We need input buffer so that we can consume input actions based on the UI with priority
 
-	ui_screen_tick()
+	// ui_screen_tick()
 
 	//region WorkspaceImgui Tick
+	if false
 	{
 		profile("Workspace Imgui")
 

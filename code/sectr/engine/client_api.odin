@@ -231,7 +231,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 				load_action = .CLEAR,
 				clear_value = { 1, 0, 0, 1 }
 			}
-			vertices := [?]f32 {
+			triangle_vertices := [?]f32 {
 	      // positions      // colors
 	       0.0,  0.5, 0.5,  1.0, 0.0, 0.0, 1.0,
 	       0.5, -0.5, 0.5,  0.0, 1.0, 0.0, 1.0,
@@ -244,8 +244,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	    using debug.gfx_tri_demo_state
 	    bindings.vertex_buffers[0] = sokol_gfx.make_buffer( sokol_gfx.Buffer_Desc {
 	    	data = {
-	    		ptr  = & vertices,
-		    	size = size_of(vertices)
+	    		ptr  = & triangle_vertices,
+		    	size = size_of(triangle_vertices)
 	    	}
 	    })
 	    pipeline = sokol_gfx.make_pipeline( sokol_gfx.Pipeline_Desc {
@@ -261,11 +261,16 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
     		load_action = .CLEAR,
     		clear_value = { 0, 0, 0, 1 }
 	    }
+
+	    render_data.pass_actions.bg_clear_black.colors[0] = sokol_gfx.Color_Attachment_Action {
+    		load_action = .CLEAR,
+    		clear_value = { 0, 0, 0, 1 }
+	    }
 		}
 	}
 
 	// Basic Font Setup
-	if false
+	if true
 	{
 		font_provider_startup()
 		// path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
@@ -281,7 +286,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	}
 
 	// Setup the screen ui state
-	if true
+	if false
 	{
 		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
 		ui_floating_startup( & screen_ui.floating, persistent_slab_allocator(), 1 * Kilobyte, 1 * Kilobyte, "screen ui floating manager" )
@@ -296,7 +301,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	// Demo project setup
 	// TODO(Ed): This will eventually have to occur when the user either creates or loads a workspace. I don't know 
-	if true
+	if false
 	{
 		using project
 		path           = str_intern("./")
@@ -416,7 +421,7 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 
 	slab_reload( persistent_slab, persistent_allocator() )
 
-	// hmap_chained_reload( font_provider_data.font_cache, persistent_allocator())
+	hmap_chained_reload( font_provider_data.font_cache, persistent_allocator())
 
 	slab_reload( string_cache.slab, persistent_allocator() )
 	hamp_zpl_reload( & string_cache.table, persistent_slab_allocator())
@@ -424,7 +429,7 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	slab_reload( frame_slab, frame_allocator())
 	slab_reload( transient_slab, transient_allocator())
 
-	ui_reload( & get_state().project.workspace.ui, cache_allocator =  persistent_slab_allocator() )
+	// ui_reload( & get_state().project.workspace.ui, cache_allocator =  persistent_slab_allocator() )
 
 	log("Module reloaded")
 }
@@ -483,9 +488,22 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	debug.draw_UI_padding_bounds = false
 	debug.draw_ui_content_bounds = false
 
+	config.engine_refresh_hz = 10000
+
 	// config.color_theme = App_Thm_Light
 	// config.color_theme = App_Thm_Dusk
 	config.color_theme = App_Thm_Dark
+
+	sokol_width  := sokol_app.widthf()
+	sokol_height := sokol_app.heightf()
+
+	window := & state.app_window
+	// if	int(window.extent.x) != int(sokol_width) || int(window.extent.y) != int(sokol_height) {
+		window.resized = true
+		window.extent.x = sokol_width  * 0.5
+		window.extent.y = sokol_height * 0.5
+		// log("sokol_app: Event-based frame callback triggered (detected a resize")
+	// }
 
 	should_close |= update( host_delta_time_ms )
 	render()

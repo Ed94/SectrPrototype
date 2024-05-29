@@ -1,10 +1,13 @@
 /*
 Yet another port of fontstash.
 
-I decided t use this instead of the odin port as it already deviated from the original impl.
+I decided to use this instead of the odin port as it deviated from the original, making it difficult to sift through.
 So The code was small enough that I mine as well learn it by porting for my use case.
 
-Original copyright for fonstash.h:
+TODO(Ed): Add docs here and throughout
+TODO(Ed): This is unfinished...
+
+Original author's copyright for fonstash.h:
 ------------------------------------------------------------------------------
  Copyright (c) 2009-2013 Mikko Mononen memon@inside.org
 
@@ -27,6 +30,8 @@ package sectr
 
 import stbtt "vendor:stb/truetype"
 
+FStash_Use_stb_truetype :: #config(FSTASH_USE_STB_TRUE_TYPE, true)
+
 Range2_i16 :: struct #raw_union {
 	using pts : Vec2_i16,
 	using xy  : struct {
@@ -36,26 +41,26 @@ Range2_i16 :: struct #raw_union {
 
 Vec2_i16 :: [2]i16
 
-FSTASH_Invalid :: -1
+FStash_Invalid :: -1
 
-FSTASH_Hash_Lut_Size    :: 256
-FSTASH_Max_Fallbacks    :: 20
-FSTASH_Max_States       :: 20
-FSTASH_Vertex_Count     :: 1024
-FSTASH_Init_Atlas_Nodes :: 256
+FStash_Hash_Lut_Size    :: 256
+FStash_Max_Fallbacks    :: 20
+FStash_Max_States       :: 20
+FStash_Vertex_Count     :: 1024
+FStash_Init_Atlas_Nodes :: 256
 
-FSTASH_FontLuts      :: [FSTASH_Hash_Lut_Size]i32
-FSTASH_FontFallbacks :: [FSTASH_Max_Fallbacks]i32
+FStash_FontLuts      :: [FStash_Hash_Lut_Size]i32
+FStash_FontFallbacks :: [FStash_Max_Fallbacks]i32
 
-FSTASH_HandleErrorProc :: #type proc( uptr : rawptr, error, val : i32 )
+FStash_HandleErrorProc :: #type proc( uptr : rawptr, error, val : i32 )
 
-FSTASH_RenderCreateProc :: #type proc( uptr : rawptr, width, height : i32 )
-FSTASH_RenderResizeProc :: #type proc( uptr : rawptr, width, height : i32 )
-FSTASH_RenderUpdateProc :: #type proc( uptr : rawptr, rect : ^i32, data : ^u8 )
-FSTASH_RenderDrawProc   :: #type proc( uptr : rawptr, verts : ^f32, tcoords : ^f32, colors : ^i32, num_verts : i32 )
-FSTASH_RenderDelete     :: #type proc( uptr : rawptr )
+FStash_RenderCreateProc :: #type proc( uptr : rawptr, width, height : i32 )
+FStash_RenderResizeProc :: #type proc( uptr : rawptr, width, height : i32 )
+FStash_RenderUpdateProc :: #type proc( uptr : rawptr, rect : ^i32, data : ^u8 )
+FStash_RenderDrawProc   :: #type proc( uptr : rawptr, verts : ^f32, tcoords : ^f32, colors : ^i32, num_verts : i32 )
+FStash_RenderDelete     :: #type proc( uptr : rawptr )
 
-FSTASH_AlignFlag :: enum u32  {
+FStash_AlignFlag :: enum u32  {
 	Left,
 	Center,
 	Right,
@@ -64,51 +69,42 @@ FSTASH_AlignFlag :: enum u32  {
 	Bottom,
 	Baseline,
 }
-FSTASH_AlignFlags :: bit_set[ FSTASH_AlignFlag; u32 ]
+FStash_AlignFlags :: bit_set[ FStash_AlignFlag; u32 ]
 
 // FONSflags
-FSTASH_QuadLocation :: enum u32 {
+FStash_QuadLocation :: enum u32 {
 	Top_Left    = 1,
 	Bottom_Left = 2,
 }
 
-FSTASH_Atlas :: struct {
+FStash_Atlas :: struct {
 	dud : i32,
 }
 
-FSTASH_AtlasNode :: struct {
+FStash_AtlasNode :: struct {
 	x, y, width : i16,
 }
 
-FSTASH_ErrorCode :: enum u32 {
+FStash_ErrorCode :: enum u32 {
 	Atlas_Full,
 	Scratch_Full,
 	States_Overflow,
 	States_Underflow,
 }
 
-FSTASH_Quad :: struct {
+FStash_Quad :: struct {
 	x0, y0, s0, t0 : f32,
 	x1, y1, s1, t1 : f32,
 }
 
-FSTASH_Font :: struct {
-	info      : stbtt.fontinfo,
-	name      : string,
-	data      : []byte,
-	free_data : bool,
-
-	ascender    : f32,
-	descender   : f32,
-	line_height : f32,
-
-	glyphs        : Array(FSTASH_Glyph),
-	lut           : FSTASH_FontLuts,
-	fallbacks     : FSTASH_FontFallbacks,
-	num_fallbacks : i32,
+when FStash_Use_stb_truetype
+{
+	FStash_FontParserData :: struct {
+			stbtt_info : stbtt.fontinfo,
+	}
 }
 
-FSTASH_Glyph :: struct {
+FStash_Glyph :: struct {
 	codepoint   : rune,
 	index, next : i32,
 	size, blur  : i16,
@@ -117,17 +113,33 @@ FSTASH_Glyph :: struct {
 	offset      : Vec2_i16,
 }
 
-FSTASH_Params :: struct {
-	width, height : i32,
-	quad_location : FSTASH_QuadLocation, // (flags)
-	render_create : FSTASH_RenderCreateProc,
-	render_resize : FSTASH_RenderResizeProc,
-	render_update : FSTASH_RenderUpdateProc,
-	render_draw   : FSTASH_RenderDrawProc,
-	render_delete : FSTASH_RenderDelete,
+FStash_Font :: struct {
+	parser_data : FStash_FontParserData,
+	name        : string,
+	data        : []byte,
+	free_data   : bool,
+
+	ascender    : f32,
+	descender   : f32,
+	line_height : f32,
+
+	glyphs        : Array(FStash_Glyph),
+	lut           : FStash_FontLuts,
+	fallbacks     : FStash_FontFallbacks,
+	num_fallbacks : i32,
 }
 
-FSTASH_State :: struct {
+FStash_Params :: struct {
+	width, height : i32,
+	quad_location : FStash_QuadLocation, // (flags)
+	render_create : FStash_RenderCreateProc,
+	render_resize : FStash_RenderResizeProc,
+	render_update : FStash_RenderUpdateProc,
+	render_draw   : FStash_RenderDrawProc,
+	render_delete : FStash_RenderDelete,
+}
+
+FStash_State :: struct {
 	font      : i32,
 	alignment : i32,
 	size      : f32,
@@ -136,14 +148,14 @@ FSTASH_State :: struct {
 	spacing   : f32,
 }
 
-FSTASH_TextIter :: struct {
+FStash_TextIter :: struct {
 	x, y           : f32,
 	next_x, next_y : f32,
 	scale, spacing : f32,
 
 	isize, iblur : i16,
 
-	font : ^FSTASH_Font,
+	font : ^FStash_Font,
 	prev_glyph_id : i32,
 
 	codepoint  : rune,
@@ -154,27 +166,72 @@ FSTASH_TextIter :: struct {
 	end        : string,
 }
 
-FSTASH_Context :: struct {
-	params : FSTASH_Params,
+FStash_Context :: struct {
+	params : FStash_Params,
 
 // Atlas
-	atlas           : Array(FSTASH_AtlasNode),
+	atlas           : Array(FStash_AtlasNode),
 	texture_data    : []byte,
 	width, height   : i32,
 // ----
 
 	normalized_size : Vec2,
 
-	verts   : [FSTASH_Vertex_Count * 2]f32,
-	tcoords : [FSTASH_Vertex_Count * 2]f32,
-	colors  : [FSTASH_Vertex_Count    ]f32,
+	verts   : [FStash_Vertex_Count * 2]f32,
+	tcoords : [FStash_Vertex_Count * 2]f32,
+	colors  : [FStash_Vertex_Count    ]f32,
 
-	states  : [FSTASH_Max_States]FSTASH_State,
+	states  : [FStash_Max_States]FStash_State,
 	num_states : i32,
 
-	handle_error : FSTASH_HandleErrorProc,
+	handle_error : FStash_HandleErrorProc,
 	error_uptr : rawptr,
 }
+
+when FStash_Use_stb_truetype
+{
+	fstash_tt_init :: proc( ctx : ^FStash_Context ) -> i32 { return 1 }
+
+	fstash_tt_load_font :: proc( ctx : ^FStash_Context, parser_data : ^FStash_FontParserData, data : []byte ) -> b32
+	{
+		parser_data.stbtt_info.userdata = ctx
+		stb_error := stbtt.InitFont( & parser_data.stbtt_info, & data[0], 0 )
+		return stb_error
+	}
+
+	fstash_tt_get_font_metrics :: proc( parser_data : ^FStash_FontParserData, ascent, descent, line_gap : ^i32 ) {
+		stbtt.GetFontVMetrics( & parser_data.stbtt_info, ascent, descent, line_gap )
+	}
+
+	fstash_tt_get_pixel_height_scale :: proc( parser_data : ^FStash_FontParserData, size : f32 ) -> f32
+	{
+		return stbtt.ScaleForPixelHeight( & parser_data.stbtt_info, size )
+	}
+
+	fstash_tt_get_glyph_index :: proc( parser_data : ^FStash_FontParserData, codepoint : rune ) -> i32
+	{
+		return stbtt.FindGlyphIndex( & parser_data.stbtt_info, codepoint )
+	}
+
+	fstash_tt_build_glyph_bitmap :: proc( parser_data : ^FStash_FontParserData, glyph_index : i32,
+		size, scale : f32, advance, left_side_bearing, x0, y0, x1, y1 : ^i32 ) -> i32
+	{
+		stbtt.GetGlyphHMetrics( & parser_data.stbtt_info, glyph_index, advance, left_side_bearing )
+		stbtt.GetGlyphBitmapBox( & parser_data.stbtt_info, glyph_index, scale, scale, x0, y0, x1, y1 )
+		return 1
+	}
+
+	fstash_tt_render_glyph_bitmap :: proc( parser_data : ^FStash_FontParserData, output : [^]byte,
+		out_width, out_height, out_stride : i32, scale_x, scale_y : f32, glyph_index : i32 )
+	{
+		stbtt.MakeGlyphBitmap( & parser_data.stbtt_info, output, out_width, out_height, out_stride, scale_x, scale_y, glyph_index )
+	}
+
+	fstash_tt_get_glyph_kern_advance :: proc( parser_data : ^FStash_FontParserData, glyph_1, glyph_2 : i32 ) -> i32
+	{
+		return stbtt.GetGlyphKernAdvance( & parser_data.stbtt_info, glyph_1, glyph_2 )
+	}
+} // when FStash_Use_stb_true-type
 
 fstash_decode_utf8 :: proc( state : ^rune, codepoint : ^rune, to_decode : byte ) -> bool
 {
@@ -214,12 +271,12 @@ fstash_decode_utf8 :: proc( state : ^rune, codepoint : ^rune, to_decode : byte )
 	return (state^) == UTF8_Accept
 }
 
-fstash_atlas_delete :: proc ( ctx : ^FSTASH_Context ) {
+fstash_atlas_delete :: proc ( ctx : ^FStash_Context ) {
 	using ctx
 	array_free( ctx.atlas )
 }
 
-fstash_atlas_expand :: proc( ctx : ^FSTASH_Context, width, height : i32 )
+fstash_atlas_expand :: proc( ctx : ^FStash_Context, width, height : i32 )
 {
 	if width > ctx.width {
 		fstash_atlas_insert( ctx, ctx.atlas.num, ctx.width, 0, width - ctx.width )
@@ -229,39 +286,39 @@ fstash_atlas_expand :: proc( ctx : ^FSTASH_Context, width, height : i32 )
 	ctx.height = height
 }
 
-fstash_atlas_init :: proc( ctx : ^FSTASH_Context, width, height : i32, num_nodes : u32 = FSTASH_Init_Atlas_Nodes )
+fstash_atlas_init :: proc( ctx : ^FStash_Context, width, height : i32, num_nodes : u32 = FStash_Init_Atlas_Nodes )
 {
 	error : AllocatorError
-	ctx.atlas, error = array_init_reserve( FSTASH_AtlasNode, context.allocator, u64(num_nodes), dbg_name = "font atlas" )
+	ctx.atlas, error = array_init_reserve( FStash_AtlasNode, context.allocator, u64(num_nodes), dbg_name = "font atlas" )
 	ensure(error != AllocatorError.None, "Failed to allocate font atlas")
 
 	ctx.width  = width
 	ctx.height = height
 
-	array_append( & ctx.atlas, FSTASH_AtlasNode{ width = i16(width)} )
+	array_append( & ctx.atlas, FStash_AtlasNode{ width = i16(width)} )
 }
 
-fstash_atlas_insert :: proc( ctx : ^FSTASH_Context, id : u64, x, y, width : i32 ) -> (error : AllocatorError)
+fstash_atlas_insert :: proc( ctx : ^FStash_Context, id : u64, x, y, width : i32 ) -> (error : AllocatorError)
 {
-	error = array_append_at( & ctx.atlas, FSTASH_AtlasNode{ i16(x), i16(y), i16(width) }, id )
+	error = array_append_at( & ctx.atlas, FStash_AtlasNode{ i16(x), i16(y), i16(width) }, id )
 	return
 }
 
-fstash_atlas_remove :: proc( ctx : ^FSTASH_Context, id : u64 )
+fstash_atlas_remove :: proc( ctx : ^FStash_Context, id : u64 )
 {
 	array_remove_at( ctx.atlas, id )
 }
 
-fstash_atlas_reset :: proc( ctx : ^FSTASH_Context, width, height : i32 )
+fstash_atlas_reset :: proc( ctx : ^FStash_Context, width, height : i32 )
 {
 	ctx.width  = width
 	ctx.height = height
 	array_clear( ctx.atlas )
 
-	array_append( & ctx.atlas, FSTASH_AtlasNode{ width = i16(width)} )
+	array_append( & ctx.atlas, FStash_AtlasNode{ width = i16(width)} )
 }
 
-fstash_atlas_add_skyline_level :: proc (ctx : ^FSTASH_Context, id : u64, x, y, width, height : i32 ) -> (error : AllocatorError)
+fstash_atlas_add_skyline_level :: proc (ctx : ^FStash_Context, id : u64, x, y, width, height : i32 ) -> (error : AllocatorError)
 {
 	insert :: fstash_atlas_insert
 	remove :: fstash_atlas_remove
@@ -289,7 +346,6 @@ fstash_atlas_add_skyline_level :: proc (ctx : ^FSTASH_Context, id : u64, x, y, w
 		sky_id -= 1
 	}
 
-
 	// Merge same height skyline segments that are next to each other.
 	for sky_id := id; sky_id < ctx.atlas.num - 1;
 	{
@@ -307,7 +363,7 @@ fstash_atlas_add_skyline_level :: proc (ctx : ^FSTASH_Context, id : u64, x, y, w
 	return
 }
 
-fstash_atlas_rect_fits :: proc( ctx : ^FSTASH_Context, location, width, height : i32 ) -> (max_height : i32)
+fstash_atlas_rect_fits :: proc( ctx : ^FStash_Context, location, width, height : i32 ) -> (max_height : i32)
 {
 	// Checks if there is enough space at the location of skyline span 'i',
 	// and return the max height of all skyline spans under that at that location,
@@ -347,7 +403,7 @@ fstash_atlas_rect_fits :: proc( ctx : ^FSTASH_Context, location, width, height :
 	return
 }
 
-fstash_atlas_add_rect :: proc( ctx : ^FSTASH_Context, )
+fstash_atlas_add_rect :: proc( ctx : ^FStash_Context, )
 {
 	
 }
