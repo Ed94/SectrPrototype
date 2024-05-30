@@ -4,8 +4,8 @@ Write-Host "Reverse Build.ps1"
 $ps_misc = join-path $PSScriptRoot 'helpers/misc.ps1'
 . $ps_misc
 
-$path_root                 = git rev-parse --show-toplevel
-$path_code                 = Join-Path $path_root 'code'
+$path_root           = git rev-parse --show-toplevel
+$path_code           = Join-Path $path_root 'code'
 $path_code_flattened = Join-Path $path_root 'code_flattened'
 
 if (Test-Path $path_code_flattened) {
@@ -70,8 +70,8 @@ $path_pkg_host  = join-path $path_code 'host'
 $path_pkg_sectr = join-path $path_code 'sectr'
 
 $path_flattend_gen   = join-path $path_code_flattened 'gen'
-$path_flattend_host  = join-path $path_code_flattened ' host'
-$path_flattend_sectr = join-path $path_code_flattened ' sectr'
+$path_flattend_host  = join-path $path_code_flattened 'host'
+$path_flattend_sectr = join-path $path_code_flattened 'sectr'
 
 verify-path $path_flattend_gen
 verify-path $path_flattend_host
