@@ -1,15 +1,17 @@
 
 package sectr
 
-#region("Import Aliases")
+#region("base")
 
 import "base:builtin"
 	copy :: builtin.copy
+
 import "base:intrinsics"
 	mem_zero       :: intrinsics.mem_zero
 	ptr_sub        :: intrinsics.ptr_sub
 	type_has_field :: intrinsics.type_has_field
 	type_elem_type :: intrinsics.type_elem_type
+
 import "base:runtime"
 	Byte               :: runtime.Byte
 	Kilobyte           :: runtime.Kilobyte
@@ -20,12 +22,22 @@ import "base:runtime"
 	Exabyte            :: runtime.Exabyte
 	resize_non_zeroed  :: runtime.non_zero_mem_resize
 	SourceCodeLocation :: runtime.Source_Code_Location
+	debug_trap         :: runtime.debug_trap
+
+#endregion("base")
+
+#region("core")
+
 import c "core:c/libc"
-import "core:dynlib"
+
+// import "core:dynlib"
+
 import "core:hash"
 	crc32 :: hash.crc32
+
 import "core:hash/xxhash"
 	xxh32 :: xxhash.XXH32
+
 import fmt_io "core:fmt"
 	str_fmt_out      :: fmt_io.printf
 	str_fmt_tmp      :: fmt_io.tprintf
@@ -34,7 +46,9 @@ import fmt_io "core:fmt"
 	str_fmt_buffer   :: fmt_io.bprintf
 	str_to_file_ln   :: fmt_io.fprintln
 	str_tmp_from_any :: fmt_io.tprint
+
 import "core:math"
+
 import "core:mem"
 	align_forward_int       :: mem.align_forward_int
 	align_forward_uint      :: mem.align_forward_uint
@@ -59,9 +73,12 @@ import "core:mem"
 	TrackingAllocator       :: mem.Tracking_Allocator
 	tracking_allocator      :: mem.tracking_allocator
 	tracking_allocator_init :: mem.tracking_allocator_init
+
 import "core:mem/virtual"
 	VirtualProtectFlags :: virtual.Protect_Flags
+
 // import "core:odin"
+
 import "core:os"
 	FileFlag_Create    :: os.O_CREATE
 	FileFlag_ReadWrite :: os.O_RDWR
@@ -73,48 +90,157 @@ import "core:os"
 	file_seek          :: os.seek
 	file_status        :: os.stat
 	file_write         :: os.write
+
 import "core:path/filepath"
 	file_name_from_path :: filepath.short_stem
+
 import "core:strconv"
 	parse_f32  :: strconv.parse_f32
 	parse_u64  :: strconv.parse_u64
 	parse_uint :: strconv.parse_uint
+
 import str "core:strings"
 	StringBuilder          :: str.Builder
 	str_builder_from_bytes :: str.builder_from_bytes
 	str_builder_init       :: str.builder_init
 	str_builder_to_writer  :: str.to_writer
 	str_builder_to_string  :: str.to_string
+
 import "core:time"
 	Duration         :: time.Duration
 	duration_seconds :: time.duration_seconds
 	duration_ms      :: time.duration_milliseconds
 	thread_sleep     :: time.sleep
+
 import "core:unicode"
 	is_white_space  :: unicode.is_white_space
+
 import "core:unicode/utf8"
 	str_rune_count  :: utf8.rune_count_in_string
 	runes_to_string :: utf8.runes_to_string
 	// string_to_runes :: utf8.string_to_runes
+
+#endregion("core")
+
 import "thirdparty:backtrace"
 	StackTraceData   :: backtrace.Trace_Const
 	stacktrace       :: backtrace.trace
 	stacktrace_lines :: backtrace.lines
 
-#endregion("Import Aliases")
+import "codebase:grime"
+	// asserts
+	ensure :: grime.ensure
+	fatal  :: grime.fatal
+	verify :: grime.verify
 
-#region("Proc overload mappings")
+	// chrono
+	NS_To_MS :: grime.NS_To_MS
+	NS_To_US :: grime.NS_To_US
+	NS_To_S  :: grime.NS_To_S
+
+	US_To_NS :: grime.US_To_NS
+	US_To_MS :: grime.US_To_MS
+	US_To_S  :: grime.US_To_S
+
+	MS_To_NS :: grime.MS_To_NS
+	MS_To_US :: grime.MS_To_US
+	MS_To_S  :: grime.MS_To_S
+
+	S_To_NS :: grime.S_To_NS
+	S_To_US :: grime.S_To_US
+	S_To_MS :: grime.S_To_MS
+
+	// container
+	Array :: grime.Array
+
+	array_to_slice     :: grime.array_to_slice
+	array_init_reserve :: grime.array_init_reserve
+	array_append       :: grime.array_append
+	array_append_at    :: grime.array_append_at
+	array_clear        :: grime.array_clear
+	array_free         :: grime.array_free
+	array_grow_formula :: grime.array_grow_formula
+	array_remove_at    :: grime.array_remove_at
+	array_resize       :: grime.array_resize
+
+	// filesystem
+	file_exists :: grime.file_exists
+	file_rewind :: grime.file_rewind
+
+	// linked lists
+	LL_Node :: grime.LL_Node
+
+	ll_push :: grime.ll_push
+	ll_pop  :: grime.ll_pop
+
+	DLL_Node     :: grime.DLL_Node
+	DLL_NodeFull :: grime.DLL_NodeFull
+	DLL_NodePN   :: grime.DLL_NodePN
+	DLL_NodeFL   :: grime.DLL_NodeFL
+
+	dll_full_push_back :: grime.dll_full_push_back
+	dll_full_pop       :: grime.dll_full_pop
+	dll_push_back      :: grime.dll_push_back
+	dll_pop_back       :: grime.dll_pop_back
+
+	// logger
+	Logger   :: grime.Logger
+	LogLevel :: grime.LogLevel
+
+	to_odin_logger :: grime.to_odin_logger
+	logger_init    :: grime.logger_init
+	log            :: grime.log
+	logf           :: grime.logf
+
+	// memory
+	MemoryTracker      :: grime.MemoryTracker
+	MemoryTrackerEntry :: grime.MemoryTrackerEntry
+
+	memtracker_clear                    :: grime.memtracker_clear
+	memtracker_init                     :: grime.memtracker_init
+	memtracker_register_auto_name       :: grime.memtracker_register_auto_name
+	memtracker_register_auto_name_slice :: grime.memtracker_register_auto_name_slice
+	memtracker_unregister               :: grime.memtracker_unregister
+
+
+	calc_padding_with_header :: grime.calc_padding_with_header
+	memory_after_header      :: grime.memory_after_header
+	memory_after             :: grime.memory_after
+	swap                     :: grime.swap
+
+	// profiler
+	SpallProfiler :: grime.SpallProfiler
+
+	set_profiler_module_context :: grime.set_profiler_module_context
+
+	profile       :: grime.profile
+	profile_begin :: grime.profile_begin
+	profile_end   :: grime.profile_end
+
+	// os
+	OS_Type :: grime.OS_Type
+
+	// timing
+	when ODIN_OS == OS_Type.Windows {
+		set__scheduler_granularity :: grime.set__scheduler_granularity
+	}
+
+	// unicode
+	string_to_runes       :: grime.string_to_runes
+	string_to_runes_array :: grime.string_to_runes_array
+
+	// virutal memory
+	VArena              :: grime.VArena
+	VirtualMemoryRegion :: grime.VirtualMemoryRegion
+
+	varena_allocator :: grime.varena_allocator
+
+#region("Procedure overload mappings")
 
 // This has to be done on a per-module basis.
 
 add :: proc {
 	add_range2,
-}
-
-array_append :: proc {
-	array_append_value,
-	array_append_array,
-	array_append_slice,
 }
 
 bivec3 :: proc {
@@ -359,7 +485,3 @@ wedge :: proc {
 }
 
 #endregion("Proc overload mappings")
-
-OS_Type :: type_of(ODIN_OS)
-
-swap :: #force_inline proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) { return b, a }

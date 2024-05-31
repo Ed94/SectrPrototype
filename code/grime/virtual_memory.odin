@@ -1,7 +1,7 @@
 /* Virtual Memory OS Interface
 This is an alternative to the virtual core library provided by odin, suppport setting the base address among other things.
 */
-package sectr
+package grime
 
 import core_virtual "core:mem/virtual"
 import "core:os"

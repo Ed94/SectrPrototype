@@ -1,5 +1,4 @@
-// TODO(Ed) : Move this to a grime package problably
-package sectr
+package grime
 
 import "core:fmt"
 import "core:mem"
@@ -89,3 +88,5 @@ memory_aign_forward :: #force_inline proc( address, alignment : uintptr) -> uint
 }
 
 //endregion Memory Math
+
+swap :: #force_inline proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) { return b, a }

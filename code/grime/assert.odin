@@ -1,4 +1,4 @@
-package sectr
+package grime
 
 import "base:runtime"
 import "core:io"
@@ -18,8 +18,6 @@ dump_stacktrace :: proc( allocator := context.temp_allocator ) -> string
 	}
 	table.build(log_table)
 
-	// writer_builder_backing : [Kilobyte * 16] u8
-	// writer_builder         := from_bytes( writer_builder_backing[:] )
 	writer_builder : StringBuilder
 	str_builder_init( & writer_builder, allocator = allocator )
 
@@ -34,7 +32,7 @@ dump_stacktrace :: proc( allocator := context.temp_allocator ) -> string
 	return to_string( writer_builder )
 }
 
-ensure :: proc( condition : b32, msg : string, location := #caller_location )
+ensure :: #force_inline proc( condition : b32, msg : string, location := #caller_location )
 {
 	if condition {
 		return
@@ -44,14 +42,15 @@ ensure :: proc( condition : b32, msg : string, location := #caller_location )
 }
 
 // TODO(Ed) : Setup exit codes!
-fatal :: proc( msg : string, exit_code : int = -1, location := #caller_location )
+fatal :: #force_inline proc( msg : string, exit_code : int = -1, location := #caller_location )
 {
 	log( msg, LogLevel.Fatal, location )
 	runtime.debug_trap()
 	os.exit( exit_code )
 }
 
-verify :: proc( condition : b32, msg : string, exit_code : int = -1, location := #caller_location )
+// TODO(Ed) : Setup exit codes!
+verify :: #force_inline proc( condition : b32, msg : string, exit_code : int = -1, location := #caller_location )
 {
 	if condition {
 		return

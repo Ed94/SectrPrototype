@@ -1,9 +1,6 @@
-package sectr
+package grime
 
 rune16 :: distinct u16
-
-
-
 
 // Exposing the alloc_error
 @(require_results)

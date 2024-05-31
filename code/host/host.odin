@@ -62,12 +62,15 @@ import "core:time"
 	thread_sleep     :: time.sleep
 import "core:prof/spall"
 import rl    "vendor:raylib"
-import sectr "../sectr"
+
+import "codebase:grime"
+	file_copy_sync :: grime.file_copy_sync
+	file_is_locked :: grime.file_is_locked
+	varena_init    :: grime.varena_init
+
+import "codebase:sectr"
 	VArena                 :: sectr.VArena
-	varena_init            :: sectr.varena_init
 	fatal                  :: sectr.fatal
-	file_is_locked         :: sectr.file_is_locked
-	file_copy_sync         :: sectr.file_copy_sync
 	Logger                 :: sectr.Logger
 	logger_init            :: sectr.logger_init
 	LogLevel               :: sectr.LogLevel
@@ -167,7 +170,7 @@ load_sectr_api :: proc( version_id : i32 ) -> (loaded_module : sectr.ModuleAPI)
 	}
 
 	live_file := Path_Sectr_Live_Module
-	file_copy_sync( Path_Sectr_Module, live_file )
+	file_copy_sync( Path_Sectr_Module, live_file, allocator = context.temp_allocator )
 
 	lib, load_result := os_lib_load( live_file )
 	if ! load_result {

@@ -7,7 +7,7 @@ Update 5-26-2024:
 TODO(Ed): Raw_Dynamic_Array is defined within base:runtime/core.odin and exposes what we need for worst case hot-reloads.
 So its best to go back to regular dynamic arrays at some point.
 */
-package sectr
+package grime
 
 import "core:c/libc"
 import "core:mem"
@@ -295,6 +295,7 @@ array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity : u64 ) -> All
 
 	if result_code != AllocatorError.None {
 		ensure( false, "Failed to allocate for new array capacity" )
+		log( "Failed to allocate for new array capacity", level = LogLevel.Warning )
 		return result_code
 	}
 	if new_mem == nil {

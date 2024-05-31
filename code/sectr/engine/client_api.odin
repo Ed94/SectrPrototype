@@ -39,7 +39,8 @@ ModuleAPI :: struct {
 startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^Logger )
 {
 	spall.SCOPED_EVENT( & prof.ctx, & prof.buffer, #procedure )
-	Memory_App.profiler = prof
+	// Memory_App.profiler = prof
+	set_profiler_module_context( prof )
 
 	startup_tick := time.tick_now()
 
@@ -376,7 +377,7 @@ sectr_shutdown :: proc()
 reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
 {
 	spall.SCOPED_EVENT( & prof.ctx, & prof.buffer, #procedure )
-	Memory_App.profiler = prof
+	set_profiler_module_context( prof )
 
 	context.logger = to_odin_logger( & Memory_App.logger )
 	using Memory_App;
@@ -434,6 +435,8 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	log("Module reloaded")
 }
 
+Frametime_High_Perf_Threshold_MS :: 1 / 240.0
+
 @export
 tick :: proc( host_delta_time_ms : f64, host_delta_ns : Duration ) -> b32
 {
@@ -488,7 +491,7 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	debug.draw_UI_padding_bounds = false
 	debug.draw_ui_content_bounds = false
 
-	config.engine_refresh_hz = 10000
+	config.engine_refresh_hz = 165
 
 	// config.color_theme = App_Thm_Light
 	// config.color_theme = App_Thm_Dusk

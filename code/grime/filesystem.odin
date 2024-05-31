@@ -1,12 +1,11 @@
-package sectr
-
-// TODO(Ed): Review these when os2 is done.
+package grime
+// TODO(Ed): Review when os2 is done.
 
 import "core:fmt"
 import "core:os"
 import "base:runtime"
 
-file_copy_sync :: proc( path_src, path_dst: string, allocator := context.temp_allocator ) -> b32
+file_copy_sync :: proc( path_src, path_dst: string, allocator := context.allocator ) -> b32
 {
   file_size : i64
 	{
@@ -34,8 +33,8 @@ file_copy_sync :: proc( path_src, path_dst: string, allocator := context.temp_al
 	return true
 }
 
-file_exists :: proc( file_path : string ) -> b32 {
-	path_info, result := file_status( file_path, frame_allocator() )
+file_exists :: proc( file_path : string, allocator := context.allocator ) -> b32 {
+	path_info, result := file_status( file_path, allocator )
 	if result != os.ERROR_NONE {
 		return false
 	}

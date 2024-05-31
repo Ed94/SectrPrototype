@@ -1,4 +1,4 @@
-package sectr
+package grime
 
 // Provides an alternative syntax for pointers
 

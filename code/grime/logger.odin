@@ -1,4 +1,4 @@
-package sectr
+package grime
 
 import "base:runtime"
 import "core:fmt"
@@ -27,12 +27,7 @@ logger_init :: proc( logger : ^ Logger,  id : string, file_path : string, file :
 	if file == os.INVALID_HANDLE
 	{
 		logger_file, result_code := file_open( file_path, os.O_RDWR | os.O_CREATE )
-		if result_code != os.ERROR_NONE {
-				// Log failures are fatal and must never occur at runtime (there is no logging)
-				runtime.debug_trap()
-				os.exit( -1 )
-				// TODO(Ed) : Figure out the error code enums..
-		}
+		assert( result_code == os.ERROR_NONE, "Log failures are fatal and must never occur at runtime (there is no logging)" )
 		logger.file = logger_file
 	}
 	else {
@@ -45,7 +40,6 @@ logger_init :: proc( logger : ^ Logger,  id : string, file_path : string, file :
 	log("Initialized Logger")
 	when false {
 		log("This sentence is over 80 characters long on purpose to test the ability of this logger to properfly wrap long as logs with a new line and then at the end of that pad it with the appropraite signature.")
-
 	}
 }
 
@@ -117,7 +111,6 @@ logger_interface :: proc(
 
 	str_to_file_ln( logger.file, to_string(builder) )
 }
-
 
 // This buffer is used below excluisvely to prevent any allocator recusion when verbose logging from allocators.
 Logger_Allocator_Buffer : [32 * Kilobyte]u8

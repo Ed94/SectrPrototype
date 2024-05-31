@@ -6,7 +6,7 @@
 
 	I'm keeping it around as an artifact & for future allocators I may make.
 */
-package sectr
+package grime
 
 MemoryTrackerEntry :: struct {
 	start, end : rawptr,
@@ -19,14 +19,10 @@ MemoryTracker :: struct {
 
 Track_Memory :: false
 
-// tracker_msg_buffer : [Kilobyte * 16]u8
-
 memtracker_clear :: proc ( tracker : MemoryTracker ) {
 	when ! Track_Memory {
 		return
 	}
-	// temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
-	// context.temp_allocator = arena_allocator(& temp_arena)
 
 	logf("Clearing tracker: %v", tracker.name)
 	memtracker_dump_entries(tracker);
@@ -38,8 +34,6 @@ memtracker_init :: proc ( tracker : ^MemoryTracker, allocator : Allocator, num_e
 	when ! Track_Memory {
 		return
 	}
-	// temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
-	// context.temp_allocator = arena_allocator(& temp_arena)
 
 	tracker.name = name
 
@@ -56,8 +50,6 @@ memtracker_register :: proc( tracker : ^MemoryTracker, new_entry : MemoryTracker
 		return
 	}
 	profile(#procedure)
-	// temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
-	// context.temp_allocator = arena_allocator(& temp_arena)
 
 	if tracker.entries.num == tracker.entries.capacity {
 		ensure(false, "Memory tracker entries array full, can no longer register any more allocations")
@@ -110,8 +102,6 @@ memtracker_unregister :: proc( tracker : MemoryTracker, to_remove : MemoryTracke
 		return
 	}
 	profile(#procedure)
-	// temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
-	// context.temp_allocator = arena_allocator(& temp_arena)
 
 	entries := array_to_slice(tracker.entries)
 	for idx in 0..< tracker.entries.num
@@ -139,8 +129,6 @@ memtracker_check_for_collisions :: proc ( tracker : MemoryTracker )
 		return
 	}
 	profile(#procedure)
-	// temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
-	// context.temp_allocator = arena_allocator(& temp_arena)
 
 	entries := array_to_slice(tracker.entries)
 	for idx in 1 ..< tracker.entries.num {
@@ -161,8 +149,6 @@ memtracker_dump_entries :: proc( tracker : MemoryTracker )
 	when ! Track_Memory {
 		return
 	}
-	// temp_arena : Arena; arena_init(& temp_arena, tracker_msg_buffer[:])
-	// context.temp_allocator = arena_allocator(& temp_arena)
 
 	log( "Dumping Memory Tracker:")
 	for idx in 0 ..< tracker.entries.num {

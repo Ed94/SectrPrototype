@@ -1,4 +1,9 @@
-package sectr
+/*
+An intersive singly & double linked list implementation
+
+
+*/
+package grime
 
 LL_Node :: struct ( $ Type : typeid ) {
 	next  : ^Type,
@@ -17,7 +22,7 @@ ll_pop :: #force_inline proc "contextless" ( list_ptr : ^(^ ($ Type)) ) -> ( nod
 	return list
 }
 
-//region Intrusive Doubly-Linked-List
+//#region("Intrusive Doubly-Linked-List")
 
 DLL_Node :: struct ( $ Type : typeid ) #raw_union {
 	using _ : struct {
@@ -35,10 +40,11 @@ DLL_Node :: struct ( $ Type : typeid ) #raw_union {
 }
 
 DLL_NodeFull :: struct ( $ Type : typeid ) {
-	// using _ : DLL_NodeFL(Type),
 	first, last : ^Type,
 	prev, next  : ^Type,
 }
+
+// I have specific members commented out here as the RAD Debugger currently doesn't support transparently exposing using members of a struct (yet).
 
 DLL_NodePN :: struct ( $ Type : typeid ) {
 	// using _ : struct {
@@ -187,4 +193,4 @@ dll_full_push_back :: proc "contextless" ( parent : ^$ParentType, node : ^$Type,
 	dll_full_insert_raw( null, parent, parent.last, node )
 }
 
-//endregion Intrusive Doubly-Linked-List
+//#endregion("Intrusive Doubly-Linked-List")

@@ -1,4 +1,4 @@
-package sectr
+package grime
 
 Nanosecond_To_Microsecond :: 1.0 / (1000.0)
 Nanosecond_To_Millisecond :: 1.0 / (1000.0 * 1000.0)
@@ -31,5 +31,3 @@ MS_To_S  :: Millisecond_To_Second
 S_To_NS :: Second_To_Nanosecond
 S_To_US :: Second_To_Microsecnd
 S_To_MS :: Second_To_Millisecond
-
-Frametime_High_Perf_Threshold_MS :: 1 / 240.0

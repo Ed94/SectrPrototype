@@ -12,7 +12,7 @@ No other part of the program will directly touch the vitual memory interface dir
 Thus for the scope of this prototype the Virtual Arena are the only interfaces to dynamic address spaces for the runtime of the client app.
 The host application as well ideally (although this may not be the case for a while)
 */
-package sectr
+package grime
 
 import "base:intrinsics"
 import "base:runtime"
@@ -25,8 +25,8 @@ VArena_GrowthPolicyProc :: #type proc( commit_used, committed, reserved, request
 
 VArena :: struct {
 	using vmem       : VirtualMemoryRegion,
-	dbg_name         : string,
 	tracker          : MemoryTracker,
+	dbg_name         : string,
 	commit_used      : uint,
 	growth_policy    : VArena_GrowthPolicyProc,
 	allow_any_reize  : b32,
@@ -242,12 +242,14 @@ varena_allocator_proc :: proc(
 			old_memory_offset := uintptr(old_memory)    + uintptr(old_size)
 			current_offset    := uintptr(arena.reserve_start) + uintptr(arena.commit_used)
 
-			// if old_size < page_size {
-				// // We're dealing with an allocation that requested less than the minimum allocated on vmem.
-				// // Provide them more of their actual memory
-				// data = byte_slice( old_memory, size )
-				// return
-			// }
+			when false {
+				if old_size < page_size {
+					// We're dealing with an allocation that requested less than the minimum allocated on vmem.
+					// Provide them more of their actual memory
+					data = byte_slice( old_memory, size )
+					return
+				}
+			}
 
 			verify( old_memory_offset == current_offset || arena.allow_any_reize,
 				"Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
