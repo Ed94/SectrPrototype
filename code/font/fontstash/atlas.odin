@@ -47,9 +47,8 @@ atlas_add_skyline_level :: proc (ctx : ^Context, id : u64, x, y, width, height :
 	return
 }
 
-atlas_delete :: proc ( ctx : ^Context ) {
-	using ctx
-	array_free( ctx.atlas )
+atlas_delete :: proc () {
+	delete(Module_Context.atlas)
 }
 
 atlas_expand :: proc( ctx : ^Context, width, height : i32 )
@@ -65,18 +64,18 @@ atlas_expand :: proc( ctx : ^Context, width, height : i32 )
 atlas_init :: proc( ctx : ^Context, width, height : i32, num_nodes : u32 = Init_Atlas_Nodes )
 {
 	error : AllocatorError
-	ctx.atlas, error = init_reserve( AtlasNode, context.allocator, u64(num_nodes), dbg_name = "font atlas" )
+	ctx.atlas, error = make( Array(AtlasNode), u64(num_nodes), dbg_name = "font atlas" )
 	ensure(error != AllocatorError.None, "Failed to allocate font atlas")
 
 	ctx.width  = width
 	ctx.height = height
 
-	array_append( & ctx.atlas, AtlasNode{ width = i16(width)} )
+	append( & ctx.atlas, AtlasNode{ width = i16(width)} )
 }
 
 atlas_insert :: proc( ctx : ^Context, id : u64, x, y, width : i32 ) -> (error : AllocatorError)
 {
-	error = array_append_at( & ctx.atlas, AtlasNode{ i16(x), i16(y), i16(width) }, id )
+	error = append_at( & ctx.atlas, AtlasNode{ i16(x), i16(y), i16(width) }, id )
 	return
 }
 
@@ -88,7 +87,7 @@ atlas_reset :: proc( ctx : ^Context, width, height : i32 )
 	ctx.height = height
 	clear( ctx.atlas )
 
-	array_append( & ctx.atlas, AtlasNode{ width = i16(width)} )
+	append( & ctx.atlas, AtlasNode{ width = i16(width)} )
 }
 
 atlas_rect_fits :: proc( ctx : ^Context, location, width, height : i32 ) -> (max_height : i32)

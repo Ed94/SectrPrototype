@@ -1,7 +1,5 @@
 package fontstash
 
-
-
 import "core:mem"
 
 AllocatorError          :: mem.Allocator_Error
@@ -10,18 +8,28 @@ import "codebase:grime"
 
 // asserts
 ensure :: grime.ensure
+verify :: grime.verify
 
 // container
 
 Array :: grime.Array
 
-array_init_reserve :: grime.array_init_reserve
-array_append       :: grime.array_append
-array_append_at    :: grime.array_append_at
-array_clear        :: grime.array_clear
-array_free         :: grime.array_free
-array_remove_at    :: grime.array_remove_at
-array_to_slice     :: grime.array_to_slice
+array_init      :: grime.array_init
+array_append    :: grime.array_append
+array_append_at :: grime.array_append_at
+array_clear     :: grime.array_clear
+array_free      :: grime.array_free
+array_remove_at :: grime.array_remove_at
+array_to_slice  :: grime.array_to_slice
+
+StackFixed :: grime.StackFixed
+
+stack_clear            :: grime.stack_clear
+stack_push             :: grime.stack_push
+stack_pop              :: grime.stack_pop
+stack_peek_ref         :: grime.stack_peek_ref
+stack_peek             :: grime.stack_peek
+stack_push_contextless :: grime.stack_push_contextless
 
 //#region("Proc overload mappings")
 
@@ -32,19 +40,20 @@ append :: proc {
 }
 
 append_at :: proc {
-	array_append_at,
+	grime.array_append_at_slice,
+	grime.array_append_at_value,
 }
 
 clear :: proc {
 	array_clear,
 }
 
-free :: proc {
+delete :: proc {
 	array_free,
 }
 
-init_reserve :: proc {
-	array_init_reserve,
+make :: proc {
+	array_init,
 }
 
 remove_at :: proc {

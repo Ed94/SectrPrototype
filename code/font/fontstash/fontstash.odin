@@ -35,15 +35,15 @@ Range2_i16 :: struct #raw_union {
 	}
 }
 
-Vec2 :: [2]f32
-
+Vec2     :: [2]f32
 Vec2_i16 :: [2]i16
+Rect     :: [4]f32
 
 Invalid :: -1
 
 Hash_Lut_Size    :: 256
 Max_Fallbacks    :: 20
-Max_States       :: 20
+Max_VisStates    :: 20
 Vertex_Count     :: 1024
 Init_Atlas_Nodes :: 256
 
@@ -105,7 +105,6 @@ Glyph :: struct {
 }
 
 Font :: struct {
-	parser_kind : ParserKind,
 	parser_data : ParserData,
 	name        : string,
 	data        : []byte,
@@ -121,17 +120,8 @@ Font :: struct {
 	num_fallbacks : i32,
 }
 
-Params :: struct {
-	width, height : i32,
-	quad_location : QuadLocation, // (flags)
-	render_create : RenderCreateProc,
-	render_resize : RenderResizeProc,
-	render_update : RenderUpdateProc,
-	render_draw   : RenderDrawProc,
-	render_delete : RenderDelete,
-}
-
-State :: struct {
+// Visible State tracking used for sharing font visualization preferences.
+VisState :: struct {
 	font      : i32,
 	alignment : i32,
 	size      : f32,
@@ -156,28 +146,6 @@ TextIter :: struct {
 	str        : string,
 	next       : string,
 	end        : string,
-}
-
-Context :: struct {
-	params : Params,
-
-// Atlas
-	atlas           : Array(AtlasNode),
-	texture_data    : []byte,
-	width, height   : i32,
-// ----
-
-	normalized_size : Vec2,
-
-	verts   : [Vertex_Count * 2]f32,
-	tcoords : [Vertex_Count * 2]f32,
-	colors  : [Vertex_Count    ]f32,
-
-	states  : [Max_States]State,
-	num_states : i32,
-
-	handle_error : HandleErrorProc,
-	error_uptr : rawptr,
 }
 
 decode_utf8 :: proc( state : ^rune, codepoint : ^rune, to_decode : byte ) -> bool
@@ -217,4 +185,3 @@ decode_utf8 :: proc( state : ^rune, codepoint : ^rune, to_decode : byte ) -> boo
 	(state^) = cast(rune)(UTF8_Decode_Table[256 + (state^) * 16 + rune(type)])
 	return (state^) == UTF8_Accept
 }
-
