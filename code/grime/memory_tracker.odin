@@ -38,7 +38,7 @@ memtracker_init :: proc ( tracker : ^MemoryTracker, allocator : Allocator, num_e
 	tracker.name = name
 
 	error : AllocatorError
-	tracker.entries, error = array_init_reserve( MemoryTrackerEntry, allocator, num_entries, dbg_name = name )
+	tracker.entries, error = make( Array(MemoryTrackerEntry), num_entries, dbg_name = name, allocator = allocator )
 	if error != AllocatorError.None {
 		fatal("Failed to allocate memory tracker's hashmap");
 	}

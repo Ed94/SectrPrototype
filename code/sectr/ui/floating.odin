@@ -14,15 +14,15 @@ UI_FloatingBuilder :: #type proc( captures : rawptr ) -> (became_active : b32)
 UI_FloatingManager :: struct {
 	using links : DLL_NodeFL(UI_Floating),
 	build_queue : Array(UI_Floating),
-	tracked     : HMapChainedPtr(UI_Floating),
+	tracked     : HMapChained(UI_Floating),
 }
 
-ui_floating_startup :: proc( self : ^UI_FloatingManager, allocator : Allocator, build_queue_cap, tracked_cap : u64, dbg_name : string = ""  ) -> AllocatorError
+ui_floating_startup :: proc( self : ^UI_FloatingManager, build_queue_cap, tracked_cap : u64, allocator := context.allocator, dbg_name : string = ""  ) -> AllocatorError
 {
 	error : AllocatorError
 
 	queue_dbg_name := str_intern(str_fmt("%s: build_queue", dbg_name))
-	self.build_queue, error = array_init_reserve( UI_Floating, allocator, build_queue_cap, dbg_name = queue_dbg_name.str )
+	self.build_queue, error = make( Array(UI_Floating), build_queue_cap, dbg_name = queue_dbg_name.str, allocator = allocator )
 	if error != AllocatorError.None
 	{
 		ensure(false, "Failed to allocate the build_queue")
@@ -30,7 +30,7 @@ ui_floating_startup :: proc( self : ^UI_FloatingManager, allocator : Allocator, 
 	}
 
 	tracked_dbg_name := str_intern(str_fmt("%s: tracked", dbg_name))
-	self.tracked, error = hmap_chained_init(UI_Floating, uint(tracked_cap), allocator, dbg_name = tracked_dbg_name.str )
+	self.tracked, error = make( HMapChained(UI_Floating), uint(tracked_cap), allocator, dbg_name = tracked_dbg_name.str )
 	if error != AllocatorError.None
 	{
 		ensure(false, "Failed to allocate tracking table")

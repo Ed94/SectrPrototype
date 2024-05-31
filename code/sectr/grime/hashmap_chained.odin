@@ -24,13 +24,13 @@ HMapChainedSlot :: struct( $Type : typeid ) {
 	occupied : b32,
 }
 
-HMapChained :: struct( $ Type : typeid ) {
+HMapChainedHeader :: struct( $ Type : typeid ) {
 	pool    : Pool,
 	lookup  : [] ^HMapChainedSlot(Type),
 }
 
-HMapChainedPtr :: struct( $ Type : typeid) {
-	using header : ^HMapChained(Type),
+HMapChained :: struct( $ Type : typeid) {
+	using header : ^HMapChainedHeader(Type),
 }
 
 // Provides the nearest prime number value for the given capacity
@@ -50,21 +50,22 @@ hmap_closest_prime :: proc( capacity : uint ) -> uint
 	return prime_table[len(prime_table) - 1]
 }
 
-hmap_chained_init :: proc( $Type : typeid, lookup_capacity : uint, allocator : Allocator,
+hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_capacity : uint,
+  allocator               := context.allocator,
 	pool_bucket_cap         : uint   = 1 * Kilo,
 	pool_bucket_reserve_num : uint   = 0,
 	pool_alignment          : uint   = mem.DEFAULT_ALIGNMENT,
 	dbg_name                : string = ""
-) -> (table : HMapChainedPtr(Type), error : AllocatorError)
+) -> (table : HMapChained(Type), error : AllocatorError)
 {
-	header_size := size_of(HMapChained(Type))
+	header_size := size_of(HMapChainedHeader(Type))
 	size  := header_size + int(lookup_capacity) * size_of( ^HMapChainedSlot(Type)) + size_of(int)
 
 	raw_mem : rawptr
 	raw_mem, error = alloc( size, allocator = allocator )
 	if error != AllocatorError.None do return
 
-	table.header      = cast( ^HMapChained(Type)) raw_mem
+	table.header      = cast( ^HMapChainedHeader(Type)) raw_mem
 	table.pool, error = pool_init(
 		should_zero_buckets = false,
 		block_size          = size_of(HMapChainedSlot(Type)),
@@ -74,12 +75,12 @@ hmap_chained_init :: proc( $Type : typeid, lookup_capacity : uint, allocator : A
 		allocator           = allocator,
 		dbg_name            = str_intern(str_fmt("%v: pool", dbg_name)).str
 	)
-	data        := transmute([^] ^HMapChainedSlot(Type)) (transmute( [^]HMapChained(Type)) table.header)[1:]
+	data        := transmute([^] ^HMapChainedSlot(Type)) (transmute( [^]HMapChainedHeader(Type)) table.header)[1:]
 	table.lookup = slice_ptr( data, int(lookup_capacity) )
 	return
 }
 
-hmap_chained_clear :: proc( using self : HMapChainedPtr($Type))
+hmap_chained_clear :: proc( using self : HMapChained($Type))
 {
 	for slot in lookup
 	{
@@ -93,19 +94,19 @@ hmap_chained_clear :: proc( using self : HMapChainedPtr($Type))
 	}
 }
 
-hmap_chained_destroy :: proc( using self  : ^HMapChainedPtr($Type)) {
+hmap_chained_destroy :: proc( using self  : ^HMapChained($Type)) {
 	pool_destroy( pool )
 	free( self.header, backing)
 	self = nil
 }
 
-hmap_chained_lookup_id :: #force_inline proc( using self : HMapChainedPtr($Type), key : u64 ) -> u64
+hmap_chained_lookup_id :: #force_inline proc( using self : HMapChained($Type), key : u64 ) -> u64
 {
 	hash_index := key % u64( len(lookup) )
 	return hash_index
 }
 
-hmap_chained_get :: proc( using self : HMapChainedPtr($Type), key : u64) -> ^Type
+hmap_chained_get :: proc( using self : HMapChained($Type), key : u64) -> ^Type
 {
 	// profile(#procedure)
 	surface_slot := lookup[hmap_chained_lookup_id(self, key)]
@@ -127,14 +128,14 @@ hmap_chained_get :: proc( using self : HMapChainedPtr($Type), key : u64) -> ^Typ
 	return nil
 }
 
-hmap_chained_reload :: proc( self : HMapChainedPtr($Type), allocator : Allocator )
+hmap_chained_reload :: proc( self : HMapChained($Type), allocator : Allocator )
 {
 	pool_reload(self.pool, allocator)
 }
 
 // Returns true if an slot was actually found and marked as vacant
 // Entries already found to be vacant will not return true
-hmap_chained_remove :: proc( self : HMapChainedPtr($Type), key : u64 ) -> b32
+hmap_chained_remove :: proc( self : HMapChained($Type), key : u64 ) -> b32
 {
 	surface_slot := lookup[hmap_chained_lookup_id(self, key)]
 
@@ -160,12 +161,12 @@ hmap_chained_remove :: proc( self : HMapChainedPtr($Type), key : u64 ) -> b32
 
 // Sets the value to a vacant slot
 // Will preemptively allocate the next slot in the hashtable if its null for the slot.
-hmap_chained_set :: proc( using self : HMapChainedPtr($Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
+hmap_chained_set :: proc( using self : HMapChained($Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
 {
 	// profile(#procedure)
 	hash_index   := hmap_chained_lookup_id(self, key)
 	surface_slot := lookup[hash_index]
-	set_slot :: #force_inline proc( using self : HMapChainedPtr(Type),
+	set_slot :: #force_inline proc( using self : HMapChained(Type),
 		slot  : ^HMapChainedSlot(Type),
 		key   : u64,
 		value : Type

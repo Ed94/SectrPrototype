@@ -156,7 +156,7 @@ import "codebase:grime"
 	Array :: grime.Array
 
 	array_to_slice     :: grime.array_to_slice
-	array_init_reserve :: grime.array_init_reserve
+	array_init         :: grime.array_init
 	array_append       :: grime.array_append
 	array_append_at    :: grime.array_append_at
 	array_clear        :: grime.array_clear
@@ -164,6 +164,15 @@ import "codebase:grime"
 	array_grow_formula :: grime.array_grow_formula
 	array_remove_at    :: grime.array_remove_at
 	array_resize       :: grime.array_resize
+
+	StackFixed :: grime.StackFixed
+
+	stack_clear            :: grime.stack_clear
+	stack_push             :: grime.stack_push
+	stack_pop              :: grime.stack_pop
+	stack_peek_ref         :: grime.stack_peek_ref
+	stack_peek             :: grime.stack_peek
+	stack_push_contextless :: grime.stack_push_contextless
 
 	// filesystem
 	file_exists :: grime.file_exists
@@ -294,6 +303,20 @@ inverse_mag :: proc {
 is_power_of_two :: proc {
 	is_power_of_two_u32,
 	is_power_of_two_uintptr,
+}
+
+make :: proc {
+	array_init,
+	hmap_chained_init,
+	hmap_zpl_init,
+
+	// Usual
+	make_slice,
+	make_dynamic_array,
+	make_dynamic_array_len,
+	make_dynamic_array_len_cap,
+	make_map,
+	make_multi_pointer,
 }
 
 // measure_text_size :: proc {

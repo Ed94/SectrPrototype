@@ -24,7 +24,7 @@ string_to_runes_array :: proc( content : string, allocator := context.allocator 
 {
 	num := cast(u64) str_rune_count(content)
 
-	runes_array, alloc_error := array_init_reserve( rune, allocator, num )
+	runes_array, alloc_error := make( Array(rune), num, allocator )
 	if alloc_error != AllocatorError.None {
 		return nil, alloc_error
 	}

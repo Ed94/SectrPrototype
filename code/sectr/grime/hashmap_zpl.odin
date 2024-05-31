@@ -47,13 +47,13 @@ HMapZPL :: struct ( $ Type : typeid ) {
 	entries : Array( HMapZPL_Entry(Type) ),
 }
 
-hamp_zpl_init :: proc
-( $ Type : typeid, allocator : Allocator, num : u64, dbg_name : string = "" ) -> ( HMapZPL( Type), AllocatorError )
+hmap_zpl_init :: proc
+( $HMapZPL_Type : typeid / HMapZPL($Type), num : u64, allocator := context.allocator, dbg_name : string = "" ) -> ( HMapZPL( Type), AllocatorError )
 {
 	result                       : HMapZPL(Type)
 	table_result, entries_result : AllocatorError
 
-	result.table, table_result = array_init_reserve( i64, allocator, num, dbg_name = dbg_name )
+	result.table, table_result = make( Array(i64), num, dbg_name = dbg_name, allocator = allocator )
 	if table_result != AllocatorError.None {
 		ensure( false, "Failed to allocate table array" )
 		return result, table_result
@@ -61,7 +61,7 @@ hamp_zpl_init :: proc
 	array_resize( & result.table, num )
 	slice.fill( slice_ptr( result.table.data, cast(int) result.table.num), -1 )
 
-	result.entries, entries_result = array_init_reserve( HMapZPL_Entry(Type), allocator, num, dbg_name = dbg_name )
+	result.entries, entries_result = make( Array( HMapZPL_Entry(Type) ), num, dbg_name = dbg_name, allocator = allocator )
 	if entries_result != AllocatorError.None {
 		ensure( false, "Failed to allocate entries array" )
 		return result, entries_result
@@ -122,7 +122,7 @@ hamp_zpl_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 	ensure( false, "ZPL HMAP IS REHASHING" )
 	last_added_index : i64
 
-	new_ht, init_result := hamp_zpl_init( Type, ht.table.backing, new_num, ht.table.dbg_name )
+	new_ht, init_result := hmap_zpl_init( HMapZPL(Type), new_num, ht.table.backing, ht.table.dbg_name )
 	if init_result != AllocatorError.None {
 		ensure( false, "New hamp_zpl failed to allocate" )
 		return init_result

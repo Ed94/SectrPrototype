@@ -109,9 +109,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		for & input in input_data {
 			using input
 			error : AllocatorError
-			keyboard_events.keys_pressed, error  = array_init_reserve(KeyCode, persistent_slab_allocator(), Kilo)
+			keyboard_events.keys_pressed, error  = make( Array(KeyCode), Kilo, persistent_slab_allocator() )
 			ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.keys_pressed array")
-			keyboard_events.chars_pressed, error = array_init_reserve(rune, persistent_slab_allocator(), Kilo)
+			keyboard_events.chars_pressed, error = make( Array(rune), Kilo, persistent_slab_allocator() )
 			ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.chars_pressed array")
 		}
 	}
@@ -290,7 +290,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	if false
 	{
 		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
-		ui_floating_startup( & screen_ui.floating, persistent_slab_allocator(), 1 * Kilobyte, 1 * Kilobyte, "screen ui floating manager" )
+		ui_floating_startup( & screen_ui.floating, 1 * Kilobyte, 1 * Kilobyte, persistent_slab_allocator(), "screen ui floating manager" )
 
 		using screen_ui
 		menu_bar.pos  = { -60, 0 }

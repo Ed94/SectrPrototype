@@ -138,6 +138,20 @@ is_power_of_two :: proc {
 	is_power_of_two_uintptr,
 }
 
+make :: proc {
+	array_init,
+	// hmap_chained_init,
+	// hmap_zpl_init,
+
+	// Usual
+	make_slice,
+	make_dynamic_array,
+	make_dynamic_array_len,
+	make_dynamic_array_len_cap,
+	make_map,
+	make_multi_pointer,
+}
+
 to_string :: proc {
 	runes_to_string,
 	str_builder_to_string,

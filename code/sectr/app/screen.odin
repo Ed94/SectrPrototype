@@ -243,7 +243,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					@static value_str : Array(rune)
 					if value_str.header == nil {
 						error : AllocatorError
-						value_str, error = array_init_reserve(rune, persistent_slab_allocator(), Kilo)
+						value_str, error = make( Array(rune), Kilo, persistent_slab_allocator())
 						ensure(error == AllocatorError.None, "Failed to allocate array for value_str of input_box")
 					}
 

@@ -50,12 +50,9 @@ array_grow_formula :: proc( value : u64 ) -> u64 {
 	return result
 }
 
-array_init :: proc( $ Type : typeid, allocator : Allocator ) -> ( Array(Type), AllocatorError ) {
-	return array_init_reserve( Type, allocator, array_grow_formula(0) )
-}
-
-array_init_reserve :: proc
-( $ Type : typeid, allocator : Allocator, capacity : u64, fixed_cap : b32 = false, dbg_name : string = "" ) -> ( result : Array(Type), alloc_error : AllocatorError )
+array_init :: proc( $Array_Type : typeid/Array($Type), capacity : u64,
+	allocator := context.allocator, fixed_cap : b32 = false, dbg_name : string = ""
+) -> ( result : Array(Type), alloc_error : AllocatorError )
 {
 	header_size := size_of(ArrayHeader(Type))
 	array_size  := header_size + int(capacity) * size_of(Type)
@@ -229,7 +226,6 @@ array_free :: proc( using self : Array( $ Type ) ) {
 
 array_grow :: proc( using self : ^Array( $ Type ), min_capacity : u64 ) -> AllocatorError
 {
-	// profile(#procedure)
 	new_capacity := array_grow_formula( capacity )
 
 	if new_capacity < min_capacity {

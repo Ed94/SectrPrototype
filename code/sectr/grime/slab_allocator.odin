@@ -59,7 +59,7 @@ slab_allocator :: proc( slab : Slab ) -> ( allocator : Allocator ) {
 	return
 }
 
-slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocator : Allocator,  dbg_name : string = "", should_zero_buckets : b32 = false ) -> ( slab : Slab, alloc_error : AllocatorError )
+slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocator : Allocator = context.allocator,  dbg_name : string = "", should_zero_buckets : b32 = false ) -> ( slab : Slab, alloc_error : AllocatorError )
 {
 	header_size :: size_of( SlabHeader )
 

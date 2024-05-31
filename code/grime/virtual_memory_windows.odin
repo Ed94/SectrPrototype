@@ -4,7 +4,7 @@ import "core:mem"
 import win32 "core:sys/windows"
 
 @(require_results)
-virtual__reserve :: proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMemoryRegion, alloc_error : AllocatorError )
+virtual_resreve__platform_impl :: proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMemoryRegion, alloc_error : AllocatorError )
 {
 	header_size := cast(uint) memory_align_formula(size_of(VirtualMemoryRegionHeader), mem.DEFAULT_ALIGNMENT)
 

@@ -166,7 +166,7 @@ pws_parser_lex :: proc ( text : string, allocator : Allocator ) -> ( PWS_LexResu
 
 	alloc_error : AllocatorError
 	// tokens, alloc_error = array_init_reserve( PWS_Token, allocator, Kilobyte * 4 )
-	tokens, alloc_error = array_init_reserve( PWS_Token, allocator, PWS_TokenArray_ReserveSize )
+	tokens, alloc_error = make( Array(PWS_Token), PWS_TokenArray_ReserveSize, allocator )
 	if alloc_error != AllocatorError.None {
 		ensure(false, "Failed to allocate token's array")
 		return result, alloc_error
@@ -259,10 +259,10 @@ pws_parser_parse :: proc( text : string, allocator : Allocator ) -> ( PWS_ParseR
 	log( str_fmt( "parsing: %v ...", (len(text) > 30 ? transmute(string) bytes[ :30] : text) ))
 
 	// TODO(Ed): Change this to use a node pool
-	nodes, alloc_error = array_init_reserve( PWS_AST, allocator, PWS_NodeArray_ReserveSize )
+	nodes, alloc_error = make( Array(PWS_AST), PWS_NodeArray_ReserveSize, allocator )
 	verify( alloc_error == nil, "Allocation failure creating nodes array")
 
-	parser.lines, alloc_error = array_init_reserve( ^PWS_AST, allocator, PWS_LineArray_ReserveSize )
+	parser.lines, alloc_error = make( Array( ^PWS_AST), PWS_LineArray_ReserveSize, allocator )
 	verify( alloc_error == nil, "Allocation failure creating line array")
 
 	//region Helper procs

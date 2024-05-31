@@ -133,7 +133,7 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 	ui^ = {}
 
 	for & cache in ui.caches {
-		box_cache, allocation_error := hamp_zpl_init( UI_Box, cache_allocator, UI_Built_Boxes_Array_Size )
+		box_cache, allocation_error := make( HMapZPL(UI_Box), UI_Built_Boxes_Array_Size, cache_allocator )
 		verify( allocation_error == AllocatorError.None, "Failed to allocate box cache" )
 		cache = box_cache
 	}
@@ -141,7 +141,7 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 	ui.prev_cache = (& ui.caches[0])
 
 	allocation_error : AllocatorError
-	ui.render_queue, allocation_error = array_init_reserve( UI_RenderBoxInfo, cache_allocator, UI_Built_Boxes_Array_Size, fixed_cap = true )
+	ui.render_queue, allocation_error = make( Array(UI_RenderBoxInfo), UI_Built_Boxes_Array_Size, cache_allocator, fixed_cap = true )
 	verify( allocation_error == AllocatorError.None, "Failed to allocate render queue" )
 
 	log("ui_startup completed")

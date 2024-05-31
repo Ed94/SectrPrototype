@@ -68,7 +68,7 @@ virtual_protect :: proc "contextless" ( vmem : VirtualMemoryRegion, region : []b
 virtual_reserve :: proc "contextless" ( base_address : uintptr, size : uint ) -> ( VirtualMemoryRegion, AllocatorError ) {
 	page_size  := uint(virtual_get_page_size())
 	to_reserve := memory_align_formula( size, page_size )
-	return virtual__reserve( base_address, to_reserve )
+	return virtual_resreve__platform_impl( base_address, to_reserve )
 }
 
 @(require_results)
@@ -97,7 +97,7 @@ virtual_release :: proc "contextless" ( vmem : VirtualMemoryRegion ) {
 // If the OS is not windows, we just use the library's interface which does not support base_address.
 when ODIN_OS != OS_Type.Windows {
 
-virtual__reserve :: proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMemoryRegion, alloc_error : AllocatorError )
+virtual_resreve__platform_impl :: proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMemoryRegion, alloc_error : AllocatorError )
 {
 	header_size := memory_align_formula(size_of(VirtualMemoryRegionHeader), mem.DEFAULT_ALIGNMENT)
 
