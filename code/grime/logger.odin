@@ -113,6 +113,7 @@ logger_interface :: proc(
 }
 
 // This buffer is used below excluisvely to prevent any allocator recusion when verbose logging from allocators.
+// This means a single line is limited to 32k buffer (increase naturally if this SOMEHOW becomes a bottleneck...)
 Logger_Allocator_Buffer : [32 * Kilobyte]u8
 
 log :: proc( msg : string, level := LogLevel.Info, loc := #caller_location ) {

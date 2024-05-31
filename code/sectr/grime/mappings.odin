@@ -127,6 +127,8 @@ import "thirdparty:backtrace"
 	stacktrace       :: backtrace.trace
 	stacktrace_lines :: backtrace.lines
 
+#region("codebase")
+
 import "codebase:grime"
 	// asserts
 	ensure :: grime.ensure
@@ -234,6 +236,8 @@ import "codebase:grime"
 	VirtualMemoryRegion :: grime.VirtualMemoryRegion
 
 	varena_allocator :: grime.varena_allocator
+
+#endregion("codebase")
 
 #region("Procedure overload mappings")
 
