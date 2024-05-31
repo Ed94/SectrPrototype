@@ -29,8 +29,8 @@ ui_floating_startup :: proc( self : ^UI_FloatingManager, build_queue_cap, tracke
 		return error
 	}
 
-	tracked_dbg_name := str_intern(str_fmt("%s: tracked", dbg_name))
-	self.tracked, error = make( HMapChained(UI_Floating), uint(tracked_cap), allocator, dbg_name = tracked_dbg_name.str )
+	// tracked_dbg_name := str_intern(str_fmt("%s: tracked", dbg_name))
+	self.tracked, error = make( HMapChained(UI_Floating), uint(tracked_cap), allocator, /*dbg_name = tracked_dbg_name.str*/ )
 	if error != AllocatorError.None
 	{
 		ensure(false, "Failed to allocate tracking table")

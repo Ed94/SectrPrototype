@@ -165,6 +165,27 @@ import "codebase:grime"
 	array_remove_at    :: grime.array_remove_at
 	array_resize       :: grime.array_resize
 
+	HMapChained :: grime.HMapChained
+
+	hmap_closest_prime :: grime.hmap_closest_prime
+
+	hmap_chained_get    :: grime.hmap_chained_get
+	hmap_chained_init   :: grime.hmap_chained_init
+	hmap_chained_set    :: grime.hmap_chained_set
+	hmap_chained_reload :: grime.hmap_chained_reload
+
+	Pool :: grime.Pool
+
+	Slab          :: grime.Slab
+	SlabPolicy    :: grime.SlabPolicy
+	SlabSizeClass :: grime.SlabSizeClass
+
+	slab_allocator      :: grime.slab_allocator
+	slab_alloc          :: grime.slab_alloc
+	slab_init           :: grime.slab_init
+	slab_reload         :: grime.slab_reload
+	slab_validate_pools :: grime.slab_validate_pools
+
 	StackFixed :: grime.StackFixed
 
 	stack_clear            :: grime.stack_clear

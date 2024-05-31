@@ -133,6 +133,11 @@ array_append :: proc {
 	array_append_slice,
 }
 
+array_append_at :: proc {
+	array_append_at_slice,
+	array_append_at_value,
+}
+
 is_power_of_two :: proc {
 	is_power_of_two_u32,
 	is_power_of_two_uintptr,
@@ -150,6 +155,10 @@ make :: proc {
 	make_dynamic_array_len_cap,
 	make_map,
 	make_multi_pointer,
+}
+
+push :: proc {
+	stack_push,
 }
 
 to_string :: proc {

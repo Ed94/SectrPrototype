@@ -11,7 +11,7 @@ If its occupied a new slot is chained using the fixed bucket-size pool allocator
 This is ideal for tables have an indeterminate scope for how entires are added,
 and direct pointers are kept across the codebase instead of a key to the slot.
 */
-package sectr
+package grime
 
 import "core:mem"
 
@@ -55,7 +55,7 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 	pool_bucket_cap         : uint   = 1 * Kilo,
 	pool_bucket_reserve_num : uint   = 0,
 	pool_alignment          : uint   = mem.DEFAULT_ALIGNMENT,
-	dbg_name                : string = ""
+	// dbg_name                : string = ""
 ) -> (table : HMapChained(Type), error : AllocatorError)
 {
 	header_size := size_of(HMapChainedHeader(Type))
@@ -73,7 +73,7 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 		bucket_reserve_num  = pool_bucket_reserve_num,
 		alignment           = pool_alignment,
 		allocator           = allocator,
-		dbg_name            = str_intern(str_fmt("%v: pool", dbg_name)).str
+		// dbg_name            = str_intern(str_fmt("%v: pool", dbg_name)).str
 	)
 	data        := transmute([^] ^HMapChainedSlot(Type)) (transmute( [^]HMapChainedHeader(Type)) table.header)[1:]
 	table.lookup = slice_ptr( data, int(lookup_capacity) )

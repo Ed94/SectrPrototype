@@ -37,13 +37,8 @@ array_underlying_slice :: proc(slice: []($ Type)) -> Array(Type)
 	return array_ptr ^
 }
 
-array_to_slice :: proc( using self : Array($ Type) ) -> []Type {
-	return slice_ptr( data, int(num) )
-}
-
-array_to_slice_capacity :: proc( using self : Array($ Type) ) -> []Type {
-	return slice_ptr( data, int(capacity))
-}
+array_to_slice          :: #force_inline proc( using self : Array($ Type) ) -> []Type { return slice_ptr( data, int(num))      }
+array_to_slice_capacity :: #force_inline proc( using self : Array($ Type) ) -> []Type { return slice_ptr( data, int(capacity)) }
 
 array_grow_formula :: proc( value : u64 ) -> u64 {
 	result := (2 * value) + 8
@@ -69,22 +64,6 @@ array_init :: proc( $Array_Type : typeid/Array($Type), capacity : u64,
 	result.capacity  = capacity
 	result.data      = cast( [^]Type ) (cast( [^]ArrayHeader(Type)) result.header)[ 1:]
 	return
-}
-
-array_append_value :: proc( self : ^Array( $ Type), value : Type ) -> AllocatorError
-{
-	// profile(#procedure)
-	if self.header.num == self.header.capacity
-	{
-		grow_result := array_grow( self, self.header.capacity )
-		if grow_result != AllocatorError.None {
-			return grow_result
-		}
-	}
-
-	self.header.data[ self.header.num ] = value
-	self.header.num        += 1
-	return AllocatorError.None
 }
 
 array_append_array :: proc( using self: ^Array( $ Type), other : Array(Type)) -> AllocatorError
@@ -127,7 +106,23 @@ array_append_slice :: proc( using self : ^Array( $ Type ), items : []Type ) -> A
 	return AllocatorError.None
 }
 
-array_append_at :: proc( using self : ^Array( $ Type ), item : Type, id : u64 ) -> AllocatorError
+array_append_value :: proc( self : ^Array( $ Type), value : Type ) -> AllocatorError
+{
+	// profile(#procedure)
+	if self.header.num == self.header.capacity
+	{
+		grow_result := array_grow( self, self.header.capacity )
+		if grow_result != AllocatorError.None {
+			return grow_result
+		}
+	}
+
+	self.header.data[ self.header.num ] = value
+	self.header.num        += 1
+	return AllocatorError.None
+}
+
+array_append_at_value :: proc( using self : ^Array( $ Type ), item : Type, id : u64 ) -> AllocatorError
 {
 	id := id
 	if id >= num {

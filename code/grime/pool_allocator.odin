@@ -11,7 +11,7 @@ there can be a large discrepancy of memory localicty if buckets are small.
 
 The pool doesn't allocate any buckets on initialization unless the user specifies.
 */
-package sectr
+package grime
 
 import "base:intrinsics"
 import "base:runtime"
@@ -56,7 +56,7 @@ pool_init :: proc (
 	bucket_reserve_num  : uint = 0,
 	alignment           : uint = mem.DEFAULT_ALIGNMENT,
 	allocator           : Allocator = context.allocator,
-	dbg_name            : string,
+	dbg_name            : string = "",
 ) -> ( pool : Pool, alloc_error : AllocatorError )
 {
 	header_size := align_forward_int( size_of(PoolHeader), int(alignment) )
@@ -334,7 +334,7 @@ pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32
 	within_bucket := b32(false)
 
 	// Compiler Bug : Same as pool_reset
-	bucket        : ^PoolBucket = bucket_list.first
+	bucket : ^PoolBucket = bucket_list.first
 	for ; bucket != nil; bucket = bucket.next
 	{
 		start         := uintptr( bucket.blocks )

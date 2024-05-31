@@ -7,10 +7,6 @@ or dedicated pool allocator fail to be enough to handle a data structure
 that either is too random with its size (ex: strings)
 or is intended to grow an abitrary degree with an unknown upper bound (dynamic arrays, and hashtables).
 
-The protototype will use slab allocators for two purposes:
-* String interning
-* General purpose set for handling large arrays & hash tables within some underlying arena or stack.
-
 Technically speaking the general purpose situations can instead be grown on demand
 with a dedicated segement of vmem, however this might be overkill
 if the worst case buckets allocated are < 500 mb for most app usage.
@@ -26,7 +22,7 @@ A slab starts out with pools initialized with no buckets and grows as needed.
 When a slab is initialized the slab policy is provided to know how many size-classes there should be
 which each contain the ratio of bucket to block size.
 */
-package sectr
+package grime
 
 import "base:runtime"
 import "core:mem"
@@ -284,6 +280,8 @@ slab_reset :: proc( slab : Slab )
 
 slab_validate_pools :: proc( slab : Slab )
 {
+	when ! ODIN_DEBUG do return
+
 	slab := slab
 	for id in 0 ..< slab.pools.idx {
 		pool := slab.pools.items[id]
