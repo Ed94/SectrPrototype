@@ -138,13 +138,18 @@ push-location $path_root
 
 		write-host "`nBuilding Sectr Prototype`n"
 
-		$module_host  = join-path $path_code 'host'
-		$module_sectr = join-path $path_code 'sectr'
+		$package_grime = join-path $path_code 'grime'
+		$module_host   = join-path $path_code 'host'
+		$module_sectr  = join-path $path_code 'sectr'
 		if ($force){
+			mark-ModuleDirty $package_grime
 			mark-ModuleDirty $module_sectr
 			mark-ModuleDirty $module_host
 		}
 
+		$pkg_grime_dirty = check-ModuleForChanges $package_grime
+
+		$pkg_collection_codebase   = 'codebase='   + $path_code
 		$pkg_collection_thirdparty = 'thirdparty=' + $path_thirdparty
 
 		$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
@@ -160,7 +165,7 @@ push-location $path_root
 
 		function build-sectr
 		{
-			$should_build = check-ModuleForChanges $module_sectr
+			$should_build = (check-ModuleForChanges $module_sectr) -or $pkg_grime_dirty
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr build, module up to date'
 				return $module_unchanged
@@ -186,6 +191,7 @@ push-location $path_root
 			$build_args += './sectr'
 			$build_args += $flag_build_mode_dll
 			$build_args += $flag_output_path + $module_dll
+			$build_args += ($flag_collection + $pkg_collection_codebase)
 			$build_args += ($flag_collection + $pkg_collection_thirdparty)
 			# $build_args += $flag_micro_architecture_native
 			# $build_args += $flag_use_separate_modules
@@ -261,6 +267,7 @@ push-location $path_root
 			$build_args += $command_build
 			$build_args += './host'
 			$build_args += $flag_output_path + $executable
+			$build_args += ($flag_collection + $pkg_collection_codebase)
 			$build_args += ($flag_collection + $pkg_collection_thirdparty)
 			# $build_args += $flag_micro_architecture_native
 			# $build_args += $flag_use_separate_modules

@@ -13,8 +13,8 @@ $path_shaders = join-path $path_sectr 'shaders'
 
 $sokol_shdc  = join-path $path_sokol_tools 'bin/win32/sokol-shdc.exe'
 
-$shadersrc_learngl_font_glyph = join-path $path_shaders 'learngl_font_glyph_sokol.glsl'
-$shaderout_learngl_font_glyph = join-path $path_shaders 'learngl_font_glyph_sokol.odin'
+$shadersrc_learngl_font_glyph = join-path $path_shaders 'font_glyph.shdc.glsl'
+$shaderout_learngl_font_glyph = join-path $path_shaders 'font_glyph.odin'
 
 $flag_input       = '--input '
 $flag_output      = '--output '

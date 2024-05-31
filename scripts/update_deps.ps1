@@ -90,14 +90,13 @@ Update-GitRepo -path $path_sokol -url $url_sokol     -build_command '.\build_win
 
 function clone-gitrepo { param( [string] $path, [string] $url )
 	if (test-path $path) {
-		git -C $path pull
+		# git -C $path pull
 	}
 	else {
 		Write-Host "Cloning $url ..."
 		git clone $url $path
 	}
 }
-
 
 clone-gitrepo $path_backtrace   $url_backtrace_repo
 clone-gitrepo $path_freetype    $url_freetype
