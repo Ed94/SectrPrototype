@@ -151,7 +151,7 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 {
 	// We need to repopulate Allocator references
 	for & cache in ui.caches {
-		hamp_zpl_reload( & cache, cache_allocator)
+		hmap_zpl_reload( & cache, cache_allocator)
 	}
 	ui.render_queue.backing = cache_allocator
 }

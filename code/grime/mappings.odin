@@ -145,8 +145,8 @@ is_power_of_two :: proc {
 
 make :: proc {
 	array_init,
-	// hmap_chained_init,
-	// hmap_zpl_init,
+	hmap_chained_init,
+	hmap_zpl_init,
 
 	// Usual
 	make_slice,
@@ -159,6 +159,10 @@ make :: proc {
 
 push :: proc {
 	stack_push,
+}
+
+to_runes :: proc {
+	string_to_runes,
 }
 
 to_string :: proc {

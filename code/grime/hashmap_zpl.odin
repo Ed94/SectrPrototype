@@ -18,7 +18,7 @@ Each entry contains a next field, which is an index pointing to the next entry i
 Growing this hashtable is destructive, so it should usually be kept to a fixed-size unless
 the populating operations only occur in one place and from then on its read-only.
 */
-package sectr
+package grime
 
 import "core:slice"
 
@@ -69,7 +69,7 @@ hmap_zpl_init :: proc
 	return result, AllocatorError.None
 }
 
-hamp_zpl_clear :: proc( using self : ^ HMapZPL( $ Type ) ) {
+hmap_zpl_clear :: proc( using self : ^ HMapZPL( $ Type ) ) {
 	for id := 0; id < table.num; id += 1 {
 		table[id] = -1
 	}
@@ -78,17 +78,17 @@ hamp_zpl_clear :: proc( using self : ^ HMapZPL( $ Type ) ) {
 	array_clear( entries )
 }
 
-hamp_zpl_destroy :: proc( using self : ^ HMapZPL( $ Type ) ) {
+hmap_zpl_destroy :: proc( using self : ^ HMapZPL( $ Type ) ) {
 	if table.data != nil && table.capacity > 0 {
 		array_free( table )
 		array_free( entries )
 	}
 }
 
-hamp_zpl_get :: proc ( using self : ^ HMapZPL( $ Type ), key : u64 ) -> ^ Type
+hmap_zpl_get :: proc ( using self : ^ HMapZPL( $ Type ), key : u64 ) -> ^ Type
 {
 	// profile(#procedure)
-	id := hamp_zpl_find( self, key ).entry_index
+	id := hmap_zpl_find( self, key ).entry_index
 	if id >= 0 {
 		return & entries.data[id].value
 	}
@@ -96,26 +96,26 @@ hamp_zpl_get :: proc ( using self : ^ HMapZPL( $ Type ), key : u64 ) -> ^ Type
 	return nil
 }
 
-hamp_zpl_map :: proc( using self : ^ HMapZPL( $ Type), map_proc : HMapZPL_MapProc ) {
+hmap_zpl_map :: proc( using self : ^ HMapZPL( $ Type), map_proc : HMapZPL_MapProc ) {
 	ensure( map_proc != nil, "Mapping procedure must not be null" )
 	for id := 0; id < entries.num; id += 1 {
 		map_proc( Type, entries[id].key, entries[id].value )
 	}
 }
 
-hamp_zpl_map_mut :: proc( using self : ^ HMapZPL( $ Type), map_proc : HMapZPL_MapMutProc ) {
+hmap_zpl_map_mut :: proc( using self : ^ HMapZPL( $ Type), map_proc : HMapZPL_MapMutProc ) {
 	ensure( map_proc != nil, "Mapping procedure must not be null" )
 	for id := 0; id < entries.num; id += 1 {
 		map_proc( Type, entries[id].key, & entries[id].value )
 	}
 }
 
-hamp_zpl_grow :: proc( using self : ^ HMapZPL( $ Type ) ) -> AllocatorError {
+hmap_zpl_grow :: proc( using self : ^ HMapZPL( $ Type ) ) -> AllocatorError {
 	new_num := array_grow_formula( entries.num )
-	return hamp_zpl_rehash( self, new_num )
+	return hmap_zpl_rehash( self, new_num )
 }
 
-hamp_zpl_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorError
+hmap_zpl_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorError
 {
 	profile(#procedure)
 	// For now the prototype should never allow this to happen.
@@ -124,7 +124,7 @@ hamp_zpl_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 
 	new_ht, init_result := hmap_zpl_init( HMapZPL(Type), new_num, ht.table.backing, ht.table.dbg_name )
 	if init_result != AllocatorError.None {
-		ensure( false, "New hamp_zpl failed to allocate" )
+		ensure( false, "New hmap_zpl failed to allocate" )
 		return init_result
 	}
 
@@ -132,8 +132,8 @@ hamp_zpl_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 		find_result : HMapZPL_FindResult
 
 		entry           := & ht.entries.data[id]
-		find_result      = hamp_zpl_find( & new_ht, entry.key )
-		last_added_index = hamp_zpl_add_entry( & new_ht, entry.key )
+		find_result      = hmap_zpl_find( & new_ht, entry.key )
+		last_added_index = hmap_zpl_add_entry( & new_ht, entry.key )
 
 		if find_result.prev_index < 0 {
 			new_ht.table.data[ find_result.hash_index ] = last_added_index
@@ -146,13 +146,13 @@ hamp_zpl_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 		new_ht.entries.data[ last_added_index ].value = entry.value
 	}
 
-	hamp_zpl_destroy( ht )
+	hmap_zpl_destroy( ht )
 
 	(ht ^) = new_ht
 	return AllocatorError.None
 }
 
-hamp_zpl_rehash_fast :: proc( using self : ^ HMapZPL( $ Type ) )
+hmap_zpl_rehash_fast :: proc( using self : ^ HMapZPL( $ Type ) )
 {
 	for id := 0; id < entries.num; id += 1 {
 		entries[id].Next = -1;
@@ -162,7 +162,7 @@ hamp_zpl_rehash_fast :: proc( using self : ^ HMapZPL( $ Type ) )
 	}
 	for id := 0; id < entries.num; id += 1 {
 		entry       := & entries[id]
-		find_result := hamp_zpl_find( entry.key )
+		find_result := hmap_zpl_find( entry.key )
 
 		if find_result.prev_index < 0 {
 			table[ find_result.hash_index ] = id
@@ -174,45 +174,45 @@ hamp_zpl_rehash_fast :: proc( using self : ^ HMapZPL( $ Type ) )
 }
 
 // Used when the address space of the allocator changes and the backing reference must be updated
-hamp_zpl_reload :: proc( using self : ^HMapZPL($Type), new_backing : Allocator ) {
+hmap_zpl_reload :: proc( using self : ^HMapZPL($Type), new_backing : Allocator ) {
 	table.backing   = new_backing
 	entries.backing = new_backing
 }
 
-hamp_zpl_remove :: proc( self : ^ HMapZPL( $ Type ), key : u64 ) {
-	find_result := hamp_zpl_find( key )
+hmap_zpl_remove :: proc( self : ^ HMapZPL( $ Type ), key : u64 ) {
+	find_result := hmap_zpl_find( key )
 
 	if find_result.entry_index >= 0 {
 		array_remove_at( & entries, find_result.entry_index )
-		hamp_zpl_rehash_fast( self )
+		hmap_zpl_rehash_fast( self )
 	}
 }
 
-hamp_zpl_remove_entry :: proc( using self : ^ HMapZPL( $ Type ), id : i64 ) {
+hmap_zpl_remove_entry :: proc( using self : ^ HMapZPL( $ Type ), id : i64 ) {
 	array_remove_at( & entries, id )
 }
 
-hamp_zpl_set :: proc( using self : ^ HMapZPL( $ Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
+hmap_zpl_set :: proc( using self : ^ HMapZPL( $ Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
 {
 	// profile(#procedure)
 	id          : i64 = 0
 	find_result : HMapZPL_FindResult
 
-	if hamp_zpl_full( self )
+	if hmap_zpl_full( self )
 	{
-		grow_result := hamp_zpl_grow( self )
+		grow_result := hmap_zpl_grow( self )
 		if grow_result != AllocatorError.None {
 				return nil, grow_result
 		}
 	}
 
-	find_result = hamp_zpl_find( self, key )
+	find_result = hmap_zpl_find( self, key )
 	if find_result.entry_index >= 0 {
 		id = find_result.entry_index
 	}
 	else
 	{
-		id = hamp_zpl_add_entry( self, key )
+		id = hmap_zpl_add_entry( self, key )
 		if find_result.prev_index >= 0 {
 			entries.data[ find_result.prev_index ].next = id
 		}
@@ -223,15 +223,15 @@ hamp_zpl_set :: proc( using self : ^ HMapZPL( $ Type), key : u64, value : Type )
 
 	entries.data[id].value = value
 
-	if hamp_zpl_full( self ) {
-		alloc_error := hamp_zpl_grow( self )
+	if hmap_zpl_full( self ) {
+		alloc_error := hmap_zpl_grow( self )
 		return & entries.data[id].value, alloc_error
 	}
 
 	return & entries.data[id].value, AllocatorError.None
 }
 
-hamp_zpl_slot :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> i64 {
+hmap_zpl_slot :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> i64 {
 	for id : i64 = 0; id < table.num; id += 1 {
 		if table.data[id] == key                {
 			return id
@@ -240,14 +240,14 @@ hamp_zpl_slot :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> i64 {
 	return -1
 }
 
-hamp_zpl_add_entry :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> i64 {
+hmap_zpl_add_entry :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> i64 {
 	entry : HMapZPL_Entry(Type) = { key, -1, {} }
 	id    := cast(i64) entries.num
 	array_append( & entries, entry )
 	return id
 }
 
-hamp_zpl_find :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> HMapZPL_FindResult
+hmap_zpl_find :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> HMapZPL_FindResult
 {
 	// profile(#procedure)
 	result : HMapZPL_FindResult = { -1, -1, -1 }
@@ -271,7 +271,7 @@ hamp_zpl_find :: proc( using self : ^ HMapZPL( $ Type), key : u64 ) -> HMapZPL_F
 	return result
 }
 
-hamp_zpl_full :: proc( using self : ^ HMapZPL( $ Type) ) -> b32 {
+hmap_zpl_full :: proc( using self : ^ HMapZPL( $ Type) ) -> b32 {
 	critical_load := u64(HMapZPL_CritialLoadScale * cast(f64) table.num)
 	result : b32 = entries.num > critical_load
 	return result

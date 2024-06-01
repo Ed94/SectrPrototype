@@ -8,7 +8,7 @@ TODO(Ed): Move the string cache to its own virtual arena?
 Its going to be used heavily and we can better utilize memory that way.
 The arena can deal with alignment just fine or we can pad in a min amount per string.
 */
-package sectr
+package grime
 
 import "base:runtime"
 import "core:mem"
@@ -34,7 +34,11 @@ StringCache :: struct {
 	table     : HMapZPL(StrRunesPair),
 }
 
-str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
+// This is the default string cache for the runtime module.
+Module_String_Cache : ^StringCache
+
+str_cache_init :: proc( table_allocator, slabs_allocator : Allocator ) -> (cache : StringCache)
+{
 	alignment := uint(mem.DEFAULT_ALIGNMENT)
 
 	policy     : SlabPolicy
@@ -60,54 +64,47 @@ str_cache_init :: proc( /*allocator : Allocator*/ ) -> ( cache : StringCache ) {
 
 	@static dbg_name := "StringCache slab"
 
-	state := get_state()
-
 	alloc_error : AllocatorError
-	cache.slab, alloc_error = slab_init( & policy, dbg_name = dbg_name, allocator = persistent_allocator() )
+	cache.slab, alloc_error = slab_init( & policy, allocator = slabs_allocator, dbg_name = dbg_name )
 	verify(alloc_error == .None, "Failed to initialize the string cache" )
 
-	cache.table, alloc_error = make( HMapZPL(StrRunesPair), 4 * Megabyte, persistent_allocator(), dbg_name )
+	cache.table, alloc_error = make( HMapZPL(StrRunesPair), 4 * Megabyte, table_allocator, dbg_name )
 	return
 }
 
-str_intern_key    :: #force_inline proc( content : string ) ->  StringKey      { return cast(StringKey) crc32( transmute([]byte) content ) }
-str_intern_lookup :: #force_inline proc( key : StringKey )  -> (^StrRunesPair) { return hamp_zpl_get( & get_state().string_cache.table, transmute(u64) key ) }
+str_cache_reload :: #force_inline proc ( cache : ^StringCache, table_allocator, slabs_allocator : Allocator  ) {
+	slab_reload( cache.slab, table_allocator )
+	hmap_zpl_reload( & cache.table, slabs_allocator )
+}
+
+str_cache_set_module_ctx :: #force_inline proc "contextless" ( cache : ^StringCache ) { Module_String_Cache = cache }
+str_intern_key           :: #force_inline proc( content : string ) ->  StringKey      { return cast(StringKey) crc32( transmute([]byte) content ) }
+str_intern_lookup        :: #force_inline proc( key : StringKey )  -> (^StrRunesPair) { return hmap_zpl_get( & Module_String_Cache.table, transmute(u64) key ) }
 
 str_intern :: proc( content : string ) -> StrRunesPair
 {
 	// profile(#procedure)
-	cache := & get_state().string_cache
-
+	cache  := Module_String_Cache
 	key    := str_intern_key(content)
-	result := hamp_zpl_get( & cache.table, transmute(u64) key )
+	result := hmap_zpl_get( & cache.table, transmute(u64) key )
 	if result != nil {
 		return (result ^)
 	}
 
-	// profile_begin("new entry")
-	{
-		length := len(content)
-		// str_mem, alloc_error := alloc( length, mem.DEFAULT_ALIGNMENT )
-		str_mem, alloc_error := slab_alloc( cache.slab, uint(length), uint(mem.DEFAULT_ALIGNMENT), zero_memory = false )
-		verify( alloc_error == .None, "String cache had a backing allocator error" )
+	length := len(content)
+	str_mem, alloc_error := slab_alloc( cache.slab, uint(length), uint(mem.DEFAULT_ALIGNMENT), zero_memory = false )
+	verify( alloc_error == .None, "String cache had a backing allocator error" )
 
-		// copy_non_overlapping( str_mem, raw_data(content), length )
-		copy_non_overlapping( raw_data(str_mem), raw_data(content), length )
+	copy_non_overlapping( raw_data(str_mem), raw_data(content), length )
 
-		runes : []rune
-		// runes, alloc_error = to_runes( content, persistent_allocator() )
-		runes, alloc_error = to_runes( content, slab_allocator(cache.slab) )
-		verify( alloc_error == .None, "String cache had a backing allocator error" )
+	runes : []rune
+	runes, alloc_error = to_runes( content, slab_allocator(cache.slab) )
+	verify( alloc_error == .None, "String cache had a backing allocator error" )
+	// slab_validate_pools( cache.slab.backing )
 
-		slab_validate_pools( get_state().persistent_slab )
-
-		// result, alloc_error = hamp_zpl_set( & cache.table, key, StrRunesPair { transmute(string) byte_slice(str_mem, length), runes } )
-		result, alloc_error = hamp_zpl_set( & cache.table, transmute(u64) key, StrRunesPair { transmute(string) str_mem, runes } )
-		verify( alloc_error == .None, "String cache had a backing allocator error" )
-
-		slab_validate_pools( get_state().persistent_slab )
-	}
-	// profile_end()
+	result, alloc_error = hmap_zpl_set( & cache.table, transmute(u64) key, StrRunesPair { transmute(string) str_mem, runes } )
+	verify( alloc_error == .None, "String cache had a backing allocator error" )
+	// slab_validate_pools( cache.slab.backing )
 
 	return (result ^)
 }

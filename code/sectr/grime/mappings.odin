@@ -174,6 +174,13 @@ import "codebase:grime"
 	hmap_chained_set    :: grime.hmap_chained_set
 	hmap_chained_reload :: grime.hmap_chained_reload
 
+	HMapZPL :: grime.HMapZPL
+
+	hmap_zpl_init   :: grime.hmap_zpl_init
+	hmap_zpl_get    :: grime.hmap_zpl_get
+	hmap_zpl_reload :: grime.hmap_zpl_reload
+	hmap_zpl_set    :: grime.hmap_zpl_set
+
 	Pool :: grime.Pool
 
 	Slab          :: grime.Slab
@@ -234,12 +241,25 @@ import "codebase:grime"
 	memtracker_register_auto_name_slice :: grime.memtracker_register_auto_name_slice
 	memtracker_unregister               :: grime.memtracker_unregister
 
-
 	calc_padding_with_header :: grime.calc_padding_with_header
 	memory_after_header      :: grime.memory_after_header
 	memory_after             :: grime.memory_after
 	swap                     :: grime.swap
 
+	// strings
+	StrRunesPair :: grime.StrRunesPair
+	StringCache  :: grime.StringCache
+
+	str_cache_init           :: grime.str_cache_init
+	str_cache_reload         :: grime.str_cache_reload
+	str_cache_set_module_ctx :: grime.str_cache_set_module_ctx
+	// str_intern_key        :: grime.str_intern_key
+	// str_intern_lookup     :: grime.str_intern_lookup
+	str_intern               :: grime.str_intern
+	str_intern_fmt           :: grime.str_intern_fmt
+
+	to_str_runes_pair_via_string :: grime.to_str_runes_pair_via_string
+	to_str_runes_pair_via_runes  :: grime.to_str_runes_pair_via_runes
 	// profiler
 	SpallProfiler :: grime.SpallProfiler
 

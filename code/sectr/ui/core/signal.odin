@@ -156,7 +156,7 @@ ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas
 				prev := ui_box_from_key( ui.curr_cache, ui.hot )
 				prev.hot_delta = 0
 			}
-			// prev_hot := hamp_zpl_get( ui.prev_cache, u64(ui.hot) )
+			// prev_hot := hmap_zpl_get( ui.prev_cache, u64(ui.hot) )
 			// prev_hot_label := prev_hot != nil ? prev_hot.label.str : ""
 			// log( str_fmt_tmp("Detected HOT via CURSOR OVER: %v is_hot: %v is_active: %v prev_hot: %v", box.label.str, is_hot, is_active, prev_hot_label ))
 			ui.hot = box.key

@@ -99,7 +99,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		transient_clear_time = 120 // Seconds, 2 Minutes
 
-		string_cache = str_cache_init()
+		string_cache = str_cache_init( persistent_allocator(), persistent_allocator() )
+		str_cache_set_module_ctx( & string_cache )
 	}
 
 	// Setup input frame poll references
@@ -424,8 +425,8 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 
 	hmap_chained_reload( font_provider_data.font_cache, persistent_allocator())
 
-	slab_reload( string_cache.slab, persistent_allocator() )
-	hamp_zpl_reload( & string_cache.table, persistent_slab_allocator())
+	str_cache_reload( & string_cache, persistent_allocator(), persistent_allocator() )
+	str_cache_set_module_ctx( & string_cache )
 
 	slab_reload( frame_slab, frame_allocator())
 	slab_reload( transient_slab, transient_allocator())
