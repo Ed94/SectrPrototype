@@ -8,13 +8,15 @@ $path_toolchain  = join-path $path_root 'toolchain'
 
 $url_backtrace_repo = 'https://github.com/Ed94/back.git'
 $url_freetype       = 'https://github.com/Ed94/odin-freetype.git'
+$url_harfbuzz       = 'https://github.com/Ed94/odin_harfbuzz.git'
 $url_ini_parser     = 'https://github.com/laytan/odin-ini-parser.git'
 $url_odin_repo      = 'https://github.com/Ed94/Odin.git'
 $url_sokol          = 'https://github.com/Ed94/sokol-odin.git'
 $url_sokol_tools    = 'https://github.com/floooh/sokol-tools-bin.git'
 
 $path_backtrace     = join-path $path_thirdparty 'backtrace'
-$path_freetype      = join-path $path_thirdparty   'freetype'
+$path_freetype      = join-path $path_thirdparty 'freetype'
+$path_harfbuzz      = join-path $path_thirdparty 'harfbuzz'
 $path_ini_parser    = join-path $path_thirdparty 'ini'
 $path_odin          = join-path $path_toolchain  'Odin'
 $path_sokol         = join-path $path_thirdparty 'sokol'
@@ -85,8 +87,9 @@ function Update-GitRepo
 
 push-location $path_thirdparty
 
-Update-GitRepo -path $path_odin  -url $url_odin_repo -build_command '.\scripts\build.ps1'
-Update-GitRepo -path $path_sokol -url $url_sokol     -build_command '.\build_windows.ps1'
+Update-GitRepo -path $path_odin     -url $url_odin_repo -build_command '.\scripts\build.ps1'
+Update-GitRepo -path $path_sokol    -url $url_sokol     -build_command '.\build_windows.ps1'
+Update-GitRepo -path $path_harfbuzz -url $url_harfbuzz  -build_command '.\scripts\build.ps1'
 
 function clone-gitrepo { param( [string] $path, [string] $url )
 	if (test-path $path) {

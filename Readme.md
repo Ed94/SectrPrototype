@@ -28,26 +28,32 @@ The dependencies are:
 
 Major 'codebase modules':
 
-* Engine : Main loop, logging, client interface for host, etc
+* App : General app config & contextual state
+* Engine : client interface for host, tick, update, rendering.
   * Has the following definitions: startup, shutdown, reload, tick, clean_frame (which host hooks up to when managing the client dll)
-* Env : Core Memory & State definition + orchestration
+  * Will handle async ops.
 * Font Provider : Manages fonts.
-  * When loading fonts, the provider currently uses raylib to generate bitmap glyth sheets for a range of font sizes at once.
-  * Goal is to eventually render using SDF shaders.
+  * Bulk of visualization must be able to render text effectively
+  * Going to use some form of caching.
+  * Needs to be able to scale text in-realtime to linear values.
 * Grime : Name speaks for itself, stuff not directly related to the target features to iterate upon for the prototype.
   * Defining dependency aliases or procedure overload tables, rolling own allocator, data structures, etc.
 * Input : All human input related features
-  * Base input features (polling & related) are platform abstracted from raylib
-  * Input Events
-* Parser : AST generation, editing, and serialization. A 1/3 of this prototype will most likely be this alone.
-* Project : Encpasulation of user config/state separate from persistent app config/state as a 'project'
-  * Manages the codebase (program model database)
+  * Base input features (polling & related) are platform abstracted from sokol_app
+  * Entirely user rebindable
+* Parsers
+  * AST generation, editing, and serialization.
+  * Parsers for different levels of "synatitic & semantic awareness", Formatting -> Domain Specific AST
+  * Figure out pragmatic transformations between ASTs.
+* Project : Encpasulation of user config/context/state separate from persistent app's
+  * Manages the codebase (database & model view controller)
   * Manages workspaces : View compositions of the codebase
 * UI : Core graphic user interface framework, AST visualzation & editing, backend visualization
-  * Will most likely be the bulk of this prototype.
   * PIMGUI (Persistent Immediate Mode User Interface)
   * Auto-layout
   * Supports heavy procedural generation of box widgets
+  * Viewports
+  * Docking/Tiling, Floating, Canvas
 
 Due to the nature of the prototype there are 'sub-groups' such as the codebase being its own ordeal as well as the workspace.
 They'll be elaborated in their own documentation
