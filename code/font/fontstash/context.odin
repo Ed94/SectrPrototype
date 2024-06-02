@@ -1,6 +1,7 @@
 package fontstash
 
 import "base:runtime"
+import "core:slice"
 
 // Legacy of original implementation
 // Not sure going to use
@@ -15,12 +16,12 @@ Params :: struct {
 	render_delete : RenderDelete,
 }
 
-CB_Resize :: #type proc(data : rawptr, width, height : u32 )
-CB_Update :: #type proc(data : rawptr, dirty_rect : Rect, texture_data : rawptr )
+OnResizeProc :: #type proc(data : rawptr, width, height : u32 )
+OnUpdateProc :: #type proc(data : rawptr, dirty_rect : Rect, texture_data : rawptr )
 
 Callbacks :: struct {
-	resize : CB_Resize,
-	update : CB_Update,
+	resize : OnResizeProc,
+	update : OnUpdateProc,
 }
 
 Context :: struct {
@@ -29,6 +30,7 @@ Context :: struct {
 	// params : Params,
 
 	parser_kind : ParserKind,
+	parser_ctx  : ParserContext,
 
 	fonts : Array(Font),
 
@@ -46,13 +48,13 @@ Context :: struct {
 
 	vis_stack  : StackFixed(VisState, Max_VisStates),
 
-	quad_location : QuadLocation,
+	quad_loc : QuadLocation,
 
 	// dirty rectangle of the texture regnion that was updated
 	dirty_rect : Rect,
 
-	handle_error : HandleErrorProc,
-	error_uptr   : rawptr,
+	handle_error   : HandleErrorProc,
+	error_userdata : rawptr,
 
 	using callbacks : Callbacks,
 }
@@ -64,11 +66,18 @@ destroy_context :: proc()
 {
 	using Module_Context
 
-	// for & font in array_to_slice(fonts) {
-	// }
+	for & font in array_to_slice(fonts) {
+		if font.free_data {
+			// delete(font.data)
+		}
+
+		// delete(font.name)
+		delete(font.glyphs)
+	}
 	delete( fonts )
 	delete( atlas )
-
+	delete( array_underlying_slice(texture_data) )
+	// delete( vis_stack )
 }
 
 // For usage during hot-reload, when the instance reference of a context is lost.
@@ -80,14 +89,60 @@ reload_context :: proc( ctx : ^Context )
 	callstack_ctx = context
 }
 
-startup_context :: proc( ctx : ^Context, parser_kind : ParserKind, width, height : u32, quad_location : QuadLocation )
-{
-	Module_Context = ctx
+rest :: proc() {
 	using Module_Context
 
-	callstack_ctx = context
+	// atlas_reset()
+	// dirty_rect_reset()
+	slice.zero(texture_data)
+
+	for & font in array_to_slice(fonts) {
+		// font_lut_reset( & font )
+	}
+
+	// atlas_add_white_rect(2, 2)
+	// push_vis_state()
+	// clear_vis_state()
+}
+
+// Its recommmended to use an allocator that can handle resizing efficiently for the atlas nodes & texture (at least)
+startup_context :: proc( ctx : ^Context, parser_kind : ParserKind,
+	atlas_texture_width, atlas_texture_height : u32, quad_origin_location : QuadLocation,
+	allocator := context.allocator )
+{
+	Module_Context    = ctx
+	using Module_Context
+
+	width    = cast(i32) atlas_texture_width
+	height   = cast(i32) atlas_texture_height
+	quad_loc = quad_origin_location
+
+	context.allocator = allocator
+	callstack_ctx     = context
 
 	error : AllocatorError
 	fonts, error = make( Array(Font), 8 )
 	assert( error == AllocatorError.None, "Failed to allocate fonts array" )
+
+	texture_data_array : Array(byte)
+	texture_data_array, error = make( Array(byte), u64(width * height) )
+	assert( error == AllocatorError.None, "Failed to allocate fonts array" )
+	texture_data = array_to_slice(texture_data_array)
+
+	// TODO(Ed): Verfiy and remove
+	{
+		quick_check := underlying_slice(texture_data)
+		assert( & texture_data_array.header == & quick_check )
+	}
+
+	atlas, error = make( Array(AtlasNode), Init_Atlas_Nodes )
+	assert( error == AllocatorError.None, "Failed to allocate fonts array" )
+	// dirty_rect_reset()
+
+	append(& atlas, AtlasNode { width = i16(width) })
+
+	// atlas_add_white_rect(2, 2)
+
+	// push_vis_state()
+	// clear_vis_state()
 }

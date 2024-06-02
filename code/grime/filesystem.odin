@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:os"
 import "base:runtime"
 
+// TODO(Ed): Make an async option...
 file_copy_sync :: proc( path_src, path_dst: string, allocator := context.allocator ) -> b32
 {
   file_size : i64

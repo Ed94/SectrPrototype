@@ -7,6 +7,15 @@ So The code was small enough that I mine as well learn it by porting for my use 
 TODO(Ed): Add docs here and throughout
 TODO(Ed): This is unfinished...
 
+Changes from fontstash:
+* This was setup & tested for single-threaded tasks
+* There is an assumed runtime context assigned on startup (user decides where the context memory is)
+Influnce from Odin's vendor Port:
+* Manages a lookup table for frequent glyphs
+* Atlas can resize
+* No scratch allocation, user can specify allocator
+* Supports rendering with nanovg
+
 Original author's copyright for fonstash.h:
 ------------------------------------------------------------------------------
  Copyright (c) 2009-2013 Mikko Mononen memon@inside.org

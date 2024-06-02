@@ -29,12 +29,12 @@ Array :: struct ( $ Type : typeid ) {
 array_underlying_slice :: proc(slice: []($ Type)) -> Array(Type)
 {
 	if len(slice) == 0 {
-			return nil
+			return {nil}
 	}
-	array_size := size_of( Array(Type))
-	raw_data   := & slice[0]
-	array_ptr  := cast( ^Array(Type)) ( uintptr(first_element_ptr) - uintptr(array_size))
-	return array_ptr ^
+	header_size := size_of( ArrayHeader(Type))
+	raw_data    := & slice[0]
+	array       := transmute( Array(Type)) ( uintptr(raw_data) - uintptr(header_size))
+	return array
 }
 
 array_to_slice          :: #force_inline proc( using self : Array($ Type) ) -> []Type { return slice_ptr( data, int(num))      }
@@ -180,7 +180,10 @@ array_append_at_slice :: proc( using self : ^Array( $ Type ), items : []Type, id
 	return AllocatorError.None
 }
 
-// array_back :: proc( )
+array_back :: proc( self : Array($Type) ) -> Type {
+	value := self.data[self.num - 1]
+	return value
+}
 
 // array_push_back :: proc( using self : Array( $ Type)) -> b32 {
 // 	if num == capacity {

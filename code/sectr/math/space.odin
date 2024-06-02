@@ -1,6 +1,8 @@
 /* Space
 
 Provides various definitions for converting from one standard of measurement to another.
+Provides constructs and transformations in reguards to space.
+
 
 Ultimately the user's window ppcm (pixels-per-centimeter) determins how all virtual metric conventions are handled.
 */

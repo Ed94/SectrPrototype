@@ -41,7 +41,7 @@ function check-ModuleForChanges
 	param( [string]$path_module, [array]$excludes )
 
 	$module_name = split-path $path_module -leaf
-	$path_csv    = Join-Path $path_build ($module_name + "_module_hashes.csv")
+	$path_csv    = Join-Path $path_build ("module_" + $module_name + "_hashes.csv")
 
 	$csv_file_hashes = $null
 	if ( test-path $path_csv ) {
@@ -76,7 +76,7 @@ function mark-ModuleDirty {
 	param( [string]$path_module )
 
 	$module_name = split-path $path_module -leaf
-	$path_csv    = Join-Path $path_build ($module_name + "_module_hashes.csv")
+	$path_csv    = Join-Path $path_build  ("module_" + $module_name + "_hashes.csv")
 
 	remove-item -Force -Path $path_csv
 }

@@ -70,15 +70,16 @@ render :: proc()
 	// learnopengl.com/In-Practice/Text-Rendering
 	if true
 	{
+		profile("learngl_text_render_pass")
 		using font_provider_data
 
-	  green_value := debug.gfx_clear_demo_pass_action.colors[0].clear_value.g + 0.01
-	  debug.gfx_clear_demo_pass_action.colors[0].clear_value.g = green_value > 1.0 ? 0.0 : green_value
-	  sokol_gfx.begin_pass( sokol_gfx.Pass {
-	  	action    = debug.gfx_clear_demo_pass_action,
-	  	swapchain = sokol_glue.swapchain()
-	  })
-		// sokol_gfx.begin_pass(sokol_gfx.Pass { action = pass_actions.bg_clear_black, swapchain = sokol_glue.swapchain() })
+	  // green_value := debug.gfx_clear_demo_pass_action.colors[0].clear_value.g + 0.01
+	  // debug.gfx_clear_demo_pass_action.colors[0].clear_value.g = green_value > 1.0 ? 0.0 : green_value
+	  // sokol_gfx.begin_pass( sokol_gfx.Pass {
+	  // 	action    = debug.gfx_clear_demo_pass_action,
+	  // 	swapchain = sokol_glue.swapchain()
+	  // })
+		sokol_gfx.begin_pass(sokol_gfx.Pass { action = pass_actions.bg_clear_black, swapchain = sokol_glue.swapchain() })
 		sokol_gfx.apply_pipeline( gfx_pipeline )
 		// sokol_gfx.update_buffer( gfx_vbuffer, sokol_gfx.Range{ , Font_Provider_Ggfx_Buffer_Size } )
 
@@ -131,7 +132,7 @@ render :: proc()
 				5 = { 1.0, 0.0 },
 			}
 
-			color : Vec3 = { 0.2, 0.2, 0.2 }
+			color : Vec3 = { 1.0, 1.0, 1.0 }
 			fs_uniform := Font_Glyph_Fs_Params {
 				glyph_color = color
 			}
