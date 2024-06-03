@@ -25,12 +25,21 @@ ParserFontInfo :: struct {
 	}
 }
 
+GlyphVertType :: enum u8 {
+	None,
+	Move = 1,
+	Line,
+	Curve,
+	Cubic,
+}
+
 // Based directly off of stb_truetype's vertex
 ParserGlyphVertex :: struct {
 	x,          y          : u16,
 	contour_x0, contour_y0 : u16,
 	contour_x1, contour_y1 : u16,
-	type,       padding    : u8,
+	type    : GlyphVertType,
+	padding : u8,
 }
 ParserGlyphShape :: []ParserGlyphVertex
 
@@ -199,31 +208,77 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 				FT_CURVE_TAG_ON    :: 0x01
 				FT_CURVE_TAG_CUBIC :: 0x02
 
+				vertices, error := make( Array(ParserGlyphVertex), 1024 )
+				assert( error == .None )
+
 				// TODO(Ed): This makes freetype second class I guess but VEFontCache doesn't have native support for freetype originally so....
 				outline := & glyph.outline
 
-				contours := transmute([^]i16) outline.contours
+				contours := transmute( [^]u16) outline.contours
+				points   := transmute( [^]freetype.Vector) outline.points
+				tags     := transmute( [^]u8) outline.tags
+
+				// TODO(Ed): Review this, never tested before and its problably bad.
 				for contour : i32 = 0; contour < i32(outline.n_contours); contour += 1
 				{
-					start_point := (contour == 0) ? 0 : i32( contours[contour - 1] + 1)
-					end_point   := i32(contours[contour])
+					start := (contour == 0) ? 0 : i32(contours[ contour - 1 ] + 1)
+					end   := i32(contours[ contour ])
 
-					for index := start_point; index < end_point; index += 1
+					for index := start; index < i32(outline.n_points); index += 1
 					{
-						points := transmute( [^]freetype.Vector) outline.points
-						tags   := transmute( [^]u8) outline.tags
+						point := points[ index ]
+						tag   := tags[ index ]
 
-						point := points[index]
-						tag   := tags[index]
+						if (tag & FT_CURVE_TAG_ON) != 0
+						{
+							if vertices.num > 0 && !(array_back(vertices).type == .Move )
+							{
+								// Close the previous contour if needed
+								append(& vertices, ParserGlyphVertex { type = .Line,
+									x = u16(points[start].x), y = u16(points[start].y),
+									contour_x0 = u16(0), contour_y0 = u16(0),
+									contour_x1 = u16(0), contour_y1 = u16(0),
+									padding = 0,
+								})
+							}
 
-						next_index := (index == end_point) ? start_point : index + 1
-						next_point := points[next_index]
-						next_tag   := tags[index]
-
-						if (tag & FT_CURVE_TAG_CONIC) > 0 {
-
+							append(& vertices, ParserGlyphVertex { type = .Move,
+								x = u16(point.x), y = u16(point.y),
+								contour_x0 = u16(0), contour_y0 = u16(0),
+								contour_x1 = u16(0), contour_y1 = u16(0),
+								padding = 0,
+							})
+						}
+						else if (tag & FT_CURVE_TAG_CUBIC) != 0
+						{
+							point1 := points[ index + 1 ]
+							point2 := points[ index + 2 ]
+							append(& vertices, ParserGlyphVertex { type = .Cubic,
+								x = u16(point2.x), y = u16(point2.y),
+								contour_x0 = u16(point.x),  contour_y0 = u16(point.y),
+								contour_x1 = u16(point1.x), contour_y1 = u16(point1.y),
+								padding = 0,
+							})
+							index += 2
+						}
+						else
+						{
+							append(& vertices, ParserGlyphVertex { type = .Line,
+								x = u16(point.x), y = u16(point.y),
+								contour_x0 = u16(0), contour_y0 = u16(0),
+								contour_x1 = u16(0), contour_y1 = u16(0),
+								padding = 0,
+							})
 						}
 					}
+
+					// Close contour
+					append(& vertices, ParserGlyphVertex { type = .Line,
+						x = u16(points[start].x), y = u16(points[start].y),
+						contour_x0 = u16(0), contour_y0 = u16(0),
+						contour_x1 = u16(0), contour_y1 = u16(0),
+						padding = 0,
+					})
 				}
 			}
 

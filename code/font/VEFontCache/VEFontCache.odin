@@ -7,7 +7,7 @@ This port is heavily tied to the grime package in SectrPrototype.
 TODO(Ed): Make an idiomatic port of this for Odin (or just dupe the data structures...)
 
 Changes:
-- Support for freetype(WIP)
+- Support for freetype(WIP), only supports processing true type formatted data however
 - Font Parser & Glyph Shaper are abstracted to their own interface
 - Font Face parser info stored separately from entries
 - ve_fontcache_loadfile not ported (just use odin's core:os or os2), then call load_font
