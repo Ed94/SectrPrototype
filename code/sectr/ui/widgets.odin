@@ -359,7 +359,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 		}
 	}
 
-	process_handle_drag :: #force_inline proc ( handle : ^UI_Widget,
+	process_handle_drag :: proc ( handle : ^UI_Widget,
 		direction                :  Vec2,
 		target_alignment         :  Vec2,
 		target_center_aligned    :  Vec2,

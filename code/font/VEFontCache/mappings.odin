@@ -38,6 +38,7 @@ HMapChained :: grime.HMapChained
 hmap_chained_init   :: grime.hmap_chained_init
 hmap_chained_get    :: grime.hmap_chained_get
 hmap_chained_remove :: grime.hmap_chained_remove
+hmap_chained_set    :: grime.hmap_chained_set
 hmap_closest_prime  :: grime.hmap_closest_prime
 
 // Pool :: grime.Pool
@@ -50,6 +51,10 @@ stack_pop              :: grime.stack_pop
 stack_peek_ref         :: grime.stack_peek_ref
 stack_peek             :: grime.stack_peek
 stack_push_contextless :: grime.stack_push_contextless
+
+// logging
+log  :: grime.log
+logf :: grime.logf
 
 //#region("Proc overload mappings")
 
@@ -83,6 +88,10 @@ make :: proc {
 
 remove_at :: proc {
 	array_remove_at,
+}
+
+set :: proc {
+	hmap_chained_set,
 }
 
 to_slice :: proc {
