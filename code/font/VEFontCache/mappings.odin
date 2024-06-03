@@ -1,5 +1,8 @@
 package VEFontCache
 
+import "core:hash"
+	fnv64a :: hash.fnv64a
+
 import "core:mem"
 
 Kilobyte :: mem.Kilobyte
@@ -24,13 +27,18 @@ array_back             :: grime.array_back
 array_clear            :: grime.array_clear
 array_free             :: grime.array_free
 array_remove_at        :: grime.array_remove_at
+array_pop              :: grime.array_pop
+array_resize           :: grime.array_resize
 array_to_slice         :: grime.array_to_slice
 array_to_slice_cpacity :: grime.array_to_slice_capacity
 array_underlying_slice :: grime.array_underlying_slice
 
 HMapChained :: grime.HMapChained
 
-hmap_chained_init :: grime.hmap_chained_init
+hmap_chained_init   :: grime.hmap_chained_init
+hmap_chained_get    :: grime.hmap_chained_get
+hmap_chained_remove :: grime.hmap_chained_remove
+hmap_closest_prime  :: grime.hmap_closest_prime
 
 // Pool :: grime.Pool
 
@@ -62,6 +70,10 @@ clear :: proc {
 
 delete :: proc {
 	array_free,
+}
+
+get :: proc {
+	hmap_chained_get,
 }
 
 make :: proc {

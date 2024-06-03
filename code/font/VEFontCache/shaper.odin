@@ -12,3 +12,7 @@ ShaperInfo :: struct {
 	font : harfbuzz.Font,
 }
 
+shaper_init :: proc( ctx : ^ShaperContext )
+{
+	ctx.hb_buffer = harfbuzz.buffer_create()
+}

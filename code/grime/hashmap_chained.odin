@@ -139,7 +139,7 @@ hmap_chained_reload :: proc( self : HMapChained($Type), allocator : Allocator )
 // Entries already found to be vacant will not return true
 hmap_chained_remove :: proc( self : HMapChained($Type), key : u64 ) -> b32
 {
-	surface_slot := lookup[hmap_chained_lookup_id(self, key)]
+	surface_slot := self.lookup[hmap_chained_lookup_id(self, key)]
 
 	if surface_slot == nil {
 		return false
@@ -150,7 +150,7 @@ hmap_chained_remove :: proc( self : HMapChained($Type), key : u64 ) -> b32
 		return true
 	}
 
-	for slot := surface_slot.next; slot != nil; slot.next
+	for slot := surface_slot.next; slot != nil; slot = slot.next 
 	{
 		if slot.occupied && slot.key == key {
 			slot.occupied = false

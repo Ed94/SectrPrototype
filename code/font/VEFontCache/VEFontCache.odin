@@ -37,8 +37,8 @@ Vertex :: struct {
 // }
 
 ShapedText :: struct {
-	Glyphs         : Array(Glyph),
-	Positions      : Array(Vec2),
+	glyphs         : Array(Glyph),
+	positions      : Array(Vec2),
 	end_cursor_pos : Vec2,
 }
 
@@ -94,7 +94,6 @@ Module_Ctx :: Context
 InitAtlasRegionParams :: struct {
 	width  : u32,
 	height : u32,
-	offset : Vec2i,
 }
 
 InitAtlasParams :: struct {
@@ -113,7 +112,22 @@ InitAtlasParams_Default :: InitAtlasParams {
 	height        = 2 * Kilobyte,
 	glyph_padding = 1,
 
-
+	region_a = {
+		width  = 32,
+		height = 32,
+	},
+	region_b = {
+		width  = 32,
+		height = 64,
+	},
+	region_c = {
+		width  = 64,
+		height = 64,
+	},
+	region_d = {
+		width  = 128,
+		height = 128,
+	}
 }
 
 InitGlyphDrawParams :: struct {
@@ -162,7 +176,7 @@ init :: proc( ctx : ^Context,
 	temp_path, error = make( Array(Vec2), u64(temp_path_reserve) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
-	temp_codepoint_seen, error = make( HMapChained(bool), uint(temp_codepoint_seen_reserve) )
+	temp_codepoint_seen, error = make( HMapChained(bool), hmap_closest_prime( uint(temp_codepoint_seen_reserve)) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
 	draw_list.vertices, error = make( Array(Vertex), 4 * Kilobyte )
@@ -188,7 +202,6 @@ init :: proc( ctx : ^Context,
 			size.x / width,
 			size.y / height,
 		}
-		offset = region_params.offset
 
 		error : AllocatorError
 		// state.cache, error = make( HMapChained(LRU_Link), uint(capacity.x * capacity.y) )
@@ -200,5 +213,42 @@ init :: proc( ctx : ^Context,
 	init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c )
 	init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d )
 
+	atlas.region_b.offset.y = atlas.region_a.size.y
+	atlas.region_c.offset.x = atlas.region_a.size.x
+	atlas.region_d.offset.x = atlas.width / 2
 
+	LRU_init( & shape_cache.state, shape_cache_params.capacity )
+	for idx : u32 = 0; idx < shape_cache_params.capacity; idx += 1 {
+		stroage_entry := & shape_cache.storage.data[idx]
+		using stroage_entry
+		glyphs, error = make( Array(Glyph), cast(u64) shape_cache_params.reserve_length )
+		assert( error != .None, "VEFontCache.init : Failed to allocate glyphs array for shape cache storage" )
+
+		positions, error = make( Array(Vec2), cast(u64) shape_cache_params.reserve_length )
+		assert( error != .None, "VEFontCache.init : Failed to allocate positions array for shape cache storage" )
+	}
+
+	// Note(From original author): We can actually go over VE_FONTCACHE_GLYPHDRAW_BUFFER_BATCH batches due to smart packing!
+	{
+		using atlas
+		draw_list.calls, error = make( Array(DrawCall), cast(u64) glyph_draw_params.buffer_batch * 2 )
+		assert( error != .None, "VEFontCache.init : Failed to allocate calls for draw_list" )
+
+		draw_list.indices, error = make( Array(u32), cast(u64) glyph_draw_params.buffer_batch * 2 * 6 )
+		assert( error != .None, "VEFontCache.init : Failed to allocate indices array for draw_list" )
+
+		draw_list.vertices, error = make( Array(Vertex), cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
+		assert( error != .None, "VEFontCache.init : Failed to allocate vertices array for draw_list" )
+
+		clear_draw_list.calls, error = make( Array(DrawCall), cast(u64) glyph_draw_params.buffer_batch * 2 )
+		assert( error != .None, "VEFontCache.init : Failed to allocate calls for calls for clear_draw_list" )
+
+		clear_draw_list.indices, error = make( Array(u32), cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
+		assert( error != .None, "VEFontCache.init : Failed to allocate calls for indices array for clear_draw_list" )
+
+		clear_draw_list.vertices, error = make( Array(Vertex), cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
+		assert( error != .None, "VEFontCache.init : Failed to allocate vertices array for clear_draw_list" )
+	}
+
+	shaper_init( & shaper_ctx )
 }

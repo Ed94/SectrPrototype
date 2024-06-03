@@ -232,9 +232,9 @@ array_grow :: proc( using self : ^Array( $ Type ), min_capacity : u64 ) -> Alloc
 	return array_set_capacity( self, new_capacity )
 }
 
-array_pop :: proc( using self : Array( $ Type ) ) {
-	verify( num != 0, "Attempted to pop an array with no elements" )
-	num -= 1
+array_pop :: proc( self : Array( $ Type ) ) {
+	verify( self.num != 0, "Attempted to pop an array with no elements" )
+	self.num -= 1
 }
 
 array_remove_at :: proc( using self : Array( $ Type ), id : u64 )
