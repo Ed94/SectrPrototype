@@ -1,6 +1,12 @@
 package VEFontCache
 
-GlyphUpdateBatch :: struct {
+GlyphDrawBuffer :: struct {
+	over_sample   : Vec2,
+	buffer_batch  : u32,
+	buffer_width  : u32,
+	buffer_height : u32,
+	draw_padding  : u32,
+
 	update_batch_x  : i32,
 	clear_draw_list : DrawList,
 	draw_list       : DrawList,
@@ -23,12 +29,12 @@ Atlas :: struct {
 	width  : u32,
 	height : u32,
 
-	glyph_pad : u16,
+	glyph_padding : u32,
 
 	region_a : AtlasRegion,
 	region_b : AtlasRegion,
 	region_c : AtlasRegion,
 	region_d : AtlasRegion,
 
-	using glyph_update_batch : GlyphUpdateBatch,
+	using glyph_update_batch : GlyphDrawBuffer,
 }

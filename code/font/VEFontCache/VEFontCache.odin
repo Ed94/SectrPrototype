@@ -11,6 +11,7 @@ Changes:
 - Font Parser & Glyph Shaper are abstracted to their own interface
 - Font Face parser info stored separately from entries
 - ve_fontcache_loadfile not ported (just use odin's core:os or os2), then call load_font
+- Macro defines have been made into runtime parameters
 */
 package VEFontCache
 
@@ -21,27 +22,19 @@ Colour :: [4]f32
 Vec2   :: [2]f32
 Vec2i  :: [2]u32
 
-AtlasRegionKind :: enum {
-	A = 0,
-	B = 1,
-	C = 2,
-	D = 3,
-	E = 4,
+AtlasRegionKind :: enum u8 {
+	None = 0x00,
+	A    = 0x41,
+	B    = 0x42,
+	C    = 0x43,
+	D    = 0x44,
+	E    = 0x45,
 }
 
 Vertex :: struct {
 	pos  : Vec2,
 	u, v : f32,
 }
-
-// GlyphDrawBuffer :: struct {
-// 	over_sample : Vec2,
-
-// 	batch   : i32,
-// 	width   : i32,
-// 	height  : i32,
-// 	padding : i32,
-// }
 
 ShapedText :: struct {
 	glyphs         : Array(Glyph),
@@ -97,6 +90,7 @@ Context :: struct {
 	atlas       : Atlas,
 	shape_cache : ShapedTextCache,
 
+	curve_quality  : u32,
 	text_shape_adv : b32,
 
 	debug_print_verbose : b32
@@ -150,15 +144,15 @@ InitAtlasParams_Default :: InitAtlasParams {
 }
 
 InitGlyphDrawParams :: struct {
-	over_sample  : Vec2i,
-	buffer_batch : u32,
-	padding      : u32,
+	over_sample   : Vec2,
+	buffer_batch  : u32,
+	draw_padding  : u32,
 }
 
 InitGlyphDrawParams_Default :: InitGlyphDrawParams {
-	over_sample  = { 4, 4 },
-	buffer_batch = 4,
-	padding      = InitAtlasParams_Default.glyph_padding,
+	over_sample   = { 4, 4 },
+	buffer_batch  = 4,
+	draw_padding  = InitAtlasParams_Default.glyph_padding,
 }
 
 InitShapeCacheParams :: struct {
@@ -177,6 +171,7 @@ init :: proc( ctx : ^Context,
 	atlas_params                := InitAtlasParams_Default,
 	glyph_draw_params           := InitGlyphDrawParams_Default,
 	shape_cache_params          := InitShapeCacheParams_Default,
+	curve_quality               : u32 = 6,
 	advance_snap_smallfont_size : u32 = 12,
 	entires_reserve             : u32 = Kilobyte,
 	temp_path_reserve           : u32 = Kilobyte,
@@ -188,6 +183,8 @@ init :: proc( ctx : ^Context,
 
 	ctx.backing       = allocator
 	context.allocator = ctx.backing
+
+	ctx.curve_quality = curve_quality
 
 	error : AllocatorError
 	entries, error = make( Array(Entry), u64(entires_reserve) )
@@ -233,6 +230,10 @@ init :: proc( ctx : ^Context,
 	init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c )
 	init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d )
 
+	atlas.width         = atlas_params.width
+	atlas.height        = atlas_params.height
+	atlas.glyph_padding = atlas_params.glyph_padding
+
 	atlas.region_b.offset.y = atlas.region_a.size.y
 	atlas.region_c.offset.x = atlas.region_a.size.x
 	atlas.region_d.offset.x = atlas.width / 2
@@ -251,6 +252,12 @@ init :: proc( ctx : ^Context,
 	// Note(From original author): We can actually go over VE_FONTCACHE_GLYPHDRAW_BUFFER_BATCH batches due to smart packing!
 	{
 		using atlas
+		over_sample   = glyph_draw_params.over_sample
+		buffer_batch  = glyph_draw_params.buffer_batch
+		buffer_width  = region_d.width  * u32(over_sample.x) * buffer_batch
+		buffer_height = region_d.height * u32(over_sample.y)
+		draw_padding  = glyph_draw_params.draw_padding
+
 		draw_list.calls, error = make( Array(DrawCall), cast(u64) glyph_draw_params.buffer_batch * 2 )
 		assert( error != .None, "VEFontCache.init : Failed to allocate calls for draw_list" )
 
@@ -348,53 +355,6 @@ configure_snap :: proc( ctx : ^Context, snap_width, snap_height : u32 ) {
 	ctx.snap_height = snap_height
 }
 
-// ve_fontcache_drawlist
-get_draw_list :: proc( ctx : ^Context ) -> ^DrawList {
-	assert( ctx != nil )
-	return & ctx.draw_list
-}
-
-// ve_fontcache_clear_drawlist
-clear_draw_list :: proc( draw_list : ^DrawList ) {
-	clear( draw_list.calls )
-	clear( draw_list.indices )
-	clear( draw_list.vertices )
-}
-
-// ve_fontcache_merge_drawlist
-merge_draw_list :: proc( dst, src : ^DrawList )
-{
-	error : AllocatorError
-
-	v_offset := cast(u32) dst.vertices.num
-	// for index : u32 = 0; index < cast(u32) src.vertices.num; index += 1 {
-	// 	error = append( & dst.vertices, src.vertices.data[index] )
-	// 	assert( error == .None )
-	// }
-	error = append( & dst.vertices, src.vertices )
-	assert( error == .None )
-
-	i_offset := cast(u32) dst.indices.num
-	for index : u32 = 0; index < cast(u32) src.indices.num; index += 1 {
-		error = append( & dst.indices, src.indices.data[index] + v_offset )
-		assert( error == .None )
-	}
-
-	for index : u32 = 0; index < cast(u32) src.calls.num; index += 1 {
-		src_call := src.calls.data[ index ]
-		src_call.start_index += i_offset
-		src_call.end_index   += i_offset
-		append( & dst.calls, src_call )
-		assert( error == .None )
-	}
-}
-
-// ve_fontcache_flush_drawlist
-flush_draw_list :: proc( ctx : ^Context ) {
-	assert( ctx != nil )
-	clear_draw_list( & ctx.draw_list )
-}
-
 // For a provided alpha value,
 // allows the function to calculate the position of a point along the curve at any given fraction of its total length
 // ve_fontcache_eval_bezier (quadratic)
@@ -422,92 +382,6 @@ eval_point_on_bezier4 :: proc( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
 	return point
 }
 
-// Constructs a triangle fan to fill a shape using the provided path
-// outside_point represents the center point of the fan.
-//
-// Note(Original Author):
-// WARNING: doesn't actually append drawcall; caller is responsible for actually appending the drawcall.
-// ve_fontcache_draw_filled_path
-draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []Vec2,
-	scale     := Vec2 { 1, 1 },
-	translate := Vec2 { 0, 0 },
-	debug_print_verbose : b32 = false
-)
-{
-	if debug_print_verbose
-	{
-		log("outline_path: \n")
-		for point in path {
-			logf("    %.2f %.2f\n", point.x * scale )
-		}
-	}
-
-	v_offset := cast(u32) draw_list.vertices.num
-	for point in path {
-		vertex := Vertex {
-			pos = point * scale + translate,
-			u = 0,
-			v = 0,
-		}
-		append( & draw_list.vertices, vertex )
-	}
-
-	outside_vertex := cast(u32) draw_list.vertices.num
-	{
-		vertex := Vertex {
-			pos = outside_point * scale + translate,
-			u = 0,
-			v = 0,
-		}
-		append( & draw_list.vertices, vertex )
-	}
-
-	for index : u32 = 1; index < u32(len(path)); index += 1 {
-		indices := & draw_list.indices
-		append( indices, outside_vertex )
-		append( indices, v_offset + index - 1 )
-		append( indices, v_offset + index )
-	}
-}
-
-blit_quad :: proc( draw_list : ^DrawList, p0, p1 : Vec2, uv0, uv1 : Vec2 )
-{
-	v_offset := cast(u32) draw_list.vertices.num
-
-	vertex := Vertex {
-		{p0.x, p0.y},
-		uv0.x,
-		uv0.y
-	}
-	append( & draw_list.vertices, vertex )
-	vertex = Vertex {
-		{p0.x, p1.y},
-		uv0.x,
-		uv1.y
-	}
-	append( & draw_list.vertices, vertex )
-	vertex = Vertex {
-		{p1.x, p0.y},
-		uv1.x,
-		uv0.y
-	}
-	append( & draw_list.vertices, vertex )
-	vertex = Vertex {
-		{p1.x, p1.y},
-		uv1.x,
-		uv1.y
-	}
-	append( & draw_list.vertices, vertex )
-
-	quad_indices : []u32 = {
-		0, 1, 2,
-		2, 1, 3
-	}
-	for index : i32 = 0; index < 6; index += 1 {
-		append( & draw_list.indices, v_offset + quad_indices[ index ] )
-	}
-}
-
 cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, translate : Vec2  ) -> b32
 {
 	assert( ctx != nil )
@@ -531,7 +405,24 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	if ctx.debug_print_verbose
 	{
 		log( "shape: \n")
-		// for 
+		for vertex in shape
+		{
+			if vertex.type == .Move {
+				logf("move_to %d %d\n", vertex.x, vertex.y )
+			}
+			else if vertex.type == .Line {
+				logf("line_to %d %d\n", vertex.x, vertex.y )
+			}
+			else if vertex.type == .Curve {
+				logf("curve_to %d %d through %d %d\n", vertex.x, vertex.y, vertex.contour_x0, vertex.contour_y0 )
+			}
+			else if vertex.type == .Cubic {
+				logf("cubic_to %d %d through %d %d and %d %d\n",
+					vertex.x, vertex.y,
+					vertex.contour_x0, vertex.contour_y0,
+					vertex.contour_x1, vertex.contour_y1 )
+			}
+		}
 	}
 
 	/*
@@ -556,16 +447,130 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	// Instead of involving fragment shader code we simply make use of modern GPU ability to crunch triangles and brute force curve definitions.
 	path := ctx.temp_path
 	clear(path)
-	for vertex in shape {
-		
+	for edge in shape	do switch edge.type
+	{
+		case .Move:
+			if path.num > 0 {
+				draw_filled_path( & ctx.draw_list, outside, array_to_slice(path), scale, translate )
+			}
+			clear(path)
+			fallthrough
+
+		case .Line:
+			append( & path, Vec2{ f32(edge.x), f32(edge.y) })
+
+		case .Curve:
+			assert( path.num > 0 )
+			p0 := path.data[ path.num - 1 ]
+			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
+			p2 := Vec2{ f32(edge.x), f32(edge.y) }
+
+			step  := 1.0 / f32(ctx.curve_quality)
+			alpha := step
+			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
+				append( & path, eval_point_on_bezier3( p0, p1, p2, alpha ))
+				alpha += step
+			}
+
+		case .Cubic:
+			assert( path.num > 0 )
+			p0 := path.data[ path.num - 1]
+			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
+			p2 := Vec2{ f32(edge.contour_x1), f32(edge.contour_y1) }
+			p3 := Vec2{ f32(edge.x), f32(edge.y) }
+
+			step  := 1.0 / f32(ctx.curve_quality)
+			alpha := step
+			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
+				append( & path, eval_point_on_bezier4( p0, p1, p2, p3, alpha ))
+				alpha += step
+			}
+
+		case .None:
+			assert(false, "Unknown edge type or invalid")
+	}
+	if path.num > 0 {
+		draw_filled_path( & ctx.draw_list, outside, array_to_slice(path), scale, translate )
 	}
 
+	// Note(Original Author): Apend the draw call
+	draw.end_index = cast(u32) ctx.draw_list.indices.num
+	if draw.end_index > draw.start_index {
+		append(& ctx.draw_list.calls, draw)
+	}
+
+	parser_free_shape( entry.parser_info, shape )
 	return false
 }
 
-decide_codepoint_region :: proc() -> AtlasRegionKind
+decide_codepoint_region :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph
+) -> (region : AtlasRegionKind, state : ^LRU_Cache, next_idx : ^u32, over_sample : ^Vec2)
 {
-	return {}
+	if parser_is_glyph_empty( entry.parser_info, glyph_index ) {
+		region = .None
+	}
+
+	bounds_0, bounds_1 := parser_get_glyph_box( entry.parser_info, glyph_index )
+	bounds_width  := bounds_1.x - bounds_0.x
+	bounds_height := bounds_1.y - bounds_0.y
+
+	atlas := & ctx.atlas
+
+	bounds_width_scaled  := cast(u32) (f32(bounds_width)  * entry.size_scale + 2.0 * f32(atlas.glyph_padding))
+	bounds_height_scaled := cast(u32) (f32(bounds_height) * entry.size_scale + 2.0 * f32(atlas.glyph_padding))
+
+	if bounds_width_scaled <= atlas.region_a.width && bounds_height_scaled <= atlas.region_a.height
+	{
+		// Region A for small glyphs. These are good for things such as punctuation.
+		region   = .A
+		state    = & atlas.region_a.state
+		next_idx = & atlas.region_a.next_idx
+	}
+	else if bounds_width_scaled <= atlas.region_b.width && bounds_height_scaled <= atlas.region_b.height
+	{
+		// Region B for tall glyphs. These are good for things such as european alphabets.
+		region   = .B
+		state    = & atlas.region_b.state
+		next_idx = & atlas.region_b.next_idx
+	}
+	else if bounds_width_scaled <= atlas.region_c.width && bounds_height_scaled <= atlas.region_c.height
+	{
+		// Region C for big glyphs. These are good for things such as asian typography.
+		region   = .C
+		state    = & atlas.region_c.state
+		next_idx = & atlas.region_c.next_idx
+	}
+	else if bounds_width_scaled <= atlas.region_d.width && bounds_height_scaled <= atlas.region_d.height
+	{
+		// Region D for huge glyphs. These are good for things such as titles and 4k.
+		region   = .D
+		state    = & atlas.region_d.state
+		next_idx = & atlas.region_d.next_idx
+	}
+	else if bounds_width_scaled <= atlas.buffer_width && bounds_height_scaled <= atlas.buffer_height
+	{
+		// Region 'E' for massive glyphs. These are rendered uncached and un-oversampled.
+		region   = .E
+		state    = nil
+		next_idx = nil
+		if bounds_width_scaled <= atlas.buffer_width / 2 && bounds_height_scaled <= atlas.buffer_height / 2
+		{
+			(over_sample^) = { 2.0, 2.0 }
+		}
+		else
+		{
+			(over_sample^) = { 1.0, 1.0 }
+		}
+		return
+	}
+	else {
+		region = .None
+		return
+	}
+
+	assert(state    != nil)
+	assert(next_idx != nil)
+	return
 }
 
 flush_glyph_buffer_to_atlas :: proc()

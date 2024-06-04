@@ -380,5 +380,18 @@ parser_free_shape :: proc( font : ^ParserFontInfo, shape : ParserGlyphShape )
 
 parser_get_glyph_box :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (bounds_0, bounds_1 : Vec2i)
 {
+	switch font.kind
+	{
+		case .Freetype:
+
+
+		case .STB_TrueType:
+			x0, y0, x1, y1 : i32
+			success := cast(bool) stbtt.GetGlyphBox( & font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
+			assert( success )
+
+			bounds_0 = { u32(x0), u32(y0) }
+			bounds_1 = { u32(x1), u32(y1) }
+	}
 	return
 }
