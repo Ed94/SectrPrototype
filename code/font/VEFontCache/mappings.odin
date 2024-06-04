@@ -40,6 +40,7 @@ array_underlying_slice :: grime.array_underlying_slice
 
 HMapChained :: grime.HMapChained
 
+hmap_chained_clear  :: grime.hmap_chained_clear
 hmap_chained_init   :: grime.hmap_chained_init
 hmap_chained_get    :: grime.hmap_chained_get
 hmap_chained_remove :: grime.hmap_chained_remove
@@ -76,6 +77,7 @@ append_at :: proc {
 
 clear :: proc {
 	array_clear,
+	hmap_chained_clear,
 }
 
 delete :: proc {
@@ -93,6 +95,10 @@ make :: proc {
 
 remove_at :: proc {
 	array_remove_at,
+}
+
+resize :: proc {
+	array_resize,
 }
 
 set :: proc {

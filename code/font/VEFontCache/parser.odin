@@ -5,6 +5,8 @@ Notes:
 
 Freetype will do memory allocations and has an interface the user can implement.
 That interface is not exposed from this parser but could be added to parser_init.
+
+STB_Truetype has macros for its allocation unfortuantely
 */
 
 import "core:c"
@@ -383,7 +385,12 @@ parser_get_glyph_box :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (
 	switch font.kind
 	{
 		case .Freetype:
+			freetype.load_glyph( font.freetype_info, c.uint(glyph_index), { .No_Bitmap, .No_Hinting, .No_Scale } )
 
+			metrics := font.freetype_info.glyph.metrics
+
+			bounds_0 = {u32(metrics.hori_bearing_x), u32(metrics.hori_bearing_y - metrics.height)}
+			bounds_1 = {u32(metrics.hori_bearing_x + metrics.width), u32(metrics.hori_bearing_y)}
 
 		case .STB_TrueType:
 			x0, y0, x1, y1 : i32

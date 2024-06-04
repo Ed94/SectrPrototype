@@ -18,8 +18,8 @@ PoolList :: struct {
 	free_list : Array( PoolListIter ),
 	front     : PoolListIter,
 	back      : PoolListIter,
-	size      : i32,
-	capacity  : i32,
+	size      : u32,
+	capacity  : u32,
 }
 
 pool_list_init :: proc( pool : ^PoolList, capacity : u32 )
@@ -33,7 +33,7 @@ pool_list_init :: proc( pool : ^PoolList, capacity : u32 )
 	assert( error == .None, "VEFontCache.pool_list_init : Failed to allocate free_list array")
 	array_resize( & pool.items, u64(capacity) )
 
-	pool.capacity = i32(capacity)
+	pool.capacity = capacity
 
 	for id in 0 ..< capacity do pool.free_list.data[id] = i32(id)
 }
@@ -61,7 +61,7 @@ pool_list_erase :: proc( pool : ^PoolList, iter : PoolListIter )
 {
 	using pool
 	if size <= 0 do return
-	assert( iter >= 0 && iter < capacity )
+	assert( iter >= 0 && iter < i32(capacity) )
 	assert( free_list.num == u64(capacity - size) )
 
 	iter_node := & items.data[ iter ]
@@ -108,14 +108,15 @@ LRU_Link :: struct {
 }
 
 LRU_Cache :: struct {
-	capacity  : i32,
+	capacity  : u32,
+	num       : u32,
 	table     : HMapChained(LRU_Link),
 	key_queue : PoolList,
 }
 
 LRU_init :: proc( cache : ^LRU_Cache, capacity : u32 ) {
 	error : AllocatorError
-	cache.capacity     = i32(capacity)
+	cache.capacity     = capacity
 	cache.table, error = make( HMapChained(LRU_Link), hmap_closest_prime( uint(capacity)) )
 	assert( error != .None, "VEFontCache.LRU_init : Failed to allocate cache's table")
 
@@ -167,12 +168,15 @@ LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64 {
 	if cache.key_queue.size >= cache.capacity {
 		evict = pool_list_pop_back( & cache.key_queue )
 		hmap_chained_remove( cache.table, evict )
+		cache.num -= 1
 	}
 
 	pool_list_push_front( & cache.key_queue, key )
-	link := LRU_find( cache, key )
-	link.value = value
-	link.ptr    = cache.key_queue.front
+	hmap_chained_set( cache.table, key, LRU_Link {
+		value = value,
+		ptr   = cache.key_queue.front
+	})
+	cache.num += 1
 	return evict
 }
 

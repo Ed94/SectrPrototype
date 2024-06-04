@@ -257,7 +257,7 @@ ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_
 	when USE_RAD_DEBUGGERS_METHOD {
 		hash : u64
 		for str_byte in transmute([]byte) value {
-			hash = ((hash << 5) + hash) + u64(str_byte)
+			hash = ((hash << 8) + hash) + u64(str_byte)
 		}
 		key = cast(UI_Key) hash
 	}

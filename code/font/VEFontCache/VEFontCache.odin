@@ -7,7 +7,7 @@ This port is heavily tied to the grime package in SectrPrototype.
 TODO(Ed): Make an idiomatic port of this for Odin (or just dupe the data structures...)
 
 Changes:
-- Support for freetype(WIP), only supports processing true type formatted data however
+- Support for freetype(WIP)
 - Font Parser & Glyph Shaper are abstracted to their own interface
 - Font Face parser info stored separately from entries
 - ve_fontcache_loadfile not ported (just use odin's core:os or os2), then call load_font
@@ -77,8 +77,9 @@ Context :: struct {
 
 	entries : Array(Entry),
 
-	temp_path           : Array(Vec2),
-	temp_codepoint_seen : HMapChained(bool),
+	temp_path               : Array(Vec2),
+	temp_codepoint_seen     : HMapChained(bool),
+	temp_codepoint_seen_num : u32,
 
 	snap_width  : u32,
 	snap_height : u32,
@@ -96,10 +97,19 @@ Context :: struct {
 	debug_print_verbose : b32
 }
 
-font_key_from_label :: proc( label : string ) -> u64 {
+get_cursor_pos :: proc( ctx : ^Context                  ) -> Vec2 { return ctx.cursor_pos }
+set_colour     :: proc( ctx : ^Context, colour : Colour )         { ctx.colour = colour }
+
+font_glyph_lru_code :: #force_inline proc( font : FontID, glyph_index : Glyph ) -> (lru_code : u64)
+{
+	lru_code = u64(glyph_index) + ( ( 0x100000000 * u64(font) ) & 0xFFFFFFFF00000000 )
+	return
+}
+
+font_key_from_label :: #force_inline proc( label : string ) -> u64 {
 	hash : u64
 	for str_byte in transmute([]byte) label {
-		hash = ((hash << 5) + hash) + u64(str_byte)
+		hash = ((hash << 8) + hash) + u64(str_byte)
 	}
 	return hash
 }
@@ -175,7 +185,7 @@ init :: proc( ctx : ^Context,
 	advance_snap_smallfont_size : u32 = 12,
 	entires_reserve             : u32 = Kilobyte,
 	temp_path_reserve           : u32 = Kilobyte,
-	temp_codepoint_seen_reserve : u32 = 4 * Kilobyte,
+	temp_codepoint_seen_reserve : u32 = 512,
 )
 {
 	assert( ctx != nil, "Must provide a valid context" )
@@ -438,7 +448,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	}
 
 	// Note(Original Author): Figure out scaling so it fits within our box.
-	draw : DrawCall
+	draw := DrawCall_Default
 	draw.pass        = FrameBufferPass.Glyph
 	draw.start_index = u32(ctx.draw_list.indices.num)
 
@@ -503,162 +513,96 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	return false
 }
 
-decide_codepoint_region :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph
-) -> (region : AtlasRegionKind, state : ^LRU_Cache, next_idx : ^u32, over_sample : ^Vec2)
-{
-	if parser_is_glyph_empty( entry.parser_info, glyph_index ) {
-		region = .None
-	}
+screenspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
+	scale.x    = (scale.x / width ) * 2.0
+	scale.y    = (scale.y / height) * 2.0
+	position.x = position.x * (2.0 / width) - 1.0
+	position.y = position.y * (2.0 / width) - 1.0
+}
 
+textspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
+	position.x /= width
+	position.y /= height
+	scale.x    /= width
+	scale.y    /= height
+}
+
+cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph )
+{
+	assert( ctx != nil )
+	assert( font >= 0 && font < FontID(ctx.entries.num) )
+	entry := & ctx.entries.data[ font ]
+
+	if glyph_index == 0 do return
+	if parser_is_glyph_empty( entry.parser_info, glyph_index ) do return
+
+	// Get hb_font text metrics. These are unscaled!
 	bounds_0, bounds_1 := parser_get_glyph_box( entry.parser_info, glyph_index )
 	bounds_width  := bounds_1.x - bounds_0.x
 	bounds_height := bounds_1.y - bounds_0.y
 
-	atlas := & ctx.atlas
+	region, state, next_idx, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
 
-	bounds_width_scaled  := cast(u32) (f32(bounds_width)  * entry.size_scale + 2.0 * f32(atlas.glyph_padding))
-	bounds_height_scaled := cast(u32) (f32(bounds_height) * entry.size_scale + 2.0 * f32(atlas.glyph_padding))
+	// E region is special case and not cached to atlas.
+	if region == .None || region == .E do return
 
-	if bounds_width_scaled <= atlas.region_a.width && bounds_height_scaled <= atlas.region_a.height
+
+}
+
+is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
+{
+	if glyph_index == 0 do return true
+	if parser_is_glyph_empty( entry.parser_info, glyph_index ) do return true
+	return false
+}
+
+reset_batch_codepoint_state :: proc( ctx : ^Context ) {
+	clear( ctx.temp_codepoint_seen )
+	ctx.temp_codepoint_seen_num = 0
+}
+
+shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> ^ShapedText
+{
+	ELFhash64 :: proc( hash : ^u64, ptr : ^( $Type), count := 1 )
 	{
-		// Region A for small glyphs. These are good for things such as punctuation.
-		region   = .A
-		state    = & atlas.region_a.state
-		next_idx = & atlas.region_a.next_idx
+		x    := u64(0)
+		bytes = transmute( [^]byte) ptr
+		for index : i32 = 0; index < i32( size_of(Type)); index += 1 {
+			(hash^) = ((hash^) << 4 ) + bytes[index]
+			x       = (hash^) & 0xF000000000000000
+			if x != 0 {
+				(hash^) ~= (x >> 24)
+			}
+			(hash^) &= ~x
+		}
 	}
-	else if bounds_width_scaled <= atlas.region_b.width && bounds_height_scaled <= atlas.region_b.height
+  hash        := cast(u64) 0x9f8e00d51d263c24;
+	shape_cache := & ctx.shape_cache
+	state       := & ctx.shape_cache.state
+
+	shape_cache_idx := LRU_get( state, hash )
+	if shape_cache_idx == -1
 	{
-		// Region B for tall glyphs. These are good for things such as european alphabets.
-		region   = .B
-		state    = & atlas.region_b.state
-		next_idx = & atlas.region_b.next_idx
-	}
-	else if bounds_width_scaled <= atlas.region_c.width && bounds_height_scaled <= atlas.region_c.height
-	{
-		// Region C for big glyphs. These are good for things such as asian typography.
-		region   = .C
-		state    = & atlas.region_c.state
-		next_idx = & atlas.region_c.next_idx
-	}
-	else if bounds_width_scaled <= atlas.region_d.width && bounds_height_scaled <= atlas.region_d.height
-	{
-		// Region D for huge glyphs. These are good for things such as titles and 4k.
-		region   = .D
-		state    = & atlas.region_d.state
-		next_idx = & atlas.region_d.next_idx
-	}
-	else if bounds_width_scaled <= atlas.buffer_width && bounds_height_scaled <= atlas.buffer_height
-	{
-		// Region 'E' for massive glyphs. These are rendered uncached and un-oversampled.
-		region   = .E
-		state    = nil
-		next_idx = nil
-		if bounds_width_scaled <= atlas.buffer_width / 2 && bounds_height_scaled <= atlas.buffer_height / 2
-		{
-			(over_sample^) = { 2.0, 2.0 }
+		if shape_cache.next_cache_id < i32(state.capacity) {
+			shape_cache_idx = shape_cache.next_cache_id
+			LRU_put( state, hash, shape_cache_idx )
 		}
 		else
 		{
-			(over_sample^) = { 1.0, 1.0 }
+			next_evict_idx := LRU_get_next_evicted( state )
+			assert( next_evict_idx != 0xFFFFFFFFFFFFFFFF )
+
+			shape_cache_idx = LRU_peek( state, next_evict_idx )
+			assert( shape_cache_idx != - 1 )
+
+			LRU_put( state, hash, shape_cache_idx )
 		}
-		return
-	}
-	else {
-		region = .None
-		return
 	}
 
-	assert(state    != nil)
-	assert(next_idx != nil)
-	return
-}
-
-flush_glyph_buffer_to_atlas :: proc()
-{
-
-}
-
-screenspace_x_form :: proc()
-{
-
-}
-
-textspace_x_form :: proc()
-{
-
-}
-
-atlas_bbox :: proc()
-{
-
-}
-
-cache_glyph_to_atlas :: proc()
-{
-
+	return & shape_cache.storage.data[ shape_cache_idx ]
 }
 
 shape_text_uncached :: proc()
-{
-
-}
-
-ELFhash64 :: proc()
-{
-
-}
-
-shape_text_cached :: proc()
-{
-
-}
-
-directly_draw_massive_glyph :: proc()
-{
-
-}
-
-empty :: proc()
-{
-
-}
-
-draw_cached_glyph :: proc()
-{
-
-}
-
-reset_batch_codepoint_state :: proc()
-{
-
-}
-
-can_batch_glyph :: proc()
-{
-
-}
-
-draw_text_batch :: proc()
-{
-
-}
-
-draw_text :: proc()
-{
-
-}
-
-get_cursor_pos :: proc()
-{
-
-}
-
-optimize_draw_list :: proc()
-{
-
-}
-
-set_colour :: proc()
 {
 
 }

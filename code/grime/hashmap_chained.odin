@@ -89,7 +89,7 @@ hmap_chained_clear :: proc( using self : HMapChained($Type))
 		if slot == nil {
 			continue
 		}
-		for probe_slot = slot.next; probe_slot != nil; probe_slot = probe_slot.next {
+		for probe_slot := slot.next; probe_slot != nil; probe_slot = probe_slot.next {
 			slot.occupied = false
 		}
 		slot.occupied = false
