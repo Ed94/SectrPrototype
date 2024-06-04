@@ -1,6 +1,7 @@
 package VEFontCache
 
-FrameBufferPass :: enum {
+FrameBufferPass :: enum u32 {
+	None             = 0,
 	Glyph            = 1,
 	Atlas            = 2,
 	Target           = 3,
@@ -8,7 +9,7 @@ FrameBufferPass :: enum {
 }
 
 DrawCall :: struct {
-	pass              : u32,
+	pass              : FrameBufferPass,
 	start_index       : u32,
 	end_index         : u32,
 	clear_before_draw : b32,
@@ -17,7 +18,7 @@ DrawCall :: struct {
 }
 
 DrawCall_Default :: DrawCall {
-	pass              = 0,
+	pass              = .None,
 	start_index       = 0,
 	end_index         = 0,
 	clear_before_draw = false,

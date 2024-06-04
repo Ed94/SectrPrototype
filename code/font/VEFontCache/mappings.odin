@@ -7,6 +7,11 @@ import "core:mem"
 
 Kilobyte :: mem.Kilobyte
 
+Arena :: mem.Arena
+
+arena_allocator :: mem.arena_allocator
+arena_init      :: mem.arena_init
+
 Allocator      :: mem.Allocator
 AllocatorError :: mem.Allocator_Error
 

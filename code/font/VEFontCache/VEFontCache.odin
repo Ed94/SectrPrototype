@@ -530,7 +530,8 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 
 	if ctx.debug_print_verbose
 	{
-
+		log( "shape: \n")
+		// for 
 	}
 
 	/*
@@ -538,8 +539,26 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	We need a random point that is outside our shape. We simply pick something diagonally across from top-left bound corner.
 	Note that this outside point is scaled alongside the glyph in ve_fontcache_draw_filled_path, so we don't need to handle that here.
 	*/
-	bounds_0, bounds_1 : Vec2i
-	// success := parser_get_glyph_box()
+	bounds_0, bounds_1 := parser_get_glyph_box( entry.parser_info, glyph_index )
+
+	outside := Vec2 {
+		f32(bounds_0.x - 21),
+		f32(bounds_0.y - 33),
+	}
+
+	// Note(Original Author): Figure out scaling so it fits within our box.
+	draw : DrawCall
+	draw.pass        = FrameBufferPass.Glyph
+	draw.start_index = u32(ctx.draw_list.indices.num)
+
+	// Note(Original Author);
+	// Draw the path using simplified version of https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac.
+	// Instead of involving fragment shader code we simply make use of modern GPU ability to crunch triangles and brute force curve definitions.
+	path := ctx.temp_path
+	clear(path)
+	for vertex in shape {
+		
+	}
 
 	return false
 }

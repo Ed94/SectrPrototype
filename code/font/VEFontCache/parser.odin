@@ -8,6 +8,7 @@ That interface is not exposed from this parser but could be added to parser_init
 */
 
 import "core:c"
+import "core:math"
 import stbtt    "vendor:stb/truetype"
 import freetype "thirdparty:freetype"
 
@@ -169,11 +170,50 @@ parser_is_glyph_empty :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> 
 	return false
 }
 
-// TODO(Ed): This makes freetype second class I guess but VEFontCache doesn't have native support for freetype originally so....
-// parser_convert_freetype_outline_to_stb_truetype_shape :: proc( outline : freetype.Outline ) -> (shape : ParserGlyphShape, error : AllocatorError)
-// {
+when false {
+parser_convert_conic_to_cubic_freetype :: proc( vertices : Array(ParserGlyphVertex), p0, p1, p2 : freetype.Vector, tolerance : f32 )
+{
+	scratch : [Kilobyte * 4]u8
+	scratch_arena : Arena; arena_init(& scratch_arena, scratch[:])
 
-// }
+	points, error := make( Array(freetype.Vector), 256, allocator = arena_allocator( &scratch_arena) )
+	assert(error != .None)
+
+	append( & points, p0)
+	append( & points, p1)
+	append( & points, p2)
+
+	to_float : f32 = 1.0 / 64.0
+	control_conv :: f32(2.0 / 3.0) // Conic to cubic control point distance
+
+	for ; points.num > 1; {
+		p0 := points.data[0]
+		p1 := points.data[1]
+		p2 := points.data[2]
+
+		fp0 := Vec2{ f32(p0.x), f32(p0.y) } * to_float
+		fp1 := Vec2{ f32(p1.x), f32(p1.y) } * to_float
+		fp2 := Vec2{ f32(p2.x), f32(p2.y) } * to_float
+
+		delta_x  := fp0.x - 2 * fp1.x + fp2.x;
+		delta_y  := fp0.y - 2 * fp1.y + fp2.y;
+		distance := math.sqrt(delta_x * delta_x + delta_y * delta_y);
+
+		if distance <= tolerance
+		{
+			control1 := {
+
+			}
+		}
+		else
+		{
+			control2 := {
+
+			}
+		}
+	}
+}
+}
 
 parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (shape : ParserGlyphShape, error : AllocatorError)
 {
@@ -261,6 +301,34 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 							})
 							index += 2
 						}
+						else if (tag & FT_CURVE_TAG_CONIC) != 0
+						{
+							// TODO(Ed): This is using a very dead simple algo to convert the conic to a cubic curve
+							// not sure if we need something more sophisticaated
+							point1       := points[ index + 1 ]
+
+							control_conv :: f32(0.5) // Conic to cubic control point distance
+							to_float     := f32(1.0 / 64.0)
+
+							fp  := Vec2 { f32(point.x), f32(point.y)   } * to_float
+							fp1 := Vec2 { f32(point1.x), f32(point1.y) } * to_float
+
+							control1 := freetype.Vector {
+								point.x + freetype.Pos( (fp1.x - fp.x) * control_conv * 64.0 ),
+								point.y + freetype.Pos( (fp1.y - fp.y) * control_conv * 64.0 ),
+							}
+							control2 := freetype.Vector {
+								point1.x + freetype.Pos( (fp.x - fp1.x) * control_conv * 64.0 ),
+								point1.y + freetype.Pos( (fp.y - fp1.y) * control_conv * 64.0 ),
+							}
+							append(& vertices, ParserGlyphVertex { type = .Cubic,
+								x = u16(point1.x), y = u16(point1.y),
+								contour_x0 = u16(control1.x), contour_y0 = u16(control1.y),
+								contour_x1 = u16(control2.x), contour_y1 = u16(control2.y),
+								padding = 0,
+							})
+							index += 1
+						}
 						else
 						{
 							append(& vertices, ParserGlyphVertex { type = .Line,
@@ -280,6 +348,8 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 						padding = 0,
 					})
 				}
+
+				shape = array_to_slice(vertices)
 			}
 
 		case .STB_TrueType:
@@ -298,8 +368,17 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 
 parser_free_shape :: proc( font : ^ParserFontInfo, shape : ParserGlyphShape )
 {
-	// switch font.kind
-	// {
-	// 	case .Freetype
-	// }
+	switch font.kind
+	{
+		case .Freetype:
+			delete( array_underlying_slice(shape) )
+
+		case .STB_TrueType:
+			stbtt.FreeShape( & font.stbtt_info, transmute( [^]stbtt.vertex) raw_data(shape) )
+	}
+}
+
+parser_get_glyph_box :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (bounds_0, bounds_1 : Vec2i)
+{
+	return
 }
