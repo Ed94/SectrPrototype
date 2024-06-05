@@ -106,6 +106,75 @@ parser_unload_font :: proc( font : ^ParserFontInfo )
 	}
 }
 
+parser_find_glyph_index :: proc( font : ^ParserFontInfo, codepoint : rune ) -> (glyph_index : Glyph)
+{
+	switch font.kind
+	{
+		case .Freetype:
+			glyph_index = transmute(Glyph) freetype.get_char_index( font.freetype_info, transmute(u32) codepoint )
+
+		case .STB_TrueType:
+			glyph_index = transmute(Glyph) stbtt.FindGlyphIndex( & font.stbtt_info, codepoint )
+	}
+	return Glyph(-1)
+}
+
+parser_free_shape :: proc( font : ^ParserFontInfo, shape : ParserGlyphShape )
+{
+	switch font.kind
+	{
+		case .Freetype:
+			delete( array_underlying_slice(shape) )
+
+		case .STB_TrueType:
+			stbtt.FreeShape( & font.stbtt_info, transmute( [^]stbtt.vertex) raw_data(shape) )
+	}
+}
+
+parser_get_codepoint_horizontal_metrics :: proc( font : ^ParserFontInfo, codepoint : rune ) -> ( advance, to_left_side_glyph : i32 )
+{
+	switch font.kind
+	{
+		case .Freetype:
+			glyph_index := transmute(Glyph) freetype.get_char_index( font.freetype_info, transmute(u32) codepoint )
+			if glyph_index != 0
+			{
+				freetype.load_glyph( font.freetype_info, c.uint(codepoint), { .No_Bitmap, .No_Hinting, .No_Scale } )
+				advance            = i32(font.freetype_info.glyph.advance.x)              >> 6
+				to_left_side_glyph = i32(font.freetype_info.glyph.metrics.hori_bearing_x) >> 6
+			}
+			else
+			{
+				advance            = 0
+				to_left_side_glyph = 0
+			}
+
+		case .STB_TrueType:
+			stbtt.GetCodepointHMetrics( & font.stbtt_info, codepoint, & advance, & to_left_side_glyph )
+	}
+	return
+}
+
+parser_get_codepoint_kern_advance :: proc( font : ^ParserFontInfo, prev_codepoint, codepoint : rune ) -> i32
+{
+	switch font.kind
+	{
+		case .Freetype:
+			prev_glyph_index := transmute(Glyph) freetype.get_char_index( font.freetype_info, transmute(u32) prev_codepoint )
+			glyph_index      := transmute(Glyph) freetype.get_char_index( font.freetype_info, transmute(u32) codepoint )
+			if prev_glyph_index != 0 && glyph_index != 0
+			{
+				kerning : freetype.Vector
+				font.freetype_info.driver.clazz.get_kerning( font.freetype_info, transmute(u32) prev_codepoint, transmute(u32) codepoint, & kerning )
+			}
+
+		case .STB_TrueType:
+			kern := stbtt.GetCodepointKernAdvance( & font.stbtt_info, prev_codepoint, codepoint )
+			return kern
+	}
+	return -1
+}
+
 parser_get_font_vertical_metrics :: proc( font : ^ParserFontInfo ) -> (ascent, descent, line_gap : i32 )
 {
 	switch font.kind
@@ -118,115 +187,27 @@ parser_get_font_vertical_metrics :: proc( font : ^ParserFontInfo ) -> (ascent, d
 	return
 }
 
-parser_scale_for_pixel_height :: #force_inline proc( font : ^ParserFontInfo, size : f32 ) -> f32
-{
-	switch font.kind {
-		case .Freetype:
-			freetype.set_pixel_sizes( font.freetype_info, 0, cast(u32) size )
-			size_scale := size / cast(f32)font.freetype_info.units_per_em
-			return size_scale
-
-		case.STB_TrueType:
-			return stbtt.ScaleForPixelHeight( & font.stbtt_info, size )
-	}
-	return 0
-}
-
-parser_scale_for_mapping_em_to_pixels :: proc( font : ^ParserFontInfo, size : f32 ) -> f32
-{
-	switch font.kind {
-		case .Freetype:
-			Inches_To_CM  :: cast(f32) 2.54
-			Points_Per_CM :: cast(f32) 28.3465
-			CM_Per_Point  :: cast(f32) 1.0 / DPT_DPCM
-			CM_Per_Pixel  :: cast(f32) 1.0 / DPT_PPCM
-			DPT_DPCM      :: cast(f32) 72.0 * Inches_To_CM // 182.88 points/dots per cm
-			DPT_PPCM      :: cast(f32) 96.0 * Inches_To_CM // 243.84 pixels per cm
-			DPT_DPI       :: cast(f32) 72.0
-
-			// TODO(Ed): Don't assume the dots or pixels per inch.
-			system_dpi :: DPT_DPI
-
-			FT_Font_Size_Point_Unit :: 1.0 / 64.0
-			FT_Point_10             :: 64.0
-
-			points_per_em := (size / system_dpi ) * DPT_DPI
-			freetype.set_char_size( font.freetype_info, 0, cast(freetype.F26Dot6) (f32(points_per_em) * FT_Point_10), cast(u32) DPT_DPI, cast(u32) DPT_DPI )
-			size_scale := size / cast(f32) font.freetype_info.units_per_em;
-			return size_scale
-
-		case .STB_TrueType:
-			return stbtt.ScaleForMappingEmToPixels( & font.stbtt_info, size )
-	}
-	return 0
-}
-
-parser_is_glyph_empty :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> b32
+parser_get_glyph_box :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (bounds_0, bounds_1 : Vec2i)
 {
 	switch font.kind
 	{
 		case .Freetype:
-			error := freetype.load_glyph( font.freetype_info, cast(u32) glyph_index, { .No_Bitmap, .No_Hinting, .No_Scale } )
-			if error == .Ok
-			{
-				if font.freetype_info.glyph.format == .Outline {
-					return font.freetype_info.glyph.outline.n_points == 0
-				}
-				else if font.freetype_info.glyph.format == .Bitmap {
-					return font.freetype_info.glyph.bitmap.width == 0 && font.freetype_info.glyph.bitmap.rows == 0;
-				}
-			}
-			return false
+			freetype.load_glyph( font.freetype_info, c.uint(glyph_index), { .No_Bitmap, .No_Hinting, .No_Scale } )
+
+			metrics := font.freetype_info.glyph.metrics
+
+			bounds_0 = {u32(metrics.hori_bearing_x), u32(metrics.hori_bearing_y - metrics.height)}
+			bounds_1 = {u32(metrics.hori_bearing_x + metrics.width), u32(metrics.hori_bearing_y)}
 
 		case .STB_TrueType:
-			return stbtt.IsGlyphEmpty( & font.stbtt_info, cast(c.int) glyph_index )
+			x0, y0, x1, y1 : i32
+			success := cast(bool) stbtt.GetGlyphBox( & font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
+			assert( success )
+
+			bounds_0 = { u32(x0), u32(y0) }
+			bounds_1 = { u32(x1), u32(y1) }
 	}
-	return false
-}
-
-when false {
-parser_convert_conic_to_cubic_freetype :: proc( vertices : Array(ParserGlyphVertex), p0, p1, p2 : freetype.Vector, tolerance : f32 )
-{
-	scratch : [Kilobyte * 4]u8
-	scratch_arena : Arena; arena_init(& scratch_arena, scratch[:])
-
-	points, error := make( Array(freetype.Vector), 256, allocator = arena_allocator( &scratch_arena) )
-	assert(error != .None)
-
-	append( & points, p0)
-	append( & points, p1)
-	append( & points, p2)
-
-	to_float : f32 = 1.0 / 64.0
-	control_conv :: f32(2.0 / 3.0) // Conic to cubic control point distance
-
-	for ; points.num > 1; {
-		p0 := points.data[0]
-		p1 := points.data[1]
-		p2 := points.data[2]
-
-		fp0 := Vec2{ f32(p0.x), f32(p0.y) } * to_float
-		fp1 := Vec2{ f32(p1.x), f32(p1.y) } * to_float
-		fp2 := Vec2{ f32(p2.x), f32(p2.y) } * to_float
-
-		delta_x  := fp0.x - 2 * fp1.x + fp2.x;
-		delta_y  := fp0.y - 2 * fp1.y + fp2.y;
-		distance := math.sqrt(delta_x * delta_x + delta_y * delta_y);
-
-		if distance <= tolerance
-		{
-			control1 := {
-
-			}
-		}
-		else
-		{
-			control2 := {
-
-			}
-		}
-	}
-}
+	return
 }
 
 parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (shape : ParserGlyphShape, error : AllocatorError)
@@ -380,37 +361,113 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 	return
 }
 
-parser_free_shape :: proc( font : ^ParserFontInfo, shape : ParserGlyphShape )
+parser_is_glyph_empty :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> b32
 {
 	switch font.kind
 	{
 		case .Freetype:
-			delete( array_underlying_slice(shape) )
+			error := freetype.load_glyph( font.freetype_info, cast(u32) glyph_index, { .No_Bitmap, .No_Hinting, .No_Scale } )
+			if error == .Ok
+			{
+				if font.freetype_info.glyph.format == .Outline {
+					return font.freetype_info.glyph.outline.n_points == 0
+				}
+				else if font.freetype_info.glyph.format == .Bitmap {
+					return font.freetype_info.glyph.bitmap.width == 0 && font.freetype_info.glyph.bitmap.rows == 0;
+				}
+			}
+			return false
 
 		case .STB_TrueType:
-			stbtt.FreeShape( & font.stbtt_info, transmute( [^]stbtt.vertex) raw_data(shape) )
+			return stbtt.IsGlyphEmpty( & font.stbtt_info, cast(c.int) glyph_index )
 	}
+	return false
 }
 
-parser_get_glyph_box :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (bounds_0, bounds_1 : Vec2i)
+parser_scale_for_pixel_height :: #force_inline proc( font : ^ParserFontInfo, size : f32 ) -> f32
 {
-	switch font.kind
-	{
+	switch font.kind {
 		case .Freetype:
-			freetype.load_glyph( font.freetype_info, c.uint(glyph_index), { .No_Bitmap, .No_Hinting, .No_Scale } )
+			freetype.set_pixel_sizes( font.freetype_info, 0, cast(u32) size )
+			size_scale := size / cast(f32)font.freetype_info.units_per_em
+			return size_scale
 
-			metrics := font.freetype_info.glyph.metrics
+		case.STB_TrueType:
+			return stbtt.ScaleForPixelHeight( & font.stbtt_info, size )
+	}
+	return 0
+}
 
-			bounds_0 = {u32(metrics.hori_bearing_x), u32(metrics.hori_bearing_y - metrics.height)}
-			bounds_1 = {u32(metrics.hori_bearing_x + metrics.width), u32(metrics.hori_bearing_y)}
+parser_scale_for_mapping_em_to_pixels :: proc( font : ^ParserFontInfo, size : f32 ) -> f32
+{
+	switch font.kind {
+		case .Freetype:
+			Inches_To_CM  :: cast(f32) 2.54
+			Points_Per_CM :: cast(f32) 28.3465
+			CM_Per_Point  :: cast(f32) 1.0 / DPT_DPCM
+			CM_Per_Pixel  :: cast(f32) 1.0 / DPT_PPCM
+			DPT_DPCM      :: cast(f32) 72.0 * Inches_To_CM // 182.88 points/dots per cm
+			DPT_PPCM      :: cast(f32) 96.0 * Inches_To_CM // 243.84 pixels per cm
+			DPT_DPI       :: cast(f32) 72.0
+
+			// TODO(Ed): Don't assume the dots or pixels per inch.
+			system_dpi :: DPT_DPI
+
+			FT_Font_Size_Point_Unit :: 1.0 / 64.0
+			FT_Point_10             :: 64.0
+
+			points_per_em := (size / system_dpi ) * DPT_DPI
+			freetype.set_char_size( font.freetype_info, 0, cast(freetype.F26Dot6) (f32(points_per_em) * FT_Point_10), cast(u32) DPT_DPI, cast(u32) DPT_DPI )
+			size_scale := size / cast(f32) font.freetype_info.units_per_em;
+			return size_scale
 
 		case .STB_TrueType:
-			x0, y0, x1, y1 : i32
-			success := cast(bool) stbtt.GetGlyphBox( & font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
-			assert( success )
-
-			bounds_0 = { u32(x0), u32(y0) }
-			bounds_1 = { u32(x1), u32(y1) }
+			return stbtt.ScaleForMappingEmToPixels( & font.stbtt_info, size )
 	}
-	return
+	return 0
+}
+
+when false {
+parser_convert_conic_to_cubic_freetype :: proc( vertices : Array(ParserGlyphVertex), p0, p1, p2 : freetype.Vector, tolerance : f32 )
+{
+	scratch : [Kilobyte * 4]u8
+	scratch_arena : Arena; arena_init(& scratch_arena, scratch[:])
+
+	points, error := make( Array(freetype.Vector), 256, allocator = arena_allocator( &scratch_arena) )
+	assert(error != .None)
+
+	append( & points, p0)
+	append( & points, p1)
+	append( & points, p2)
+
+	to_float : f32 = 1.0 / 64.0
+	control_conv :: f32(2.0 / 3.0) // Conic to cubic control point distance
+
+	for ; points.num > 1; {
+		p0 := points.data[0]
+		p1 := points.data[1]
+		p2 := points.data[2]
+
+		fp0 := Vec2{ f32(p0.x), f32(p0.y) } * to_float
+		fp1 := Vec2{ f32(p1.x), f32(p1.y) } * to_float
+		fp2 := Vec2{ f32(p2.x), f32(p2.y) } * to_float
+
+		delta_x  := fp0.x - 2 * fp1.x + fp2.x;
+		delta_y  := fp0.y - 2 * fp1.y + fp2.y;
+		distance := math.sqrt(delta_x * delta_x + delta_y * delta_y);
+
+		if distance <= tolerance
+		{
+			control1 := {
+
+			}
+		}
+		else
+		{
+			control2 := {
+
+			}
+		}
+	}
+}
 }

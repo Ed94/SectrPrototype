@@ -71,9 +71,9 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : u32 ) 
 			position.x += f32(atlas.region_d.offset.x)
 			position.y += f32(atlas.region_d.offset.y)
 
+		case .Ignore: fallthrough
 		case .None: fallthrough
 		case .E:
-			assert(false, "What?")
 	}
 	return
 }

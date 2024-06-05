@@ -15,6 +15,8 @@ Changes:
 */
 package VEFontCache
 
+import "core:math"
+
 Advance_Snap_Smallfont_Size :: 12
 
 FontID  :: distinct i64
@@ -25,12 +27,13 @@ Vec2   :: [2]f32
 Vec2i  :: [2]u32
 
 AtlasRegionKind :: enum u8 {
-	None = 0x00,
-	A    = 0x41,
-	B    = 0x42,
-	C    = 0x43,
-	D    = 0x44,
-	E    = 0x45,
+	None   = 0x00,
+	A      = 0x41,
+	B      = 0x42,
+	C      = 0x43,
+	D      = 0x44,
+	E      = 0x45,
+	Ignore = 0xFF, // ve_fontcache_cache_glyph_to_atlas uses a -1 value in clear draw call
 }
 
 Vertex :: struct {
@@ -571,6 +574,9 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 		assert( LRU_get( & region.state, lru_code ) != - 1 )
 	}
 
+	atlas         := & ctx.atlas
+	glyph_padding := cast(f32) atlas.glyph_padding
+
 	if ctx.debug_print
 	{
 		@static debug_total_cached : i32 = 0
@@ -580,29 +586,72 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 
 	// Draw oversized glyph to update FBO
 	glyph_draw_scale       := over_sample * entry.size_scale
-	glyph_draw_translate   := Vec2 { f32(bounds_0.x), f32(bounds_0.y) } * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
+	glyph_draw_translate   := Vec2 { f32(bounds_0.x), f32(bounds_0.y) } * glyph_draw_scale + Vec2{ glyph_padding, glyph_padding }
 	glyph_draw_translate.x  = cast(f32) (i32(glyph_draw_translate.x + 0.9999999))
 	glyph_draw_translate.y  = cast(f32) (i32(glyph_draw_translate.y + 0.9999999))
 
 	// Allocate a glyph_update_FBO region
-	// gwidth_scaled_px = 
+	gwidth_scaled_px := i32( f32(bounds_width) * f32(glyph_draw_scale.x) + 1.0 ) + i32(2 * over_sample.x * glyph_padding)
+  if i32(atlas.update_batch_x + gwidth_scaled_px) >= i32(atlas.buffer_width) {
+		flush_glyph_buffer_to_atlas( ctx )
+	}
 
 	// Calculate the src and destination regions
+	dst_position, dst_width, dst_height := atlas_bbox( atlas, region_kind, u32(atlas_index) )
+	dst_glyph_position := dst_position  //+ { glyph_padding, glyph_padding }
+	dst_glyph_width    := f32(bounds_width)  * entry.size_scale
+	dst_glyph_height   := f32(bounds_height) * entry.size_scale
+	// dst_glyph_position -= { glyph_padding, glyph_padding }
+	dst_glyph_width  += 2 * glyph_padding
+	dst_glyph_height += 2 * glyph_padding
+
+	dst_size       := Vec2 { dst_width, dst_height }
+	dst_glyph_size := Vec2 { dst_glyph_width, dst_glyph_height }
+	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, f32(atlas.buffer_width), f32(atlas.buffer_height)  )
+	screenspace_x_form( & dst_position,       & dst_size,       f32(atlas.buffer_width), f32(atlas.buffer_height) )
+
+	src_position := Vec2 { f32(atlas.update_batch_x), 0 }
+	src_size     := Vec2 {
+		f32(bounds_width)  * glyph_draw_scale.x,
+		f32(bounds_height) * glyph_draw_scale.y,
+	}
+	src_size += Vec2{1,1} * 2 * over_sample * glyph_padding
+	textspace_x_form( & src_position, & src_size, f32(atlas.buffer_width), f32(atlas.buffer_height) )
 
 	// Advance glyph_update_batch_x and calculate final glyph drawing transform
+	glyph_draw_translate.x += f32(atlas.update_batch_x)
+	atlas.update_batch_x   += gwidth_scaled_px
+	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, f32(atlas.buffer_width), f32(atlas.buffer_height))
 
-	// Queue up clear on target region on atlas
+	call : DrawCall
+	{
+		// Queue up clear on target region on atlas
+		using call
+		pass   = .Atlas
+		region = .Ignore
+		start_index = u32(atlas.clear_draw_list.indices.num)
+		blit_quad( & atlas.clear_draw_list, dst_position, dst_position + dst_size, { 1.0, 1.0 }, { 1.0, 1.0 } )
+		end_index = u32(atlas.clear_draw_list.indices.num)
+		append( & atlas.clear_draw_list.calls, call )
 
-	// Queue up a blit from glyph_update_FBO to the atlas
+		// Queue up a blit from glyph_update_FBO to the atlas
+		region      = .None
+		start_index = u32(atlas.draw_list.indices.num)
+		blit_quad( & atlas.draw_list, dst_glyph_position, dst_glyph_position + dst_glyph_size, src_position, src_position + src_size )
+		end_index = u32(atlas.draw_list.indices.num)
+		append( & atlas.draw_list.calls, call )
+	}
+
 
 	// Render glyph to glyph_update_FBO
-	// cache_glyph(  )
+	cache_glyph( ctx, font, glyph_index, glyph_draw_scale, glyph_draw_translate )
 }
 
 directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Glyph, bounds_0 : Vec2i, bounds_width, bounds_height : u32, over_sample, position, scale : Vec2 )
 {
 	flush_glyph_buffer_to_atlas( ctx )
 
+	// Draw un-antialiased glyph to update FBO.
 	glyph_draw_scale     := over_sample * entry.size_scale
 	glyph_draw_translate := - Vec2{ f32(bounds_0.x), f32(bounds_0.y)} * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
 	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
@@ -610,12 +659,46 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 	cache_glyph( ctx, entry.id, glyph, glyph_draw_scale, glyph_draw_translate )
 
 	// Figure out the source rect.
+	glyph_position   := Vec2 {}
+	glyph_width      := f32(bounds_width)  * entry.size_scale * over_sample.x
+	glyph_height     := f32(bounds_height) * entry.size_scale * over_sample.y
+	glyph_dst_width  := f32(bounds_width)  * entry.size_scale
+	glyph_dst_height := f32(bounds_height) * entry.size_scale
+	glyph_width      += f32(2 * ctx.atlas.glyph_padding)
+	glyph_height     += f32(2 * ctx.atlas.glyph_padding)
 
 	// Figure out the destination rect.
+	bounds_scaled := Vec2 {
+		cast(f32) i32(f32(bounds_0.x) * entry.size_scale - 0.5),
+		cast(f32) i32(f32(bounds_0.y) * entry.size_scale - 0.5),
+	}
+	dst        := position + scale * bounds_scaled
+	dst_width  := scale.x * glyph_dst_width
+	dst_height := scale.y * glyph_dst_height
+	dst.x      -= scale.x * f32(ctx.atlas.glyph_padding)
+	dst.y      -= scale.y * f32(ctx.atlas.glyph_padding)
+
+	glyph_size := Vec2 { glyph_width, glyph_height }
+	textspace_x_form( & glyph_position, & glyph_size, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
 
 	// Add the glyph drawcall.
+	call : DrawCall
+	{
+		using call
+		pass        = .Target_Unchanged
+		colour      = ctx.colour
+		start_index = u32(ctx.draw_list.indices.num)
+		blit_quad( & ctx.draw_list, dst, dst + { dst_width, dst_height }, glyph_position, glyph_position + glyph_size )
+		end_index   = u32(ctx.draw_list.indices.num)
+		append( & ctx.draw_list.calls, call )
+	}
 
 	// Clear glyph_update_FBO.
+	call.pass              = .Glyph
+	call.start_index       = 0
+	call.end_index         = 0
+	call.clear_before_draw = true
+	append( & ctx.draw_list.calls, call )
 }
 
 is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
@@ -689,13 +772,52 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText
 	if use_full_text_shape
 	{
 		assert( entry.shaper_info != nil )
-
 		shaper_shape_from_text( & ctx.shaper_ctx, entry.shaper_info, output, text_utf8, ascent, descent, line_gap, entry.size, entry.size_scale )
 		return
 	}
+	else
+	{
+		ascent   := f32(ascent)
+		descent  := f32(descent)
+		line_gap := f32(line_gap)
 
-	// We use our own fallback dumbass text shaping.
-	// WARNING: PLEASE USE HARFBUZZ. GOOD TEXT SHAPING IS IMPORTANT FOR INTERNATIONALISATION.
+		// Note(Original Author):
+		// We use our own fallback dumbass text shaping.
+		// WARNING: PLEASE USE HARFBUZZ. GOOD TEXT SHAPING IS IMPORTANT FOR INTERNATIONALISATION.
 
-	
+		position           : Vec2
+		advance            : i32 = 0
+		to_left_side_glyph : i32 = 0
+
+		prev_codepoint : rune
+		for codepoint in text_utf8
+		{
+			if prev_codepoint > 0 {
+				kern       := parser_get_codepoint_kern_advance( entry.parser_info, prev_codepoint, codepoint )
+				position.x += f32(kern) * entry.size_scale
+			}
+			if codepoint == '\n'
+			{
+				position.x  = 0.0
+				position.y -= (ascent - descent + line_gap) * entry.size_scale
+				position.y  = cast(f32) i32( position.y + 0.5 )
+				prev_codepoint = rune(0)
+				continue
+			}
+			if math.abs( entry.size ) <= Advance_Snap_Smallfont_Size {
+				position.x = math.ceil( position.x )
+			}
+
+			append( & output.glyphs, parser_find_glyph_index( entry.parser_info, codepoint ))
+			advance, to_left_side_glyph = parser_get_codepoint_horizontal_metrics( entry.parser_info, codepoint )
+
+			append( & output.positions, Vec2 {
+				cast(f32) i32(position.x + 0.5),
+				position.y
+			})
+
+			position.x    += f32(advance) * entry.size_scale
+			prev_codepoint = codepoint
+		}
+	}
 }
