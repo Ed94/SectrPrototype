@@ -15,6 +15,8 @@ Changes:
 */
 package VEFontCache
 
+Advance_Snap_Smallfont_Size :: 12
+
 FontID  :: distinct i64
 Glyph   :: distinct i32
 
@@ -53,10 +55,6 @@ Entry :: struct {
 	shaper_info : ^ShaperInfo,
 	id          : FontID,
 	used        : b32,
-
-	// Note(Ed) : Not sure how I feel about the size specification here
-	// I rather have different size glyphs for a font on demand (necessary for the canvas UI)
-	// Might be mis-understaning how this cache works...
 	size        : f32,
 	size_scale  : f32,
 }
@@ -94,7 +92,8 @@ Context :: struct {
 	curve_quality  : u32,
 	text_shape_adv : b32,
 
-	debug_print_verbose : b32
+	debug_print         : b32,
+	debug_print_verbose : b32,
 }
 
 get_cursor_pos :: proc( ctx : ^Context                  ) -> Vec2 { return ctx.cursor_pos }
@@ -112,6 +111,54 @@ font_key_from_label :: #force_inline proc( label : string ) -> u64 {
 		hash = ((hash << 8) + hash) + u64(str_byte)
 	}
 	return hash
+}
+
+// ve_fontcache_configure_snap
+configure_snap :: proc( ctx : ^Context, snap_width, snap_height : u32 ) {
+	assert( ctx != nil )
+	ctx.snap_width  = snap_width
+	ctx.snap_height = snap_height
+}
+
+// For a provided alpha value,
+// allows the function to calculate the position of a point along the curve at any given fraction of its total length
+// ve_fontcache_eval_bezier (quadratic)
+eval_point_on_bezier3 :: proc( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
+{
+	starting_point := p0 * (1 - alpha) * (1 - alpha)
+	control_point  := p1 * 2.0 * (1 - alpha)
+	end_point      := p2 * alpha * alpha
+
+	point := starting_point + control_point + end_point
+	return point
+}
+
+// For a provided alpha value,
+// allows the function to calculate the position of a point along the curve at any given fraction of its total length
+// ve_fontcache_eval_bezier (cubic)
+eval_point_on_bezier4 :: proc( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
+{
+	start_point := p0 * (1 - alpha) * (1 - alpha) * (1 - alpha)
+	control_a   := p1 * 3 * (1 - alpha) * (1 - alpha) * alpha
+	control_b   := p2 * 3 * (1 - alpha) * alpha * alpha
+	end_point   := p3 * alpha * alpha * alpha
+
+	point := start_point + control_a + control_b + end_point
+	return point
+}
+
+screenspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
+	scale.x    = (scale.x / width ) * 2.0
+	scale.y    = (scale.y / height) * 2.0
+	position.x = position.x * (2.0 / width) - 1.0
+	position.y = position.y * (2.0 / width) - 1.0
+}
+
+textspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
+	position.x /= width
+	position.y /= height
+	scale.x    /= width
+	scale.y    /= height
 }
 
 InitAtlasRegionParams :: struct {
@@ -182,7 +229,6 @@ init :: proc( ctx : ^Context,
 	glyph_draw_params           := InitGlyphDrawParams_Default,
 	shape_cache_params          := InitShapeCacheParams_Default,
 	curve_quality               : u32 = 6,
-	advance_snap_smallfont_size : u32 = 12,
 	entires_reserve             : u32 = Kilobyte,
 	temp_path_reserve           : u32 = Kilobyte,
 	temp_codepoint_seen_reserve : u32 = 512,
@@ -358,40 +404,6 @@ unload_font :: proc( ctx : ^Context, font : FontID )
 	shaper_unload_font( entry.shaper_info )
 }
 
-// ve_fontcache_configure_snap
-configure_snap :: proc( ctx : ^Context, snap_width, snap_height : u32 ) {
-	assert( ctx != nil )
-	ctx.snap_width  = snap_width
-	ctx.snap_height = snap_height
-}
-
-// For a provided alpha value,
-// allows the function to calculate the position of a point along the curve at any given fraction of its total length
-// ve_fontcache_eval_bezier (quadratic)
-eval_point_on_bezier3 :: proc( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
-{
-	starting_point := p0 * (1 - alpha) * (1 - alpha)
-	control_point  := p1 * 2.0 * (1 - alpha)
-	end_point      := p2 * alpha * alpha
-
-	point := starting_point + control_point + end_point
-	return point
-}
-
-// For a provided alpha value,
-// allows the function to calculate the position of a point along the curve at any given fraction of its total length
-// ve_fontcache_eval_bezier (cubic)
-eval_point_on_bezier4 :: proc( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
-{
-	start_point := p0 * (1 - alpha) * (1 - alpha) * (1 - alpha)
-	control_a   := p1 * 3 * (1 - alpha) * (1 - alpha) * alpha
-	control_b   := p2 * 3 * (1 - alpha) * alpha * alpha
-	end_point   := p3 * alpha * alpha * alpha
-
-	point := start_point + control_a + control_b + end_point
-	return point
-}
-
 cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, translate : Vec2  ) -> b32
 {
 	assert( ctx != nil )
@@ -513,20 +525,6 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	return false
 }
 
-screenspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
-	scale.x    = (scale.x / width ) * 2.0
-	scale.y    = (scale.y / height) * 2.0
-	position.x = position.x * (2.0 / width) - 1.0
-	position.y = position.y * (2.0 / width) - 1.0
-}
-
-textspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
-	position.x /= width
-	position.y /= height
-	scale.x    /= width
-	scale.y    /= height
-}
-
 cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph )
 {
 	assert( ctx != nil )
@@ -541,12 +539,83 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 	bounds_width  := bounds_1.x - bounds_0.x
 	bounds_height := bounds_1.y - bounds_0.y
 
-	region, state, next_idx, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
+	region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
 
 	// E region is special case and not cached to atlas.
-	if region == .None || region == .E do return
+	if region_kind == .None || region_kind == .E do return
 
+	// Grab an atlas LRU cache slot.
+	lru_code    := font_glyph_lru_code( font, glyph_index )
+	atlas_index := LRU_get( & region.state, lru_code )
+	if atlas_index == -1
+	{
+		if region.next_idx < region.state.capacity
+		{
+			evicted         := LRU_put( & region.state, lru_code, i32(region.next_idx) )
+			atlas_index      = i32(region.next_idx)
+			region.next_idx += 1
+			assert( evicted == lru_code )
+		}
+		else
+		{
+			next_evict_codepoint := LRU_get_next_evicted( & region.state )
+			assert( next_evict_codepoint != 0xFFFFFFFFFFFFFFFF )
 
+			atlas_index = LRU_peek( & region.state, next_evict_codepoint )
+			assert( atlas_index != -1 )
+
+			evicted := LRU_put( & region.state, lru_code, atlas_index )
+			assert( evicted == next_evict_codepoint )
+		}
+
+		assert( LRU_get( & region.state, lru_code ) != - 1 )
+	}
+
+	if ctx.debug_print
+	{
+		@static debug_total_cached : i32 = 0
+		logf("glyph %v%v( %v ) caching to atlas region %v at idx %d. %d total glyphs cached.\n", i32(glyph_index), rune(glyph_index), cast(rune) region_kind, atlas_index, debug_total_cached)
+		debug_total_cached += 1
+	}
+
+	// Draw oversized glyph to update FBO
+	glyph_draw_scale       := over_sample * entry.size_scale
+	glyph_draw_translate   := Vec2 { f32(bounds_0.x), f32(bounds_0.y) } * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
+	glyph_draw_translate.x  = cast(f32) (i32(glyph_draw_translate.x + 0.9999999))
+	glyph_draw_translate.y  = cast(f32) (i32(glyph_draw_translate.y + 0.9999999))
+
+	// Allocate a glyph_update_FBO region
+	// gwidth_scaled_px = 
+
+	// Calculate the src and destination regions
+
+	// Advance glyph_update_batch_x and calculate final glyph drawing transform
+
+	// Queue up clear on target region on atlas
+
+	// Queue up a blit from glyph_update_FBO to the atlas
+
+	// Render glyph to glyph_update_FBO
+	// cache_glyph(  )
+}
+
+directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Glyph, bounds_0 : Vec2i, bounds_width, bounds_height : u32, over_sample, position, scale : Vec2 )
+{
+	flush_glyph_buffer_to_atlas( ctx )
+
+	glyph_draw_scale     := over_sample * entry.size_scale
+	glyph_draw_translate := - Vec2{ f32(bounds_0.x), f32(bounds_0.y)} * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
+	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
+
+	cache_glyph( ctx, entry.id, glyph, glyph_draw_scale, glyph_draw_translate )
+
+	// Figure out the source rect.
+
+	// Figure out the destination rect.
+
+	// Add the glyph drawcall.
+
+	// Clear glyph_update_FBO.
 }
 
 is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
@@ -597,12 +666,36 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 
 			LRU_put( state, hash, shape_cache_idx )
 		}
+
+		shape_text_uncached( ctx, font, & shape_cache.storage.data[ shape_cache_idx ], text_utf8 )
 	}
 
 	return & shape_cache.storage.data[ shape_cache_idx ]
 }
 
-shape_text_uncached :: proc()
+shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText, text_utf8 : string )
 {
+	assert( ctx != nil )
+	assert( font >= 0 && font < FontID(ctx.entries.num) )
 
+	use_full_text_shape := ctx.text_shape_adv
+	entry := & ctx.entries.data[ font ]
+
+	clear( output.glyphs )
+	clear( output.positions )
+
+	ascent, descent, line_gap := parser_get_font_vertical_metrics( entry.parser_info )
+
+	if use_full_text_shape
+	{
+		assert( entry.shaper_info != nil )
+
+		shaper_shape_from_text( & ctx.shaper_ctx, entry.shaper_info, output, text_utf8, ascent, descent, line_gap, entry.size, entry.size_scale )
+		return
+	}
+
+	// We use our own fallback dumbass text shaping.
+	// WARNING: PLEASE USE HARFBUZZ. GOOD TEXT SHAPING IS IMPORTANT FOR INTERNATIONALISATION.
+
+	
 }

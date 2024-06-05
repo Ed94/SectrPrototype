@@ -89,11 +89,6 @@ clear_draw_list :: proc( draw_list : ^DrawList ) {
 	clear( draw_list.vertices )
 }
 
-directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Glyph, bounds_0 : Vec2i, bounds_width, bounds_height : u32, over_sample, position, scale : Vec2 )
-{
-
-}
-
 draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, position, scale : Vec2 ) -> b32
 {
 	// Glyph not in current font
@@ -106,10 +101,10 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	bounds_height := bounds_1.y - bounds_0.y
 
 	// Decide which atlas to target
-	region, state, next_idx, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
+	region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
 
 	// E region is special case and not cached to atlas
-	if region == .E
+	if region_kind == .E
 	{
 		directly_draw_massive_glyph( ctx, entry, glyph_index, bounds_0, bounds_width, bounds_height, over_sample, position, scale )
 		return true
@@ -118,7 +113,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	// Is this codepoint cached?
 	// lru_code    := u64(glyph_index) + ( ( 0x100000000 * u64(entry.id) ) & 0xFFFFFFFF00000000 )
 	lru_code    := font_glyph_lru_code(entry.id, glyph_index)
-	atlas_index := LRU_get( state, lru_code )
+	atlas_index := LRU_get( & region.state, lru_code )
 	if atlas_index == - 1 {
 		return false
 	}
@@ -126,7 +121,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	atlas := & ctx.atlas
 
 	// Figure out the source bounding box in the atlas texture
-	position, width, height := atlas_bbox( atlas, region, u32(atlas_index) )
+	position, width, height := atlas_bbox( atlas, region_kind, u32(atlas_index) )
 
 	glyph_position := position
 	glyph_width    := f32(bounds_width)  * entry.size_scale

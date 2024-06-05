@@ -106,6 +106,18 @@ parser_unload_font :: proc( font : ^ParserFontInfo )
 	}
 }
 
+parser_get_font_vertical_metrics :: proc( font : ^ParserFontInfo ) -> (ascent, descent, line_gap : i32 )
+{
+	switch font.kind
+	{
+		case .Freetype:
+
+		case .STB_TrueType:
+			stbtt.GetFontVMetrics( & font.stbtt_info, & ascent, & descent, & line_gap )
+	}
+	return
+}
+
 parser_scale_for_pixel_height :: #force_inline proc( font : ^ParserFontInfo, size : f32 ) -> f32
 {
 	switch font.kind {
