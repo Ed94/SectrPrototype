@@ -1,13 +1,13 @@
-@module vefc_render_glyph
+@module ve_render_glyph
 
 @header package sectr
 @header import sg "thirdparty:sokol/gfx"
 
-@vs vefc_render_glyph_vs
+@vs ve_render_glyph_vs
 @include ./ve_source_shared.shdc.glsl
 @end
 
-@fs vefc_render_glyph_fs
+@fs ve_render_glyph_fs
 in  vec2 uv;
 out vec4 frag_color;
 
@@ -17,4 +17,4 @@ void main()
 }
 @end
 
-@program vefc_render_glyph vefc_render_glyph_vs vefc_render_glyph_fs
+@program ve_render_glyph ve_render_glyph_vs ve_render_glyph_fs

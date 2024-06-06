@@ -10,16 +10,16 @@ import sg "thirdparty:sokol/gfx"
 
     Overview:
     =========
-    Shader program: 'vefc_render_glyph':
-        Get shader desc: vefc_render_glyph_shader_desc(sg.query_backend())
-        Vertex shader: vefc_render_glyph_vs
+    Shader program: 've_render_glyph':
+        Get shader desc: ve_render_glyph_shader_desc(sg.query_backend())
+        Vertex shader: ve_render_glyph_vs
             Attributes:
-                ATTR_vefc_render_glyph_vs_v_position => 0
-                ATTR_vefc_render_glyph_vs_v_texture => 1
-        Fragment shader: vefc_render_glyph_fs
+                ATTR_ve_render_glyph_vs_v_position => 0
+                ATTR_ve_render_glyph_vs_v_texture => 1
+        Fragment shader: ve_render_glyph_fs
 */
-ATTR_vefc_render_glyph_vs_v_position :: 0
-ATTR_vefc_render_glyph_vs_v_texture :: 1
+ATTR_ve_render_glyph_vs_v_position :: 0
+ATTR_ve_render_glyph_vs_v_texture :: 1
 /*
     static float4 gl_Position;
     static float2 uv;
@@ -56,7 +56,7 @@ ATTR_vefc_render_glyph_vs_v_texture :: 1
     }
 */
 @(private)
-vefc_render_glyph_vs_source_hlsl5 := [675]u8 {
+ve_render_glyph_vs_source_hlsl5 := [675]u8 {
     0x73,0x74,0x61,0x74,0x69,0x63,0x20,0x66,0x6c,0x6f,0x61,0x74,0x34,0x20,0x67,0x6c,
     0x5f,0x50,0x6f,0x73,0x69,0x74,0x69,0x6f,0x6e,0x3b,0x0a,0x73,0x74,0x61,0x74,0x69,
     0x63,0x20,0x66,0x6c,0x6f,0x61,0x74,0x32,0x20,0x75,0x76,0x3b,0x0a,0x73,0x74,0x61,
@@ -130,7 +130,7 @@ vefc_render_glyph_vs_source_hlsl5 := [675]u8 {
     }
 */
 @(private)
-vefc_render_glyph_fs_source_hlsl5 := [427]u8 {
+ve_render_glyph_fs_source_hlsl5 := [427]u8 {
     0x73,0x74,0x61,0x74,0x69,0x63,0x20,0x66,0x6c,0x6f,0x61,0x74,0x34,0x20,0x66,0x72,
     0x61,0x67,0x5f,0x63,0x6f,0x6c,0x6f,0x72,0x3b,0x0a,0x73,0x74,0x61,0x74,0x69,0x63,
     0x20,0x66,0x6c,0x6f,0x61,0x74,0x32,0x20,0x75,0x76,0x3b,0x0a,0x0a,0x73,0x74,0x72,
@@ -159,19 +159,19 @@ vefc_render_glyph_fs_source_hlsl5 := [427]u8 {
     0x20,0x20,0x20,0x72,0x65,0x74,0x75,0x72,0x6e,0x20,0x73,0x74,0x61,0x67,0x65,0x5f,
     0x6f,0x75,0x74,0x70,0x75,0x74,0x3b,0x0a,0x7d,0x0a,0x00,
 }
-vefc_render_glyph_shader_desc :: proc (backend: sg.Backend) -> sg.Shader_Desc {
+ve_render_glyph_shader_desc :: proc (backend: sg.Backend) -> sg.Shader_Desc {
     desc: sg.Shader_Desc
-    desc.label = "vefc_render_glyph_shader"
+    desc.label = "ve_render_glyph_shader"
     #partial switch backend {
     case .D3D11:
         desc.attrs[0].sem_name = "TEXCOORD"
         desc.attrs[0].sem_index = 0
         desc.attrs[1].sem_name = "TEXCOORD"
         desc.attrs[1].sem_index = 1
-        desc.vs.source = transmute(cstring)&vefc_render_glyph_vs_source_hlsl5
+        desc.vs.source = transmute(cstring)&ve_render_glyph_vs_source_hlsl5
         desc.vs.d3d11_target = "vs_5_0"
         desc.vs.entry = "main"
-        desc.fs.source = transmute(cstring)&vefc_render_glyph_fs_source_hlsl5
+        desc.fs.source = transmute(cstring)&ve_render_glyph_fs_source_hlsl5
         desc.fs.d3d11_target = "ps_5_0"
         desc.fs.entry = "main"
     }
