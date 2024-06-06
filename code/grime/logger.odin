@@ -83,7 +83,7 @@ logger_interface :: proc(
 				str_fmt_builder( & builder, "] ")
 			}
 		}
-		core_log.do_level_header( options, level, & builder )
+		core_log.do_level_header( options, & builder, level )
 
 		if logger.id != "" {
 			str_fmt_builder( & builder, "[%s] ", logger.id )

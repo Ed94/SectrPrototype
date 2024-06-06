@@ -1,3 +1,6 @@
+@header package sectr
+@header import sg "thirdparty:sokol/gfx"
+
 @vs font_glyph_vs
 in vec2 vertex;
 in vec2 texture_coord;
