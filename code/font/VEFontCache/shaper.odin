@@ -44,7 +44,7 @@ shaper_load_font :: proc( ctx : ^ShaperContext, label : string, data : []byte, u
 
 	error : AllocatorError
 	info, error = set( ctx.infos, key, ShaperInfo {} )
-	assert( error != .None, "VEFontCache.parser_load_font: Failed to set a new shaper info" )
+	assert( error == .None, "VEFontCache.parser_load_font: Failed to set a new shaper info" )
 
 	using info
 	blob = harfbuzz.blob_create( raw_data(data), cast(c.uint) len(data), harfbuzz.Memory_Mode.READONLY, user_data, nil )

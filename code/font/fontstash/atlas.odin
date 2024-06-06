@@ -65,7 +65,7 @@ atlas_init :: proc( ctx : ^Context, width, height : i32, num_nodes : u32 = Init_
 {
 	error : AllocatorError
 	ctx.atlas, error = make( Array(AtlasNode), u64(num_nodes), dbg_name = "font atlas" )
-	ensure(error != AllocatorError.None, "Failed to allocate font atlas")
+	ensure(error == AllocatorError.None, "Failed to allocate font atlas")
 
 	ctx.width  = width
 	ctx.height = height

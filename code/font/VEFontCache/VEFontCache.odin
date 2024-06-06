@@ -298,14 +298,18 @@ init :: proc( ctx : ^Context,
 	atlas.region_d.offset.x = atlas.width / 2
 
 	LRU_init( & shape_cache.state, shape_cache_params.capacity )
+
+	shape_cache.storage, error = make( Array(ShapedText), u64(shape_cache_params.reserve_length) )
+	assert(error == .None, "VEFontCache.init : Failed to allocate shape_cache.storage")
+
 	for idx : u32 = 0; idx < shape_cache_params.capacity; idx += 1 {
 		stroage_entry := & shape_cache.storage.data[idx]
 		using stroage_entry
 		glyphs, error = make( Array(Glyph), cast(u64) shape_cache_params.reserve_length )
-		assert( error != .None, "VEFontCache.init : Failed to allocate glyphs array for shape cache storage" )
+		assert( error == .None, "VEFontCache.init : Failed to allocate glyphs array for shape cache storage" )
 
 		positions, error = make( Array(Vec2), cast(u64) shape_cache_params.reserve_length )
-		assert( error != .None, "VEFontCache.init : Failed to allocate positions array for shape cache storage" )
+		assert( error == .None, "VEFontCache.init : Failed to allocate positions array for shape cache storage" )
 	}
 
 	// Note(From original author): We can actually go over VE_FONTCACHE_GLYPHDRAW_BUFFER_BATCH batches due to smart packing!
@@ -318,22 +322,22 @@ init :: proc( ctx : ^Context,
 		draw_padding  = glyph_draw_params.draw_padding
 
 		draw_list.calls, error = make( Array(DrawCall), cast(u64) glyph_draw_params.buffer_batch * 2 )
-		assert( error != .None, "VEFontCache.init : Failed to allocate calls for draw_list" )
+		assert( error == .None, "VEFontCache.init : Failed to allocate calls for draw_list" )
 
 		draw_list.indices, error = make( Array(u32), cast(u64) glyph_draw_params.buffer_batch * 2 * 6 )
-		assert( error != .None, "VEFontCache.init : Failed to allocate indices array for draw_list" )
+		assert( error == .None, "VEFontCache.init : Failed to allocate indices array for draw_list" )
 
 		draw_list.vertices, error = make( Array(Vertex), cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
-		assert( error != .None, "VEFontCache.init : Failed to allocate vertices array for draw_list" )
+		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for draw_list" )
 
 		clear_draw_list.calls, error = make( Array(DrawCall), cast(u64) glyph_draw_params.buffer_batch * 2 )
-		assert( error != .None, "VEFontCache.init : Failed to allocate calls for calls for clear_draw_list" )
+		assert( error == .None, "VEFontCache.init : Failed to allocate calls for calls for clear_draw_list" )
 
 		clear_draw_list.indices, error = make( Array(u32), cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
-		assert( error != .None, "VEFontCache.init : Failed to allocate calls for indices array for clear_draw_list" )
+		assert( error == .None, "VEFontCache.init : Failed to allocate calls for indices array for clear_draw_list" )
 
 		clear_draw_list.vertices, error = make( Array(Vertex), cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
-		assert( error != .None, "VEFontCache.init : Failed to allocate vertices array for clear_draw_list" )
+		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for clear_draw_list" )
 	}
 
 	parser_init( & parser_ctx )
@@ -360,6 +364,7 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 	assert( ctx != nil )
 	assert( len(data) > 0 )
 	using ctx
+	context.allocator = backing
 
 	id : i32 = -1
 	for index : i32 = 0; index < i32(entries.num); index += 1 {
@@ -398,6 +403,7 @@ unload_font :: proc( ctx : ^Context, font : FontID )
 {
 	assert( ctx != nil )
 	assert( font >= 0 && u64(font) < ctx.entries.num )
+	context.allocator = ctx.backing
 
 	using ctx
 	entry     := & entries.data[ font ]
@@ -642,63 +648,8 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 		append( & atlas.draw_list.calls, call )
 	}
 
-
 	// Render glyph to glyph_update_FBO
 	cache_glyph( ctx, font, glyph_index, glyph_draw_scale, glyph_draw_translate )
-}
-
-directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Glyph, bounds_0 : Vec2i, bounds_width, bounds_height : u32, over_sample, position, scale : Vec2 )
-{
-	flush_glyph_buffer_to_atlas( ctx )
-
-	// Draw un-antialiased glyph to update FBO.
-	glyph_draw_scale     := over_sample * entry.size_scale
-	glyph_draw_translate := - Vec2{ f32(bounds_0.x), f32(bounds_0.y)} * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
-	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
-
-	cache_glyph( ctx, entry.id, glyph, glyph_draw_scale, glyph_draw_translate )
-
-	// Figure out the source rect.
-	glyph_position   := Vec2 {}
-	glyph_width      := f32(bounds_width)  * entry.size_scale * over_sample.x
-	glyph_height     := f32(bounds_height) * entry.size_scale * over_sample.y
-	glyph_dst_width  := f32(bounds_width)  * entry.size_scale
-	glyph_dst_height := f32(bounds_height) * entry.size_scale
-	glyph_width      += f32(2 * ctx.atlas.glyph_padding)
-	glyph_height     += f32(2 * ctx.atlas.glyph_padding)
-
-	// Figure out the destination rect.
-	bounds_scaled := Vec2 {
-		cast(f32) i32(f32(bounds_0.x) * entry.size_scale - 0.5),
-		cast(f32) i32(f32(bounds_0.y) * entry.size_scale - 0.5),
-	}
-	dst        := position + scale * bounds_scaled
-	dst_width  := scale.x * glyph_dst_width
-	dst_height := scale.y * glyph_dst_height
-	dst.x      -= scale.x * f32(ctx.atlas.glyph_padding)
-	dst.y      -= scale.y * f32(ctx.atlas.glyph_padding)
-
-	glyph_size := Vec2 { glyph_width, glyph_height }
-	textspace_x_form( & glyph_position, & glyph_size, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
-
-	// Add the glyph drawcall.
-	call : DrawCall
-	{
-		using call
-		pass        = .Target_Unchanged
-		colour      = ctx.colour
-		start_index = u32(ctx.draw_list.indices.num)
-		blit_quad( & ctx.draw_list, dst, dst + { dst_width, dst_height }, glyph_position, glyph_position + glyph_size )
-		end_index   = u32(ctx.draw_list.indices.num)
-		append( & ctx.draw_list.calls, call )
-	}
-
-	// Clear glyph_update_FBO.
-	call.pass              = .Glyph
-	call.start_index       = 0
-	call.end_index         = 0
-	call.clear_before_draw = true
-	append( & ctx.draw_list.calls, call )
 }
 
 is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32

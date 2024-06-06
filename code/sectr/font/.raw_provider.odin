@@ -21,11 +21,6 @@ Font_TTF_Default_Chars_Padding :: 4
 Font_Load_Use_Default_Size :: -1
 Font_Load_Gen_ID           :: ""
 
-Font_Atlas_Packing_Method :: enum u32 {
-	Raylib_Basic  = 0, // Basic packing algo
-	Skyeline_Rect = 1, // stb_pack_rect
-}
-
 FontID  :: struct {
 	key   : u64,
 	label : string,

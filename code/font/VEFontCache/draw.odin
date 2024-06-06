@@ -89,6 +89,60 @@ clear_draw_list :: proc( draw_list : ^DrawList ) {
 	clear( draw_list.vertices )
 }
 
+directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Glyph, bounds_0 : Vec2i, bounds_width, bounds_height : u32, over_sample, position, scale : Vec2 )
+{
+	flush_glyph_buffer_to_atlas( ctx )
+
+	// Draw un-antialiased glyph to update FBO.
+	glyph_draw_scale     := over_sample * entry.size_scale
+	glyph_draw_translate := - Vec2{ f32(bounds_0.x), f32(bounds_0.y)} * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
+	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
+
+	cache_glyph( ctx, entry.id, glyph, glyph_draw_scale, glyph_draw_translate )
+
+	// Figure out the source rect.
+	glyph_position   := Vec2 {}
+	glyph_width      := f32(bounds_width)  * entry.size_scale * over_sample.x
+	glyph_height     := f32(bounds_height) * entry.size_scale * over_sample.y
+	glyph_dst_width  := f32(bounds_width)  * entry.size_scale
+	glyph_dst_height := f32(bounds_height) * entry.size_scale
+	glyph_width      += f32(2 * ctx.atlas.glyph_padding)
+	glyph_height     += f32(2 * ctx.atlas.glyph_padding)
+
+	// Figure out the destination rect.
+	bounds_scaled := Vec2 {
+		cast(f32) i32(f32(bounds_0.x) * entry.size_scale - 0.5),
+		cast(f32) i32(f32(bounds_0.y) * entry.size_scale - 0.5),
+	}
+	dst        := position + scale * bounds_scaled
+	dst_width  := scale.x * glyph_dst_width
+	dst_height := scale.y * glyph_dst_height
+	dst.x      -= scale.x * f32(ctx.atlas.glyph_padding)
+	dst.y      -= scale.y * f32(ctx.atlas.glyph_padding)
+
+	glyph_size := Vec2 { glyph_width, glyph_height }
+	textspace_x_form( & glyph_position, & glyph_size, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
+
+	// Add the glyph drawcall.
+	call : DrawCall
+	{
+		using call
+		pass        = .Target_Unchanged
+		colour      = ctx.colour
+		start_index = u32(ctx.draw_list.indices.num)
+		blit_quad( & ctx.draw_list, dst, dst + { dst_width, dst_height }, glyph_position, glyph_position + glyph_size )
+		end_index   = u32(ctx.draw_list.indices.num)
+		append( & ctx.draw_list.calls, call )
+	}
+
+	// Clear glyph_update_FBO.
+	call.pass              = .Glyph
+	call.start_index       = 0
+	call.end_index         = 0
+	call.clear_before_draw = true
+	append( & ctx.draw_list.calls, call )
+}
+
 draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, position, scale : Vec2 ) -> b32
 {
 	// Glyph not in current font

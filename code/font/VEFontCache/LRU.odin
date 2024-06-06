@@ -118,7 +118,7 @@ LRU_init :: proc( cache : ^LRU_Cache, capacity : u32 ) {
 	error : AllocatorError
 	cache.capacity     = capacity
 	cache.table, error = make( HMapChained(LRU_Link), hmap_closest_prime( uint(capacity)) )
-	assert( error != .None, "VEFontCache.LRU_init : Failed to allocate cache's table")
+	assert( error == .None, "VEFontCache.LRU_init : Failed to allocate cache's table")
 
 	pool_list_init( & cache.key_queue, capacity )
 }

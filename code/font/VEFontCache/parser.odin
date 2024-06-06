@@ -78,7 +78,7 @@ parser_load_font :: proc( ctx : ParserContext, label : string, data : []byte ) -
 
 	error : AllocatorError
 	font, error = set( ctx.fonts, key, ParserFontInfo {} )
-	assert( error != .None, "VEFontCache.parser_load_font: Failed to set a new parser font info" )
+	assert( error == .None, "VEFontCache.parser_load_font: Failed to set a new parser font info" )
 	switch ctx.kind
 	{
 		case .Freetype:
@@ -434,7 +434,7 @@ parser_convert_conic_to_cubic_freetype :: proc( vertices : Array(ParserGlyphVert
 	scratch_arena : Arena; arena_init(& scratch_arena, scratch[:])
 
 	points, error := make( Array(freetype.Vector), 256, allocator = arena_allocator( &scratch_arena) )
-	assert(error != .None)
+	assert(error == .None)
 
 	append( & points, p0)
 	append( & points, p1)
