@@ -226,7 +226,7 @@ InitShapeCacheParams_Default :: InitShapeCacheParams {
 }
 
 // ve_fontcache_init
-init :: proc( ctx : ^Context,
+init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	allocator                   := context.allocator,
 	atlas_params                := InitAtlasParams_Default,
 	glyph_draw_params           := InitGlyphDrawParams_Default,

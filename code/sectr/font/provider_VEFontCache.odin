@@ -42,13 +42,13 @@ font_provider_startup :: proc()
 	profile(#procedure)
 	state := get_state()
 
-	provider_data := state.font_provider_data; using provider_data
+	provider_data := & state.font_provider_data; using provider_data
 
 	error : AllocatorError
 	font_cache, error = make( HMapChained(FontDef), hmap_closest_prime(1 * Kilo), persistent_allocator() /*dbg_name = "font_cache"*/ )
 	verify( error == AllocatorError.None, "Failed to allocate font_cache" )
 
-	ve.init( & provider_data.ve_font_cache, allocator = persistent_slab_allocator() )
+	ve.init( & provider_data.ve_font_cache, .STB_TrueType, allocator = persistent_slab_allocator() )
 	log("VEFontCached initialized")
 
 	// TODO(Ed): Setup sokol hookup for VEFontCache
@@ -61,7 +61,6 @@ font_provider_shutdown :: proc()
 
 	ve.shutdown( & provider_data.ve_font_cache )
 }
-
 
 font_load :: proc(path_file : string,
 	default_size : f32    = Font_Load_Use_Default_Size,
@@ -85,6 +84,8 @@ font_load :: proc(path_file : string,
 		// desired_id = cast(FontID) file_name_from_path(path_file)
 		desired_id = file_name_from_path(path_file)
 	}
+
+	font_cache_watch := provider_data.font_cache
 
 	key            := cast(u64) crc32( transmute([]byte) desired_id )
 	def, set_error := hmap_chained_set(font_cache, key, FontDef{})

@@ -27,6 +27,11 @@ ShaperInfo :: struct {
 shaper_init :: proc( ctx : ^ShaperContext )
 {
 	ctx.hb_buffer = harfbuzz.buffer_create()
+	assert( ctx.hb_buffer != nil, "VEFontCache.shaper_init: Failed to create harfbuzz buffer")
+
+	error : AllocatorError
+	ctx.infos, error = make( HMapChained(ShaperInfo), 256 )
+	assert( error == .None, "VEFontCache.shaper_init: Failed to create shaper infos map" )
 }
 
 shaper_shutdown :: proc( ctx : ^ShaperContext )
@@ -34,6 +39,8 @@ shaper_shutdown :: proc( ctx : ^ShaperContext )
 	if ctx.hb_buffer != nil {
 		harfbuzz.buffer_destory( ctx.hb_buffer )
 	}
+
+	delete(& ctx.infos)
 }
 
 shaper_load_font :: proc( ctx : ^ShaperContext, label : string, data : []byte, user_data : rawptr ) -> (info : ^ShaperInfo)

@@ -40,12 +40,13 @@ array_underlying_slice :: grime.array_underlying_slice
 
 HMapChained :: grime.HMapChained
 
-hmap_chained_clear  :: grime.hmap_chained_clear
-hmap_chained_init   :: grime.hmap_chained_init
-hmap_chained_get    :: grime.hmap_chained_get
-hmap_chained_remove :: grime.hmap_chained_remove
-hmap_chained_set    :: grime.hmap_chained_set
-hmap_closest_prime  :: grime.hmap_closest_prime
+hmap_chained_clear   :: grime.hmap_chained_clear
+hmap_chained_destroy :: grime.hmap_chained_destroy
+hmap_chained_init    :: grime.hmap_chained_init
+hmap_chained_get     :: grime.hmap_chained_get
+hmap_chained_remove  :: grime.hmap_chained_remove
+hmap_chained_set     :: grime.hmap_chained_set
+hmap_closest_prime   :: grime.hmap_closest_prime
 
 // Pool :: grime.Pool
 
@@ -82,6 +83,7 @@ clear :: proc {
 
 delete :: proc {
 	array_free,
+	hmap_chained_destroy,
 }
 
 get :: proc {

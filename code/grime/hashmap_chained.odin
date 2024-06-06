@@ -98,8 +98,8 @@ hmap_chained_clear :: proc( using self : HMapChained($Type))
 
 hmap_chained_destroy :: proc( using self  : ^HMapChained($Type)) {
 	pool_destroy( pool )
-	free( self.header, backing)
-	self = nil
+	free( self.header, self.pool.backing)
+	self.header = nil
 }
 
 hmap_chained_lookup_id :: #force_inline proc( using self : HMapChained($Type), key : u64 ) -> u64
@@ -163,9 +163,10 @@ hmap_chained_remove :: proc( self : HMapChained($Type), key : u64 ) -> b32
 
 // Sets the value to a vacant slot
 // Will preemptively allocate the next slot in the hashtable if its null for the slot.
-hmap_chained_set :: proc( using self : HMapChained($Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
+hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -> (^ Type, AllocatorError)
 {
 	// profile(#procedure)
+	using self
 	hash_index   := hmap_chained_lookup_id(self, key)
 	surface_slot := lookup[hash_index]
 	set_slot :: #force_inline proc( using self : HMapChained(Type),
