@@ -121,11 +121,11 @@ can_batch_glyph :: proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_in
 decide_codepoint_region :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph
 ) -> (region_kind : AtlasRegionKind, region : ^AtlasRegion, over_sample : Vec2)
 {
-	if parser_is_glyph_empty( entry.parser_info, glyph_index ) {
+	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) {
 		region_kind = .None
 	}
 
-	bounds_0, bounds_1 := parser_get_glyph_box( entry.parser_info, glyph_index )
+	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
 	bounds_width  := bounds_1.x - bounds_0.x
 	bounds_height := bounds_1.y - bounds_0.y
 

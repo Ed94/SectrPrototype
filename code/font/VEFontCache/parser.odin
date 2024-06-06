@@ -50,7 +50,7 @@ ParserContext :: struct {
 	kind       : ParserKind,
 	ft_library : freetype.Library,
 
-	fonts : HMapChained(ParserFontInfo),
+	// fonts : HMapChained(ParserFontInfo),
 }
 
 parser_init :: proc( ctx : ^ParserContext )
@@ -65,9 +65,9 @@ parser_init :: proc( ctx : ^ParserContext )
 			// Do nothing intentional
 	}
 
-	error : AllocatorError
-	ctx.fonts, error = make( HMapChained(ParserFontInfo), 256 )
-	assert( error == .None, "VEFontCache.parser_init: Failed to allocate fonts array" )
+	// error : AllocatorError
+	// ctx.fonts, error = make( HMapChained(ParserFontInfo), 256 )
+	// assert( error == .None, "VEFontCache.parser_init: Failed to allocate fonts array" )
 }
 
 parser_shutdown :: proc( ctx : ^ParserContext )
@@ -75,15 +75,15 @@ parser_shutdown :: proc( ctx : ^ParserContext )
 	// TODO(Ed): Implement
 }
 
-parser_load_font :: proc( ctx : ParserContext, label : string, data : []byte ) -> (font : ^ParserFontInfo)
+parser_load_font :: proc( ctx : ^ParserContext, label : string, data : []byte ) -> (font : ParserFontInfo)
 {
-	key  := font_key_from_label(label)
-	font  = get( ctx.fonts, key )
-	if font != nil do return
+	// key  := font_key_from_label(label)
+	// font  = get( ctx.fonts, key )
+	// if font != nil do return
 
-	error : AllocatorError
-	font, error = set( ctx.fonts, key, ParserFontInfo {} )
-	assert( error == .None, "VEFontCache.parser_load_font: Failed to set a new parser font info" )
+	// error : AllocatorError
+	// font, error = set( ctx.fonts, key, ParserFontInfo {} )
+	// assert( error == .None, "VEFontCache.parser_load_font: Failed to set a new parser font info" )
 	switch ctx.kind
 	{
 		case .Freetype:

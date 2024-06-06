@@ -54,8 +54,8 @@ ShapedTextCache :: struct {
 }
 
 Entry :: struct {
-	parser_info : ^ParserFontInfo,
-	shaper_info : ^ShaperInfo,
+	parser_info : ParserFontInfo,
+	shaper_info : ShaperInfo,
 	id          : FontID,
 	used        : b32,
 	size        : f32,
@@ -381,18 +381,18 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 	entry := & entries.data[ id ]
 	{
 		using entry
-		parser_info = parser_load_font( parser_ctx, label, data )
-		assert( parser_info != nil, "VEFontCache.load_font: Failed to load font info from parser" )
+		parser_info = parser_load_font( & parser_ctx, label, data )
+		// assert( parser_info != nil, "VEFontCache.load_font: Failed to load font info from parser" )
 
 		size = size_px
 		size_scale = size_px < 0.0 ?                             \
-			parser_scale_for_pixel_height( parser_info, -size_px ) \
-		: parser_scale_for_mapping_em_to_pixels( parser_info, size_px )
+			parser_scale_for_pixel_height( & parser_info, -size_px ) \
+		: parser_scale_for_mapping_em_to_pixels( & parser_info, size_px )
 
 		used = true
 
 		shaper_info = shaper_load_font( & shaper_ctx, label, data, transmute(rawptr) id )
-		assert( shaper_info != nil, "VEFontCache.load_font: Failed to load font from shaper")
+		// assert( shaper_info != nil, "VEFontCache.load_font: Failed to load font from shaper")
 
 		return id
 	}
@@ -409,8 +409,8 @@ unload_font :: proc( ctx : ^Context, font : FontID )
 	entry     := & entries.data[ font ]
 	entry.used = false
 
-	parser_unload_font( entry.parser_info )
-	shaper_unload_font( entry.shaper_info )
+	parser_unload_font( & entry.parser_info )
+	shaper_unload_font( & entry.shaper_info )
 }
 
 cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, translate : Vec2  ) -> b32
@@ -424,10 +424,10 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	}
 
 	// No shpae to retrieve
-	if parser_is_glyph_empty( entry.parser_info, glyph_index ) do return true
+	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
 
 	// Retrieve the shape definition from the parser.
-	shape, error := parser_get_glyph_shape( entry.parser_info, glyph_index )
+	shape, error := parser_get_glyph_shape( & entry.parser_info, glyph_index )
 	assert( error == .None )
 	if len(shape) == 0 {
 		return false
@@ -461,7 +461,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	We need a random point that is outside our shape. We simply pick something diagonally across from top-left bound corner.
 	Note that this outside point is scaled alongside the glyph in ve_fontcache_draw_filled_path, so we don't need to handle that here.
 	*/
-	bounds_0, bounds_1 := parser_get_glyph_box( entry.parser_info, glyph_index )
+	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
 
 	outside := Vec2 {
 		f32(bounds_0.x - 21),
@@ -530,7 +530,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 		append(& ctx.draw_list.calls, draw)
 	}
 
-	parser_free_shape( entry.parser_info, shape )
+	parser_free_shape( & entry.parser_info, shape )
 	return false
 }
 
@@ -541,10 +541,10 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 	entry := & ctx.entries.data[ font ]
 
 	if glyph_index == 0 do return
-	if parser_is_glyph_empty( entry.parser_info, glyph_index ) do return
+	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return
 
 	// Get hb_font text metrics. These are unscaled!
-	bounds_0, bounds_1 := parser_get_glyph_box( entry.parser_info, glyph_index )
+	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
 	bounds_width  := bounds_1.x - bounds_0.x
 	bounds_height := bounds_1.y - bounds_0.y
 
@@ -655,7 +655,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
 {
 	if glyph_index == 0 do return true
-	if parser_is_glyph_empty( entry.parser_info, glyph_index ) do return true
+	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
 	return false
 }
 
@@ -718,12 +718,12 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText
 	clear( output.glyphs )
 	clear( output.positions )
 
-	ascent, descent, line_gap := parser_get_font_vertical_metrics( entry.parser_info )
+	ascent, descent, line_gap := parser_get_font_vertical_metrics( & entry.parser_info )
 
 	if use_full_text_shape
 	{
-		assert( entry.shaper_info != nil )
-		shaper_shape_from_text( & ctx.shaper_ctx, entry.shaper_info, output, text_utf8, ascent, descent, line_gap, entry.size, entry.size_scale )
+		// assert( entry.shaper_info != nil )
+		shaper_shape_from_text( & ctx.shaper_ctx, & entry.shaper_info, output, text_utf8, ascent, descent, line_gap, entry.size, entry.size_scale )
 		return
 	}
 	else
@@ -744,7 +744,7 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText
 		for codepoint in text_utf8
 		{
 			if prev_codepoint > 0 {
-				kern       := parser_get_codepoint_kern_advance( entry.parser_info, prev_codepoint, codepoint )
+				kern       := parser_get_codepoint_kern_advance( & entry.parser_info, prev_codepoint, codepoint )
 				position.x += f32(kern) * entry.size_scale
 			}
 			if codepoint == '\n'
@@ -759,8 +759,8 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText
 				position.x = math.ceil( position.x )
 			}
 
-			append( & output.glyphs, parser_find_glyph_index( entry.parser_info, codepoint ))
-			advance, to_left_side_glyph = parser_get_codepoint_horizontal_metrics( entry.parser_info, codepoint )
+			append( & output.glyphs, parser_find_glyph_index( & entry.parser_info, codepoint ))
+			advance, to_left_side_glyph = parser_get_codepoint_horizontal_metrics( & entry.parser_info, codepoint )
 
 			append( & output.positions, Vec2 {
 				cast(f32) i32(position.x + 0.5),
