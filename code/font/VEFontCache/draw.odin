@@ -6,7 +6,7 @@ DrawCall :: struct {
 	end_index         : u32,
 	clear_before_draw : b32,
 	region            : AtlasRegionKind,
-	colour            : [4]f32,
+	colour            : Colour,
 }
 
 DrawCall_Default :: DrawCall {
@@ -25,11 +25,11 @@ DrawList :: struct {
 }
 
 FrameBufferPass :: enum u32 {
-	None             = 0,
-	Glyph            = 1,
-	Atlas            = 2,
-	Target           = 3,
-	Target_Unchanged = 4,
+	None            = 0,
+	Glyph           = 1,
+	Atlas           = 2,
+	Target          = 3,
+	Target_Uncached = 4,
 }
 
 GlyphDrawBuffer :: struct {
@@ -127,7 +127,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 	call : DrawCall
 	{
 		using call
-		pass        = .Target_Unchanged
+		pass        = .Target_Uncached
 		colour      = ctx.colour
 		start_index = u32(ctx.draw_list.indices.num)
 		blit_quad( & ctx.draw_list, dst, dst + { dst_width, dst_height }, glyph_position, glyph_position + glyph_size )
@@ -200,7 +200,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	call := DrawCall_Default
 	{
 		using call
-		pass        = .Target_Unchanged
+		pass        = .Target_Uncached
 		colour      = ctx.colour
 		start_index = cast(u32) ctx.draw_list.indices.num
 

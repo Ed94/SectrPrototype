@@ -27,10 +27,12 @@ sokol_app_frame_callback :: proc "c" () {
 	window := & state.app_window
 	// if	int(window.extent.x) != int(sokol_width) || int(window.extent.y) != int(sokol_height) {
 		window.resized = true
-		window.extent.x = sokol_width  * 0.5
-		window.extent.y = sokol_height * 0.5
+		window.extent.x = cast(f32) i32(sokol_width  * 0.5)
+		window.extent.y = cast(f32) i32(sokol_height * 0.5)
 		// log("sokol_app: Event-based frame callback triggered (detected a resize")
 	// }
+
+	font_provider_reload()
 
 	// sokol_app is the only good reference for a frame-time at this point.
 	sokol_delta_ms := sokol_app.frame_delta()

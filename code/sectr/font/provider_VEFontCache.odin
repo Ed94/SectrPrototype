@@ -1,8 +1,9 @@
 package sectr
 
 import "core:os"
-import ve        "codebase:font/VEFontCache"
-import sokol_gfx "thirdparty:sokol/gfx"
+import ve         "codebase:font/VEFontCache"
+import sokol_gfx  "thirdparty:sokol/gfx"
+import sokol_glue "thirdparty:sokol/glue"
 
 
 Font_Provider_Use_Freetype :: false
@@ -30,11 +31,32 @@ FontProviderData :: struct
 	ve_font_cache : ve.Context,
 	font_cache    : HMapChained(FontDef),
 
-	gfx_bindings  : sokol_gfx.Bindings,
-	gfx_pipeline  : sokol_gfx.Pipeline,
-	gfx_v_buffer  : sokol_gfx.Buffer,
-	gfx_uv_buffer : sokol_gfx.Buffer,
-	gfx_sampler   : sokol_gfx.Sampler,
+	gfx_sampler : sokol_gfx.Sampler,
+
+	draw_list_vbuf : sokol_gfx.Buffer,
+	draw_list_ibuf : sokol_gfx.Buffer,
+
+	glyph_shader  : sokol_gfx.Shader,
+	atlas_shader  : sokol_gfx.Shader,
+	screen_shader : sokol_gfx.Shader,
+
+	// 2k x 512, R8
+	glyph_rt_color   : sokol_gfx.Image,
+	// glyph_rt_resolve : sokol_gfx.Image,
+	// glyph_rt_depth   : sokol_gfx.Image,
+
+	// 4k x 2k, R8
+	atlas_rt_color   : sokol_gfx.Image,
+	// atlas_rt_resolve : sokol_gfx.Image,
+	// atlas_rt_depth   : sokol_gfx.Image,
+
+	glyph_pipeline  : sokol_gfx.Pipeline,
+	atlas_pipeline  : sokol_gfx.Pipeline,
+	screen_pipeline : sokol_gfx.Pipeline,
+
+	glyph_pass  : sokol_gfx.Pass,
+	atlas_pass  : sokol_gfx.Pass,
+	screen_pass : sokol_gfx.Pass,
 }
 
 font_provider_startup :: proc()
@@ -51,7 +73,317 @@ font_provider_startup :: proc()
 	ve.init( & provider_data.ve_font_cache, .STB_TrueType, allocator = persistent_slab_allocator() )
 	log("VEFontCached initialized")
 
+	ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
+
 	// TODO(Ed): Setup sokol hookup for VEFontCache
+	{
+		AttachmentDesc          :: sokol_gfx.Attachment_Desc
+		BlendFactor             :: sokol_gfx.Blend_Factor
+		BlendOp                 :: sokol_gfx.Blend_Op
+		BlendState              :: sokol_gfx.Blend_State
+		BorderColor             :: sokol_gfx.Border_Color
+		BufferDesciption        :: sokol_gfx.Buffer_Desc
+		BufferUsage             :: sokol_gfx.Usage
+		BufferType              :: sokol_gfx.Buffer_Type
+		ColorTargetState        :: sokol_gfx.Color_Target_State
+		Filter                  :: sokol_gfx.Filter
+		ImageDesc               :: sokol_gfx.Image_Desc
+		PassAction              :: sokol_gfx.Pass_Action
+		Range                   :: sokol_gfx.Range
+		SamplerDescription      :: sokol_gfx.Sampler_Desc
+		Wrap                    :: sokol_gfx.Wrap
+		VertexAttributeState    :: sokol_gfx.Vertex_Attr_State
+		VertexBufferLayoutState :: sokol_gfx.Vertex_Buffer_Layout_State
+		VertexIndexType         :: sokol_gfx.Index_Type
+		VertexFormat            :: sokol_gfx.Vertex_Format
+		VertexLayoutState       :: sokol_gfx.Vertex_Layout_State
+		VertexStep              :: sokol_gfx.Vertex_Step
+
+		using provider_data
+		backend := sokol_gfx.query_backend()
+		app_env := sokol_glue.environment()
+
+		glyph_shader  = sokol_gfx.make_shader(ve_render_glyph_shader_desc(backend) )
+		atlas_shader  = sokol_gfx.make_shader(ve_blit_atlas_shader_desc(backend) )
+		screen_shader = sokol_gfx.make_shader(ve_draw_text_shader_desc(backend) )
+
+		draw_list_vbuf = sokol_gfx.make_buffer( BufferDesciption {
+			size  = size_of([4]f32) * Kilo * 128,
+			usage = BufferUsage.STREAM,
+			type  = BufferType.VERTEXBUFFER,
+		})
+
+		draw_list_ibuf = sokol_gfx.make_buffer( BufferDesciption {
+			size  = size_of(u32) * Kilo * 32,
+			usage = BufferUsage.STREAM,
+			type  = BufferType.INDEXBUFFER,
+		})
+
+		gfx_sampler = sokol_gfx.make_sampler( SamplerDescription {
+			min_filter    = Filter.NEAREST,
+			mag_filter    = Filter.NEAREST,
+			mipmap_filter = Filter.NONE,
+			wrap_u        = Wrap.CLAMP_TO_EDGE,
+			wrap_v        = Wrap.CLAMP_TO_EDGE,
+			border_color  = BorderColor.OPAQUE_BLACK,
+		})
+
+		// glyph_pipeline
+		{
+			vs_layout : VertexLayoutState
+			{
+				using vs_layout
+				attrs[ATTR_ve_render_glyph_vs_v_position] = VertexAttributeState {
+					format       = VertexFormat.FLOAT2,
+					offset       = 0,
+					buffer_index = 0,
+				}
+				attrs[ATTR_ve_render_glyph_vs_v_texture] = VertexAttributeState {
+					format       = VertexFormat.FLOAT2,
+					offset       = size_of(Vec2),
+					buffer_index = 0,
+				}
+				buffers[0] = VertexBufferLayoutState {
+					stride    = size_of(Vec2) * 2,
+					step_func = VertexStep.PER_VERTEX
+				}
+			}
+
+			color_target := ColorTargetState {
+				pixel_format = .R8,
+				// write_mask   =
+				blend = BlendState {
+					enabled = true,
+					src_factor_rgb   = .ONE_MINUS_DST_COLOR,
+					dst_factor_rgb   = .ONE_MINUS_SRC_COLOR,
+					op_rgb           = BlendOp.ADD,
+					src_factor_alpha = BlendFactor.ONE,
+					dst_factor_alpha = BlendFactor.ZERO,
+					op_alpha         = BlendOp.ADD,
+				},
+			}
+
+			glyph_pipeline = sokol_gfx.make_pipeline({
+				shader       = glyph_shader,
+				layout       = vs_layout,
+				index_type   = VertexIndexType.UINT32,
+				colors       = {
+					0 = color_target,
+				},
+				color_count  = 1,
+				// sample_count = 1,
+				// label =
+			})
+		}
+
+		// glyph_pass
+		{
+			glyph_rt_color = sokol_gfx.make_image( ImageDesc {
+				type          = ._2D,
+				render_target = true,
+				width         = i32(ve_font_cache.atlas.buffer_width),
+				height        = i32(ve_font_cache.atlas.buffer_height),
+				num_slices    = 1,
+				num_mipmaps   = 1,
+				usage         = .STREAM,
+				pixel_format  = .R8,
+				sample_count  = app_env.defaults.sample_count,
+				// TODO(Ed): Setup labels for debug tracing/logging
+				// label         = 
+			})
+
+			color_attach := AttachmentDesc {
+				image     = glyph_rt_color,
+				// mip_level = 1,
+			}
+
+			glyph_attachments := sokol_gfx.make_attachments({
+				colors = {
+					0 = color_attach,
+				},
+			})
+
+			glyph_action := PassAction {
+				colors = {
+					0 = {
+						load_action  = .DONTCARE,
+						store_action = .STORE,
+						clear_value  = {0,0,0,1},
+					}
+				}
+			}
+
+			glyph_pass = sokol_gfx.Pass {
+				action      = glyph_action,
+				attachments = glyph_attachments,
+				// label =
+			}
+		}
+
+		// atlas_pipeline
+		{
+			vs_layout : VertexLayoutState
+			{
+				using vs_layout
+				attrs[ATTR_ve_blit_atlas_vs_v_position] = VertexAttributeState {
+					format       = VertexFormat.FLOAT2,
+					offset       = 0,
+					buffer_index = 0,
+				}
+				attrs[ATTR_ve_blit_atlas_vs_v_texture] = VertexAttributeState {
+					format       = VertexFormat.FLOAT2,
+					offset       = size_of(Vec2),
+					buffer_index = 0,
+				}
+				buffers[0] = VertexBufferLayoutState {
+					stride    = size_of(Vec2) * 2,
+					step_func = VertexStep.PER_VERTEX
+				}
+			}
+
+			color_target := ColorTargetState {
+				pixel_format = .R8,
+				// write_mask   =
+				blend = BlendState {
+					enabled = true,
+					src_factor_rgb   = .SRC_ALPHA,
+					dst_factor_rgb   = .ONE_MINUS_SRC_ALPHA,
+					op_rgb           = BlendOp.ADD,
+					src_factor_alpha = BlendFactor.ONE,
+					dst_factor_alpha = BlendFactor.ZERO,
+					op_alpha         = BlendOp.ADD,
+				},
+			}
+
+			atlas_pipeline = sokol_gfx.make_pipeline({
+				shader     = atlas_shader,
+				layout     = vs_layout,
+				index_type = VertexIndexType.UINT32,
+				colors     = {
+					0 = color_target,
+				},
+				color_count  = 1,
+				sample_count = 1,
+			})
+		}
+
+		// atlas_pass
+		{
+			atlas_rt_color = sokol_gfx.make_image( ImageDesc {
+				type          = ._2D,
+				render_target = true,
+				width         = i32(ve_font_cache.atlas.buffer_width),
+				height        = i32(ve_font_cache.atlas.buffer_height),
+				num_slices    = 1,
+				num_mipmaps   = 1,
+				usage         = .STREAM,
+				pixel_format  = .R8,
+				sample_count  = app_env.defaults.sample_count,
+				// TODO(Ed): Setup labels for debug tracing/logging
+				// label         = 
+			})
+
+			color_attach := AttachmentDesc {
+				image     = atlas_rt_color,
+				// mip_level = 1,
+			}
+
+			atlas_attachments := sokol_gfx.make_attachments({
+				colors = {
+					0 = color_attach,
+				},
+			})
+
+			atlas_action := PassAction {
+				colors = {
+					0 = {
+						load_action  = .LOAD,
+						store_action = .STORE,
+						clear_value  = {0,0,0,1},
+					}
+				}
+			}
+
+			atlas_pass = sokol_gfx.Pass {
+				action      = atlas_action,
+				attachments = atlas_attachments,
+				// label =
+			}
+		}
+
+		// screen pipeline
+		{
+			vs_layout : VertexLayoutState
+			{
+				using vs_layout
+				attrs[ATTR_ve_draw_text_vs_v_position] = VertexAttributeState {
+					format       = VertexFormat.FLOAT2,
+					offset       = 0,
+					buffer_index = 0,
+				}
+				attrs[ATTR_ve_draw_text_vs_v_texture] = VertexAttributeState {
+					format       = VertexFormat.FLOAT2,
+					offset       = size_of(Vec2),
+					buffer_index = 0,
+				}
+				buffers[0] = VertexBufferLayoutState {
+					stride    = size_of(Vec2) * 2,
+					step_func = VertexStep.PER_VERTEX
+				}
+			}
+
+			color_target := ColorTargetState {
+				// pixel_format = .R8,
+				// write_mask   =
+				blend = BlendState {
+					enabled = true,
+					src_factor_rgb   = .SRC_ALPHA,
+					dst_factor_rgb   = .ONE_MINUS_SRC_ALPHA,
+					op_rgb           = BlendOp.ADD,
+					src_factor_alpha = BlendFactor.ONE,
+					dst_factor_alpha = BlendFactor.ZERO,
+					op_alpha         = BlendOp.ADD,
+				},
+			}
+
+			screen_pipeline = sokol_gfx.make_pipeline({
+				shader     = screen_shader,
+				layout     = vs_layout,
+				index_type = VertexIndexType.UINT32,
+				colors     = {
+					0 = color_target,
+				},
+				color_count  = 1,
+				sample_count = 1,
+			})
+		}
+
+		// screen_pass
+		{
+			screen_action := PassAction {
+				colors = {
+					0 = {
+						load_action  = .CLEAR,
+						store_action = .STORE,
+						clear_value  = {0,0,0,0},
+					}
+				}
+			}
+
+			screen_pass = sokol_gfx.Pass {
+				action = screen_action,
+				// label =
+			}
+		}
+	}
+}
+
+font_provider_reload :: proc()
+{
+	state         := get_state()
+	provider_data := & state.font_provider_data
+
+	ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y) )
 }
 
 font_provider_shutdown :: proc()
@@ -92,7 +424,7 @@ font_load :: proc(path_file : string,
 	verify( set_error == AllocatorError.None, "Failed to add new font entry to cache" )
 
 	// TODO(Ed): Load even sizes from 8px to upper bound.
-	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, default_size )
+	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 36.0 )
 
 	fid := FontID { key, desired_id }
 	return fid

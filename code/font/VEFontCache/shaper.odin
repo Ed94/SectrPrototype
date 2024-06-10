@@ -88,7 +88,7 @@ shaper_shape_from_text :: proc( ctx : ^ShaperContext, info : ^ShaperInfo, output
 		// script = HB_SCRIPT_LATIN
 		harfbuzz.buffer_set_script( buffer, script )
 		harfbuzz.buffer_set_direction( buffer, harfbuzz.script_get_horizontal_direction( script ))
-		harfbuzz.set_language( buffer, harfbuzz.language_get_default() )
+		harfbuzz.buffer_set_language( buffer, harfbuzz.language_get_default() )
 
 		// Perform the actual shaping of this run using HarfBuzz.
 		harfbuzz.shape( font, buffer, nil, 0 )

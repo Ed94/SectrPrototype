@@ -177,8 +177,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		sokol_app.client_init()
 
 		window := & state.app_window
-		window.extent.x = sokol_app.widthf()
-		window.extent.y = sokol_app.heightf()
+		window.extent.x = cast(f32) i32(sokol_app.widthf() * 0.5)
+		window.extent.y = cast(f32) i32(sokol_app.heightf() * 0.5)
 
 		// TODO(Ed): We don't need monitor tracking until we have multi-window support (which I don't think I'll do for this prototype)
 		// Sokol doesn't provide it.

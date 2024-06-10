@@ -116,13 +116,6 @@ font_key_from_label :: #force_inline proc( label : string ) -> u64 {
 	return hash
 }
 
-// ve_fontcache_configure_snap
-configure_snap :: proc( ctx : ^Context, snap_width, snap_height : u32 ) {
-	assert( ctx != nil )
-	ctx.snap_width  = snap_width
-	ctx.snap_height = snap_height
-}
-
 // For a provided alpha value,
 // allows the function to calculate the position of a point along the curve at any given fraction of its total length
 // ve_fontcache_eval_bezier (quadratic)
@@ -356,6 +349,13 @@ shutdown :: proc( ctx : ^Context )
 	}
 
 	shaper_shutdown( & shaper_ctx )
+}
+
+// ve_fontcache_configure_snap
+configure_snap :: proc( ctx : ^Context, snap_width, snap_height : u32 ) {
+	assert( ctx != nil )
+	ctx.snap_width  = snap_width
+	ctx.snap_height = snap_height
 }
 
 // ve_fontcache_load
