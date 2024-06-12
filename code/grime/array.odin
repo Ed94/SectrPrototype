@@ -79,10 +79,11 @@ array_append_array :: proc( using self: ^Array( $ Type), other : Array(Type)) ->
 	// Note(Ed) : Original code from gencpp
 	// libc.memcpy( ptr_offset(data, num), raw_data(items), len(items) * size_of(Type) )
 
-	// TODO(Ed) : VERIFY VIA DEBUG THIS COPY IS FINE.
-	ensure(false, "time to check....")
 	target := ptr_offset( data, num )
-	copy( slice_ptr(target, int(capacity - num)), array_to_slice(other) )
+
+	dst_slice := slice_ptr(target, int(capacity - num))
+	src_slice := array_to_slice(other)
+	copy( dst_slice, src_slice )
 
 	num += other.num
 	return AllocatorError.None

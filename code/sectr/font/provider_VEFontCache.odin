@@ -423,6 +423,8 @@ font_load :: proc(path_file : string,
 	def, set_error := hmap_chained_set(font_cache, key, FontDef{})
 	verify( set_error == AllocatorError.None, "Failed to add new font entry to cache" )
 
+	def.path_file = path_file
+
 	// TODO(Ed): Load even sizes from 8px to upper bound.
 	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 36.0 )
 

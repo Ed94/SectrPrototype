@@ -112,7 +112,7 @@ can_batch_glyph :: proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_in
 		cache_glyph_to_atlas( ctx, font, glyph_index )
 	}
 
-	assert( LRU_get( & region.state, lru_code ) != 1 )
+	assert( LRU_get( & region.state, lru_code ) != -1 )
 	set( ctx.temp_codepoint_seen, lru_code, true )
 	ctx.temp_codepoint_seen_num += 1
 	return true

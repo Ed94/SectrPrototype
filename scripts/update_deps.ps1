@@ -109,13 +109,14 @@ clone-gitrepo $path_sokol_tools $url_sokol_tools
 
 $path_vendor        = join-path $path_odin          'vendor'
 $path_vendor_raylib = join-path $path_vendor        'raylib'
+$path_freetype_dlls = join-path $path_freetype      'binaries/release'
 $path_harfbuzz_dlls = join-path $path_harfbuzz      'lib/win64'
 $path_raylib_dlls   = join-path $path_vendor_raylib 'windows'
 $path_sokol_dlls    = join-path $path_thirdparty    'sokol'
 
 if ( $binaries_dirty -or $true )
 {
-	$third_party_dlls = Get-ChildItem -path $path_harfbuzz_dlls -Filter '*dll'
+	$third_party_dlls = Get-ChildItem -path $path_harfbuzz_dlls -Filter '*.dll'
 	foreach ($dll in $third_party_dlls) {
 		$destination = join-path $path_build $dll.Name
 		Copy-Item $dll.FullName -Destination $destination -Force

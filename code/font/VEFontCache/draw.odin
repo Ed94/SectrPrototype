@@ -270,7 +270,7 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position : Vec2, scale : Vec2 ) -> b32
 {
 	assert( ctx != nil )
-	assert( font > 0 && font < FontID(ctx.entries.num) )
+	assert( font >= 0 && font < FontID(ctx.entries.num) )
 
 	shaped := shape_text_cached( ctx, font, text_utf8 )
 

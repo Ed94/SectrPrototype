@@ -117,9 +117,11 @@ parser_find_glyph_index :: proc( font : ^ParserFontInfo, codepoint : rune ) -> (
 	{
 		case .Freetype:
 			glyph_index = transmute(Glyph) freetype.get_char_index( font.freetype_info, transmute(u32) codepoint )
+			return
 
 		case .STB_TrueType:
 			glyph_index = transmute(Glyph) stbtt.FindGlyphIndex( & font.stbtt_info, codepoint )
+			return
 	}
 	return Glyph(-1)
 }

@@ -14,6 +14,7 @@ and direct pointers are kept across the codebase instead of a key to the slot.
 package grime
 
 import "core:mem"
+import "base:runtime"
 
 HTable_Minimum_Capacity :: 4 * Kilobyte
 
@@ -111,7 +112,11 @@ hmap_chained_lookup_id :: #force_inline proc( using self : HMapChained($Type), k
 hmap_chained_get :: proc( using self : HMapChained($Type), key : u64) -> ^Type
 {
 	// profile(#procedure)
-	surface_slot := lookup[hmap_chained_lookup_id(self, key)]
+	hash_index   := hmap_chained_lookup_id(self, key)
+	// if hash_index == 565 {
+	// 	runtime.debug_trap()
+	// }
+	surface_slot := lookup[hash_index]
 
 	if surface_slot == nil {
 		return nil
@@ -178,7 +183,7 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 		error := AllocatorError.None
 		if slot.next == nil {
 			block        : []byte
-			block, error = pool_grab(pool)
+			block, error = pool_grab(pool, true)
 			next        := transmute( ^HMapChainedSlot(Type)) & block[0]
 			slot.next    = next
 			next.prev    = slot
@@ -190,7 +195,7 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 	}
 
 	if surface_slot == nil {
-		block, error         := pool_grab(pool)
+		block, error         := pool_grab(pool, true)
 		surface_slot         := transmute( ^HMapChainedSlot(Type)) & block[0]
 		surface_slot.key      = key
 		surface_slot.value    = value
@@ -201,7 +206,7 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 		}
 		lookup[hash_index] = surface_slot
 
-		block, error = pool_grab(pool)
+		block, error = pool_grab(pool, true)
 		next             := transmute( ^HMapChainedSlot(Type)) & block[0]
 		surface_slot.next = next
 		next.prev         = surface_slot
@@ -214,12 +219,12 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 		return result, error
 	}
 
-	slot := surface_slot.next
+	slot : ^HMapChainedSlot(Type) = surface_slot.next
 	for ; slot != nil; slot = slot.next
 	{
 		if !slot.occupied
 		{
-			result, error := set_slot( self, surface_slot, key, value)
+			result, error := set_slot( self, slot, key, value)
 			return result, error
 		}
 	}

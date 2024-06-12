@@ -31,7 +31,7 @@ pool_list_init :: proc( pool : ^PoolList, capacity : u32 )
 
 	pool.free_list, error = make( Array( PoolListIter ), u64(capacity) )
 	assert( error == .None, "VEFontCache.pool_list_init : Failed to allocate free_list array")
-	array_resize( & pool.items, u64(capacity) )
+	array_resize( & pool.free_list, u64(capacity) )
 
 	pool.capacity = capacity
 
@@ -172,10 +172,14 @@ LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64 {
 	}
 
 	pool_list_push_front( & cache.key_queue, key )
-	hmap_chained_set( cache.table, key, LRU_Link {
+
+	bytes    := transmute( [8]byte ) key
+	hash_key := fnv64a( bytes[:] )
+	hmap_chained_set( cache.table, hash_key, LRU_Link {
 		value = value,
 		ptr   = cache.key_queue.front
 	})
+
 	cache.num += 1
 	return evict
 }
