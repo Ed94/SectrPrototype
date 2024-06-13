@@ -466,8 +466,8 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
 
 	outside := Vec2 {
-		f32(bounds_0.x - 21),
-		f32(bounds_0.y - 33),
+		f32(bounds_0.x) - 21,
+		f32(bounds_0.y) - 33,
 	}
 
 	// Note(Original Author): Figure out scaling so it fits within our box.

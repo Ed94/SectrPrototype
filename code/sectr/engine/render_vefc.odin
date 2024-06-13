@@ -51,7 +51,7 @@ render :: proc()
 	// ve_ctx := & font_provider.ve_font_cache
 
 	// Triangle Demo
-	if true
+	if false
 	{
 		using debug.gfx_tri_demo_state
 		sokol_gfx.begin_pass(sokol_gfx.Pass { action = pass_action, swapchain = sokol_glue.swapchain() })
