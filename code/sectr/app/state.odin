@@ -238,6 +238,7 @@ State :: struct {
 	font_provider_data : FontProviderData,
 
 	font_firacode                : FontID,
+	font_open_sans               : FontID,
 	font_squidgy_slimes          : FontID,
 	font_rec_mono_semicasual_reg : FontID,
 	default_font                 : FontID,

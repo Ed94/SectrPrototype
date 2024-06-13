@@ -281,9 +281,12 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
-		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
-		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
-		default_font = font_firacode
+		// path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
+		// font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
+
+		path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
+		font_open_sans  = font_load( path_open_sans, 24.0, "OpenSans" )
+		default_font = font_open_sans
 		log( "Default font loaded" )
 	}
 

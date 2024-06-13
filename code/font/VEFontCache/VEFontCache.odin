@@ -16,6 +16,7 @@ Changes:
 package VEFontCache
 
 import "core:math"
+import "core:mem"
 
 Advance_Snap_Smallfont_Size :: 12
 
@@ -388,6 +389,7 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 		size_scale = size_px < 0.0 ?                             \
 			parser_scale_for_pixel_height( & parser_info, -size_px ) \
 		: parser_scale_for_mapping_em_to_pixels( & parser_info, size_px )
+		// size_scale = 1.0
 
 		used = true
 
@@ -435,20 +437,20 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 
 	if ctx.debug_print_verbose
 	{
-		log( "shape: \n")
+		log( "shape:")
 		for vertex in shape
 		{
 			if vertex.type == .Move {
-				logf("move_to %d %d\n", vertex.x, vertex.y )
+				logf("move_to %d %d", vertex.x, vertex.y )
 			}
 			else if vertex.type == .Line {
-				logf("line_to %d %d\n", vertex.x, vertex.y )
+				logf("line_to %d %d", vertex.x, vertex.y )
 			}
 			else if vertex.type == .Curve {
-				logf("curve_to %d %d through %d %d\n", vertex.x, vertex.y, vertex.contour_x0, vertex.contour_y0 )
+				logf("curve_to %d %d through %d %d", vertex.x, vertex.y, vertex.contour_x0, vertex.contour_y0 )
 			}
 			else if vertex.type == .Cubic {
-				logf("cubic_to %d %d through %d %d and %d %d\n",
+				logf("cubic_to %d %d through %d %d and %d %d",
 					vertex.x, vertex.y,
 					vertex.contour_x0, vertex.contour_y0,
 					vertex.contour_x1, vertex.contour_y1 )
@@ -668,10 +670,10 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 {
 	ELFhash64 :: proc( hash : ^u64, ptr : ^( $Type), count := 1 )
 	{
-		x    := u64(0)
-		bytes = transmute( [^]byte) ptr
+		x     := u64(0)
+		bytes := transmute( [^]byte) ptr
 		for index : i32 = 0; index < i32( size_of(Type)); index += 1 {
-			(hash^) = ((hash^) << 4 ) + bytes[index]
+			(hash^) = ((hash^) << 4 ) + u64(bytes[index])
 			x       = (hash^) & 0xF000000000000000
 			if x != 0 {
 				(hash^) ~= (x >> 24)
@@ -679,7 +681,13 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 			(hash^) &= ~x
 		}
 	}
+
+
+	font := font
   hash        := cast(u64) 0x9f8e00d51d263c24;
+	ELFhash64( & hash, raw_data(transmute([]u8) text_utf8), len(text_utf8)  )
+	ELFhash64( & hash, & font )
+
 	shape_cache := & ctx.shape_cache
 	state       := & ctx.shape_cache.state
 

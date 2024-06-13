@@ -204,6 +204,11 @@ font_provider_startup :: proc()
 	log("font_provider initialized")
 }
 
+font_provider_reload :: proc()
+{
+	
+}
+
 font_provider_shutdown :: proc()
 {
 	font_provider_data := & get_state().font_provider_data; using font_provider_data

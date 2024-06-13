@@ -68,7 +68,7 @@ render :: proc()
 	}
 
 	// learnopengl.com/In-Practice/Text-Rendering
-	when false
+	when true
 	{
 		profile("learngl_text_render_pass")
 		using font_provider_data

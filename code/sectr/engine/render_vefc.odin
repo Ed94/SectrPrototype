@@ -3,6 +3,7 @@ package sectr
 import ve         "codebase:font/VEFontCache"
 import sokol_gfx  "thirdparty:sokol/gfx"
 import sokol_glue "thirdparty:sokol/glue"
+import "core:time"
 
 PassActions :: struct {
 	bg_clear_black : sokol_gfx.Pass_Action,
@@ -38,6 +39,8 @@ render :: proc()
 	do_nothing : bool
 	do_nothing = false
 
+	time.sleep(10000)
+
 	// The below are most likely limited to a "depth layer" and so
 	// different depth layers need different draw pass combos (of the 3 constructive passes)
 	// Will need to profile how expensive it is for batching with the UI box rendering
@@ -47,26 +50,65 @@ render :: proc()
 	using font_provider
 	// ve_ctx := & font_provider.ve_font_cache
 
+	// Triangle Demo
+	if true
+	{
+		using debug.gfx_tri_demo_state
+		sokol_gfx.begin_pass(sokol_gfx.Pass { action = pass_action, swapchain = sokol_glue.swapchain() })
+		sokol_gfx.apply_pipeline( pipeline )
+		sokol_gfx.apply_bindings( bindings )
+
+		sokol_gfx.draw( 0, 3, 1 )
+
+		sokol_gfx.end_pass()
+	}
+
+	// Clear Demo
+	if false
+	{
+	  green_value := debug.gfx_clear_demo_pass_action.colors[0].clear_value.g + 0.01
+	  debug.gfx_clear_demo_pass_action.colors[0].clear_value.g = green_value > 1.0 ? 0.0 : green_value
+
+	  sokol_gfx.begin_pass( sokol_gfx.Pass {
+	  	action    = debug.gfx_clear_demo_pass_action,
+	  	swapchain = sokol_glue.swapchain()
+	  })
+	  sokol_gfx.end_pass()
+	  sokol_gfx.commit()
+	}
+
 	// "Draw text" using immediate mode api
 	{
 		// text_test_str := str_fmt("frametime: %v", frametime_avg_ms)
-		text_test_str := str_fmt("HELLO VE FONT CACHE!!!!!")
+		// text_test_str := str_fmt("HELLO VE FONT CACHE!!!!!")
+		text_test_str := str_fmt("A")
 
 		// font_provider := & state.font_provider_data
 		fdef := hmap_chained_get( font_cache, default_font.key )
 
-		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {30, 30}, Vec2{1, 1} )
+		width  := app_window.extent.x * 2
+		height := app_window.extent.y * 2
+
+		ve.set_colour( & ve_font_cache,  { 1.0, 1.0, 1.0, 1.0 } )
+		ve.configure_snap( & ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
+
+		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.0, 0.0}, Vec2{1 / width, 1 / height} )
 	}
 
 	// Process the draw calls for drawing text
+	if true
 	{
 		draw_list := ve.get_draw_list( & ve_font_cache )
 
 		sokol_gfx.update_buffer( draw_list_vbuf, Range{ draw_list.vertices.data, draw_list.vertices.num })
 		sokol_gfx.update_buffer( draw_list_ibuf, Range{ draw_list.indices.data,  draw_list.indices.num  })
 
+		draw_list_vert_slice := array_to_slice(draw_list.vertices)
+		draw_list_index_slice := array_to_slice(draw_list.indices)
+		draw_list_call_slice := array_to_slice(draw_list.calls)
 		for & draw_call in array_to_slice(draw_list.calls)
 		{
+			profile("ve draw call")
 			if (draw_call.end_index - draw_call.start_index) == 0 do continue
 
 			switch draw_call.pass
@@ -74,6 +116,7 @@ render :: proc()
 				// 1. Do the glyph rendering pass
 				// Glyphs are first rendered to an intermediate 2k x 512px R8 texture
 				case .Glyph:
+					profile("ve draw call: glyph")
 					width  := ve_font_cache.atlas.buffer_width
 					height := ve_font_cache.atlas.buffer_height
 
@@ -102,9 +145,15 @@ render :: proc()
 					}
 					sokol_gfx.apply_bindings( bindings )
 
+					// num_indices := draw_call.end_index - draw_call.start_index
+					// sokol_gfx.draw( 0, num_indices, 1 )
+
+					// sokol_gfx.end_pass()
+
 				// 2. Do the atlas rendering pass
 				// A simple 16-tap box downsample shader is then used to blit from this intermediate texture to the final atlas location
 				case .Atlas:
+					profile("ve draw call: atlas")
 					width  := ve_font_cache.atlas.width
 					height := ve_font_cache.atlas.height
 
@@ -142,6 +191,7 @@ render :: proc()
 				case .None: fallthrough
 				case .Target: fallthrough
 				case .Target_Uncached:
+					profile("ve draw call: target")
 					width  := u32(app_window.extent.x * 2)
 					height := u32(app_window.extent.y * 2)
 
@@ -180,11 +230,12 @@ render :: proc()
 			}
 
 			num_indices := draw_call.end_index - draw_call.start_index
-			sokol_gfx.draw( 0, num_indices, 1 )
+			sokol_gfx.draw( draw_call.start_index, num_indices, 1 )
 
 			sokol_gfx.end_pass()
 		}
 
 		sokol_gfx.commit()
+		ve.flush_draw_list( & ve_font_cache )
 	}
 }

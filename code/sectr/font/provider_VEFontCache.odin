@@ -75,6 +75,10 @@ font_provider_startup :: proc()
 
 	ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
+	provider_data.ve_font_cache.debug_print = true
+	provider_data.ve_font_cache.debug_print_verbose = true
+
+	
 	// TODO(Ed): Setup sokol hookup for VEFontCache
 	{
 		AttachmentDesc          :: sokol_gfx.Attachment_Desc
@@ -160,6 +164,8 @@ font_provider_startup :: proc()
 					enabled = true,
 					src_factor_rgb   = .ONE_MINUS_DST_COLOR,
 					dst_factor_rgb   = .ONE_MINUS_SRC_COLOR,
+					// src_factor_rgb   = .SRC_ALPHA,
+					// dst_factor_rgb   = .ONE_MINUS_SRC_ALPHA,
 					op_rgb           = BlendOp.ADD,
 					src_factor_alpha = BlendFactor.ONE,
 					dst_factor_alpha = BlendFactor.ZERO,
@@ -430,7 +436,7 @@ font_provider_reload :: proc()
 	state         := get_state()
 	provider_data := & state.font_provider_data
 
-	ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y) )
+	ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 }
 
 font_provider_shutdown :: proc()
@@ -473,7 +479,7 @@ font_load :: proc(path_file : string,
 	def.path_file = path_file
 
 	// TODO(Ed): Load even sizes from 8px to upper bound.
-	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 36.0 )
+	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 72.0 )
 
 	fid := FontID { key, desired_id }
 	return fid
