@@ -145,7 +145,7 @@ render :: proc()
 					width  := u32(app_window.extent.x * 2)
 					height := u32(app_window.extent.y * 2)
 
-					pass := atlas_pass
+					pass := screen_pass
 					if ! draw_call.clear_before_draw {
 						pass.action.colors[0].load_action = .LOAD
 						// pass.action.colors[0].clear_value.a = 0.0

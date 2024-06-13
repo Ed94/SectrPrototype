@@ -42,13 +42,13 @@ FontProviderData :: struct
 
 	// 2k x 512, R8
 	glyph_rt_color   : sokol_gfx.Image,
+	glyph_rt_depth   : sokol_gfx.Image,
 	// glyph_rt_resolve : sokol_gfx.Image,
-	// glyph_rt_depth   : sokol_gfx.Image,
 
 	// 4k x 2k, R8
 	atlas_rt_color   : sokol_gfx.Image,
+	atlas_rt_depth   : sokol_gfx.Image,
 	// atlas_rt_resolve : sokol_gfx.Image,
-	// atlas_rt_depth   : sokol_gfx.Image,
 
 	glyph_pipeline  : sokol_gfx.Pipeline,
 	atlas_pipeline  : sokol_gfx.Pipeline,
@@ -90,6 +90,7 @@ font_provider_startup :: proc()
 		ImageDesc               :: sokol_gfx.Image_Desc
 		PassAction              :: sokol_gfx.Pass_Action
 		Range                   :: sokol_gfx.Range
+		ResourceState           :: sokol_gfx.Resource_State
 		SamplerDescription      :: sokol_gfx.Sampler_Desc
 		Wrap                    :: sokol_gfx.Wrap
 		VertexAttributeState    :: sokol_gfx.Vertex_Attr_State
@@ -112,12 +113,14 @@ font_provider_startup :: proc()
 			usage = BufferUsage.STREAM,
 			type  = BufferType.VERTEXBUFFER,
 		})
+		verify( sokol_gfx.query_buffer_state( draw_list_vbuf) < ResourceState.FAILED, "Failed to make draw_list_vbuf" )
 
 		draw_list_ibuf = sokol_gfx.make_buffer( BufferDesciption {
 			size  = size_of(u32) * Kilo * 32,
 			usage = BufferUsage.STREAM,
 			type  = BufferType.INDEXBUFFER,
 		})
+		verify( sokol_gfx.query_buffer_state( draw_list_ibuf) < ResourceState.FAILED, "Failed to make draw_list_iubuf" )
 
 		gfx_sampler = sokol_gfx.make_sampler( SamplerDescription {
 			min_filter    = Filter.NEAREST,
@@ -127,6 +130,7 @@ font_provider_startup :: proc()
 			wrap_v        = Wrap.CLAMP_TO_EDGE,
 			border_color  = BorderColor.OPAQUE_BLACK,
 		})
+		verify( sokol_gfx.query_sampler_state( gfx_sampler) < ResourceState.FAILED, "Failed to make gfx_sampler" )
 
 		// glyph_pipeline
 		{
@@ -171,9 +175,13 @@ font_provider_startup :: proc()
 					0 = color_target,
 				},
 				color_count  = 1,
+				depth = {
+					pixel_format = .DEPTH,
+				},
 				// sample_count = 1,
 				// label =
 			})
+			verify( sokol_gfx.query_pipeline_state(glyph_pipeline) < ResourceState.FAILED, "Failed to make glyph_pipeline" )
 		}
 
 		// glyph_pass
@@ -185,11 +193,24 @@ font_provider_startup :: proc()
 				height        = i32(ve_font_cache.atlas.buffer_height),
 				num_slices    = 1,
 				num_mipmaps   = 1,
-				usage         = .STREAM,
+				usage         = .IMMUTABLE,
 				pixel_format  = .R8,
 				sample_count  = app_env.defaults.sample_count,
 				// TODO(Ed): Setup labels for debug tracing/logging
 				// label         = 
+			})
+			verify( sokol_gfx.query_image_state(glyph_rt_color) < ResourceState.FAILED, "Failed to make glyph_pipeline" )
+
+			glyph_rt_depth = sokol_gfx.make_image( ImageDesc {
+				type          = ._2D,
+				render_target = true,
+				width         = i32(ve_font_cache.atlas.buffer_width),
+				height        = i32(ve_font_cache.atlas.buffer_height),
+				num_slices    = 1,
+				num_mipmaps   = 1,
+				usage         = .IMMUTABLE,
+				pixel_format  = .DEPTH,
+				sample_count  = app_env.defaults.sample_count,
 			})
 
 			color_attach := AttachmentDesc {
@@ -201,7 +222,11 @@ font_provider_startup :: proc()
 				colors = {
 					0 = color_attach,
 				},
+				depth_stencil = {
+					image = glyph_rt_depth,
+				},
 			})
+			verify( sokol_gfx.query_attachments_state(glyph_attachments) < ResourceState.FAILED, "Failed to make glyph_attachments" )
 
 			glyph_action := PassAction {
 				colors = {
@@ -263,7 +288,10 @@ font_provider_startup :: proc()
 					0 = color_target,
 				},
 				color_count  = 1,
-				sample_count = 1,
+				depth = {
+					pixel_format = .DEPTH,
+				},
+				// sample_count = 1,
 			})
 		}
 
@@ -276,12 +304,26 @@ font_provider_startup :: proc()
 				height        = i32(ve_font_cache.atlas.buffer_height),
 				num_slices    = 1,
 				num_mipmaps   = 1,
-				usage         = .STREAM,
+				usage         = .IMMUTABLE,
 				pixel_format  = .R8,
 				sample_count  = app_env.defaults.sample_count,
 				// TODO(Ed): Setup labels for debug tracing/logging
 				// label         = 
 			})
+			verify( sokol_gfx.query_image_state(atlas_rt_color) < ResourceState.FAILED, "Failed to make atlas_rt_color")
+
+			atlas_rt_depth = sokol_gfx.make_image( ImageDesc {
+				type          = ._2D,
+				render_target = true,
+				width         = i32(ve_font_cache.atlas.buffer_width),
+				height        = i32(ve_font_cache.atlas.buffer_height),
+				num_slices    = 1,
+				num_mipmaps   = 1,
+				usage         = .IMMUTABLE,
+				pixel_format  = .DEPTH,
+				sample_count  = app_env.defaults.sample_count,
+			})
+			verify( sokol_gfx.query_image_state(atlas_rt_depth) < ResourceState.FAILED, "Failed to make atlas_rt_depth")
 
 			color_attach := AttachmentDesc {
 				image     = atlas_rt_color,
@@ -292,7 +334,11 @@ font_provider_startup :: proc()
 				colors = {
 					0 = color_attach,
 				},
+				depth_stencil = {
+					image = atlas_rt_depth,
+				},
 			})
+			verify( sokol_gfx.query_attachments_state(atlas_attachments) < ResourceState.FAILED, "Failed to make atlas_attachments")
 
 			atlas_action := PassAction {
 				colors = {
@@ -356,6 +402,7 @@ font_provider_startup :: proc()
 				color_count  = 1,
 				sample_count = 1,
 			})
+			verify( sokol_gfx.query_pipeline_state(screen_pipeline) < ResourceState.FAILED, "Failed to make screen_pipeline" )
 		}
 
 		// screen_pass
