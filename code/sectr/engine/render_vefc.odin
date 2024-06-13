@@ -92,7 +92,7 @@ render :: proc()
 		ve.set_colour( & ve_font_cache,  { 1.0, 1.0, 1.0, 1.0 } )
 		ve.configure_snap( & ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
-		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.0, 0.0}, Vec2{1 / width, 1 / height} )
+		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.4, 0.1}, Vec2{1 / width, 1 / height} )
 	}
 
 	// Process the draw calls for drawing text
@@ -100,11 +100,12 @@ render :: proc()
 	{
 		draw_list := ve.get_draw_list( & ve_font_cache )
 
-		sokol_gfx.update_buffer( draw_list_vbuf, Range{ draw_list.vertices.data, draw_list.vertices.num })
-		sokol_gfx.update_buffer( draw_list_ibuf, Range{ draw_list.indices.data,  draw_list.indices.num  })
-
-		draw_list_vert_slice := array_to_slice(draw_list.vertices)
+		draw_list_vert_slice  := array_to_slice(draw_list.vertices)
 		draw_list_index_slice := array_to_slice(draw_list.indices)
+
+		sokol_gfx.update_buffer( draw_list_vbuf, Range{ draw_list.vertices.data, draw_list.vertices.num * size_of(ve.Vertex) })
+		sokol_gfx.update_buffer( draw_list_ibuf, Range{ draw_list.indices.data,  draw_list.indices.num  * size_of(u32)  })
+
 		draw_list_call_slice := array_to_slice(draw_list.calls)
 		for & draw_call in array_to_slice(draw_list.calls)
 		{

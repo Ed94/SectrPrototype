@@ -233,9 +233,9 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 {
 	if debug_print_verbose
 	{
-		log("outline_path: \n")
+		log("outline_path:")
 		for point in path {
-			logf("    %.2f %.2f\n", point.x * scale )
+			logf(" point: %v", point * scale + translate )
 		}
 	}
 

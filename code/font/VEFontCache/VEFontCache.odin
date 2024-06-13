@@ -484,7 +484,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	{
 		case .Move:
 			if path.num > 0 {
-				draw_filled_path( & ctx.draw_list, outside, array_to_slice(path), scale, translate )
+				draw_filled_path( & ctx.draw_list, outside, array_to_slice(path), scale, translate, ctx.debug_print_verbose )
 			}
 			clear(path)
 			fallthrough
@@ -523,7 +523,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 			assert(false, "Unknown edge type or invalid")
 	}
 	if path.num > 0 {
-		draw_filled_path( & ctx.draw_list, outside, array_to_slice(path), scale, translate )
+		draw_filled_path( & ctx.draw_list, outside, array_to_slice(path), scale, translate, ctx.debug_print_verbose )
 	}
 
 	// Note(Original Author): Apend the draw call
@@ -533,7 +533,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	}
 
 	parser_free_shape( & entry.parser_info, shape )
-	return false
+	return true
 }
 
 cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph )

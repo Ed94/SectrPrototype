@@ -176,6 +176,7 @@ decide_codepoint_region :: proc( ctx : ^Context, entry : ^Entry, glyph_index : G
 		return
 	}
 
+	over_sample = ctx.atlas.over_sample
 	assert(region != nil)
 	return
 }
