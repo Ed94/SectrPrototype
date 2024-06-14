@@ -36,7 +36,7 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : u32 ) 
 			height = f32(atlas.region_b.height)
 
 			position.x = cast(f32) (( local_idx % atlas.region_a.capacity.x ) * atlas.region_a.width)
-			position.y = cast(f32) (( local_idx % atlas.region_a.capacity.x ) * atlas.region_a.height)
+			position.y = cast(f32) (( local_idx / atlas.region_a.capacity.x ) * atlas.region_a.height)
 
 			position.x += f32(atlas.region_a.offset.x)
 			position.y += f32(atlas.region_a.offset.y)
@@ -46,7 +46,7 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : u32 ) 
 			height = f32(atlas.region_b.height)
 
 			position.x = cast(f32) (( local_idx % atlas.region_b.capacity.x ) * atlas.region_b.width)
-			position.y = cast(f32) (( local_idx % atlas.region_b.capacity.x ) * atlas.region_b.height)
+			position.y = cast(f32) (( local_idx / atlas.region_b.capacity.x ) * atlas.region_b.height)
 
 			position.x += f32(atlas.region_b.offset.x)
 			position.y += f32(atlas.region_b.offset.y)
@@ -56,7 +56,7 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : u32 ) 
 			height = f32(atlas.region_c.height)
 
 			position.x = cast(f32) (( local_idx % atlas.region_c.capacity.x ) * atlas.region_c.width)
-			position.y = cast(f32) (( local_idx % atlas.region_c.capacity.x ) * atlas.region_c.height)
+			position.y = cast(f32) (( local_idx / atlas.region_c.capacity.x ) * atlas.region_c.height)
 
 			position.x += f32(atlas.region_c.offset.x)
 			position.y += f32(atlas.region_c.offset.y)
@@ -66,7 +66,7 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : u32 ) 
 			height = f32(atlas.region_d.height)
 
 			position.x = cast(f32) (( local_idx % atlas.region_d.capacity.x ) * atlas.region_d.width)
-			position.y = cast(f32) (( local_idx % atlas.region_d.capacity.x ) * atlas.region_d.height)
+			position.y = cast(f32) (( local_idx / atlas.region_d.capacity.x ) * atlas.region_d.height)
 
 			position.x += f32(atlas.region_d.offset.x)
 			position.y += f32(atlas.region_d.offset.y)
@@ -140,7 +140,7 @@ decide_codepoint_region :: proc( ctx : ^Context, entry : ^Entry, glyph_index : G
 		region_kind = .A
 		region      = & atlas.region_a
 	}
-	else if bounds_width_scaled <= atlas.region_b.width && bounds_height_scaled <= atlas.region_b.height
+	else if bounds_width_scaled <= atlas.region_a.width && bounds_height_scaled <= atlas.region_a.height
 	{
 		// Region B for tall glyphs. These are good for things such as european alphabets.
 		region_kind = .B

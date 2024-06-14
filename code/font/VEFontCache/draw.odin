@@ -44,32 +44,33 @@ GlyphDrawBuffer :: struct {
 	draw_list       : DrawList,
 }
 
-blit_quad :: proc( draw_list : ^DrawList, p0, p1 : Vec2, uv0, uv1 : Vec2 )
+blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}, uv0 : Vec2 = {0, 0}, uv1 : Vec2 = {1, 1} )
 {
+	// logf("Blitting: xy0: %0.2f, %0.2f xy1: %0.2f, %0.2f uv0: %0.2f, %0.2f uv1: %0.2f, %0.2f",
+		// p0.x, p0.y, p1.x, p1.y, uv0.x, uv0.y, uv1.x, uv1.y);
 	v_offset := cast(u32) draw_list.vertices.num
 
 	vertex := Vertex {
 		{p0.x, p0.y},
-		uv0.x,
-		uv0.y
+		uv0.x, uv0.y
 	}
 	append( & draw_list.vertices, vertex )
+
 	vertex = Vertex {
 		{p0.x, p1.y},
-		uv0.x,
-		uv1.y
+		uv0.x, uv1.y
 	}
 	append( & draw_list.vertices, vertex )
+
 	vertex = Vertex {
 		{p1.x, p0.y},
-		uv1.x,
-		uv0.y
+		uv1.x, uv0.y
 	}
 	append( & draw_list.vertices, vertex )
+
 	vertex = Vertex {
 		{p1.x, p1.y},
-		uv1.x,
-		uv1.y
+		uv1.x, uv1.y
 	}
 	append( & draw_list.vertices, vertex )
 
@@ -112,6 +113,8 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 	glyph_dst_height := f32(bounds_height) * entry.size_scale
 	glyph_width      += f32(2 * ctx.atlas.glyph_padding)
 	glyph_height     += f32(2 * ctx.atlas.glyph_padding)
+	glyph_dst_width  += f32(2 * ctx.atlas.glyph_padding)
+	glyph_dst_height += f32(2 * ctx.atlas.glyph_padding)
 
 	// Figure out the destination rect.
 	bounds_scaled := Vec2 {
@@ -150,7 +153,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, position, scale : Vec2 ) -> b32
 {
 	// Glyph not in current font
-	if glyph_index == 0                                        do return true
+	if glyph_index == 0                                          do return true
 	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
 
 	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
@@ -190,7 +193,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	glyph_scale  := Vec2 { glyph_width, glyph_height }
 
 	bounds_0_scaled := Vec2{ f32(bounds_0.x), f32(bounds_0.y) } * entry.size_scale - { 0.5, 0.5 }
-	bounds_0_scaled  = { 
+	bounds_0_scaled  = {
 		cast(f32) cast(i32) bounds_0_scaled.x,
 		cast(f32) cast(i32) bounds_0_scaled.y,
 	}
@@ -208,7 +211,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	call := DrawCall_Default
 	{
 		using call
-		pass        = .Target_Uncached
+		pass        = .Target
 		colour      = ctx.colour
 		start_index = cast(u32) ctx.draw_list.indices.num
 
@@ -305,7 +308,6 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 
 		cache_glyph_to_atlas( ctx, font, glyph_index )
 
-		// lru_code := u64(glyph_index) + ( ( 0x100000000 * u64(font) ) & 0xFFFFFFFF00000000 )
 		lru_code := font_glyph_lru_code(font, glyph_index)
 		set( ctx.temp_codepoint_seen, lru_code, true )
 		ctx.temp_codepoint_seen_num += 1
@@ -315,8 +317,7 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 
 	draw_text_batch( ctx, entry, shaped, batch_start_idx, i32(shaped.glyphs.num), position, scale )
 	reset_batch_codepoint_state( ctx )
-	ctx.cursor_pos.x = position.x + shaped.end_cursor_pos.x * scale.x
-	ctx.cursor_pos.y = position.y + shaped.end_cursor_pos.y * scale.y
+	ctx.cursor_pos = position + shaped.end_cursor_pos * scale
 
 	return true
 }
@@ -328,7 +329,6 @@ draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText, b
 	{
 		glyph_index       := shaped.glyphs.data[ index ]
 		shaped_position   := shaped.positions.data[index]
-		// glyph_translate_x := position.x + shaped_position.x * scale.x
 		glyph_translate   := position + shaped_position * scale
 		glyph_cached      := draw_cached_glyph( ctx, entry, glyph_index, glyph_translate, scale)
 		assert( glyph_cached == true )
@@ -375,12 +375,12 @@ merge_draw_list :: proc( dst, src : ^DrawList )
 	error : AllocatorError
 
 	v_offset := cast(u32) dst.vertices.num
-	// for index : u32 = 0; index < cast(u32) src.vertices.num; index += 1 {
-	// 	error = append( & dst.vertices, src.vertices.data[index] )
-	// 	assert( error == .None )
-	// }
-	error = append( & dst.vertices, src.vertices )
-	assert( error == .None )
+	for index : u32 = 0; index < cast(u32) src.vertices.num; index += 1 {
+		error = append( & dst.vertices, src.vertices.data[index] )
+		assert( error == .None )
+	}
+	// error = append( & dst.vertices, src.vertices )
+	// assert( error == .None )
 
 	i_offset := cast(u32) dst.indices.num
 	for index : u32 = 0; index < cast(u32) src.indices.num; index += 1 {

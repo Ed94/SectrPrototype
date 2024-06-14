@@ -183,6 +183,7 @@ font_provider_startup :: proc()
 					pixel_format = .DEPTH,
 					// compare = .ALWAYS,
 				},
+				cull_mode = .NONE,
 				// sample_count = 1,
 				// label =
 			})
@@ -200,7 +201,7 @@ font_provider_startup :: proc()
 				num_mipmaps   = 1,
 				usage         = .IMMUTABLE,
 				pixel_format  = .R8,
-				sample_count  = app_env.defaults.sample_count,
+				sample_count  = 1,
 				// TODO(Ed): Setup labels for debug tracing/logging
 				// label         = 
 			})
@@ -215,7 +216,7 @@ font_provider_startup :: proc()
 				num_mipmaps   = 1,
 				usage         = .IMMUTABLE,
 				pixel_format  = .DEPTH,
-				sample_count  = app_env.defaults.sample_count,
+				sample_count  = 1,
 			})
 
 			color_attach := AttachmentDesc {
@@ -236,10 +237,10 @@ font_provider_startup :: proc()
 			glyph_action := PassAction {
 				colors = {
 					0 = {
-						load_action  = .CLEAR,
+						load_action  = .LOAD,
 						store_action = .STORE,
-						clear_value  = {0.01,0.01,0.01,1},
-						// clear_value  = {0.00, 0.00, 0.00, 0.00},
+						// clear_value  = {0.01,0.01,0.01,1},
+						clear_value  = {0.00, 0.00, 0.00, 0.00},
 					}
 				}
 			}
@@ -298,6 +299,7 @@ font_provider_startup :: proc()
 					pixel_format = .DEPTH,
 					compare = .ALWAYS,
 				},
+				cull_mode = .NONE,
 				// sample_count = 1,
 			})
 		}
@@ -307,13 +309,13 @@ font_provider_startup :: proc()
 			atlas_rt_color = sokol_gfx.make_image( ImageDesc {
 				type          = ._2D,
 				render_target = true,
-				width         = i32(ve_font_cache.atlas.buffer_width),
-				height        = i32(ve_font_cache.atlas.buffer_height),
+				width         = i32(ve_font_cache.atlas.width),
+				height        = i32(ve_font_cache.atlas.height),
 				num_slices    = 1,
 				num_mipmaps   = 1,
 				usage         = .IMMUTABLE,
 				pixel_format  = .R8,
-				sample_count  = app_env.defaults.sample_count,
+				sample_count  = 1,
 				// TODO(Ed): Setup labels for debug tracing/logging
 				// label         = 
 			})
@@ -322,13 +324,13 @@ font_provider_startup :: proc()
 			atlas_rt_depth = sokol_gfx.make_image( ImageDesc {
 				type          = ._2D,
 				render_target = true,
-				width         = i32(ve_font_cache.atlas.buffer_width),
-				height        = i32(ve_font_cache.atlas.buffer_height),
+				width         = i32(ve_font_cache.atlas.width),
+				height        = i32(ve_font_cache.atlas.height),
 				num_slices    = 1,
 				num_mipmaps   = 1,
 				usage         = .IMMUTABLE,
 				pixel_format  = .DEPTH,
-				sample_count  = app_env.defaults.sample_count,
+				sample_count  = 1,
 			})
 			verify( sokol_gfx.query_image_state(atlas_rt_depth) < ResourceState.FAILED, "Failed to make atlas_rt_depth")
 
@@ -352,7 +354,7 @@ font_provider_startup :: proc()
 					0 = {
 						load_action  = .LOAD,
 						store_action = .STORE,
-						clear_value  = {0,0,0,1.0},
+						clear_value  = {0, 0, 0, 0.0},
 					}
 				}
 			}
@@ -386,7 +388,7 @@ font_provider_startup :: proc()
 			}
 
 			color_target := ColorTargetState {
-				// pixel_format = .R8,
+				pixel_format = app_env.defaults.color_format,
 				// write_mask   =
 				blend = BlendState {
 					enabled = true,
@@ -408,6 +410,11 @@ font_provider_startup :: proc()
 				},
 				color_count  = 1,
 				sample_count = 1,
+				depth = {
+					pixel_format = app_env.defaults.depth_format,
+					compare = .ALWAYS,
+				},
+				cull_mode = .NONE,
 			})
 			verify( sokol_gfx.query_pipeline_state(screen_pipeline) < ResourceState.FAILED, "Failed to make screen_pipeline" )
 		}
@@ -417,9 +424,9 @@ font_provider_startup :: proc()
 			screen_action := PassAction {
 				colors = {
 					0 = {
-						load_action  = .CLEAR,
+						load_action  = .LOAD,
 						store_action = .STORE,
-						clear_value  = {1.0,0.0,0.0,1.0},
+						clear_value  = {0.0,0.0,0.0,0.0},
 					}
 				}
 			}

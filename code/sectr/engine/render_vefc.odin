@@ -210,10 +210,18 @@ render :: proc()
 
 					sokol_gfx.apply_pipeline( screen_pipeline )
 
-					fs_uniform := Ve_Draw_Text_Fs_Params { down_sample = 0, colour = {1, 1, 1, 1} }
-					sokol_gfx.apply_uniforms( ShaderStage.FS, SLOT_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(fs_uniform) })
+					src_rt := atlas_rt_color
 
-					src_rt := draw_call.pass == .Target_Uncached ? glyph_rt_color : atlas_rt_color
+					fs_uniform := Ve_Draw_Text_Fs_Params {
+						// down_sample = draw_call.pass == .Target_Uncached ? 1 : 0,
+						colour = {1, 1, 1, 1},
+					}
+
+					if draw_call.pass == .Target_Uncached {
+						fs_uniform.down_sample = 1
+						src_rt = glyph_rt_color
+					}
+					sokol_gfx.apply_uniforms( ShaderStage.FS, SLOT_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(fs_uniform) })
 
 					sokol_gfx.apply_bindings(Bindings {
 						vertex_buffers = {

@@ -179,8 +179,8 @@ InitAtlasParams :: struct {
 }
 
 InitAtlasParams_Default :: InitAtlasParams {
-	width         = 4 * Kilobyte,
-	height        = 2 * Kilobyte,
+	width         = 4096,
+	height        = 2048,
 	glyph_padding = 1,
 
 	region_a = {
@@ -265,38 +265,43 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	draw_list.calls, error = make( Array(DrawCall), 512 )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.calls")
 
-	init_atlas_region :: proc( region : ^AtlasRegion, params : InitAtlasParams, region_params : InitAtlasRegionParams ) {
+	init_atlas_region :: proc( region : ^AtlasRegion, params : InitAtlasParams, region_params : InitAtlasRegionParams, factor : Vec2i, expected_cap : u32 ) {
 		using region
 
 		next_idx = 0;
 		width    = region_params.width
 		height   = region_params.height
 		size = {
-			params.width  / 4,
-			params.height / 2,
+			params.width  / factor.x,
+			params.height / factor.y,
 		}
 		capacity = {
 			size.x / width,
 			size.y / height,
 		}
+		assert( capacity.x * capacity.y == expected_cap )
 
 		error : AllocatorError
 		// state.cache, error = make( HMapChained(LRU_Link), uint(capacity.x * capacity.y) )
 		// assert( error == .None, "VEFontCache.init_atlas_region : Failed to allocate state.cache")
 		LRU_init( & state, capacity.x * capacity.y )
 	}
-	init_atlas_region( & atlas.region_a, atlas_params, atlas_params.region_a )
-	init_atlas_region( & atlas.region_b, atlas_params, atlas_params.region_b )
-	init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c )
-	init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d )
+	init_atlas_region( & atlas.region_a, atlas_params, atlas_params.region_a, { 4, 2}, 1024 )
+	init_atlas_region( & atlas.region_b, atlas_params, atlas_params.region_b, { 4, 2}, 512 )
+	init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c, { 4, 1}, 512 )
+	init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d, { 2, 1}, 256 )
 
 	atlas.width         = atlas_params.width
 	atlas.height        = atlas_params.height
 	atlas.glyph_padding = atlas_params.glyph_padding
 
+	atlas.region_a.offset   = {0, 0}
+	atlas.region_b.offset.x = 0
 	atlas.region_b.offset.y = atlas.region_a.size.y
 	atlas.region_c.offset.x = atlas.region_a.size.x
+	atlas.region_c.offset.y = 0
 	atlas.region_d.offset.x = atlas.width / 2
+	atlas.region_d.offset.y = 0
 
 	LRU_init( & shape_cache.state, shape_cache_params.capacity )
 
@@ -476,7 +481,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 		f32(bounds_0.x) - 21,
 		f32(bounds_0.y) - 33,
 	}
- 
+
 	// Note(Original Author): Figure out scaling so it fits within our box.
 	draw := DrawCall_Default
 	draw.pass        = FrameBufferPass.Glyph
@@ -601,7 +606,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 
 	// Draw oversized glyph to update FBO
 	glyph_draw_scale       := over_sample * entry.size_scale
-	glyph_draw_translate   := Vec2 { f32(bounds_0.x), f32(bounds_0.y) } * glyph_draw_scale + Vec2{ glyph_padding, glyph_padding }
+	glyph_draw_translate   := Vec2 { f32(-bounds_0.x), f32(-bounds_0.y) } * glyph_draw_scale + Vec2{ glyph_padding, glyph_padding }
 	glyph_draw_translate.x  = cast(f32) (i32(glyph_draw_translate.x + 0.9999999))
 	glyph_draw_translate.y  = cast(f32) (i32(glyph_draw_translate.y + 0.9999999))
 
@@ -613,16 +618,16 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 
 	// Calculate the src and destination regions
 	dst_position, dst_width, dst_height := atlas_bbox( atlas, region_kind, u32(atlas_index) )
-	dst_glyph_position := dst_position  //+ { glyph_padding, glyph_padding }
+	dst_glyph_position := dst_position  + { glyph_padding, glyph_padding }
 	dst_glyph_width    := f32(bounds_width)  * entry.size_scale
 	dst_glyph_height   := f32(bounds_height) * entry.size_scale
-	// dst_glyph_position -= { glyph_padding, glyph_padding }
+	dst_glyph_position -= { glyph_padding, glyph_padding }
 	dst_glyph_width  += 2 * glyph_padding
 	dst_glyph_height += 2 * glyph_padding
 
 	dst_size       := Vec2 { dst_width, dst_height }
 	dst_glyph_size := Vec2 { dst_glyph_width, dst_glyph_height }
-	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, f32(atlas.width), f32(atlas.height)  )
+	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, f32(atlas.width), f32(atlas.height) )
 	screenspace_x_form( & dst_position,       & dst_size,       f32(atlas.width), f32(atlas.height) )
 
 	src_position := Vec2 { f32(atlas.update_batch_x), 0 }
@@ -652,7 +657,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 		// Queue up a blit from glyph_update_FBO to the atlas
 		region      = .None
 		start_index = u32(atlas.draw_list.indices.num)
-		blit_quad( & atlas.draw_list, dst_glyph_position, dst_glyph_position + dst_glyph_size, src_position, src_position + src_size )
+		blit_quad( & atlas.draw_list, dst_glyph_position, dst_position + dst_glyph_size, src_position, src_position + src_size )
 		end_index = u32(atlas.draw_list.indices.num)
 		append( & atlas.draw_list.calls, call )
 	}
