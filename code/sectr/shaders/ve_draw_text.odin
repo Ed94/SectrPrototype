@@ -389,10 +389,10 @@ ve_draw_text_shader_desc :: proc (backend: sg.Backend) -> sg.Shader_Desc {
         desc.fs.uniform_blocks[0].layout = .STD140
         desc.fs.uniform_blocks[0].uniforms[0].name = "_31.down_sample"
         desc.fs.uniform_blocks[0].uniforms[0].type = .INT
-        // array_count = desc.fs.uniform_blocks[0].uniforms[0]
+        // .array_count = desc.fs.uniform_blocks[0].uniforms[0]
         desc.fs.uniform_blocks[0].uniforms[1].name = "_31.colour"
         desc.fs.uniform_blocks[0].uniforms[1].type = .FLOAT4
-        // array_count = desc.fs.uniform_blocks[0].uniforms[1]
+        // .array_count = desc.fs.uniform_blocks[0].uniforms[1]
         desc.fs.images[0].used = true
         desc.fs.images[0].multisampled = false
         desc.fs.images[0].image_type = ._2D

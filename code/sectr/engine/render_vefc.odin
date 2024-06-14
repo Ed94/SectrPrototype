@@ -92,7 +92,7 @@ render :: proc()
 		ve.set_colour( & ve_font_cache,  { 1.0, 1.0, 1.0, 1.0 } )
 		ve.configure_snap( & ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
-		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.4, 0.1}, Vec2{1 / width, 1 / height} )
+		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.5, 0.0}, Vec2{1 / width, 1 / height} )
 	}
 
 	// Process the draw calls for drawing text
@@ -109,6 +109,7 @@ render :: proc()
 		draw_list_call_slice := array_to_slice(draw_list.calls)
 		for & draw_call in array_to_slice(draw_list.calls)
 		{
+			watch := draw_call
 			profile("ve draw call")
 			if (draw_call.end_index - draw_call.start_index) == 0 do continue
 
@@ -128,8 +129,8 @@ render :: proc()
 					}
 					sokol_gfx.begin_pass( pass )
 
-					sokol_gfx.apply_viewport( 0,0, width, height, origin_top_left = true )
-					sokol_gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_viewport( 0,0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
 
 					sokol_gfx.apply_pipeline( glyph_pipeline )
 
@@ -141,7 +142,7 @@ render :: proc()
 							0 = 0,
 						},
 						index_buffer        = draw_list_ibuf,
-						index_buffer_offset = i32(draw_call.start_index),
+						index_buffer_offset = 0,//i32(draw_call.start_index),
 						fs = {},
 					}
 					sokol_gfx.apply_bindings( bindings )
@@ -160,13 +161,13 @@ render :: proc()
 
 					pass := atlas_pass
 					if draw_call.clear_before_draw {
-						pass.action.colors[0].load_action = .CLEAR
-						// pass.action.colors[0].clear_value.a = 0.0
+						pass.action.colors[0].load_action   = .CLEAR
+						pass.action.colors[0].clear_value.a = 1.0
 					}
 					sokol_gfx.begin_pass( pass )
 
-					sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
-					sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
 
 					sokol_gfx.apply_pipeline( atlas_pipeline )
 
@@ -181,7 +182,7 @@ render :: proc()
 							0 = 0,
 						},
 						index_buffer        = draw_list_ibuf,
-						index_buffer_offset = i32(draw_call.start_index),
+						index_buffer_offset = 0,//i32(draw_call.start_index),
 						fs = {
 							images   = { SLOT_ve_blit_atlas_src_texture = glyph_rt_color, },
 							samplers = { SLOT_ve_blit_atlas_src_sampler = gfx_sampler,   },
@@ -198,14 +199,14 @@ render :: proc()
 
 					pass := screen_pass
 					if ! draw_call.clear_before_draw {
-						pass.action.colors[0].load_action = .LOAD
-						// pass.action.colors[0].clear_value.a = 0.0
+						pass.action.colors[0].load_action   = .LOAD
+						pass.action.colors[0].clear_value.a = 0.0
 					}
 					pass.swapchain = sokol_glue.swapchain()
 					sokol_gfx.begin_pass( pass )
 
-					sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
-					sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
 
 					sokol_gfx.apply_pipeline( screen_pipeline )
 
@@ -222,7 +223,7 @@ render :: proc()
 							0 = 0,
 						},
 						index_buffer        = draw_list_ibuf,
-						index_buffer_offset = i32(draw_call.start_index),
+						index_buffer_offset = 0,//i32(draw_call.start_index),
 						fs = {
 							images   = { SLOT_ve_draw_text_src_texture = src_rt, },
 							samplers = { SLOT_ve_draw_text_src_sampler = gfx_sampler,   },

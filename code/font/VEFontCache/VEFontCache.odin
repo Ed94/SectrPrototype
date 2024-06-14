@@ -122,9 +122,13 @@ font_key_from_label :: #force_inline proc( label : string ) -> u64 {
 // ve_fontcache_eval_bezier (quadratic)
 eval_point_on_bezier3 :: proc( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
 {
-	starting_point := p0 * (1 - alpha) * (1 - alpha)
-	control_point  := p1 * 2.0 * (1 - alpha) * alpha
-	end_point      := p2 * alpha * alpha
+	weight_start   := (1 - alpha) * (1 - alpha)
+	weight_control := 2.0 * (1 - alpha) * alpha
+	weight_end     := alpha * alpha
+
+	starting_point := p0 * weight_start
+	control_point  := p1 * weight_control
+	end_point      := p2 * weight_end
 
 	point := starting_point + control_point + end_point
 	return point
@@ -618,15 +622,15 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 
 	dst_size       := Vec2 { dst_width, dst_height }
 	dst_glyph_size := Vec2 { dst_glyph_width, dst_glyph_height }
-	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, f32(atlas.buffer_width), f32(atlas.buffer_height)  )
-	screenspace_x_form( & dst_position,       & dst_size,       f32(atlas.buffer_width), f32(atlas.buffer_height) )
+	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, f32(atlas.width), f32(atlas.height)  )
+	screenspace_x_form( & dst_position,       & dst_size,       f32(atlas.width), f32(atlas.height) )
 
 	src_position := Vec2 { f32(atlas.update_batch_x), 0 }
 	src_size     := Vec2 {
 		f32(bounds_width)  * glyph_draw_scale.x,
 		f32(bounds_height) * glyph_draw_scale.y,
 	}
-	src_size += Vec2{1,1} * 2 * over_sample * glyph_padding
+	src_size += 2 * over_sample * glyph_padding
 	textspace_x_form( & src_position, & src_size, f32(atlas.buffer_width), f32(atlas.buffer_height) )
 
 	// Advance glyph_update_batch_x and calculate final glyph drawing transform
@@ -781,5 +785,7 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText
 			position.x    += f32(advance) * entry.size_scale
 			prev_codepoint = codepoint
 		}
+
+		output.end_cursor_pos = position
 	}
 }

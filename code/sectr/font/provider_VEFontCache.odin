@@ -164,8 +164,6 @@ font_provider_startup :: proc()
 					enabled = true,
 					src_factor_rgb   = .ONE_MINUS_DST_COLOR,
 					dst_factor_rgb   = .ONE_MINUS_SRC_COLOR,
-					// src_factor_rgb   = .SRC_ALPHA,
-					// dst_factor_rgb   = .ONE_MINUS_SRC_ALPHA,
 					op_rgb           = BlendOp.ADD,
 					src_factor_alpha = BlendFactor.ONE,
 					dst_factor_alpha = BlendFactor.ZERO,
@@ -183,6 +181,7 @@ font_provider_startup :: proc()
 				color_count  = 1,
 				depth = {
 					pixel_format = .DEPTH,
+					// compare = .ALWAYS,
 				},
 				// sample_count = 1,
 				// label =
@@ -237,9 +236,10 @@ font_provider_startup :: proc()
 			glyph_action := PassAction {
 				colors = {
 					0 = {
-						load_action  = .DONTCARE,
+						load_action  = .CLEAR,
 						store_action = .STORE,
-						clear_value  = {0,0,0,1},
+						clear_value  = {0.01,0.01,0.01,1},
+						// clear_value  = {0.00, 0.00, 0.00, 0.00},
 					}
 				}
 			}
@@ -296,6 +296,7 @@ font_provider_startup :: proc()
 				color_count  = 1,
 				depth = {
 					pixel_format = .DEPTH,
+					compare = .ALWAYS,
 				},
 				// sample_count = 1,
 			})
@@ -351,7 +352,7 @@ font_provider_startup :: proc()
 					0 = {
 						load_action  = .LOAD,
 						store_action = .STORE,
-						clear_value  = {0,0,0,1},
+						clear_value  = {0,0,0,1.0},
 					}
 				}
 			}
@@ -418,7 +419,7 @@ font_provider_startup :: proc()
 					0 = {
 						load_action  = .CLEAR,
 						store_action = .STORE,
-						clear_value  = {0,0,0,0},
+						clear_value  = {1.0,0.0,0.0,1.0},
 					}
 				}
 			}

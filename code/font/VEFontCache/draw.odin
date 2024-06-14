@@ -80,6 +80,10 @@ blit_quad :: proc( draw_list : ^DrawList, p0, p1 : Vec2, uv0, uv1 : Vec2 )
 	for index : i32 = 0; index < 6; index += 1 {
 		append( & draw_list.indices, v_offset + quad_indices[ index ] )
 	}
+
+	draw_list_vert_slice  := array_to_slice(draw_list.vertices)
+	draw_list_index_slice := array_to_slice(draw_list.indices)
+	return
 }
 
 // ve_fontcache_clear_drawlist
@@ -175,9 +179,9 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	atlas := & ctx.atlas
 
 	// Figure out the source bounding box in the atlas texture
-	position, width, height := atlas_bbox( atlas, region_kind, u32(atlas_index) )
+	atlas_position, atlas_width, atlas_height := atlas_bbox( atlas, region_kind, u32(atlas_index) )
 
-	glyph_position := position
+	glyph_position := atlas_position
 	glyph_width    := f32(bounds_width)  * entry.size_scale
 	glyph_height   := f32(bounds_height) * entry.size_scale
 
@@ -186,6 +190,10 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	glyph_scale  := Vec2 { glyph_width, glyph_height }
 
 	bounds_0_scaled := Vec2{ f32(bounds_0.x), f32(bounds_0.y) } * entry.size_scale - { 0.5, 0.5 }
+	bounds_0_scaled  = { 
+		cast(f32) cast(i32) bounds_0_scaled.x,
+		cast(f32) cast(i32) bounds_0_scaled.y,
+	}
 	dst := Vec2 {
 		position.x + scale.x * bounds_0_scaled.x,
 		position.y + scale.y * bounds_0_scaled.y,
@@ -194,7 +202,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	dst_height := scale.y * glyph_height
 	dst        -= scale * { f32(atlas.glyph_padding), f32(atlas.glyph_padding) }
 	dst_scale  := Vec2 { dst_width, dst_height }
-	textspace_x_form( & glyph_position, & dst_scale, f32(atlas.buffer_width), f32(atlas.buffer_height) )
+	textspace_x_form( & glyph_position, & glyph_scale, f32(atlas.width), f32(atlas.height) )
 
 	// Add the glyph drawcall
 	call := DrawCall_Default
@@ -209,12 +217,13 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	}
 	append( & ctx.draw_list.calls, call )
 
+	// NOTE(Ed): Never done in the original
 	// Clear glyph_update_FBO
-	call.pass = .Glyph
-	call.start_index       = 0
-	call.end_index         = 0
-	call.clear_before_draw = true
-	append( & ctx.draw_list.calls, call )
+	// call.pass = .Glyph
+	// call.start_index       = 0
+	// call.end_index         = 0
+	// call.clear_before_draw = true
+	// append( & ctx.draw_list.calls, call )
 
 	return true
 }
@@ -279,8 +288,8 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 	snap_height := f32(ctx.snap_height)
 
 	position := position
-	if ctx.snap_width  > 0 do position.x = (position.x * snap_width  + 0.5) / snap_width
-	if ctx.snap_height > 0 do position.y = (position.y * snap_height + 0.5) / snap_height
+	if ctx.snap_width  > 0 do position.x = cast(f32) cast(u32) (position.x * snap_width  + 0.5) / snap_width
+	if ctx.snap_height > 0 do position.y = cast(f32) cast(u32) (position.y * snap_height + 0.5) / snap_height
 
 	entry := & ctx.entries.data[ font ]
 
@@ -319,9 +328,9 @@ draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText, b
 	{
 		glyph_index       := shaped.glyphs.data[ index ]
 		shaped_position   := shaped.positions.data[index]
-		glyph_translate_x := position.x + shaped_position.x * scale.x
-		glyph_translate_y := position.y + shaped_position.y * scale.y
-		glyph_cached      := draw_cached_glyph( ctx, entry, glyph_index, {glyph_translate_x, glyph_translate_y}, scale)
+		// glyph_translate_x := position.x + shaped_position.x * scale.x
+		glyph_translate   := position + shaped_position * scale
+		glyph_cached      := draw_cached_glyph( ctx, entry, glyph_index, glyph_translate, scale)
 		assert( glyph_cached == true )
 	}
 }
