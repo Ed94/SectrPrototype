@@ -123,7 +123,7 @@ font_key_from_label :: #force_inline proc( label : string ) -> u64 {
 eval_point_on_bezier3 :: proc( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
 {
 	starting_point := p0 * (1 - alpha) * (1 - alpha)
-	control_point  := p1 * 2.0 * (1 - alpha)
+	control_point  := p1 * 2.0 * (1 - alpha) * alpha
 	end_point      := p2 * alpha * alpha
 
 	point := starting_point + control_point + end_point
@@ -237,6 +237,9 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	ctx.backing       = allocator
 	context.allocator = ctx.backing
 
+	if curve_quality == 0 {
+		curve_quality = 6
+	}
 	ctx.curve_quality = curve_quality
 
 	error : AllocatorError
@@ -469,7 +472,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 		f32(bounds_0.x) - 21,
 		f32(bounds_0.y) - 33,
 	}
-
+ 
 	// Note(Original Author): Figure out scaling so it fits within our box.
 	draw := DrawCall_Default
 	draw.pass        = FrameBufferPass.Glyph

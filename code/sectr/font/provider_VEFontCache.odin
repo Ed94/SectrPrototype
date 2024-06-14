@@ -457,7 +457,7 @@ font_load :: proc(path_file : string,
 	logf("Loading font: %v", path_file)
 	provider_data := & get_state().font_provider_data; using provider_data
 
-	font_data, read_succeded : = os.read_entire_file( path_file )
+	font_data, read_succeded : = os.read_entire_file( path_file, persistent_allocator() )
 	verify( b32(read_succeded), str_fmt("Failed to read font file for: %v", path_file) )
 	font_data_size := cast(i32) len(font_data)
 
