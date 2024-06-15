@@ -81,9 +81,8 @@ blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}
 	for index : i32 = 0; index < 6; index += 1 {
 		append( & draw_list.indices, v_offset + quad_indices[ index ] )
 	}
-
-	draw_list_vert_slice  := array_to_slice(draw_list.vertices)
-	draw_list_index_slice := array_to_slice(draw_list.indices)
+	// draw_list_vert_slice  := array_to_slice(draw_list.vertices)
+	// draw_list_index_slice := array_to_slice(draw_list.indices)
 	return
 }
 
@@ -100,7 +99,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 
 	// Draw un-antialiased glyph to update FBO.
 	glyph_draw_scale     := over_sample * entry.size_scale
-	glyph_draw_translate := - Vec2{ f32(bounds_0.x), f32(bounds_0.y)} * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
+	glyph_draw_translate := Vec2{ f32(-bounds_0.x), f32(-bounds_0.y)} * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
 	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
 
 	cache_glyph( ctx, entry.id, glyph, glyph_draw_scale, glyph_draw_translate )
@@ -126,6 +125,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 	dst_height := scale.y * glyph_dst_height
 	dst.x      -= scale.x * f32(ctx.atlas.glyph_padding)
 	dst.y      -= scale.y * f32(ctx.atlas.glyph_padding)
+	dst_size   := Vec2{ dst_width, dst_height }
 
 	glyph_size := Vec2 { glyph_width, glyph_height }
 	textspace_x_form( & glyph_position, & glyph_size, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
@@ -137,7 +137,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 		pass        = .Target_Uncached
 		colour      = ctx.colour
 		start_index = u32(ctx.draw_list.indices.num)
-		blit_quad( & ctx.draw_list, dst, dst + { dst_width, dst_height }, glyph_position, glyph_position + glyph_size )
+		blit_quad( & ctx.draw_list, dst, dst + dst_size, glyph_position, glyph_position + glyph_size )
 		end_index   = u32(ctx.draw_list.indices.num)
 		append( & ctx.draw_list.calls, call )
 	}

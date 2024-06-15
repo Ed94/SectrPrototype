@@ -4,15 +4,14 @@
 @header import sg "thirdparty:sokol/gfx"
 
 @vs ve_draw_text_vs
-// in  vec2 v_position;
-// in  vec2 v_texture;
-in vec4 v_elem;
+in  vec2 v_position;
+in  vec2 v_texture;
 out vec2 uv;
 
 void main()
 {
-	uv          = v_elem.zw;
-	gl_Position = vec4( v_elem.xy * 2.0f - 1.0f, 0.0f, 1.0f );
+	uv          = vec2( v_texture.x, 1 - v_texture.y );
+	gl_Position = vec4( v_position * 2.0f - 1.0f, 0.0f, 1.0f );
 }
 @end
 
@@ -41,7 +40,7 @@ void main()
 		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5f, -0.5f) * texture_size ).x * 0.25f)
 		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5f,  0.5f) * texture_size ).x * 0.25f);
 	}
-	frag_color = vec4( colour.xyz, colour.a * alpha + 0.05f );
+	frag_color = vec4( colour.xyz, colour.a * alpha );
 }
 @end
 

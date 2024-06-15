@@ -81,7 +81,7 @@ render :: proc()
 	{
 		// text_test_str := str_fmt("frametime: %v", frametime_avg_ms)
 		// text_test_str := str_fmt("HELLO VE FONT CACHE!!!!!")
-		text_test_str := str_fmt("A")
+		text_test_str := str_fmt("AB")
 
 		// font_provider := & state.font_provider_data
 		fdef := hmap_chained_get( font_cache, default_font.key )
@@ -92,7 +92,7 @@ render :: proc()
 		ve.set_colour( & ve_font_cache,  { 1.0, 1.0, 1.0, 1.0 } )
 		ve.configure_snap( & ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
-		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.5, 0.0}, Vec2{1 / width, 1 / height} )
+		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.2, 0.4}, Vec2{1 / width, 1 / height} )
 	}
 
 	// Process the draw calls for drawing text
@@ -161,8 +161,8 @@ render :: proc()
 					}
 					sokol_gfx.begin_pass( pass )
 
-					sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
-					sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
 
 					sokol_gfx.apply_pipeline( atlas_pipeline )
 
@@ -205,17 +205,18 @@ render :: proc()
 
 					sokol_gfx.apply_pipeline( screen_pipeline )
 
-					src_rt := atlas_rt_color
+					src_rt      := atlas_rt_color
+					src_sampler := atlas_rt_sampler
 
 					fs_target_uniform := Ve_Draw_Text_Fs_Params {
-						// down_sample = draw_call.pass == .Target_Uncached ? 1 : 0,
 						down_sample = 0,
 						colour = {1, 1, 1, 1},
 					}
 
 					if draw_call.pass == .Target_Uncached {
 						fs_target_uniform.down_sample = 1
-						src_rt = glyph_rt_color
+						src_rt      = glyph_rt_color
+						src_sampler = glyph_rt_sampler
 					}
 					sokol_gfx.apply_uniforms( ShaderStage.FS, SLOT_ve_draw_text_fs_params, Range { & fs_target_uniform, size_of(Ve_Draw_Text_Fs_Params) })
 
@@ -230,7 +231,7 @@ render :: proc()
 						index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
 						fs = {
 							images   = { SLOT_ve_draw_text_src_texture = src_rt, },
-							samplers = { SLOT_ve_draw_text_src_sampler = glyph_rt_sampler, },
+							samplers = { SLOT_ve_draw_text_src_sampler = src_sampler, },
 						},
 					})
 			}
