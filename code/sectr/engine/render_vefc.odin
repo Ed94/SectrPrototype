@@ -129,8 +129,8 @@ render :: proc()
 					}
 					sokol_gfx.begin_pass( pass )
 
-					// sokol_gfx.apply_viewport( 0,0, width, height, origin_top_left = true )
-					// sokol_gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
+					sokol_gfx.apply_viewport( 0,0, width, height, origin_top_left = true )
+					sokol_gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
 
 					sokol_gfx.apply_pipeline( glyph_pipeline )
 
@@ -142,15 +142,10 @@ render :: proc()
 							0 = 0,
 						},
 						index_buffer        = draw_list_ibuf,
-						index_buffer_offset = 0,//i32(draw_call.start_index),
+						index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
 						fs = {},
 					}
 					sokol_gfx.apply_bindings( bindings )
-
-					// num_indices := draw_call.end_index - draw_call.start_index
-					// sokol_gfx.draw( 0, num_indices, 1 )
-
-					// sokol_gfx.end_pass()
 
 				// 2. Do the atlas rendering pass
 				// A simple 16-tap box downsample shader is then used to blit from this intermediate texture to the final atlas location
@@ -166,13 +161,13 @@ render :: proc()
 					}
 					sokol_gfx.begin_pass( pass )
 
-					// sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
-					// sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
+					sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
+					sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
 
 					sokol_gfx.apply_pipeline( atlas_pipeline )
 
 					fs_uniform := Ve_Blit_Atlas_Fs_Params { region = cast(i32) draw_call.region }
-					sokol_gfx.apply_uniforms( ShaderStage.FS, SLOT_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(fs_uniform) })
+					sokol_gfx.apply_uniforms( ShaderStage.FS, SLOT_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(Ve_Blit_Atlas_Fs_Params) })
 
 					sokol_gfx.apply_bindings(Bindings {
 						vertex_buffers = {
@@ -182,10 +177,10 @@ render :: proc()
 							0 = 0,
 						},
 						index_buffer        = draw_list_ibuf,
-						index_buffer_offset = 0,//i32(draw_call.start_index),
+						index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
 						fs = {
 							images   = { SLOT_ve_blit_atlas_src_texture = glyph_rt_color, },
-							samplers = { SLOT_ve_blit_atlas_src_sampler = gfx_sampler,   },
+							samplers = { SLOT_ve_blit_atlas_src_sampler = glyph_rt_sampler, },
 						},
 					})
 
@@ -205,23 +200,24 @@ render :: proc()
 					pass.swapchain = sokol_glue.swapchain()
 					sokol_gfx.begin_pass( pass )
 
-					// sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
-					// sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
+					sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
+					sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
 
 					sokol_gfx.apply_pipeline( screen_pipeline )
 
 					src_rt := atlas_rt_color
 
-					fs_uniform := Ve_Draw_Text_Fs_Params {
+					fs_target_uniform := Ve_Draw_Text_Fs_Params {
 						// down_sample = draw_call.pass == .Target_Uncached ? 1 : 0,
+						down_sample = 0,
 						colour = {1, 1, 1, 1},
 					}
 
 					if draw_call.pass == .Target_Uncached {
-						fs_uniform.down_sample = 1
+						fs_target_uniform.down_sample = 1
 						src_rt = glyph_rt_color
 					}
-					sokol_gfx.apply_uniforms( ShaderStage.FS, SLOT_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(fs_uniform) })
+					sokol_gfx.apply_uniforms( ShaderStage.FS, SLOT_ve_draw_text_fs_params, Range { & fs_target_uniform, size_of(Ve_Draw_Text_Fs_Params) })
 
 					sokol_gfx.apply_bindings(Bindings {
 						vertex_buffers = {
@@ -231,10 +227,10 @@ render :: proc()
 							0 = 0,
 						},
 						index_buffer        = draw_list_ibuf,
-						index_buffer_offset = 0,//i32(draw_call.start_index),
+						index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
 						fs = {
 							images   = { SLOT_ve_draw_text_src_texture = src_rt, },
-							samplers = { SLOT_ve_draw_text_src_sampler = gfx_sampler,   },
+							samplers = { SLOT_ve_draw_text_src_sampler = glyph_rt_sampler, },
 						},
 					})
 			}

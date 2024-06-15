@@ -32,6 +32,7 @@ FontProviderData :: struct
 	font_cache    : HMapChained(FontDef),
 
 	gfx_sampler : sokol_gfx.Sampler,
+	glyph_rt_sampler : sokol_gfx.Sampler,
 
 	draw_list_vbuf : sokol_gfx.Buffer,
 	draw_list_ibuf : sokol_gfx.Buffer,
@@ -130,9 +131,14 @@ font_provider_startup :: proc()
 			min_filter    = Filter.NEAREST,
 			mag_filter    = Filter.NEAREST,
 			mipmap_filter = Filter.NONE,
-			wrap_u        = Wrap.CLAMP_TO_EDGE,
-			wrap_v        = Wrap.CLAMP_TO_EDGE,
+			// wrap_u        = Wrap.CLAMP_TO_EDGE,
+			// wrap_v        = Wrap.CLAMP_TO_EDGE,
+			wrap_u = .REPEAT,
+			wrap_v = .REPEAT,
+			min_lod = -1000.0,
+			max_lod =  1000.0,
 			border_color  = BorderColor.OPAQUE_BLACK,
+			compare = .NEVER
 		})
 		verify( sokol_gfx.query_sampler_state( gfx_sampler) < ResourceState.FAILED, "Failed to make gfx_sampler" )
 
@@ -141,32 +147,32 @@ font_provider_startup :: proc()
 			vs_layout : VertexLayoutState
 			{
 				using vs_layout
-				attrs[ATTR_ve_render_glyph_vs_v_position] = VertexAttributeState {
-					format       = VertexFormat.FLOAT2,
+				attrs[ATTR_ve_render_glyph_vs_v_elem] = VertexAttributeState {
+					format       = VertexFormat.FLOAT4,
 					offset       = 0,
 					buffer_index = 0,
 				}
-				attrs[ATTR_ve_render_glyph_vs_v_texture] = VertexAttributeState {
-					format       = VertexFormat.FLOAT2,
-					offset       = size_of(Vec2),
-					buffer_index = 0,
-				}
+				// attrs[ATTR_ve_render_glyph_vs_v_texture] = VertexAttributeState {
+				// 	format       = VertexFormat.FLOAT2,
+				// 	offset       = size_of(Vec2),
+				// 	buffer_index = 0,
+				// }
 				buffers[0] = VertexBufferLayoutState {
-					stride    = size_of(Vec2) * 2,
+					stride    = size_of([4]f32),
 					step_func = VertexStep.PER_VERTEX
 				}
 			}
 
 			color_target := ColorTargetState {
 				pixel_format = .R8,
-				// write_mask   =
+				write_mask   = .RGBA,
 				blend = BlendState {
 					enabled = true,
 					src_factor_rgb   = .ONE_MINUS_DST_COLOR,
 					dst_factor_rgb   = .ONE_MINUS_SRC_COLOR,
 					op_rgb           = BlendOp.ADD,
-					src_factor_alpha = BlendFactor.ONE,
-					dst_factor_alpha = BlendFactor.ZERO,
+					src_factor_alpha = .ONE_MINUS_DST_ALPHA,
+					dst_factor_alpha = .ONE_MINUS_SRC_ALPHA,
 					op_alpha         = BlendOp.ADD,
 				},
 			}
@@ -181,10 +187,11 @@ font_provider_startup :: proc()
 				color_count  = 1,
 				depth = {
 					pixel_format = .DEPTH,
-					// compare = .ALWAYS,
+					compare = .ALWAYS,
+					write_enabled = true,
 				},
 				cull_mode = .NONE,
-				// sample_count = 1,
+				sample_count = 1,
 				// label =
 			})
 			verify( sokol_gfx.query_pipeline_state(glyph_pipeline) < ResourceState.FAILED, "Failed to make glyph_pipeline" )
@@ -240,7 +247,7 @@ font_provider_startup :: proc()
 						load_action  = .LOAD,
 						store_action = .STORE,
 						// clear_value  = {0.01,0.01,0.01,1},
-						clear_value  = {0.00, 0.00, 0.00, 0.00},
+						clear_value  = {0.10, 0.10, 0.10, 1.00},
 					}
 				}
 			}
@@ -257,32 +264,32 @@ font_provider_startup :: proc()
 			vs_layout : VertexLayoutState
 			{
 				using vs_layout
-				attrs[ATTR_ve_blit_atlas_vs_v_position] = VertexAttributeState {
-					format       = VertexFormat.FLOAT2,
+				attrs[ATTR_ve_blit_atlas_vs_v_elem] = VertexAttributeState {
+					format       = VertexFormat.FLOAT4,
 					offset       = 0,
 					buffer_index = 0,
 				}
-				attrs[ATTR_ve_blit_atlas_vs_v_texture] = VertexAttributeState {
-					format       = VertexFormat.FLOAT2,
-					offset       = size_of(Vec2),
-					buffer_index = 0,
-				}
+				// attrs[ATTR_ve_blit_atlas_vs_v_texture] = VertexAttributeState {
+				// 	format       = VertexFormat.FLOAT2,
+				// 	offset       = size_of(Vec2),
+				// 	buffer_index = 0,
+				// }
 				buffers[0] = VertexBufferLayoutState {
-					stride    = size_of(Vec2) * 2,
+					stride    = size_of([4]f32),
 					step_func = VertexStep.PER_VERTEX
 				}
 			}
 
 			color_target := ColorTargetState {
 				pixel_format = .R8,
-				// write_mask   =
+				write_mask   = .RGBA,
 				blend = BlendState {
 					enabled = true,
 					src_factor_rgb   = .SRC_ALPHA,
 					dst_factor_rgb   = .ONE_MINUS_SRC_ALPHA,
 					op_rgb           = BlendOp.ADD,
-					src_factor_alpha = BlendFactor.ONE,
-					dst_factor_alpha = BlendFactor.ZERO,
+					src_factor_alpha = .SRC_ALPHA,
+					dst_factor_alpha = .ONE_MINUS_SRC_ALPHA,
 					op_alpha         = BlendOp.ADD,
 				},
 			}
@@ -298,9 +305,10 @@ font_provider_startup :: proc()
 				depth = {
 					pixel_format = .DEPTH,
 					compare = .ALWAYS,
+					write_enabled = true,
 				},
 				cull_mode = .NONE,
-				// sample_count = 1,
+				sample_count = 1,
 			})
 		}
 
@@ -334,6 +342,19 @@ font_provider_startup :: proc()
 			})
 			verify( sokol_gfx.query_image_state(atlas_rt_depth) < ResourceState.FAILED, "Failed to make atlas_rt_depth")
 
+			glyph_rt_sampler = sokol_gfx.make_sampler( SamplerDescription {
+				min_filter    = Filter.NEAREST,
+				mag_filter    = Filter.NEAREST,
+				mipmap_filter = Filter.NONE,
+				wrap_u = .CLAMP_TO_EDGE,
+				wrap_v = .CLAMP_TO_EDGE,
+				min_lod = -1000.0,
+				max_lod =  1000.0,
+				border_color  = BorderColor.OPAQUE_BLACK,
+				compare = .NEVER
+			})
+			verify( sokol_gfx.query_sampler_state( gfx_sampler) < ResourceState.FAILED, "Failed to make gfx_sampler" )
+
 			color_attach := AttachmentDesc {
 				image     = atlas_rt_color,
 				// mip_level = 1,
@@ -352,9 +373,9 @@ font_provider_startup :: proc()
 			atlas_action := PassAction {
 				colors = {
 					0 = {
-						load_action  = .LOAD,
+						load_action  = .DONTCARE,
 						store_action = .STORE,
-						clear_value  = {0, 0, 0, 0.0},
+						clear_value  = {0.01, 0.01, 0.01, 1.0},
 					}
 				}
 			}
@@ -371,32 +392,32 @@ font_provider_startup :: proc()
 			vs_layout : VertexLayoutState
 			{
 				using vs_layout
-				attrs[ATTR_ve_draw_text_vs_v_position] = VertexAttributeState {
-					format       = VertexFormat.FLOAT2,
+				attrs[ATTR_ve_draw_text_vs_v_elem] = VertexAttributeState {
+					format       = VertexFormat.FLOAT4,
 					offset       = 0,
 					buffer_index = 0,
 				}
-				attrs[ATTR_ve_draw_text_vs_v_texture] = VertexAttributeState {
-					format       = VertexFormat.FLOAT2,
-					offset       = size_of(Vec2),
-					buffer_index = 0,
-				}
+				// attrs[ATTR_ve_draw_text_vs_v_texture] = VertexAttributeState {
+				// 	format       = VertexFormat.FLOAT2,
+				// 	offset       = size_of(Vec2),
+				// 	buffer_index = 0,
+				// }
 				buffers[0] = VertexBufferLayoutState {
-					stride    = size_of(Vec2) * 2,
+					stride    = size_of([4]f32),
 					step_func = VertexStep.PER_VERTEX
 				}
 			}
 
 			color_target := ColorTargetState {
 				pixel_format = app_env.defaults.color_format,
-				// write_mask   =
+				write_mask   = .RGBA,
 				blend = BlendState {
 					enabled = true,
 					src_factor_rgb   = .SRC_ALPHA,
 					dst_factor_rgb   = .ONE_MINUS_SRC_ALPHA,
 					op_rgb           = BlendOp.ADD,
-					src_factor_alpha = BlendFactor.ONE,
-					dst_factor_alpha = BlendFactor.ZERO,
+					src_factor_alpha = .SRC_ALPHA,
+					dst_factor_alpha = .ONE_MINUS_SRC_ALPHA,
 					op_alpha         = BlendOp.ADD,
 				},
 			}
@@ -413,6 +434,7 @@ font_provider_startup :: proc()
 				depth = {
 					pixel_format = app_env.defaults.depth_format,
 					compare = .ALWAYS,
+					write_enabled = true,
 				},
 				cull_mode = .NONE,
 			})
@@ -424,9 +446,9 @@ font_provider_startup :: proc()
 			screen_action := PassAction {
 				colors = {
 					0 = {
-						load_action  = .LOAD,
+						load_action  = .CLEAR,
 						store_action = .STORE,
-						clear_value  = {0.0,0.0,0.0,0.0},
+						clear_value  = {0.0,0.0,0.0,1.0},
 					}
 				}
 			}

@@ -4,14 +4,15 @@
 @header import sg "thirdparty:sokol/gfx"
 
 @vs ve_draw_text_vs
-in  vec2 v_position;
-in  vec2 v_texture;
+// in  vec2 v_position;
+// in  vec2 v_texture;
+in vec4 v_elem;
 out vec2 uv;
 
 void main()
 {
-	uv          = v_texture;
-	gl_Position = vec4( v_position.xy * 2.0 - 1.0, 0.0, 1.0 );
+	uv          = v_elem.zw;
+	gl_Position = vec4( v_elem.xy * 2.0f - 1.0f, 0.0f, 1.0f );
 }
 @end
 
@@ -30,17 +31,17 @@ uniform ve_draw_text_fs_params {
 void main()
 {
 	float alpha = texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler ), uv ).x;
-	if ( down_sample == 1u )
+	if ( down_sample == 1 )
 	{
 		// TODO(Ed): The original author made these consts, I want to instead expose as uniforms...
-		const vec2 texture_size = 1.0 / vec2( 2048.0, 512.0 ); // VEFontCache.Context.buffer_width/buffer_height
+		const vec2 texture_size = 1.0f / vec2( 2048.0f, 512.0f ); // VEFontCache.Context.buffer_width/buffer_height
 		alpha =
-			texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2( -0.5, -0.5) * texture_size ).x * 0.25
-		+	texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2( -0.5,  0.5) * texture_size ).x * 0.25
-		+	texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5, -0.5) * texture_size ).x * 0.25
-		+	texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5,  0.5) * texture_size ).x * 0.25;
+			(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2( -0.5f, -0.5f) * texture_size ).x * 0.25f)
+		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2( -0.5f,  0.5f) * texture_size ).x * 0.25f)
+		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5f, -0.5f) * texture_size ).x * 0.25f)
+		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5f,  0.5f) * texture_size ).x * 0.25f);
 	}
-	frag_color = vec4( colour.xyz, colour.a * alpha );
+	frag_color = vec4( colour.xyz, colour.a * alpha + 0.05f );
 }
 @end
 
