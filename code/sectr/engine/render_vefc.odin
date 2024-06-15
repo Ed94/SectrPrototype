@@ -81,7 +81,7 @@ render :: proc()
 	{
 		// text_test_str := str_fmt("frametime: %v", frametime_avg_ms)
 		// text_test_str := str_fmt("HELLO VE FONT CACHE!!!!!")
-		text_test_str := str_fmt("AB")
+		text_test_str := str_fmt("C")
 
 		// font_provider := & state.font_provider_data
 		fdef := hmap_chained_get( font_cache, default_font.key )
@@ -92,7 +92,7 @@ render :: proc()
 		ve.set_colour( & ve_font_cache,  { 1.0, 1.0, 1.0, 1.0 } )
 		ve.configure_snap( & ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
-		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.2, 0.4}, Vec2{1 / width, 1 / height} )
+		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.1, 0.2}, Vec2{1 / width, 1 / height} )
 	}
 
 	// Process the draw calls for drawing text
@@ -111,7 +111,6 @@ render :: proc()
 		{
 			watch := draw_call
 			profile("ve draw call")
-			if (draw_call.end_index - draw_call.start_index) == 0 do continue
 
 			switch draw_call.pass
 			{
@@ -236,8 +235,10 @@ render :: proc()
 					})
 			}
 
-			num_indices := draw_call.end_index - draw_call.start_index
-			sokol_gfx.draw( draw_call.start_index, num_indices, 1 )
+			if (draw_call.end_index - draw_call.start_index) != 0 {
+				num_indices := draw_call.end_index - draw_call.start_index
+				sokol_gfx.draw( draw_call.start_index, num_indices, 1 )
+			}
 
 			sokol_gfx.end_pass()
 		}

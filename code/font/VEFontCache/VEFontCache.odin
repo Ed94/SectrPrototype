@@ -25,7 +25,7 @@ Glyph   :: distinct i32
 
 Colour :: [4]f32
 Vec2   :: [2]f32
-Vec2i  :: [2]u32
+Vec2i  :: [2]i32
 
 AtlasRegionKind :: enum u8 {
 	None   = 0x00,
@@ -139,10 +139,15 @@ eval_point_on_bezier3 :: proc( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
 // ve_fontcache_eval_bezier (cubic)
 eval_point_on_bezier4 :: proc( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
 {
-	start_point := p0 * (1 - alpha) * (1 - alpha) * (1 - alpha)
-	control_a   := p1 * 3 * (1 - alpha) * (1 - alpha) * alpha
-	control_b   := p2 * 3 * (1 - alpha) * alpha * alpha
-	end_point   := p3 * alpha * alpha * alpha
+	weight_start := (1 - alpha) * (1 - alpha) * (1 - alpha)
+	weight_c_a   := 3 * (1 - alpha) * (1 - alpha) * alpha
+	weight_c_b   := 3 * (1 - alpha) * alpha * alpha
+	weight_end   := alpha * alpha * alpha
+
+	start_point := p0 * weight_start
+	control_a   := p1 * weight_c_a
+	control_b   := p2 * weight_c_b
+	end_point   := p3 * weight_end
 
 	point := start_point + control_a + control_b + end_point
 	return point
@@ -265,26 +270,26 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	draw_list.calls, error = make( Array(DrawCall), 512 )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.calls")
 
-	init_atlas_region :: proc( region : ^AtlasRegion, params : InitAtlasParams, region_params : InitAtlasRegionParams, factor : Vec2i, expected_cap : u32 ) {
+	init_atlas_region :: proc( region : ^AtlasRegion, params : InitAtlasParams, region_params : InitAtlasRegionParams, factor : Vec2i, expected_cap : i32 ) {
 		using region
 
 		next_idx = 0;
 		width    = region_params.width
 		height   = region_params.height
 		size = {
-			params.width  / factor.x,
-			params.height / factor.y,
+			i32(params.width)  / factor.x,
+			i32(params.height) / factor.y,
 		}
 		capacity = {
-			size.x / width,
-			size.y / height,
+			size.x / i32(width),
+			size.y / i32(height),
 		}
 		assert( capacity.x * capacity.y == expected_cap )
 
 		error : AllocatorError
 		// state.cache, error = make( HMapChained(LRU_Link), uint(capacity.x * capacity.y) )
 		// assert( error == .None, "VEFontCache.init_atlas_region : Failed to allocate state.cache")
-		LRU_init( & state, capacity.x * capacity.y )
+		LRU_init( & state, u32(capacity.x * capacity.y) )
 	}
 	init_atlas_region( & atlas.region_a, atlas_params, atlas_params.region_a, { 4, 2}, 1024 )
 	init_atlas_region( & atlas.region_b, atlas_params, atlas_params.region_b, { 4, 2}, 512 )
@@ -300,7 +305,7 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	atlas.region_b.offset.y = atlas.region_a.size.y
 	atlas.region_c.offset.x = atlas.region_a.size.x
 	atlas.region_c.offset.y = 0
-	atlas.region_d.offset.x = atlas.width / 2
+	atlas.region_d.offset.x = i32(atlas.width) / 2
 	atlas.region_d.offset.y = 0
 
 	LRU_init( & shape_cache.state, shape_cache_params.capacity )
@@ -606,7 +611,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 
 	// Draw oversized glyph to update FBO
 	glyph_draw_scale       := over_sample * entry.size_scale
-	glyph_draw_translate   := Vec2 { f32(-bounds_0.x), f32(-bounds_0.y) } * glyph_draw_scale + Vec2{ glyph_padding, glyph_padding }
+	glyph_draw_translate   := Vec2 { -f32(bounds_0.x), -f32(bounds_0.y) } * glyph_draw_scale + Vec2{ glyph_padding, glyph_padding }
 	glyph_draw_translate.x  = cast(f32) (i32(glyph_draw_translate.x + 0.9999999))
 	glyph_draw_translate.y  = cast(f32) (i32(glyph_draw_translate.y + 0.9999999))
 
@@ -617,7 +622,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 	}
 
 	// Calculate the src and destination regions
-	dst_position, dst_width, dst_height := atlas_bbox( atlas, region_kind, u32(atlas_index) )
+	dst_position, dst_width, dst_height := atlas_bbox( atlas, region_kind, atlas_index )
 	dst_glyph_position := dst_position  + { glyph_padding, glyph_padding }
 	dst_glyph_width    := f32(bounds_width)  * entry.size_scale
 	dst_glyph_height   := f32(bounds_height) * entry.size_scale

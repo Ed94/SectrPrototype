@@ -93,13 +93,13 @@ clear_draw_list :: proc( draw_list : ^DrawList ) {
 	clear( draw_list.vertices )
 }
 
-directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Glyph, bounds_0 : Vec2i, bounds_width, bounds_height : u32, over_sample, position, scale : Vec2 )
+directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Glyph, bounds_0 : Vec2i, bounds_width, bounds_height : i32, over_sample, position, scale : Vec2 )
 {
 	flush_glyph_buffer_to_atlas( ctx )
 
 	// Draw un-antialiased glyph to update FBO.
 	glyph_draw_scale     := over_sample * entry.size_scale
-	glyph_draw_translate := Vec2{ f32(-bounds_0.x), f32(-bounds_0.y)} * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
+	glyph_draw_translate := Vec2{ -f32(bounds_0.x), -f32(bounds_0.y)} * glyph_draw_scale + Vec2{ f32(ctx.atlas.glyph_padding), f32(ctx.atlas.glyph_padding) }
 	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, f32(ctx.atlas.buffer_width), f32(ctx.atlas.buffer_height) )
 
 	cache_glyph( ctx, entry.id, glyph, glyph_draw_scale, glyph_draw_translate )
@@ -182,7 +182,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	atlas := & ctx.atlas
 
 	// Figure out the source bounding box in the atlas texture
-	atlas_position, atlas_width, atlas_height := atlas_bbox( atlas, region_kind, u32(atlas_index) )
+	atlas_position, atlas_width, atlas_height := atlas_bbox( atlas, region_kind, atlas_index )
 
 	glyph_position := atlas_position
 	glyph_width    := f32(bounds_width)  * entry.size_scale

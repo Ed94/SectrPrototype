@@ -241,7 +241,7 @@ font_provider_startup :: proc()
 			glyph_action := PassAction {
 				colors = {
 					0 = {
-						load_action  = .CLEAR,
+						load_action  = .LOAD,
 						store_action = .STORE,
 						// clear_value  = {0.01,0.01,0.01,1},
 						clear_value  = {0.00, 0.00, 0.00, 1.00},
@@ -506,7 +506,7 @@ font_load :: proc(path_file : string,
 	def.path_file = path_file
 
 	// TODO(Ed): Load even sizes from 8px to upper bound.
-	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 200.0 )
+	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 120.0 )
 
 	fid := FontID { key, desired_id }
 	return fid

@@ -203,16 +203,16 @@ parser_get_glyph_box :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (
 
 			metrics := font.freetype_info.glyph.metrics
 
-			bounds_0 = {u32(metrics.hori_bearing_x), u32(metrics.hori_bearing_y - metrics.height)}
-			bounds_1 = {u32(metrics.hori_bearing_x + metrics.width), u32(metrics.hori_bearing_y)}
+			bounds_0 = {i32(metrics.hori_bearing_x), i32(metrics.hori_bearing_y - metrics.height)}
+			bounds_1 = {i32(metrics.hori_bearing_x + metrics.width), i32(metrics.hori_bearing_y)}
 
 		case .STB_TrueType:
 			x0, y0, x1, y1 : i32
 			success := cast(bool) stbtt.GetGlyphBox( & font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
 			assert( success )
 
-			bounds_0 = { u32(x0), u32(y0) }
-			bounds_1 = { u32(x1), u32(y1) }
+			bounds_0 = { i32(x0), i32(y0) }
+			bounds_1 = { i32(x1), i32(y1) }
 	}
 	return
 }
