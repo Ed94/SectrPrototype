@@ -309,7 +309,7 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 		cache_glyph_to_atlas( ctx, font, glyph_index )
 
 		lru_code := font_glyph_lru_code(font, glyph_index)
-		set( ctx.temp_codepoint_seen, lru_code, true )
+		set( & ctx.temp_codepoint_seen, lru_code, true )
 		ctx.temp_codepoint_seen_num += 1
 
 		batch_start_idx = index

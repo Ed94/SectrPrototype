@@ -1,6 +1,7 @@
 package VEFontCache
 
 import "core:hash"
+	crc32  :: hash.crc32
 	fnv64a :: hash.fnv64a
 
 import "core:mem"
@@ -48,6 +49,15 @@ hmap_chained_remove  :: grime.hmap_chained_remove
 hmap_chained_set     :: grime.hmap_chained_set
 hmap_closest_prime   :: grime.hmap_closest_prime
 
+HMapZPL :: grime.HMapZPL
+
+hmap_zpl_clear  :: grime.hmap_zpl_clear
+hmap_zpl_init   :: grime.hmap_zpl_init
+hmap_zpl_get    :: grime.hmap_zpl_get
+hmap_zpl_reload :: grime.hmap_zpl_reload
+hmap_zpl_remove :: grime.hmap_zpl_remove
+hmap_zpl_set    :: grime.hmap_zpl_set
+
 // Pool :: grime.Pool
 
 StackFixed :: grime.StackFixed
@@ -79,6 +89,7 @@ append_at :: proc {
 clear :: proc {
 	array_clear,
 	hmap_chained_clear,
+	hmap_zpl_clear,
 }
 
 delete :: proc {
@@ -88,11 +99,13 @@ delete :: proc {
 
 get :: proc {
 	hmap_chained_get,
+	hmap_zpl_get,
 }
 
 make :: proc {
 	array_init,
 	hmap_chained_init,
+	hmap_zpl_init,
 }
 
 remove_at :: proc {
@@ -105,6 +118,7 @@ resize :: proc {
 
 set :: proc {
 	hmap_chained_set,
+	hmap_zpl_set,
 }
 
 to_slice :: proc {

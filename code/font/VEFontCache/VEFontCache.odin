@@ -80,7 +80,7 @@ Context :: struct {
 	entries : Array(Entry),
 
 	temp_path               : Array(Vec2),
-	temp_codepoint_seen     : HMapChained(bool),
+	temp_codepoint_seen     : HMapZPL(bool),
 	temp_codepoint_seen_num : u32,
 
 	snap_width  : u32,
@@ -258,7 +258,7 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	temp_path, error = make( Array(Vec2), u64(temp_path_reserve) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
-	temp_codepoint_seen, error = make( HMapChained(bool), hmap_closest_prime( uint(temp_codepoint_seen_reserve)) )
+	temp_codepoint_seen, error = make( HMapZPL(bool), u64(hmap_closest_prime( uint(temp_codepoint_seen_reserve))) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
 	draw_list.vertices, error = make( Array(Vertex), 4 * Kilobyte )
@@ -500,6 +500,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	for edge in shape	do switch edge.type
 	{
 		case .Move:
+			path_slice := array_to_slice(path)
 			if path.num > 0 {
 				draw_filled_path( & ctx.draw_list, outside, array_to_slice(path), scale, translate, ctx.debug_print_verbose )
 			}
@@ -679,17 +680,17 @@ is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
 }
 
 reset_batch_codepoint_state :: proc( ctx : ^Context ) {
-	clear( ctx.temp_codepoint_seen )
+	clear( & ctx.temp_codepoint_seen )
 	ctx.temp_codepoint_seen_num = 0
 }
 
 shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> ^ShapedText
 {
-	ELFhash64 :: proc( hash : ^u64, ptr : ^( $Type), count := 1 )
+	ELFhash64 :: proc( hash : ^u64, ptr : ^( $Type), count : i32 = 1 )
 	{
 		x     := u64(0)
 		bytes := transmute( [^]byte) ptr
-		for index : i32 = 0; index < i32( size_of(Type)); index += 1 {
+		for index : i32 = 0; index < i32( size_of(Type)) * count; index += 1 {
 			(hash^) = ((hash^) << 4 ) + u64(bytes[index])
 			x       = (hash^) & 0xF000000000000000
 			if x != 0 {
@@ -701,9 +702,10 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 
 
 	font := font
-  hash        := cast(u64) 0x9f8e00d51d263c24;
-	ELFhash64( & hash, raw_data(transmute([]u8) text_utf8), len(text_utf8)  )
+	hash        := cast(u64) 0x9f8e00d51d263c24;
+	ELFhash64( & hash, raw_data(transmute([]u8) text_utf8), cast(i32) len(text_utf8)  )
 	ELFhash64( & hash, & font )
+	// hash := cast(u64) crc32( transmute([]u8) text_utf8 )
 
 	shape_cache := & ctx.shape_cache
 	state       := & ctx.shape_cache.state

@@ -237,7 +237,9 @@ State :: struct {
 	// fonts : FontData,
 	font_provider_data : FontProviderData,
 
+	font_arial_unicode_ms        : FontID,
 	font_firacode                : FontID,
+	font_noto_sans               : FontID,
 	font_open_sans               : FontID,
 	font_squidgy_slimes          : FontID,
 	font_rec_mono_semicasual_reg : FontID,

@@ -183,8 +183,9 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 		error := AllocatorError.None
 		if slot.next == nil {
 			block        : []byte
-			block, error = pool_grab(pool, true)
+			block, error = pool_grab(pool, false)
 			next        := transmute( ^HMapChainedSlot(Type)) & block[0]
+			next^ = {}
 			slot.next    = next
 			next.prev    = slot
 		}
@@ -195,8 +196,9 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 	}
 
 	if surface_slot == nil {
-		block, error         := pool_grab(pool, true)
+		block, error         := pool_grab(pool, false)
 		surface_slot         := transmute( ^HMapChainedSlot(Type)) & block[0]
+		surface_slot^ = {}
 		surface_slot.key      = key
 		surface_slot.value    = value
 		surface_slot.occupied = true
@@ -206,8 +208,9 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 		}
 		lookup[hash_index] = surface_slot
 
-		block, error = pool_grab(pool, true)
+		block, error = pool_grab(pool, false)
 		next             := transmute( ^HMapChainedSlot(Type)) & block[0]
+		next^ = {}
 		surface_slot.next = next
 		next.prev         = surface_slot
 		return & surface_slot.value, error

@@ -38,9 +38,9 @@ GlyphVertType :: enum u8 {
 
 // Based directly off of stb_truetype's vertex
 ParserGlyphVertex :: struct {
-	x,          y          : u16,
-	contour_x0, contour_y0 : u16,
-	contour_x1, contour_y1 : u16,
+	x,          y          : i16,
+	contour_x0, contour_y0 : i16,
+	contour_x1, contour_y1 : i16,
 	type    : GlyphVertType,
 	padding : u8,
 }
@@ -277,17 +277,17 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 							{
 								// Close the previous contour if needed
 								append(& vertices, ParserGlyphVertex { type = .Line,
-									x = u16(points[start].x), y = u16(points[start].y),
-									contour_x0 = u16(0), contour_y0 = u16(0),
-									contour_x1 = u16(0), contour_y1 = u16(0),
+									x = i16(points[start].x), y = i16(points[start].y),
+									contour_x0 = i16(0), contour_y0 = i16(0),
+									contour_x1 = i16(0), contour_y1 = i16(0),
 									padding = 0,
 								})
 							}
 
 							append(& vertices, ParserGlyphVertex { type = .Move,
-								x = u16(point.x), y = u16(point.y),
-								contour_x0 = u16(0), contour_y0 = u16(0),
-								contour_x1 = u16(0), contour_y1 = u16(0),
+								x = i16(point.x), y = i16(point.y),
+								contour_x0 = i16(0), contour_y0 = i16(0),
+								contour_x1 = i16(0), contour_y1 = i16(0),
 								padding = 0,
 							})
 						}
@@ -296,9 +296,9 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 							point1 := points[ index + 1 ]
 							point2 := points[ index + 2 ]
 							append(& vertices, ParserGlyphVertex { type = .Cubic,
-								x = u16(point2.x), y = u16(point2.y),
-								contour_x0 = u16(point.x),  contour_y0 = u16(point.y),
-								contour_x1 = u16(point1.x), contour_y1 = u16(point1.y),
+								x = i16(point2.x), y = i16(point2.y),
+								contour_x0 = i16(point.x),  contour_y0 = i16(point.y),
+								contour_x1 = i16(point1.x), contour_y1 = i16(point1.y),
 								padding = 0,
 							})
 							index += 2
@@ -324,9 +324,9 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 								point1.y + freetype.Pos( (fp.y - fp1.y) * control_conv * 64.0 ),
 							}
 							append(& vertices, ParserGlyphVertex { type = .Cubic,
-								x = u16(point1.x), y = u16(point1.y),
-								contour_x0 = u16(control1.x), contour_y0 = u16(control1.y),
-								contour_x1 = u16(control2.x), contour_y1 = u16(control2.y),
+								x = i16(point1.x), y = i16(point1.y),
+								contour_x0 = i16(control1.x), contour_y0 = i16(control1.y),
+								contour_x1 = i16(control2.x), contour_y1 = i16(control2.y),
 								padding = 0,
 							})
 							index += 1
@@ -334,9 +334,9 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 						else
 						{
 							append(& vertices, ParserGlyphVertex { type = .Line,
-								x = u16(point.x), y = u16(point.y),
-								contour_x0 = u16(0), contour_y0 = u16(0),
-								contour_x1 = u16(0), contour_y1 = u16(0),
+								x = i16(point.x), y = i16(point.y),
+								contour_x0 = i16(0), contour_y0 = i16(0),
+								contour_x1 = i16(0), contour_y1 = i16(0),
 								padding = 0,
 							})
 						}
@@ -344,9 +344,9 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 
 					// Close contour
 					append(& vertices, ParserGlyphVertex { type = .Line,
-						x = u16(points[start].x), y = u16(points[start].y),
-						contour_x0 = u16(0), contour_y0 = u16(0),
-						contour_x1 = u16(0), contour_y1 = u16(0),
+						x = i16(points[start].x), y = i16(points[start].y),
+						contour_x0 = i16(0), contour_y0 = i16(0),
+						contour_x1 = i16(0), contour_y1 = i16(0),
 						padding = 0,
 					})
 				}

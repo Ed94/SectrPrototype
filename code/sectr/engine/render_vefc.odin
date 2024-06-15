@@ -79,9 +79,10 @@ render :: proc()
 
 	// "Draw text" using immediate mode api
 	{
-		// text_test_str := str_fmt("frametime: %v", frametime_avg_ms)
-		// text_test_str := str_fmt("HELLO VE FONT CACHE!!!!!")
-		text_test_str := str_fmt("C")
+		text_test_str := str_fmt("frametime: %0.2f", frametime_avg_ms)
+		// log(text_test_str)
+		// text_test_str := str_fmt("HELLO VE FONT CACHE!")
+		// text_test_str := str_fmt("C")
 
 		// font_provider := & state.font_provider_data
 		fdef := hmap_chained_get( font_cache, default_font.key )

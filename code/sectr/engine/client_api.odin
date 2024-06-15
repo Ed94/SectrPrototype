@@ -284,9 +284,16 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
 		// font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 
-		path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
-		font_open_sans  = font_load( path_open_sans, 24.0, "OpenSans" )
-		default_font = font_open_sans
+		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
+		// font_open_sans  = font_load( path_open_sans, 24.0, "OpenSans" )
+
+		path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
+		font_noto_sans  = font_load( path_noto_sans, 24.0, "NotoSans" )
+
+		path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
+		font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 24.0, "Arial_Unicode_MS" )
+
+		default_font = font_arial_unicode_ms
 		log( "Default font loaded" )
 	}
 

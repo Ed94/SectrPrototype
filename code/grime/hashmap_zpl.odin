@@ -70,11 +70,11 @@ hmap_zpl_init :: proc
 }
 
 hmap_zpl_clear :: proc( using self : ^ HMapZPL( $ Type ) ) {
-	for id := 0; id < table.num; id += 1 {
-		table[id] = -1
+	for id := 0; id < int(table.num); id += 1 {
+		table.data[id] = -1
 	}
 
-	array_clear( table )
+	// array_clear( table )
 	array_clear( entries )
 }
 
@@ -154,21 +154,21 @@ hmap_zpl_rehash :: proc( ht : ^ HMapZPL( $ Type ), new_num : u64 ) -> AllocatorE
 
 hmap_zpl_rehash_fast :: proc( using self : ^ HMapZPL( $ Type ) )
 {
-	for id := 0; id < entries.num; id += 1 {
-		entries[id].Next = -1;
+	for id : i64 = 0; id < i64(entries.num); id += 1 {
+		entries.data[id].next = -1;
 	}
-	for id := 0; id < table.num; id += 1 {
-		table[id] = -1
+	for id : i64 = 0; id < i64(table.num); id += 1 {
+		table.data[id] = -1
 	}
-	for id := 0; id < entries.num; id += 1 {
-		entry       := & entries[id]
-		find_result := hmap_zpl_find( entry.key )
+	for id : i64 = 0; id < i64(entries.num); id += 1 {
+		entry       := & entries.data[id]
+		find_result := hmap_zpl_find( self, entry.key )
 
 		if find_result.prev_index < 0 {
-			table[ find_result.hash_index ] = id
+			table.data[ find_result.hash_index ] = id
 		}
 		else {
-			entries[ find_result.prev_index ].next = id
+			entries.data[ find_result.prev_index ].next = id
 		}
 	}
 }
@@ -180,10 +180,10 @@ hmap_zpl_reload :: proc( using self : ^HMapZPL($Type), new_backing : Allocator )
 }
 
 hmap_zpl_remove :: proc( self : ^ HMapZPL( $ Type ), key : u64 ) {
-	find_result := hmap_zpl_find( key )
+	find_result := hmap_zpl_find( self, key )
 
 	if find_result.entry_index >= 0 {
-		array_remove_at( & entries, find_result.entry_index )
+		array_remove_at( self.entries, u64(find_result.entry_index) )
 		hmap_zpl_rehash_fast( self )
 	}
 }

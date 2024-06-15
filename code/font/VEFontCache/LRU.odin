@@ -110,14 +110,14 @@ LRU_Link :: struct {
 LRU_Cache :: struct {
 	capacity  : u32,
 	num       : u32,
-	table     : HMapChained(LRU_Link),
+	table     : HMapZPL(LRU_Link),
 	key_queue : PoolList,
 }
 
 LRU_init :: proc( cache : ^LRU_Cache, capacity : u32 ) {
 	error : AllocatorError
 	cache.capacity     = capacity
-	cache.table, error = make( HMapChained(LRU_Link), hmap_closest_prime( uint(capacity)) )
+	cache.table, error = hmap_zpl_init( HMapZPL(LRU_Link), u64( hmap_closest_prime( uint(capacity))) )
 	assert( error == .None, "VEFontCache.LRU_init : Failed to allocate cache's table")
 
 	pool_list_init( & cache.key_queue, capacity )
@@ -126,7 +126,7 @@ LRU_init :: proc( cache : ^LRU_Cache, capacity : u32 ) {
 LRU_find :: proc( cache : ^LRU_Cache, value : u64 ) -> ^LRU_Link {
 	bytes := transmute( [8]byte ) value
 	key   := fnv64a( bytes[:] )
-	link  := get( cache.table, key )
+	link  := get( & cache.table, key )
 	return link
 }
 
@@ -167,7 +167,8 @@ LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64 {
 	evict := key
 	if cache.key_queue.size >= cache.capacity {
 		evict = pool_list_pop_back( & cache.key_queue )
-		hmap_chained_remove( cache.table, evict )
+		// hmap_chained_remove( cache.table, evict )
+		hmap_zpl_remove( & cache.table, evict )
 		cache.num -= 1
 	}
 
@@ -175,7 +176,8 @@ LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64 {
 
 	bytes    := transmute( [8]byte ) key
 	hash_key := fnv64a( bytes[:] )
-	hmap_chained_set( cache.table, hash_key, LRU_Link {
+	// set( cache.table, hash_key, LRU_Link {
+	set( & cache.table, hash_key, LRU_Link {
 		value = value,
 		ptr   = cache.key_queue.front
 	})
