@@ -35,7 +35,18 @@ pool_list_init :: proc( pool : ^PoolList, capacity : u32 )
 
 	pool.capacity = capacity
 
-	for id in 0 ..< capacity do pool.free_list.data[id] = i32(id)
+	using pool
+
+	for id in 0 ..< capacity {
+		free_list.data[id] = i32(id)
+		items.data[id] = {
+			prev = -1,
+			next = -1,
+		}
+	}
+
+	front = -1
+	back  = -1
 }
 
 pool_list_push_front :: proc( pool : ^PoolList, value : PoolListValue )
@@ -52,7 +63,7 @@ pool_list_push_front :: proc( pool : ^PoolList, value : PoolListValue )
 	items.data[ id ].value = value
 
 	if front != -1 do items.data[ front ].prev = id
-	if back  != -1 do back = id
+	if back  == -1 do back = id
 	front  = id
 	size  += 1
 }
@@ -123,10 +134,15 @@ LRU_init :: proc( cache : ^LRU_Cache, capacity : u32 ) {
 	pool_list_init( & cache.key_queue, capacity )
 }
 
-LRU_find :: proc( cache : ^LRU_Cache, value : u64 ) -> ^LRU_Link {
-	bytes := transmute( [8]byte ) value
-	key   := fnv64a( bytes[:] )
-	link  := get( & cache.table, key )
+LRU_hash_key :: #force_inline proc( key : u64 ) -> ( hash : u64 ) {
+	bytes := transmute( [8]byte ) key
+	hash   = fnv64a( bytes[:] )
+	return
+}
+
+LRU_find :: proc( cache : ^LRU_Cache, key : u64 ) -> ^LRU_Link {
+	hash := LRU_hash_key( key )
+	link := get( & cache.table, hash )
 	return link
 }
 
@@ -157,7 +173,8 @@ LRU_peek :: proc( cache : ^LRU_Cache, key : u64 ) -> i32 {
 }
 
 LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64 {
-	iter := LRU_find( cache, key )
+	hash_key := LRU_hash_key( key )
+	iter     := get( & cache.table, hash_key )
 	if iter != nil {
 		LRU_refresh( cache, key )
 		iter.value = value
@@ -167,15 +184,14 @@ LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64 {
 	evict := key
 	if cache.key_queue.size >= cache.capacity {
 		evict = pool_list_pop_back( & cache.key_queue )
-		// hmap_chained_remove( cache.table, evict )
-		hmap_zpl_remove( & cache.table, evict )
+
+		evict_hash := LRU_hash_key( evict )
+		hmap_zpl_remove( & cache.table, evict_hash )
 		cache.num -= 1
 	}
 
 	pool_list_push_front( & cache.key_queue, key )
 
-	bytes    := transmute( [8]byte ) key
-	hash_key := fnv64a( bytes[:] )
 	// set( cache.table, hash_key, LRU_Link {
 	set( & cache.table, hash_key, LRU_Link {
 		value = value,
