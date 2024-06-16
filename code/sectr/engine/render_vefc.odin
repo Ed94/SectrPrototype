@@ -79,7 +79,9 @@ render :: proc()
 
 	// "Draw text" using immediate mode api
 	{
-		text_test_str := str_fmt("frametime: %0.2f", frametime_avg_ms)
+		@static index : i32
+		index += 1
+		text_test_str := str_fmt("frametime: %0.2f\nframe id   : %d", frametime_avg_ms, index )
 		// log(text_test_str)
 		// text_test_str := str_fmt("HELLO VE FONT CACHE!")
 		// text_test_str := str_fmt("C")
@@ -96,9 +98,16 @@ render :: proc()
 		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.1, 0.2}, Vec2{1 / width, 1 / height} )
 	}
 
+
+	sokol_gfx.begin_pass(sokol_gfx.Pass { action = pass_actions.bg_clear_black, swapchain = sokol_glue.swapchain() })
+	sokol_gfx.end_pass();
+
 	// Process the draw calls for drawing text
 	if true
 	{
+		profile("ve render frame")
+
+		ve.optimize_draw_list( & ve_font_cache )
 		draw_list := ve.get_draw_list( & ve_font_cache )
 
 		draw_list_vert_slice  := array_to_slice(draw_list.vertices)
@@ -111,14 +120,18 @@ render :: proc()
 		for & draw_call in array_to_slice(draw_list.calls)
 		{
 			watch := draw_call
-			profile("ve draw call")
+			// profile("ve draw call")
 
 			switch draw_call.pass
 			{
 				// 1. Do the glyph rendering pass
 				// Glyphs are first rendered to an intermediate 2k x 512px R8 texture
 				case .Glyph:
-					profile("ve draw call: glyph")
+					// profile("ve draw call: glyph")
+					if (draw_call.end_index - draw_call.start_index) == 0 && ! draw_call.clear_before_draw {
+						continue
+					}
+
 					width  := ve_font_cache.atlas.buffer_width
 					height := ve_font_cache.atlas.buffer_height
 
@@ -129,8 +142,8 @@ render :: proc()
 					}
 					sokol_gfx.begin_pass( pass )
 
-					sokol_gfx.apply_viewport( 0,0, width, height, origin_top_left = true )
-					sokol_gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_viewport( 0,0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
 
 					sokol_gfx.apply_pipeline( glyph_pipeline )
 
@@ -150,7 +163,11 @@ render :: proc()
 				// 2. Do the atlas rendering pass
 				// A simple 16-tap box downsample shader is then used to blit from this intermediate texture to the final atlas location
 				case .Atlas:
-					profile("ve draw call: atlas")
+					// profile("ve draw call: atlas")
+					if (draw_call.end_index - draw_call.start_index) == 0 && ! draw_call.clear_before_draw {
+						continue
+					}
+
 					width  := ve_font_cache.atlas.width
 					height := ve_font_cache.atlas.height
 
@@ -188,20 +205,23 @@ render :: proc()
 				case .None: fallthrough
 				case .Target: fallthrough
 				case .Target_Uncached:
-					profile("ve draw call: target")
+					if (draw_call.end_index - draw_call.start_index) == 0 {
+						continue
+					}
+
+					// profile("ve draw call: target")
 					width  := u32(app_window.extent.x * 2)
 					height := u32(app_window.extent.y * 2)
 
 					pass := screen_pass
 					if ! draw_call.clear_before_draw {
-						pass.action.colors[0].load_action   = .LOAD
-						pass.action.colors[0].clear_value.a = 0.0
+						pass.action.colors[0].load_action = .LOAD
 					}
 					pass.swapchain = sokol_glue.swapchain()
 					sokol_gfx.begin_pass( pass )
 
-					sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
-					sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
+					// sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
 
 					sokol_gfx.apply_pipeline( screen_pipeline )
 
@@ -210,7 +230,7 @@ render :: proc()
 
 					fs_target_uniform := Ve_Draw_Text_Fs_Params {
 						down_sample = 0,
-						colour = {1, 1, 1, 1},
+						colour = {1.0, 1.0, 1.0, 1},
 					}
 
 					if draw_call.pass == .Target_Uncached {

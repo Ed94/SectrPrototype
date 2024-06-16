@@ -457,17 +457,18 @@ tick :: proc( host_delta_time_ms : f64, host_delta_ns : Duration ) -> b32
 	should_close |= cast(b32) sokol_app.pre_client_frame()
 	profile_end()
 
-	profile( "Client Tick" )
+	profile_begin( "Client Tick" )
 	context.logger = to_odin_logger( & Memory_App.logger )
 	state := get_state(); using state
-
 	client_tick := time.tick_now()
 	should_close |= tick_work_frame( host_delta_time_ms)
-	tick_frametime( & client_tick, host_delta_time_ms, host_delta_ns )
+	profile_end()
 
 	profile_begin("sokol_app: post_client_tick")
 	sokol_app.post_client_frame()
 	profile_end()
+
+	tick_frametime( & client_tick, host_delta_time_ms, host_delta_ns )
 	return ! should_close
 }
 

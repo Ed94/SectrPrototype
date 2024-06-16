@@ -75,10 +75,9 @@ font_provider_startup :: proc()
 
 	ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
-	provider_data.ve_font_cache.debug_print = true
-	provider_data.ve_font_cache.debug_print_verbose = true
+	// provider_data.ve_font_cache.debug_print = true
+	// provider_data.ve_font_cache.debug_print_verbose = true
 
-	
 	// TODO(Ed): Setup sokol hookup for VEFontCache
 	{
 		AttachmentDesc          :: sokol_gfx.Attachment_Desc
@@ -172,7 +171,7 @@ font_provider_startup :: proc()
 				depth = {
 					pixel_format = .DEPTH,
 					compare = .ALWAYS,
-					write_enabled = true,
+					write_enabled = false,
 				},
 				cull_mode = .NONE,
 				sample_count = 1,
@@ -246,6 +245,16 @@ font_provider_startup :: proc()
 						// clear_value  = {0.01,0.01,0.01,1},
 						clear_value  = {0.00, 0.00, 0.00, 1.00},
 					}
+				},
+				depth = {
+					load_action = .DONTCARE,
+					store_action = .DONTCARE,
+					clear_value = 0.0,
+				},
+				stencil = {
+					load_action = .DONTCARE,
+					store_action = .DONTCARE,
+					clear_value = 0,
 				}
 			}
 
@@ -302,7 +311,7 @@ font_provider_startup :: proc()
 				depth = {
 					pixel_format = .DEPTH,
 					compare = .ALWAYS,
-					write_enabled = true,
+					write_enabled = false,
 				},
 				cull_mode = .NONE,
 				sample_count = 1,
@@ -374,6 +383,16 @@ font_provider_startup :: proc()
 						store_action = .STORE,
 						clear_value  = {0.00, 0.00, 0.00, 1.0},
 					}
+				},
+				depth = {
+					load_action = .DONTCARE,
+					store_action = .DONTCARE,
+					clear_value = 0.0,
+				},
+				stencil = {
+					load_action = .DONTCARE,
+					store_action = .DONTCARE,
+					clear_value = 0,
 				}
 			}
 
@@ -445,7 +464,7 @@ font_provider_startup :: proc()
 					0 = {
 						load_action  = .CLEAR,
 						store_action = .STORE,
-						clear_value  = {0.0, 0.0, 0.0, 1.0},
+						clear_value  = {0.00, 0.00, 0.00, 1.0},
 					}
 				}
 			}
@@ -506,7 +525,7 @@ font_load :: proc(path_file : string,
 	def.path_file = path_file
 
 	// TODO(Ed): Load even sizes from 8px to upper bound.
-	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 120.0 )
+	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 122.0 )
 
 	fid := FontID { key, desired_id }
 	return fid
