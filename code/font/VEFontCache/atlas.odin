@@ -140,7 +140,7 @@ decide_codepoint_region :: proc( ctx : ^Context, entry : ^Entry, glyph_index : G
 		region_kind = .A
 		region      = & atlas.region_a
 	}
-	else if bounds_width_scaled <= atlas.region_a.width && bounds_height_scaled <= atlas.region_a.height
+	else if bounds_width_scaled <= atlas.region_b.width && bounds_height_scaled <= atlas.region_b.height
 	{
 		// Region B for tall glyphs. These are good for things such as european alphabets.
 		region_kind = .B

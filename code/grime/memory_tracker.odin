@@ -17,7 +17,7 @@ MemoryTracker :: struct {
 	entries : Array(MemoryTrackerEntry),
 }
 
-Track_Memory :: true
+Track_Memory :: false
 
 memtracker_clear :: proc ( tracker : MemoryTracker ) {
 	when ! Track_Memory {

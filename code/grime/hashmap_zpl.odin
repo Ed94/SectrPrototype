@@ -111,7 +111,7 @@ hmap_zpl_map_mut :: proc( using self : ^ HMapZPL( $ Type), map_proc : HMapZPL_Ma
 }
 
 hmap_zpl_grow :: proc( using self : ^ HMapZPL( $ Type ) ) -> AllocatorError {
-	new_num := array_grow_formula( entries.num )
+	new_num : u64 = cast(u64) hmap_closest_prime( cast(uint) array_grow_formula( entries.num ) )
 	return hmap_zpl_rehash( self, new_num )
 }
 

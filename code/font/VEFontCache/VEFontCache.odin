@@ -156,8 +156,8 @@ eval_point_on_bezier4 :: proc( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
 screenspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
 	scale.x    = (scale.x / width ) * 2.0
 	scale.y    = (scale.y / height) * 2.0
-	position.x = position.x * (2.0 / width) - 1.0
-	position.y = position.y * (2.0 / width) - 1.0
+	position.x = position.x * (2.0 / width)  - 1.0
+	position.y = position.y * (2.0 / height) - 1.0
 }
 
 textspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
@@ -310,7 +310,7 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 
 	LRU_init( & shape_cache.state, shape_cache_params.capacity )
 
-	shape_cache.storage, error = make( Array(ShapedText), u64(shape_cache_params.reserve_length) )
+	shape_cache.storage, error = make( Array(ShapedText), u64(shape_cache_params.capacity) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate shape_cache.storage")
 
 	for idx : u32 = 0; idx < shape_cache_params.capacity; idx += 1 {
@@ -716,6 +716,7 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 		if shape_cache.next_cache_id < i32(state.capacity) {
 			shape_cache_idx = shape_cache.next_cache_id
 			LRU_put( state, hash, shape_cache_idx )
+			shape_cache.next_cache_id += 1
 		}
 		else
 		{
@@ -798,6 +799,6 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText
 			prev_codepoint = codepoint
 		}
 
-		output.end_cursor_pos = position
+		// output.end_cursor_pos = position
 	}
 }
