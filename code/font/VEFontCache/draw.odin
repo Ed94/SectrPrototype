@@ -401,9 +401,12 @@ merge_draw_list :: proc( dst, src : ^DrawList )
 	}
 }
 
+// Call during a full depth layer pass to optimize the final draw list when necessary
 optimize_draw_list :: proc( ctx : ^Context )
 {
 	assert( ctx != nil )
+
+	calls := array_to_slice(ctx.draw_list.calls)
 
 	write_index : i32 = 0
 	for index : i32 = 1; index < i32(ctx.draw_list.calls.num); index += 1
@@ -419,16 +422,21 @@ optimize_draw_list :: proc( ctx : ^Context )
 		if draw_1.clear_before_draw               do merge = false
 		if draw_0.colour    != draw_1.colour      do merge = false
 
-		if merge {
-			// logf("merging : %v %v", write_index, index )
+		if merge
+		{
+			// logf("merging %v : %v %v", draw_0.pass, write_index, index )
 			draw_0.end_index   = draw_1.end_index
 			draw_1.start_index = 0
 			draw_1.end_index   = 0
 		}
-		else {
+		else
+		{
+			// logf("can't merge %v : %v %v", draw_0.pass, write_index, index )
 			write_index += 1
-			draw_2    := & ctx.draw_list.calls.data[ write_index ]
-			if write_index != index do draw_2 = draw_1
+			if write_index != index {
+				draw_2 := & ctx.draw_list.calls.data[ write_index ]
+				draw_2^ = draw_1^
+			}
 		}
 	}
 

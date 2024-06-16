@@ -105,7 +105,7 @@ render :: proc()
 	// Process the draw calls for drawing text
 	if true
 	{
-		profile("ve render frame")
+		profile("VEFontCache: render frame")
 
 		ve.optimize_draw_list( & ve_font_cache )
 		draw_list := ve.get_draw_list( & ve_font_cache )
@@ -120,14 +120,14 @@ render :: proc()
 		for & draw_call in array_to_slice(draw_list.calls)
 		{
 			watch := draw_call
-			// profile("ve draw call")
+			// profile("VEFontCache: draw call")
 
 			switch draw_call.pass
 			{
 				// 1. Do the glyph rendering pass
 				// Glyphs are first rendered to an intermediate 2k x 512px R8 texture
 				case .Glyph:
-					// profile("ve draw call: glyph")
+					// profile("VEFontCache: draw call: glyph")
 					if (draw_call.end_index - draw_call.start_index) == 0 && ! draw_call.clear_before_draw {
 						continue
 					}
@@ -163,7 +163,7 @@ render :: proc()
 				// 2. Do the atlas rendering pass
 				// A simple 16-tap box downsample shader is then used to blit from this intermediate texture to the final atlas location
 				case .Atlas:
-					// profile("ve draw call: atlas")
+					// profile("VEFontCache: draw call: atlas")
 					if (draw_call.end_index - draw_call.start_index) == 0 && ! draw_call.clear_before_draw {
 						continue
 					}
@@ -205,18 +205,15 @@ render :: proc()
 				case .None: fallthrough
 				case .Target: fallthrough
 				case .Target_Uncached:
-					if (draw_call.end_index - draw_call.start_index) == 0 {
+					if (draw_call.end_index - draw_call.start_index) == 0 && ! draw_call.clear_before_draw {
 						continue
 					}
 
-					// profile("ve draw call: target")
+					// profile("VEFontCache: draw call: target")
 					width  := u32(app_window.extent.x * 2)
 					height := u32(app_window.extent.y * 2)
 
 					pass := screen_pass
-					if ! draw_call.clear_before_draw {
-						pass.action.colors[0].load_action = .LOAD
-					}
 					pass.swapchain = sokol_glue.swapchain()
 					sokol_gfx.begin_pass( pass )
 

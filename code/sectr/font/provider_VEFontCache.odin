@@ -449,10 +449,10 @@ font_provider_startup :: proc()
 				sample_count = 1,
 				depth = {
 					pixel_format = app_env.defaults.depth_format,
-					// compare = .ALWAYS,
-					// write_enabled = true,
+					compare = .ALWAYS,
+					write_enabled = false,
 				},
-				// cull_mode = .NONE,
+				cull_mode = .NONE,
 			})
 			verify( sokol_gfx.query_pipeline_state(screen_pipeline) < ResourceState.FAILED, "Failed to make screen_pipeline" )
 		}
@@ -462,10 +462,30 @@ font_provider_startup :: proc()
 			screen_action := PassAction {
 				colors = {
 					0 = {
-						load_action  = .CLEAR,
+						load_action  = .LOAD,
 						store_action = .STORE,
-						clear_value  = {0.00, 0.00, 0.00, 1.0},
+						clear_value  = {0.00, 0.00, 0.00, 0.0},
+					},
+					1 = {
+						load_action  = .LOAD,
+						store_action = .STORE,
+						clear_value  = {0.00, 0.00, 0.00, 0.0},
+					},
+					2 = {
+						load_action  = .LOAD,
+						store_action = .STORE,
+						clear_value  = {0.00, 0.00, 0.00, 0.0},
 					}
+				},
+				depth = {
+					load_action = .DONTCARE,
+					store_action = .DONTCARE,
+					clear_value = 0.0,
+				},
+				stencil = {
+					load_action = .DONTCARE,
+					store_action = .DONTCARE,
+					clear_value = 0,
 				}
 			}
 
@@ -525,7 +545,7 @@ font_load :: proc(path_file : string,
 	def.path_file = path_file
 
 	// TODO(Ed): Load even sizes from 8px to upper bound.
-	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 122.0 )
+	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 80.0 )
 
 	fid := FontID { key, desired_id }
 	return fid
