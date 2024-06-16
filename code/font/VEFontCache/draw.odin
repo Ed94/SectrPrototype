@@ -184,7 +184,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	// Figure out the source bounding box in the atlas texture
 	atlas_position, atlas_width, atlas_height := atlas_bbox( atlas, region_kind, atlas_index )
 
-	glyph_position := atlas_position
+	glyph_position := atlas_position //* {1, 2}
 	glyph_width    := f32(bounds_width)  * entry.size_scale
 	glyph_height   := f32(bounds_height) * entry.size_scale
 
@@ -280,6 +280,10 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 	}
 }
 
+// TODO(Ed): Change this to be whitespace aware so that we can optimize the caching of shpaes properly.
+// Right now the entire text provided to this call is considered a "shape" this is really bad as basically it invalidates caching for large chunks of text
+// Instead we should be aware of whitespace tokens and the chunks between them (the whitespace lexer could be abused for this). 
+// From there we should maek a 'draw text shape' that breaks up the batch text draws for each of the shapes.
 draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position : Vec2, scale : Vec2 ) -> b32
 {
 	assert( ctx != nil )
@@ -402,7 +406,7 @@ optimize_draw_list :: proc( ctx : ^Context )
 	assert( ctx != nil )
 
 	write_index : i32 = 0
-	for index : i32 = 0; index < i32(ctx.draw_list.calls.num); index += 1
+	for index : i32 = 1; index < i32(ctx.draw_list.calls.num); index += 1
 	{
 		assert( write_index <= index )
 		draw_0 := & ctx.draw_list.calls.data[ write_index ]
@@ -416,8 +420,10 @@ optimize_draw_list :: proc( ctx : ^Context )
 		if draw_0.colour    != draw_1.colour      do merge = false
 
 		if merge {
+			// logf("merging : %v %v", write_index, index )
 			draw_0.end_index   = draw_1.end_index
-			draw_1.start_index = draw_1.end_index
+			draw_1.start_index = 0
+			draw_1.end_index   = 0
 		}
 		else {
 			write_index += 1
