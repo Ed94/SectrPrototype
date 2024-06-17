@@ -6,9 +6,10 @@ KeyCode :: enum u32 {
 	null         = 0x00,
 
 	ignored      = 0x01,
-	// 0x02
-	// 0x03
-	// 0x04
+	menu         = 0x02,
+	world_1      = 0x03,
+	world_2      = 0x04,
+
 	// 0x05
 	// 0x06
 	// 0x07
@@ -36,8 +37,7 @@ KeyCode :: enum u32 {
 	right_shift   = 0x17,
 	right_control = 0x18,
 
-	// 0x19
-
+	print_screen  = 0x19,
 	pause         = 0x1A,
 	escape        = '\x1B', // 0x1B
 	home          = 0x1C,
@@ -150,5 +150,19 @@ KeyCode :: enum u32 {
 	insert        = 0x7E,
 	delete        = 0x7F,
 
-	count = 0x80,
+	F13 = 0x80,
+	F14 = 0x81,
+	F15 = 0x82,
+	F16 = 0x83,
+	F17 = 0x84,
+	F18 = 0x85,
+	F19 = 0x86,
+	F20 = 0x87,
+	F21 = 0x88,
+	F22 = 0x89,
+	F23 = 0x8A,
+	F24 = 0x8B,
+	F25 = 0x8C,
+
+	count = 0x8D,
 }

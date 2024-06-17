@@ -31,6 +31,8 @@ MouseBtn :: enum u32 {
 	Back    = 0x5,
 	Extra   = 0x6,
 
+	Invalid = 0x100,
+
 	count
 }
 
@@ -40,7 +42,11 @@ KeyboardState :: struct #raw_union {
 
 		ignored : DigitalBtn,
 
-		__0x02_0x07_Unassigned__ : [ 6 * size_of( DigitalBtn)] u8,
+		// GFLW / Sokol
+		menu,
+		world_1, world_2 : DigitalBtn,
+
+		__0x05_0x07_Unassigned__ : [ 3 * size_of( DigitalBtn)] u8,
 
 		tab, backspace : DigitalBtn,
 
@@ -61,8 +67,7 @@ KeyboardState :: struct #raw_union {
 		right_shift,
 		right_control : DigitalBtn,
 
-		__0x19_Unassigned__ : [ 1 * size_of( DigitalBtn )] u8,
-
+		print_screen,
 		pause,
 		escape,
 		home,
@@ -136,8 +141,26 @@ KeyboardState :: struct #raw_union {
 		F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12 : DigitalBtn,
 
 		insert, delete : DigitalBtn,
+
+		F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25 : DigitalBtn,
 	}
 }
+
+ModifierCode :: enum u32 {
+	Shift,
+	Control,
+	Alt,
+	Left_Mouse,
+	Right_Mouse,
+	Middle_Mouse,
+	Left_Shift,
+	Right_Shift,
+	Left_Control,
+	Right_Control,
+	Left_Alt,
+	Right_Alt,
+}
+ModifierCodeFlags :: bit_set[ModifierCode; u32]
 
 MouseState :: struct {
 	using _ : struct #raw_union {
@@ -161,11 +184,9 @@ InputState :: struct {
 	keyboard : KeyboardState,
 	mouse    : MouseState,
 
-	keyboard_events : KeyboardEvents,
-}
+	events       : Array(InputEvent),
+	key_events   : Array(InputKeyEvent),
+	mouse_events : Array(InputMouseEvent),
 
-// TODO(Ed): Whats the lifetime of these events? (So far we're picking per full-frame)
-KeyboardEvents :: struct {
-	keys_pressed  : Array(KeyCode),
-	chars_pressed : Array(rune),
+	codes_pressed : Array(rune),
 }

@@ -545,7 +545,7 @@ font_load :: proc(path_file : string,
 	def.path_file = path_file
 
 	// TODO(Ed): Load even sizes from 8px to upper bound.
-	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 80.0 )
+	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 18.0 )
 
 	fid := FontID { key, desired_id }
 	return fid

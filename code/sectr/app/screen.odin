@@ -252,8 +252,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					}
 
 					if input_box.active {
-						array_append( & value_str, input.keyboard_events.chars_pressed )
-						array_clear( input.keyboard_events.chars_pressed )
+						array_append( & value_str, input.codes_pressed )
+						array_clear( input.codes_pressed )
 					}
 					else if input_box.was_active
 					{

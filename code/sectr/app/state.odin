@@ -210,6 +210,10 @@ State :: struct {
 	input_prev : ^InputState,
 	input      : ^InputState,
 
+	// Note(Ed): Do not modify directly, use its interface in app/event.odin
+	staged_input_events : Array(InputEvent),
+	// TODO(Ed): Add a multi-threaded guard for accessing or mutating staged_input_events.
+
 	debug  : DebugData,
 
 	project : Project,
@@ -226,6 +230,7 @@ State :: struct {
 	// using frametime : FrameTime,
 	sleep_is_granular : b32,
 
+	frame                   : u64,
 	frametime_delta_seconds : f64,
 	frametime_delta_ms      : f64,
 	frametime_delta_ns      : Duration,

@@ -297,6 +297,12 @@ add :: proc {
 	add_range2,
 }
 
+append :: proc {
+	grime.array_append_array,
+	grime.array_append_slice,
+	grime.array_append_value,
+}
+
 bivec3 :: proc {
 	bivec3_via_f32s,
 	vec3_to_bivec3,

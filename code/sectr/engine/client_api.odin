@@ -110,19 +110,30 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		for & input in input_data {
 			using input
 			error : AllocatorError
-			keyboard_events.keys_pressed, error  = make( Array(KeyCode), Kilo, persistent_slab_allocator() )
-			ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.keys_pressed array")
-			keyboard_events.chars_pressed, error = make( Array(rune), Kilo, persistent_slab_allocator() )
-			ensure(error == AllocatorError.None, "Failed to allocate input.keyboard_events.chars_pressed array")
+
+			events, error  = make( Array(InputEvent), Kilo, persistent_slab_allocator() )
+			ensure(error == AllocatorError.None, "Failed to allocate input.events array")
+
+			key_events, error = make( Array(InputKeyEvent), Kilo, persistent_slab_allocator() )
+			ensure(error == AllocatorError.None, "Failed to allocate key_events array")
+
+			mouse_events, error = make( Array(InputMouseEvent), Kilo, persistent_slab_allocator() )
+			ensure(error == AllocatorError.None, "Failed to allocate mouse_events array")
+
+			codes_pressed, error = make( Array(rune), Kilo, persistent_slab_allocator() )
+			ensure(error == AllocatorError.None, "Failed to allocate codes_pressed array")
 		}
+
+		input_staged_events, error  := make( Array(InputEvent), Kilo, persistent_slab_allocator() )
+		ensure(error == AllocatorError.None, "Failed to allocate input_staged_events array")
 	}
 
 	// Configuration Load
 	// TODO(Ed): Make this actually load from an ini
 	{
 		using config
-		resolution_width  = 1000
-		resolution_height =  600
+		resolution_width  = 1600
+		resolution_height =  900
 		refresh_rate      =    0
 
 		cam_min_zoom                 = 0.10
@@ -281,19 +292,19 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
-		// path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
-		// font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
+		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
+		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 
 		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
 		// font_open_sans  = font_load( path_open_sans, 24.0, "OpenSans" )
 
-		path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
-		font_noto_sans  = font_load( path_noto_sans, 24.0, "NotoSans" )
+		// path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
+		// font_noto_sans  = font_load( path_noto_sans, 24.0, "NotoSans" )
 
-		path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
-		font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 24.0, "Arial_Unicode_MS" )
+		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
+		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 24.0, "Arial_Unicode_MS" )
 
-		default_font = font_arial_unicode_ms
+		default_font = font_firacode
 		log( "Default font loaded" )
 	}
 
@@ -391,18 +402,19 @@ reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem,
 	set_profiler_module_context( prof )
 
 	context.logger = to_odin_logger( & Memory_App.logger )
-	using Memory_App;
+	{
+		using Memory_App;
 
-	persistent   = persistent_mem
-	frame        = frame_mem
-	transient    = transient_mem
-	files_buffer = files_buffer_mem
-
+		persistent   = persistent_mem
+		frame        = frame_mem
+		transient    = transient_mem
+		files_buffer = files_buffer_mem
+	}
 	context.allocator      = transient_allocator()
 	context.temp_allocator = transient_allocator()
 
 	Memory_App.state = get_state()
-	using state
+	using Memory_App.state
 
 	sokol_context = context
 
@@ -503,7 +515,7 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	debug.draw_UI_padding_bounds = false
 	debug.draw_ui_content_bounds = false
 
-	config.engine_refresh_hz = 165
+	// config.engine_refresh_hz = 165
 
 	// config.color_theme = App_Thm_Light
 	// config.color_theme = App_Thm_Dusk
@@ -535,8 +547,9 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 	context.temp_allocator = transient_allocator()
 
 	// profile("Client tick timing processing")
-	// config.engine_refresh_hz = uint(monitor_refresh_hz)
-	// config.engine_refresh_hz = 6
+
+	config.engine_refresh_hz = uint(monitor_refresh_hz)
+	// config.engine_refresh_hz = 10
 	frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 	sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
 
@@ -578,6 +591,8 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 	if frametime_elapsed_ms > 60.0 {
 		log( str_fmt("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
 	}
+
+	frame += 1
 }
 
 @export

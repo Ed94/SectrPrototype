@@ -1,6 +1,7 @@
 package sectr
 
 import ve         "codebase:font/VEFontCache"
+import sokol_app  "thirdparty:sokol/app"
 import sokol_gfx  "thirdparty:sokol/gfx"
 import sokol_glue "thirdparty:sokol/glue"
 import "core:time"
@@ -80,8 +81,7 @@ render :: proc()
 	// "Draw text" using immediate mode api
 	{
 		@static index : i32
-		index += 1
-		text_test_str := str_fmt("frametime: %0.2f\nframe id   : %d", frametime_avg_ms, index )
+		text_test_str := str_fmt("frametime  : %0.6f\nframe id   : %d\nsokol_frame: %d", frametime_avg_ms, frame, sokol_app.frame_count() )
 		// log(text_test_str)
 		// text_test_str := str_fmt("HELLO VE FONT CACHE!")
 		// text_test_str := str_fmt("C")
@@ -95,7 +95,7 @@ render :: proc()
 		ve.set_colour( & ve_font_cache,  { 1.0, 1.0, 1.0, 1.0 } )
 		ve.configure_snap( & ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
-		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.1, 0.2}, Vec2{1 / width, 1 / height} )
+		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.0, 0.975}, Vec2{1 / width, 1 / height} )
 	}
 
 

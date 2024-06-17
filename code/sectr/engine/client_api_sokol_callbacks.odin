@@ -93,14 +93,99 @@ sokol_app_log_callback :: proc "c" (
 	logf( "%-80s %s::%v", cloned_msg, cloned_tag, line_nr, level = odin_level )
 }
 
-sokol_app_event_callback :: proc "c" (event : ^sokol_app.Event)
+// TODO(Ed): This needs to queue to a job stask for a event callback handling thread to deal with.
+sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 {
 	state := get_state(); using state
 	context = sokol_context
-	if event.type == sokol_app.Event_Type.DISPLAY_CHANGED {
-		logf("sokol_app - event: Display changed")
-		logf("refresh rate: %v", sokol_app.refresh_rate());
-		monitor_refresh_hz := sokol_app.refresh_rate()
+
+	event : InputEvent
+	using event
+
+	_sokol_frame_id = sokol_event.frame_count
+	frame_id        = frame
+
+	mouse.pos   = { sokol_event.mouse_x,  sokol_event.mouse_y }
+	mouse.delta = { sokol_event.mouse_dx, sokol_event.mouse_dy }
+
+	switch sokol_event.type
+	{
+		case .INVALID:
+			logf("sokol_app - event: INVALID?")
+			logf("%v", sokol_event)
+
+		case .KEY_DOWN:
+			type      = .Key_Pressed
+			key       = to_key_from_sokol( sokol_event.key_code )
+			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+
+		case .KEY_UP:
+			type      = .Key_Released
+			key       = to_key_from_sokol( sokol_event.key_code )
+			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+
+		case .CHAR:
+			type      = .Unicode
+			codepoint = transmute(rune) sokol_event.char_code
+			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+
+		case .MOUSE_DOWN:
+			type      = .Mouse_Pressed
+			mouse.btn = to_mouse_btn_from_sokol( sokol_event.mouse_button )
+			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+
+		case .MOUSE_UP:
+			type      = .Mouse_Released
+			mouse.btn = to_mouse_btn_from_sokol( sokol_event.mouse_button )
+			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+
+		case .MOUSE_SCROLL:
+			type         = .Mouse_Scroll
+			mouse.scroll = { sokol_event.scroll_x, sokol_event.scroll_y }
+			modifiers    = to_modifiers_code_from_sokol( sokol_event.modifiers )
+
+		case .MOUSE_MOVE:
+			type      = .Mouse_Move
+			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+
+		case .MOUSE_ENTER:
+			type      = .Mouse_Enter
+			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+
+		case .MOUSE_LEAVE:
+			type      = .Mouse_Leave
+			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+
+		// TODO(Ed): Add support
+		case .TOUCHES_BEGAN:
+		case .TOUCHES_MOVED:
+		case .TOUCHES_ENDED:
+		case .TOUCHES_CANCELLED:
+
+		case .RESIZED:
+
+		case .ICONIFIED:
+
+		case .RESTORED:
+
+		case .FOCUSED:
+
+		case .UNFOCUSED:
+
+		case .SUSPENDED:
+
+		case .RESUMED:
+
+		case .QUIT_REQUESTED:
+
+		case .CLIPBOARD_PASTED:
+
+		case .FILES_DROPPED:
+
+		case .DISPLAY_CHANGED:
+			logf("sokol_app - event: Display changed")
+			logf("refresh rate: %v", sokol_app.refresh_rate())
+			monitor_refresh_hz := sokol_app.refresh_rate()
 	}
 }
 

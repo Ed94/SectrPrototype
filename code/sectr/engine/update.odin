@@ -79,7 +79,7 @@ update :: proc( delta_time : f64 ) -> b32
 	}
 
 	state.input, state.input_prev = swap( state.input, state.input_prev )
-	// poll_input( state.input_prev, state.input )
+	pull_staged_input_events(  state.input, & state.staged_input_events )
 
 	debug_actions : DebugActions = {}
 	// poll_debug_actions( & debug_actions, state.input )
