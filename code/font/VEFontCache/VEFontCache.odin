@@ -109,7 +109,7 @@ font_glyph_lru_code :: #force_inline proc( font : FontID, glyph_index : Glyph ) 
 	return
 }
 
-font_key_from_label :: #force_inline proc( label : string ) -> u64 {
+label_hash :: #force_inline proc( label : string ) -> u64 {
 	hash : u64
 	for str_byte in transmute([]byte) label {
 		hash = ((hash << 8) + hash) + u64(str_byte)
@@ -686,26 +686,9 @@ reset_batch_codepoint_state :: proc( ctx : ^Context ) {
 
 shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> ^ShapedText
 {
-	ELFhash64 :: proc( hash : ^u64, ptr : ^( $Type), count : i32 = 1 )
-	{
-		x     := u64(0)
-		bytes := transmute( [^]byte) ptr
-		for index : i32 = 0; index < i32( size_of(Type)) * count; index += 1 {
-			(hash^) = ((hash^) << 4 ) + u64(bytes[index])
-			x       = (hash^) & 0xF000000000000000
-			if x != 0 {
-				(hash^) ~= (x >> 24)
-			}
-			(hash^) &= ~x
-		}
-	}
-
-
 	font := font
-	hash        := cast(u64) 0x9f8e00d51d263c24;
-	ELFhash64( & hash, raw_data(transmute([]u8) text_utf8), cast(i32) len(text_utf8)  )
-	ELFhash64( & hash, & font )
 	// hash := cast(u64) crc32( transmute([]u8) text_utf8 )
+	hash := label_hash( text_utf8 )
 
 	shape_cache := & ctx.shape_cache
 	state       := & ctx.shape_cache.state
