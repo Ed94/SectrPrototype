@@ -1,10 +1,13 @@
 package sectr
 
+import "core:math"
+import "core:time"
+
 import ve         "codebase:font/VEFontCache"
 import sokol_app  "thirdparty:sokol/app"
 import sokol_gfx  "thirdparty:sokol/gfx"
 import sokol_glue "thirdparty:sokol/glue"
-import "core:time"
+import sokol_gp   "thirdparty:sokol/gp"
 
 PassActions :: struct {
 	bg_clear_black : sokol_gfx.Pass_Action,
@@ -78,6 +81,44 @@ render :: proc()
 	  sokol_gfx.commit()
 	}
 
+	width  := app_window.extent.x * 2
+	height := app_window.extent.y * 2
+
+	profile_begin("sokol_gp demo pass")
+	// Hello Sokol GP Demo
+	{
+		screen_ratio := width * (1.0 / height)
+
+		sokol_gp.begin(i32(width), i32(height))
+
+		sokol_gp.viewport(0, 0, i32(width), i32(height))
+		sokol_gp.project(-screen_ratio, screen_ratio, 1.0, -1.0)
+
+		sokol_gp.set_color(0.1, 0.1, 0.1, 1.0)
+		sokol_gp.clear()
+
+		// Draw animated rectangle box that rotates and changes colors
+		time := f32(f64(sokol_app.frame_count()) * sokol_app.frame_duration())
+
+		red   := math.sin(time) * 0.5 + 0.5
+		green := math.cos(time) * 0.5 + 0.5
+
+		sokol_gp.set_color(red, green, 0.3, 1.0)
+		sokol_gp.rotate_at(time, 0.0, 0.0)
+		sokol_gp.draw_filled_rect(-0.5, -0.5, 1.0, 1.0)
+	}
+
+	// Process sokol gp render depth pass
+	{
+		sokol_gfx.begin_pass( sokol_gfx.Pass { action = {}, swapchain = sokol_glue.swapchain() })
+
+		sokol_gp.flush()
+		sokol_gp.end()
+
+		sokol_gfx.end_pass()
+	}
+	profile_end()
+
 	// "Draw text" using immediate mode api
 	{
 		@static index : i32
@@ -89,8 +130,6 @@ render :: proc()
 		// font_provider := & state.font_provider_data
 		fdef := hmap_chained_get( font_cache, default_font.key )
 
-		width  := app_window.extent.x * 2
-		height := app_window.extent.y * 2
 
 		ve.set_colour( & ve_font_cache,  { 1.0, 1.0, 1.0, 1.0 } )
 		ve.configure_snap( & ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
@@ -99,8 +138,8 @@ render :: proc()
 	}
 
 
-	sokol_gfx.begin_pass(sokol_gfx.Pass { action = pass_actions.bg_clear_black, swapchain = sokol_glue.swapchain() })
-	sokol_gfx.end_pass();
+	// sokol_gfx.begin_pass(sokol_gfx.Pass { action = pass_actions.bg_clear_black, swapchain = sokol_glue.swapchain() })
+	// sokol_gfx.end_pass();
 
 	// Process the draw calls for drawing text
 	if true

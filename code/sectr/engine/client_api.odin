@@ -11,9 +11,10 @@ import    "core:strings"
 import    "core:time"
 import    "core:prof/spall"
 
-import sokol_app          "thirdparty:sokol/app"
-import sokol_gfx          "thirdparty:sokol/gfx"
-import sokol_app_gfx_glue "thirdparty:sokol/glue"
+import sokol_app  "thirdparty:sokol/app"
+import sokol_gfx  "thirdparty:sokol/gfx"
+import sokol_glue "thirdparty:sokol/glue"
+import sokol_gp   "thirdparty:sokol/gp"
 
 Path_Assets       :: "../assets/"
 Path_Shaders      :: "../shaders/"
@@ -205,7 +206,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	// Setup sokol_gfx
 	{
-		glue_env := sokol_app_gfx_glue.environment()
+		glue_env := sokol_glue.environment()
 
 		desc := sokol_gfx.Desc {
 			buffer_pool_size      = 128,
@@ -236,49 +237,17 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
         case .DUMMY: logf("sokol_gfx: using dummy backend")
 		}
 
-		// Learning examples
-		{
-
-			debug.gfx_clear_demo_pass_action.colors[0] = {
-				load_action = .CLEAR,
-				clear_value = { 1, 0, 0, 1 }
-			}
-			triangle_vertices := [?]f32 {
-	      // positions      // colors
-	       0.0,  0.5, 0.5,  1.0, 0.0, 0.0, 1.0,
-	       0.5, -0.5, 0.5,  0.0, 1.0, 0.0, 1.0,
-	      -0.5, -0.5, 0.5,  0.0, 0.0, 1.0, 1.0,
-	    }
-
-    	tri_shader_attr_vs_position :: 0
-			tri_shader_attr_vs_color0   :: 1
-
-	    using debug.gfx_tri_demo_state
-	    bindings.vertex_buffers[0] = sokol_gfx.make_buffer( sokol_gfx.Buffer_Desc {
-	    	data = {
-	    		ptr  = & triangle_vertices,
-		    	size = size_of(triangle_vertices)
-	    	}
-	    })
-	    pipeline = sokol_gfx.make_pipeline( sokol_gfx.Pipeline_Desc {
-	    	shader = sokol_gfx.make_shader( triangle_shader_desc(backend)),
-	    	layout = sokol_gfx.Vertex_Layout_State {
-	    		attrs = {
-	    			tri_shader_attr_vs_position = { format = .FLOAT3 },
-	    			tri_shader_attr_vs_color0   = { format = .FLOAT4 },
-	    		}
-	    	}
-	    })
-	    pass_action.colors[0] = {
-    		load_action = .CLEAR,
-    		clear_value = { 0, 0, 0, 1 }
-	    }
-
-	    render_data.pass_actions.bg_clear_black.colors[0] = sokol_gfx.Color_Attachment_Action {
-    		load_action = .CLEAR,
-    		clear_value = { 0, 0, 0, 1 }
-	    }
+		render_data.pass_actions.bg_clear_black.colors[0] = sokol_gfx.Color_Attachment_Action {
+			load_action = .CLEAR,
+			clear_value = { 0, 0, 0, 1 }
 		}
+	}
+
+	// Setup sokol_gp
+	{
+		desc := sokol_gp.Desc {}
+		sokol_gp.setup(desc)
+		verify( cast(b32) sokol_gp.is_valid(), "Failed to setup sokol gp (graphics painter)" )
 	}
 
 	// Basic Font Setup
@@ -389,6 +358,8 @@ sectr_shutdown :: proc()
 
 	// font_provider_shutdown()
 
+	sokol_gp.shutdown()
+	sokol_gfx.shutdown()
 	sokol_app.post_client_cleanup()
 
 	log("Module shutdown complete")
@@ -444,6 +415,9 @@ hot_reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_
 
 	slab_reload( persistent_slab, persistent_allocator() )
 
+	// input_reload()
+
+	// font_provider_reload()
 	hmap_chained_reload( font_provider_data.font_cache, persistent_allocator())
 
 	str_cache_reload( & string_cache, persistent_allocator(), persistent_allocator() )
