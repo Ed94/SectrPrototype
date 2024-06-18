@@ -122,7 +122,7 @@ render :: proc()
 	// "Draw text" using immediate mode api
 	{
 		@static index : i32
-		text_test_str := str_fmt("frametime  : %0.6f\nframe id   : %d\nsokol_frame: %d", frametime_avg_ms, frame, sokol_app.frame_count() )
+		text_test_str := str_fmt("frametime       : %0.6f\nframetime(sokol): %0.2f\nframe id   : %d\nsokol_frame: %d", frametime_delta_ms, sokol_app.frame_delta() * S_To_MS, frame, sokol_app.frame_count() )
 		// log(text_test_str)
 		// text_test_str := str_fmt("HELLO VE FONT CACHE!")
 		// text_test_str := str_fmt("C")
