@@ -252,8 +252,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					}
 
 					if input_box.active {
-						array_append( & value_str, input.codes_pressed )
-						array_clear( input.codes_pressed )
+						append( & value_str, input_events.codes_pressed )
+						clear( input_events.codes_pressed )
 					}
 					else if input_box.was_active
 					{
@@ -264,8 +264,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					}
 					else
 					{
-						array_clear( value_str)
-						array_append( & value_str, to_runes(str_fmt("%v", config.engine_refresh_hz)))
+						clear( value_str)
+						append( & value_str, to_runes(str_fmt("%v", config.engine_refresh_hz)))
 					}
 					ui_parent(input_box)
 

@@ -15,10 +15,12 @@ sokol_app_init_callback :: proc "c" () {
 
 // This is being filled in but we're directly controlling the lifetime of sokol_app's execution.
 // So this will only get called during window pan or resize events (on Win32 at least)
-sokol_app_frame_callback :: proc "c" () {
+sokol_app_frame_callback :: proc "c" ()
+{
 	context = get_state().sokol_context
-	state  := get_state()
+	profile(#procedure)
 
+	state  := get_state()
 	should_close : b32
 
 	sokol_width  := sokol_app.widthf()
@@ -38,10 +40,12 @@ sokol_app_frame_callback :: proc "c" () {
 	sokol_delta_ms := sokol_app.frame_delta()
 	sokol_delta_ns := transmute(Duration) sokol_delta_ms * MS_To_NS
 
+	profile_begin("Client Tick")
 	client_tick := time.tick_now()
 	should_close |= tick_work_frame( sokol_delta_ms )
-	tick_frametime( & client_tick, sokol_delta_ms, sokol_delta_ns )
+	profile_end()
 
+	tick_frametime( & client_tick, sokol_delta_ms, sokol_delta_ns )
 	window.resized = false
 }
 
@@ -118,43 +122,52 @@ sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 			type      = .Key_Pressed
 			key       = to_key_from_sokol( sokol_event.key_code )
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+			sokol_app.consume_event()
 
 		case .KEY_UP:
 			type      = .Key_Released
 			key       = to_key_from_sokol( sokol_event.key_code )
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+			sokol_app.consume_event()
 
 		case .CHAR:
 			type      = .Unicode
 			codepoint = transmute(rune) sokol_event.char_code
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+			sokol_app.consume_event()
 
 		case .MOUSE_DOWN:
 			type      = .Mouse_Pressed
 			mouse.btn = to_mouse_btn_from_sokol( sokol_event.mouse_button )
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+			sokol_app.consume_event()
 
 		case .MOUSE_UP:
 			type      = .Mouse_Released
 			mouse.btn = to_mouse_btn_from_sokol( sokol_event.mouse_button )
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+			sokol_app.consume_event()
 
 		case .MOUSE_SCROLL:
 			type         = .Mouse_Scroll
 			mouse.scroll = { sokol_event.scroll_x, sokol_event.scroll_y }
 			modifiers    = to_modifiers_code_from_sokol( sokol_event.modifiers )
+			sokol_app.consume_event()
 
 		case .MOUSE_MOVE:
 			type      = .Mouse_Move
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+			sokol_app.consume_event()
 
 		case .MOUSE_ENTER:
 			type      = .Mouse_Enter
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+			sokol_app.consume_event()
 
 		case .MOUSE_LEAVE:
 			type      = .Mouse_Leave
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
+			sokol_app.consume_event()
 
 		// TODO(Ed): Add support
 		case .TOUCHES_BEGAN:
@@ -163,30 +176,43 @@ sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 		case .TOUCHES_CANCELLED:
 
 		case .RESIZED:
+			sokol_app.consume_event()
 
 		case .ICONIFIED:
+			sokol_app.consume_event()
 
 		case .RESTORED:
+			sokol_app.consume_event()
 
 		case .FOCUSED:
+			sokol_app.consume_event()
 
 		case .UNFOCUSED:
+			sokol_app.consume_event()
 
 		case .SUSPENDED:
+			sokol_app.consume_event()
 
 		case .RESUMED:
+			sokol_app.consume_event()
 
 		case .QUIT_REQUESTED:
+			sokol_app.consume_event()
 
 		case .CLIPBOARD_PASTED:
+			sokol_app.consume_event()
 
 		case .FILES_DROPPED:
+			sokol_app.consume_event()
 
 		case .DISPLAY_CHANGED:
 			logf("sokol_app - event: Display changed")
 			logf("refresh rate: %v", sokol_app.refresh_rate())
 			monitor_refresh_hz := sokol_app.refresh_rate()
+			sokol_app.consume_event()
 	}
+
+	append_staged_input_events( event )
 }
 
 #endregion("Sokol App")

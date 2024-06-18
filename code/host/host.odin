@@ -181,7 +181,7 @@ load_sectr_api :: proc( version_id : i32 ) -> (loaded_module : sectr.ModuleAPI)
 
 	startup     := cast( type_of( sectr.startup        )) os_lib_get_proc( lib, "startup" )
 	shutdown    := cast( type_of( sectr.sectr_shutdown )) os_lib_get_proc( lib, "sectr_shutdown" )
-	reload      := cast( type_of( sectr.reload         )) os_lib_get_proc( lib, "reload" )
+	reload      := cast( type_of( sectr.hot_reload     )) os_lib_get_proc( lib, "hot_reload" )
 	tick        := cast( type_of( sectr.tick           )) os_lib_get_proc( lib, "tick" )
 	clean_frame := cast( type_of( sectr.clean_frame    )) os_lib_get_proc( lib, "clean_frame" )
 

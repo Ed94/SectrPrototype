@@ -79,7 +79,8 @@ update :: proc( delta_time : f64 ) -> b32
 	}
 
 	state.input, state.input_prev = swap( state.input, state.input_prev )
-	pull_staged_input_events(  state.input, & state.staged_input_events )
+	pull_staged_input_events( state.input, & state.input_events, state.staged_input_events )
+	poll_input_events( state.input, state.input_prev, state.input_events )
 
 	debug_actions : DebugActions = {}
 	// poll_debug_actions( & debug_actions, state.input )
@@ -165,7 +166,7 @@ update :: proc( delta_time : f64 ) -> b32
 		switch config.cam_zoom_mode
 		{
 			case .Smooth:
-				zoom_delta            := input.mouse.vertical_wheel * config.cam_zoom_sensitivity_smooth
+				zoom_delta            := input.mouse.scroll.y * config.cam_zoom_sensitivity_smooth
 				workspace.zoom_target *= 1 + zoom_delta * f32(delta_time)
 				workspace.zoom_target  = clamp(workspace.zoom_target, config.cam_min_zoom, config.cam_max_zoom)
 
@@ -174,7 +175,7 @@ update :: proc( delta_time : f64 ) -> b32
 				cam.zoom    += (workspace.zoom_target - cam.zoom) * lerp_factor * f32(delta_time)
 				cam.zoom     = clamp(cam.zoom, config.cam_min_zoom, config.cam_max_zoom) // Ensure cam.zoom stays within bounds
 			case .Digital:
-				zoom_delta            := input.mouse.vertical_wheel * config.cam_zoom_sensitivity_digital
+				zoom_delta            := input.mouse.scroll.y * config.cam_zoom_sensitivity_digital
 				workspace.zoom_target  = clamp(workspace.zoom_target + zoom_delta, config.cam_min_zoom, config.cam_max_zoom)
 				cam.zoom = workspace.zoom_target
 		}

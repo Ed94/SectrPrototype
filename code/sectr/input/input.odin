@@ -10,7 +10,7 @@ AnalogStick :: struct {
 
 DigitalBtn :: struct {
 	half_transitions : i32,
-	ended_down       : b32
+	ended_down       : b32,
 }
 
 btn_pressed :: proc( btn : DigitalBtn ) -> b32 {
@@ -167,11 +167,11 @@ MouseState :: struct {
 		      btns       : [16] DigitalBtn,
 		using individual : struct {
 			left, middle, right        : DigitalBtn,
-			side, forward, back, extra : DigitalBtn
+			side, forward, back, extra : DigitalBtn,
 		}
 	},
-	raw_pos, pos, delta              : Vec2,
-	vertical_wheel, horizontal_wheel : AnalogAxis
+	raw_pos, pos, delta : Vec2,
+	scroll              : [2]AnalogAxis,
 }
 
 mouse_world_delta :: #force_inline proc "contextless" () -> Vec2 {
@@ -183,10 +183,4 @@ mouse_world_delta :: #force_inline proc "contextless" () -> Vec2 {
 InputState :: struct {
 	keyboard : KeyboardState,
 	mouse    : MouseState,
-
-	events       : Array(InputEvent),
-	key_events   : Array(InputKeyEvent),
-	mouse_events : Array(InputMouseEvent),
-
-	codes_pressed : Array(rune),
 }

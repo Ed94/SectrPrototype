@@ -30,6 +30,9 @@ import "base:runtime"
 
 import c "core:c/libc"
 
+import "core:container/queue"
+	Queue :: queue.Queue
+
 // import "core:dynlib"
 
 import "core:hash"
@@ -48,6 +51,9 @@ import fmt_io "core:fmt"
 	str_tmp_from_any :: fmt_io.tprint
 
 import "core:math"
+
+import "core:math/bits"
+	u64_max :: bits.U64_MAX 
 
 import "core:mem"
 	align_forward_int       :: mem.align_forward_int
@@ -158,6 +164,7 @@ import "codebase:grime"
 	array_to_slice     :: grime.array_to_slice
 	array_init         :: grime.array_init
 	array_append       :: grime.array_append
+	array_append_array :: grime.array_append_array
 	array_append_at    :: grime.array_append_at
 	array_clear        :: grime.array_clear
 	array_free         :: grime.array_free
@@ -180,6 +187,10 @@ import "codebase:grime"
 	hmap_zpl_get    :: grime.hmap_zpl_get
 	hmap_zpl_reload :: grime.hmap_zpl_reload
 	hmap_zpl_set    :: grime.hmap_zpl_set
+
+	make_queue :: grime.make_queue
+
+	next_queue_iterator :: grime.next_queue_iterator
 
 	Pool :: grime.Pool
 
@@ -308,6 +319,10 @@ bivec3 :: proc {
 	vec3_to_bivec3,
 }
 
+clear :: proc{
+	grime.array_clear,
+}
+
 cm_to_pixels :: proc {
 	f32_cm_to_pixels,
 	vec2_cm_to_pixels,
@@ -352,10 +367,15 @@ is_power_of_two :: proc {
 	is_power_of_two_uintptr,
 }
 
+iterator :: proc {
+	grime.iterator_queue,
+}
+
 make :: proc {
 	array_init,
 	hmap_chained_init,
 	hmap_zpl_init,
+	make_queue,
 
 	// Usual
 	make_slice,
@@ -373,6 +393,14 @@ make :: proc {
 mov_avg_exp :: proc {
 	mov_avg_exp_f32,
 	mov_avg_exp_f64,
+}
+
+next :: proc {
+	next_queue_iterator,
+}
+
+peek_front :: proc {
+	queue.peek_front,
 }
 
 pixels_to_cm :: proc {
@@ -412,6 +440,9 @@ pressed :: proc {
 }
 
 push :: proc {
+	queue.push_back,
+	grime.push_back_slice_queue,
+
 	stack_push,
 	stack_allocator_push,
 
@@ -435,6 +466,29 @@ released :: proc {
 	btn_released,
 }
 
+reload :: proc {
+	grime.reload_array,
+	grime.reload_queue,
+	grime.reload_map,
+}
+
+space_left :: proc {
+	queue.space,
+}
+
+scope :: proc {
+	ui_layout_scope_via_layout,
+	ui_layout_scope_via_combo,
+
+	ui_style_scope_via_style,
+	ui_style_scope_via_combo,
+
+	ui_theme_scope_via_layout_style,
+	ui_theme_scope_via_combos,
+	ui_theme_scope_via_proc,
+	ui_theme_scope_via_theme,
+}
+
 sqrt :: proc{
 	math.sqrt_f16,
 	math.sqrt_f16le,
@@ -449,19 +503,6 @@ sqrt :: proc{
 
 inverse_sqrt :: proc {
 	inverse_sqrt_f32,
-}
-
-scope :: proc {
-	ui_layout_scope_via_layout,
-	ui_layout_scope_via_combo,
-
-	ui_style_scope_via_style,
-	ui_style_scope_via_combo,
-
-	ui_theme_scope_via_layout_style,
-	ui_theme_scope_via_combos,
-	ui_theme_scope_via_proc,
-	ui_theme_scope_via_theme,
 }
 
 sub :: proc {

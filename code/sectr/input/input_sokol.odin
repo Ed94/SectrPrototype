@@ -7,43 +7,18 @@ import sokol_app "thirdparty:sokol/app"
 
 to_modifiers_code_from_sokol :: proc( sokol_modifiers : u32 ) -> ( modifiers : ModifierCodeFlags )
 {
-	if sokol_modifiers & sokol_app.MODIFIER_SHIFT != 0 {
-		modifiers |= { .Shift }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_CTRL != 0 {
-		modifiers |= { .Control }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_ALT != 0 {
-		modifiers |= { .Alt }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_LMB != 0 {
-		modifiers |= { .Left_Mouse }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_RMB != 0 {
-		modifiers |= { .Right_Mouse }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_MMB != 0 {
-		modifiers |= { .Middle_Mouse }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_LSHIFT != 0 {
-		modifiers |= { .Left_Shift }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_RSHIFT != 0 {
-		modifiers |= { .Right_Shift }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_LCTRL != 0 {
-		modifiers |= { .Left_Control }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_RCTRL != 0 {
-		modifiers |= { .Right_Control }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_LALT != 0 {
-		modifiers |= { .Left_Alt }
-	}
-	if sokol_modifiers & sokol_app.MODIFIER_RALT != 0 {
-		modifiers |= { .Right_Alt }
-	}
-
+	if sokol_modifiers & sokol_app.MODIFIER_SHIFT  != 0 do modifiers |= { .Shift }
+	if sokol_modifiers & sokol_app.MODIFIER_CTRL   != 0 do modifiers |= { .Control }
+	if sokol_modifiers & sokol_app.MODIFIER_ALT    != 0 do modifiers |= { .Alt }
+	if sokol_modifiers & sokol_app.MODIFIER_LMB    != 0 do modifiers |= { .Left_Mouse }
+	if sokol_modifiers & sokol_app.MODIFIER_RMB    != 0 do modifiers |= { .Right_Mouse }
+	if sokol_modifiers & sokol_app.MODIFIER_MMB    != 0 do modifiers |= { .Middle_Mouse }
+	if sokol_modifiers & sokol_app.MODIFIER_LSHIFT != 0 do modifiers |= { .Left_Shift }
+	if sokol_modifiers & sokol_app.MODIFIER_RSHIFT != 0 do modifiers |= { .Right_Shift }
+	if sokol_modifiers & sokol_app.MODIFIER_LCTRL  != 0 do modifiers |= { .Left_Control }
+	if sokol_modifiers & sokol_app.MODIFIER_RCTRL  != 0 do modifiers |= { .Right_Control }
+	if sokol_modifiers & sokol_app.MODIFIER_LALT   != 0 do modifiers |= { .Left_Alt }
+	if sokol_modifiers & sokol_app.MODIFIER_RALT   != 0 do modifiers |= { .Right_Alt }
 	return
 }
 

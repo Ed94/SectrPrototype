@@ -30,7 +30,7 @@ ModuleAPI :: struct {
 
 	startup     : type_of( startup ),
 	shutdown    : type_of( sectr_shutdown ),
-	reload      : type_of( reload ),
+	reload      : type_of( hot_reload ),
 	tick        : type_of( tick ),
 	clean_frame : type_of( clean_frame ),
 }
@@ -107,24 +107,23 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	{
 		input      = & input_data[1]
 		input_prev = & input_data[0]
-		for & input in input_data {
-			using input
-			error : AllocatorError
 
-			events, error  = make( Array(InputEvent), Kilo, persistent_slab_allocator() )
-			ensure(error == AllocatorError.None, "Failed to allocate input.events array")
+		using input_events
 
-			key_events, error = make( Array(InputKeyEvent), Kilo, persistent_slab_allocator() )
-			ensure(error == AllocatorError.None, "Failed to allocate key_events array")
+		error : AllocatorError
+		events, error  = make( Queue(InputEvent), 4 * Kilo, persistent_allocator() )
+		ensure(error == AllocatorError.None, "Failed to allocate input.events array")
 
-			mouse_events, error = make( Array(InputMouseEvent), Kilo, persistent_slab_allocator() )
-			ensure(error == AllocatorError.None, "Failed to allocate mouse_events array")
+		key_events, error = make( Queue(InputKeyEvent), Kilo, persistent_allocator() )
+		ensure(error == AllocatorError.None, "Failed to allocate key_events array")
 
-			codes_pressed, error = make( Array(rune), Kilo, persistent_slab_allocator() )
-			ensure(error == AllocatorError.None, "Failed to allocate codes_pressed array")
-		}
+		mouse_events, error = make( Queue(InputMouseEvent), 2 * Kilo, persistent_allocator() )
+		ensure(error == AllocatorError.None, "Failed to allocate mouse_events array")
 
-		input_staged_events, error  := make( Array(InputEvent), Kilo, persistent_slab_allocator() )
+		codes_pressed, error = make( Array(rune), Kilo, persistent_allocator() )
+		ensure(error == AllocatorError.None, "Failed to allocate codes_pressed array")
+
+		staged_input_events, error = make( Array(InputEvent), 8 * Kilo, persistent_allocator() )
 		ensure(error == AllocatorError.None, "Failed to allocate input_staged_events array")
 	}
 
@@ -396,7 +395,7 @@ sectr_shutdown :: proc()
 }
 
 @export
-reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
+hot_reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem, files_buffer_mem : ^VArena, host_logger : ^ Logger )
 {
 	spall.SCOPED_EVENT( & prof.ctx, & prof.buffer, #procedure )
 	set_profiler_module_context( prof )
@@ -484,7 +483,6 @@ tick :: proc( host_delta_time_ms : f64, host_delta_ns : Duration ) -> b32
 	return ! should_close
 }
 
-
 // Lifted out of tick so that sokol_app_frame_callback can do it as well.
 tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 {
@@ -542,6 +540,7 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 // Lifted out of tick so that sokol_app_frame_callback can do it as well.
 tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_ms : f64, host_delta_ns : Duration )
 {
+	profile(#procedure)
 	state := get_state(); using state
 	context.allocator      = frame_slab_allocator()
 	context.temp_allocator = transient_allocator()
@@ -598,7 +597,7 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 @export
 clean_frame :: proc()
 {
-	// profile( #procedure)
+	profile( #procedure)
 	state := get_state(); using state
 	context.logger = to_odin_logger( & Memory_App.logger )
 

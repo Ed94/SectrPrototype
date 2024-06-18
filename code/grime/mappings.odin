@@ -29,6 +29,9 @@ import "base:runtime"
 import c "core:c/libc"
 	mem_fmt :: c.memset
 
+import "core:container/queue"
+	Queue :: queue.Queue
+
 import "core:dynlib"
 
 import "core:hash"
@@ -143,10 +146,16 @@ is_power_of_two :: proc {
 	is_power_of_two_uintptr,
 }
 
+iterator :: proc {
+	iterator_queue,
+}
+
 make :: proc {
 	array_init,
 	hmap_chained_init,
 	hmap_zpl_init,
+
+	make_queue,
 
 	// Usual
 	make_slice,
@@ -157,8 +166,22 @@ make :: proc {
 	make_multi_pointer,
 }
 
+next :: proc {
+	next_queue_iterator,
+}
+
 push :: proc {
 	stack_push,
+}
+
+space_left :: proc {
+	queue.space,
+}
+
+reload :: proc {
+	reload_array,
+	reload_queue,
+	reload_map,
 }
 
 to_runes :: proc {

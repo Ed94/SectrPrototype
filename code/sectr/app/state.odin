@@ -210,6 +210,8 @@ State :: struct {
 	input_prev : ^InputState,
 	input      : ^InputState,
 
+	input_events : InputEvents,
+
 	// Note(Ed): Do not modify directly, use its interface in app/event.odin
 	staged_input_events : Array(InputEvent),
 	// TODO(Ed): Add a multi-threaded guard for accessing or mutating staged_input_events.
