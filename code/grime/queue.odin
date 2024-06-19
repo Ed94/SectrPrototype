@@ -2,8 +2,17 @@ package grime
 
 import "core:container/queue"
 
-make_queue :: proc( $QueueType : typeid/Queue($Type), capacity := queue.DEFAULT_CAPACITY, allocator := context.allocator ) -> (result : Queue(Type), error : AllocatorError)
+make_queue :: proc( $QueueType : typeid/Queue($Type), capacity := queue.DEFAULT_CAPACITY, allocator := context.allocator, fixed_cap : bool = false ) -> (result : Queue(Type), error : AllocatorError)
 {
+	allocator := allocator
+	if fixed_cap {
+		slice_size     := capacity * size_of(Type)
+		raw_mem, error := alloc( slice_size, allocator = allocator )
+		backing        := slice_ptr( transmute(^Type) raw_mem, capacity )
+		queue.init_from_slice( & result, backing )
+		return
+	}
+
 	queue.init( & result, capacity, allocator )
 	return
 }
