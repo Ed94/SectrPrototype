@@ -169,6 +169,8 @@ load_sectr_api :: proc( version_id : i32 ) -> (loaded_module : sectr.ModuleAPI)
 		return
 	}
 
+	thread_sleep( Millisecond * 100 )
+
 	live_file := Path_Sectr_Live_Module
 	file_copy_sync( Path_Sectr_Module, live_file, allocator = context.temp_allocator )
 
@@ -249,7 +251,7 @@ sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, lo
 fmt_backing : [16 * Kilobyte] u8
 
 persistent_backing : [2 * Megabyte] byte
-transient_backing  : [2 * Megabyte] byte
+transient_backing  : [32 * Megabyte] byte
 
 main :: proc()
 {
