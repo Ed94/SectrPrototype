@@ -552,6 +552,7 @@ font_load :: proc(path_file : string,
 
 	for font_size : i32 = Font_Size_Interval; font_size <= Font_Largest_Px_Size; font_size += Font_Size_Interval
 	{
+		logf("Loading at size %v", font_size)
 		id    := (font_size / Font_Size_Interval) + (font_size % Font_Size_Interval)
 		ve_id := & def.size_table[id - 1]
 		ve_id^ = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 14.0 )
@@ -567,12 +568,12 @@ font_provider_resolve_draw_id :: proc( id : FontID, size := Font_Use_Default_Siz
 {
 	state := get_state(); using state
 
-	even_size := math.round(size * (1.0 / f32(Font_Size_Interval))) * f32(Font_Size_Interval)
-	size      := clamp( i32( even_size), 4, Font_Largest_Px_Size )
-	def       := hmap_chained_get( font_provider_data.font_cache, id.key )
-	size       = size if size != i32(Font_Use_Default_Size) else def.default_size
+	def           := hmap_chained_get( font_provider_data.font_cache, id.key )
+	size          := size == 0.0 ? f32(def.default_size) : size
+	even_size     := math.round(size * (1.0 / f32(Font_Size_Interval))) * f32(Font_Size_Interval)
+	resolved_size := clamp( i32( even_size), 2, Font_Largest_Px_Size )
 
-	id    := (size / Font_Size_Interval) + (size % Font_Size_Interval)
+	id    := (resolved_size / Font_Size_Interval) + (resolved_size % Font_Size_Interval)
 	ve_id := def.size_table[ id - 1 ]
 
 	width  := app_window.extent.x * 2

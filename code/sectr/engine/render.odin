@@ -113,7 +113,7 @@ render_mode_screenspace :: proc()
 		screen_corners := screen_get_corners()
 
 		position   := screen_corners.top_right
-		position.x -= app_window.extent.x
+		position.x -= app_window.extent.x * 0.5
 		position.y -= debug.draw_debug_text_y
 
 		content := str_fmt_buffer( draw_text_scratch[:], format, ..args )
@@ -122,37 +122,36 @@ render_mode_screenspace :: proc()
 		debug.draw_debug_text_y += 14
 	}
 
-	// "Draw text" using immediate mode api
-	{
-		font_provider := & state.font_provider_data
-		using font_provider
-
-		@static index : i32
-		text_test_str := str_fmt("frametime       : %0.6f\nframetime(sokol): %0.2f\nframe id   : %d\nsokol_frame: %d", frametime_delta_ms, sokol_app.frame_delta() * S_To_MS, frame, sokol_app.frame_count() )
-		// log(text_test_str)
-		// text_test_str := str_fmt("HELLO VE FONT CACHE!")
-		// text_test_str := str_fmt("C")
-
-		// font_provider := & state.font_provider_data
-		// fdef := hmap_chained_get( font_cache, default_font.key )
-
-		width  := app_window.extent.x * 2
-		height := app_window.extent.y * 2
-
-		ve.set_colour( & ve_font_cache,  { 1.0, 1.0, 1.0, 1.0 } )
-		ve.configure_snap( & ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
-
-		ve.draw_text( & ve_font_cache, font_provider_resolve_draw_id(default_font), text_test_str, {0.0, 0.975}, Vec2{1 / width, 1 / height} )
-	}
-
 	debug.debug_text_vis = true
 	if debug.debug_text_vis
 	{
-		fps_msg       := str_fmt( "FPS: %f", fps_avg)
-		fps_msg_width := cast(f32) u32(measure_text_size( fps_msg, default_font, 12.0, 0.0 ).x) + 0.5
+		fps_msg       := str_fmt( "FPS: %0.2f", fps_avg)
+		fps_msg_width := measure_text_size( fps_msg, default_font, 12.0, 0.0 ).x
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 } - { 5, 5 }
-		debug_draw_text( fps_msg, fps_msg_pos, 12.0, color = Color_White )
-		// debug_draw_text( fps_msg, {}, 12.0, color = Color_White )
+		debug_draw_text( fps_msg, fps_msg_pos, 38.0, color = Color_Red )
+
+		// debug_text( "Screen Width : %v", rl.GetScreenWidth () )
+		// debug_text( "Screen Height: %v", rl.GetScreenHeight() )
+		// debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
+		debug_text( "frametime                 : %f ms", frametime_delta_ms )
+		// debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
+		if replay.mode == ReplayMode.Record {
+			debug_text( "Recording Input")
+		}
+		if replay.mode == ReplayMode.Playback {
+			debug_text( "Replaying Input")
+		}
+		// debug_text("Zoom Target: %v", project.workspace.zoom_target)
+
+		if debug.mouse_vis {
+			debug_text("Mouse scroll: %v", input.mouse.scroll )
+			debug_text("Mouse Delta                    : %v", input.mouse.delta )
+			debug_text("Mouse Position (Render)        : %v", input.mouse.raw_pos )
+			debug_text("Mouse Position (Screen)        : %v", input.mouse.pos )
+			debug_text("Mouse Position (Workspace View): %v", screen_to_ws_view_pos(input.mouse.pos) )
+			// rl.DrawCircleV( input.mouse.raw_pos,                    10, Color_White_A125 )
+			// rl.DrawCircleV( screen_to_render_pos(input.mouse.pos),  2, Color_BG )
+		}
 
 		render_text_layer()
 	}
@@ -300,7 +299,7 @@ render_text_layer :: proc()
 
 				fs_target_uniform := Ve_Draw_Text_Fs_Params {
 					down_sample = 0,
-					colour = {1.0, 1.0, 1.0, 1},
+					colour = draw_call.colour,
 				}
 
 				if draw_call.pass == .Target_Uncached {

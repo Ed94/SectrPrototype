@@ -39,26 +39,30 @@ MouseBtn :: enum u32 {
 KeyboardState :: struct #raw_union {
 	keys : [KeyCode.count] DigitalBtn,
 	using individual : struct {
-
-		ignored : DigitalBtn,
+		null    : DigitalBtn, // 0x00
+		ignored : DigitalBtn, // 0x01
 
 		// GFLW / Sokol
 		menu,
 		world_1, world_2 : DigitalBtn,
+		// 0x02 - 0x04
 
 		__0x05_0x07_Unassigned__ : [ 3 * size_of( DigitalBtn)] u8,
 
 		tab, backspace : DigitalBtn,
+		// 0x08 - 0x09
 
 		right, left, up, down : DigitalBtn,
+		// 0x0A - 0x0D
 
-		enter : DigitalBtn,
+		enter : DigitalBtn, // 0x0E
 
 		__0x0F_Unassigned__ : [ 1 * size_of( DigitalBtn)] u8,
 
 		caps_lock,
 		scroll_lock,
 		num_lock : DigitalBtn,
+		// 0x10 - 0x12
 
 		left_alt,
 		left_shift,
@@ -66,6 +70,7 @@ KeyboardState :: struct #raw_union {
 		right_alt,
 		right_shift,
 		right_control : DigitalBtn,
+		// 0x13 - 0x18
 
 		print_screen,
 		pause,
@@ -75,6 +80,7 @@ KeyboardState :: struct #raw_union {
 		page_up,
 		page_down,
 		space : DigitalBtn,
+		// 0x19 - 0x20
 
 		exlamation,
 		quote_dbl,
@@ -91,17 +97,18 @@ KeyboardState :: struct #raw_union {
 		minus,
 		period,
 		slash	: DigitalBtn,
+		// 0x21 - 0x2F
 
-		nrow_0,
-		nrow_1,
-		nrow_2,
-		nrow_3,
-		nrow_4,
-		nrow_5,
-		nrow_6,
-		nrow_7,
-		nrow_8,
-		nrow_9,
+		nrow_0, // 0x30
+		nrow_1, // 0x31
+		nrow_2, // 0x32
+		nrow_3, // 0x33
+		nrow_4, // 0x34
+		nrow_5, // 0x35
+		nrow_6, // 0x36
+		nrow_7, // 0x37
+		nrow_8, // 0x38
+		nrow_9, // 0x39
 
 		__0x3A_Unassigned__ : [ 1 * size_of(DigitalBtn)] u8,
 

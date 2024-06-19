@@ -4,11 +4,13 @@ RGBA8 :: struct { r, g, b, a : u8 }
 RGBAN :: [4]f32
 
 normalize_rgba8 :: #force_inline proc( color : RGBA8 ) -> RGBAN {
+	quotient : f32 = 1.0 / 255
+
 	result := RGBAN {
-		1.0 / f32(color.r),
-		1.0 / f32(color.g),
-		1.0 / f32(color.b),
-		1.0 / f32(color.a),
+		f32(color.r) * quotient,
+		f32(color.g) * quotient,
+		f32(color.b) * quotient,
+		f32(color.a) * quotient,
 	}
 	return result
 }

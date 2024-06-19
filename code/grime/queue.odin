@@ -19,24 +19,29 @@ make_queue :: proc( $QueueType : typeid/Queue($Type), capacity := queue.DEFAULT_
 
 push_back_slice_queue :: proc( self : ^$QueueType / Queue($Type), slice : []Type ) -> ( error : AllocatorError )
 {
-	num := cast(uint) len(slice)
-
-	if uint( space_left( self^ )) < num {
-		error = queue._grow( self, self.len + num )
-		if error != .None do return
-	}
-
-	size        := uint(len(self.data))
-	insert_from := (self.offset + self.len) % size
-	insert_to   := num
-
-	if insert_from + insert_to > size {
-		insert_to = size - insert_from
-	}
-
-	copy( self.data[ insert_from : ], slice[ : insert_to ])
-	copy( self.data[ : insert_from ], slice[ insert_to : ])
+	queue.push_back_elems( self, ..slice )
 	return
+
+	// num := cast(uint) len(slice)
+
+	// if uint( space_left( self^ )) < num {
+	// 	error = queue._grow( self, self.len + num )
+	// 	if error != .None do return
+	// }
+
+	// size        := uint(len(self.data))
+	// insert_from := (self.offset + self.len) % size
+	// insert_to   := num
+
+	// if insert_from + insert_to > size {
+	// 	insert_to = size - insert_from
+	// }
+
+	// copy( self.data[ insert_from : ], slice[ : insert_to ])
+	// copy( self.data[ : insert_from ], slice[ insert_to : ])
+
+	// self.len += num
+	// return
 }
 
 QueueIterator :: struct( $Type : typeid ) {
@@ -60,8 +65,10 @@ iterator_queue :: proc( queue : $QueueType / Queue($Type) ) -> QueueIterator(Typ
 next_queue_iterator :: proc( iter : ^QueueIterator($Type) ) -> ^Type
 {
 	using iter
-	front_id := (length + offset        ) % len(data)
-	elem_id  := (length + offset - index) % len(data)
+	data_size := cast(uint) len(data)
+
+	front_id := (length + offset            ) % data_size
+	elem_id  := (length + offset - index -1 ) % data_size
 	if elem_id == front_id do return nil
 
 	elem  := & data[ elem_id ]

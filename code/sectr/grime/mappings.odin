@@ -399,6 +399,10 @@ next :: proc {
 	next_queue_iterator,
 }
 
+peek_back :: proc {
+	queue.peek_back,
+}
+
 peek_front :: proc {
 	queue.peek_front,
 }

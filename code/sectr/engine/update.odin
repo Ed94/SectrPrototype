@@ -78,12 +78,17 @@ update :: proc( delta_time : f64 ) -> b32
 		project.workspace.cam.view = transmute(Vec2) window.extent
 	}
 
-	state.input, state.input_prev = swap( state.input, state.input_prev )
+	// state.input, state.input_prev = swap( state.input, state.input_prev )
+	{
+		temp := state.input_prev
+		state.input_prev = state.input
+		state.input      = temp
+	}
 	pull_staged_input_events( state.input, & state.input_events, state.staged_input_events )
 	poll_input_events( state.input, state.input_prev, state.input_events )
 
 	debug_actions : DebugActions = {}
-	// poll_debug_actions( & debug_actions, state.input )
+	poll_debug_actions( & debug_actions, state.input )
 
 	// Saving & Loading
 	{

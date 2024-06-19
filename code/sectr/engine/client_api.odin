@@ -112,13 +112,13 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		using input_events
 
 		error : AllocatorError
-		events, error  = make( Queue(InputEvent), 4 * Kilo, persistent_slab_allocator() )
+		events, error  = make( Queue(InputEvent), 4 * Kilo, persistent_allocator(), fixed_cap = true )
 		ensure(error == AllocatorError.None, "Failed to allocate input.events array")
 
-		key_events, error = make( Queue(InputKeyEvent), Kilo, persistent_slab_allocator() )
+		key_events, error = make( Queue(InputKeyEvent), Kilo, persistent_allocator(), fixed_cap = true )
 		ensure(error == AllocatorError.None, "Failed to allocate key_events array")
 
-		mouse_events, error = make( Queue(InputMouseEvent), 2 * Kilo, persistent_slab_allocator() )
+		mouse_events, error = make( Queue(InputMouseEvent), 2 * Kilo, persistent_allocator(), fixed_cap = true )
 		ensure(error == AllocatorError.None, "Failed to allocate mouse_events array")
 
 		codes_pressed, error = make( Array(rune), Kilo, persistent_slab_allocator() )
@@ -132,8 +132,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// TODO(Ed): Make this actually load from an ini
 	{
 		using config
-		resolution_width  = 1600
-		resolution_height =  900
+		resolution_width  = 1000
+		resolution_height =  600
 		refresh_rate      =    0
 
 		cam_min_zoom                 = 0.10
@@ -418,10 +418,10 @@ hot_reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_
 	// input_reload()
 	{
 		using input_events
-		reload( & events, persistent_slab_allocator())
-		reload( & key_events, persistent_slab_allocator())
-		reload( & mouse_events, persistent_slab_allocator())
-		codes_pressed.backing = persistent_slab_allocator()
+		reload( & events, runtime.nil_allocator())
+		reload( & key_events, runtime.nil_allocator())
+		reload( & mouse_events, runtime.nil_allocator())
+		codes_pressed.backing       = persistent_slab_allocator()
 		staged_input_events.backing = persistent_slab_allocator()
 	}
 

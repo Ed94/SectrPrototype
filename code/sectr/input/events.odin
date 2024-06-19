@@ -88,6 +88,9 @@ pull_staged_input_events :: proc(  input : ^InputState, input_events : ^InputEve
 					key       = event.key,
 					modifiers = event.modifiers
 				})
+				// logf("Key pressed(event pushed): %v", event.key)
+				// logf("last key event frame: %v", peek_back(& key_events).frame_id)
+				// logf("last     event frame: %v", peek_back(& events).frame_id)
 
 			case .Key_Released:
 				push( & key_events, InputKeyEvent {
@@ -96,6 +99,9 @@ pull_staged_input_events :: proc(  input : ^InputState, input_events : ^InputEve
 					key       = event.key,
 					modifiers = event.modifiers
 				})
+				// logf("Key released(event rpushed): %v", event.key)
+				// logf("last key event frame: %v", peek_back(& key_events).frame_id)
+				// logf("last     event frame: %v", peek_back(& events).frame_id)
 
 			case .Unicode:
 				append( & codes_pressed, event.codepoint )
@@ -175,22 +181,39 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 	input.keyboard = {}
 	input.mouse    = {}
 
+	// logf("m's value is: %v (prev)", prev_input.keyboard.keys[KeyCode.M] )
+
+	for prev_key, id in prev_input.keyboard.keys {
+		input.keyboard.keys[id].ended_down = prev_key.ended_down
+	}
+
+	for prev_btn, id in prev_input.mouse.btns {
+		input.mouse.btns[id].ended_down = prev_btn.ended_down
+	}
+
 	input_events := input_events
 	using input_events
 
-	@static prev_frame : u64 = u64_max
+	@static prev_frame : u64 = 0
 
-	last_frame := peek_front( & events).frame_id
+	last_frame : u64 = 0
+	if events.len > 0 {
+		last_frame = peek_back( & events).frame_id
+	}
 
 	// No new events, don't update
-	if prev_frame != 0 && last_frame == prev_frame do return
+	if last_frame == prev_frame do return
 
 	Iterate_Key_Events:
 	{
 		iter_obj  := iterator( key_events ); iter := & iter_obj
 		for event := next( iter ); event != nil; event = next( iter )
 		{
-			if last_frame == event.frame_id do return
+			if last_frame > event.frame_id {
+				break
+			}
+			// logf("last_frame (iter): %v", last_frame)
+			// logf("frame      (iter): %v", event.frame_id )
 
 			key      := & input.keyboard.keys[event.key]
 			prev_key :=   prev_input.keyboard.keys[event.key]
@@ -206,9 +229,6 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 					key.half_transitions += 1
 					key.ended_down        = false
 			}
-
-			frame_transition     := first_transition && prev_key.ended_down != key.ended_down ? i32(1) : i32(0)
-			key.half_transitions += frame_transition
 		}
 	}
 
@@ -217,7 +237,9 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 		iter_obj  := iterator( mouse_events ); iter := & iter_obj
 		for event := next( iter ); event != nil; event = next( iter )
 		{
-			if last_frame == event.frame_id do return
+			if last_frame > event.frame_id {
+				break
+			}
 
 			process_digital_btn :: proc( btn : ^DigitalBtn, prev_btn : DigitalBtn, ended_down : b32 )
 			{
@@ -225,9 +247,6 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 
 				btn.half_transitions += 1
 				btn.ended_down        = ended_down
-
-				frame_transition     := first_transition && prev_btn.ended_down != btn.ended_down ? i32(1) : i32(0)
-				btn.half_transitions += frame_transition
 			}
 
 			#partial switch event.type {

@@ -119,55 +119,74 @@ sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 			logf("%v", sokol_event)
 
 		case .KEY_DOWN:
+			if sokol_event.key_repeat do return
+
 			type      = .Key_Pressed
 			key       = to_key_from_sokol( sokol_event.key_code )
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
 			sokol_app.consume_event()
+			append_staged_input_events( event )
+			// logf("Key pressed(sokol): %v", key)
+			// logf("frame      (sokol): %v", frame_id )
 
 		case .KEY_UP:
+			if sokol_event.key_repeat do return
+
 			type      = .Key_Released
 			key       = to_key_from_sokol( sokol_event.key_code )
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
 			sokol_app.consume_event()
+			append_staged_input_events( event )
+			// logf("Key released(sokol): %v", key)
+			// logf("frame       (sokol): %v", frame_id )
 
 		case .CHAR:
+			if sokol_event.key_repeat do return
+
 			type      = .Unicode
 			codepoint = transmute(rune) sokol_event.char_code
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
 			sokol_app.consume_event()
+			append_staged_input_events( event )
 
 		case .MOUSE_DOWN:
 			type      = .Mouse_Pressed
 			mouse.btn = to_mouse_btn_from_sokol( sokol_event.mouse_button )
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
 			sokol_app.consume_event()
+			append_staged_input_events( event )
 
 		case .MOUSE_UP:
 			type      = .Mouse_Released
 			mouse.btn = to_mouse_btn_from_sokol( sokol_event.mouse_button )
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
 			sokol_app.consume_event()
+			append_staged_input_events( event )
 
 		case .MOUSE_SCROLL:
 			type         = .Mouse_Scroll
 			mouse.scroll = { sokol_event.scroll_x, sokol_event.scroll_y }
 			modifiers    = to_modifiers_code_from_sokol( sokol_event.modifiers )
 			sokol_app.consume_event()
+			append_staged_input_events( event )
 
 		case .MOUSE_MOVE:
 			type      = .Mouse_Move
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
 			sokol_app.consume_event()
+			append_staged_input_events( event )
 
 		case .MOUSE_ENTER:
 			type      = .Mouse_Enter
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
 			sokol_app.consume_event()
+			append_staged_input_events( event )
 
 		case .MOUSE_LEAVE:
 			type      = .Mouse_Leave
 			modifiers = to_modifiers_code_from_sokol( sokol_event.modifiers )
 			sokol_app.consume_event()
+			append_staged_input_events( event )
 
 		// TODO(Ed): Add support
 		case .TOUCHES_BEGAN:
@@ -211,8 +230,6 @@ sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 			monitor_refresh_hz := sokol_app.refresh_rate()
 			sokol_app.consume_event()
 	}
-
-	append_staged_input_events( event )
 }
 
 #endregion("Sokol App")
