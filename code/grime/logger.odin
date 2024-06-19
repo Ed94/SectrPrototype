@@ -29,6 +29,7 @@ logger_init :: proc( logger : ^ Logger,  id : string, file_path : string, file :
 		logger_file, result_code := file_open( file_path, os.O_RDWR | os.O_CREATE )
 		assert( result_code == os.ERROR_NONE, "Log failures are fatal and must never occur at runtime (there is no logging)" )
 		logger.file = logger_file
+		os.truncate( file_path, 0 )
 	}
 	else {
 		logger.file = file
