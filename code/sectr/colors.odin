@@ -1,6 +1,18 @@
 package sectr
 
-RGBA8       :: struct { r, g, b, a : u8 }
+RGBA8 :: struct { r, g, b, a : u8 }
+RGBAN :: [4]f32
+
+normalize_rgba8 :: #force_inline proc( color : RGBA8 ) -> RGBAN {
+	result := RGBAN {
+		1.0 / f32(color.r),
+		1.0 / f32(color.g),
+		1.0 / f32(color.b),
+		1.0 / f32(color.a),
+	}
+	return result
+}
+
 Color_Blue  :: RGBA8 {  90,  90, 230, 255 }
 Color_Red   :: RGBA8 { 230,  90,  90, 255 }
 Color_White :: RGBA8 { 255, 255, 255, 255 }

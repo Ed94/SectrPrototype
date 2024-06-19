@@ -1,5 +1,6 @@
 package sectr
 
+import "core:math"
 import "core:os"
 import ve         "codebase:font/VEFontCache"
 import sokol_gfx  "thirdparty:sokol/gfx"
@@ -22,8 +23,10 @@ FontID  :: struct {
 }
 
 FontDef :: struct {
-	path_file : string,
-	ve_id     : ve.FontID,
+	path_file    : string,
+	default_size : i32,
+	size_table   : [Font_Largest_Px_Size / Font_Size_Interval] ve.FontID,
+	// ve_id     : ve.FontID,
 }
 
 FontProviderData :: struct
@@ -150,7 +153,7 @@ font_provider_startup :: proc()
 				pixel_format = .R8,
 				write_mask   = .RGBA,
 				blend = BlendState {
-					enabled = true,
+					enabled          = true,
 					src_factor_rgb   = .ONE_MINUS_DST_COLOR,
 					dst_factor_rgb   = .ONE_MINUS_SRC_COLOR,
 					op_rgb           = BlendOp.ADD,
@@ -169,11 +172,11 @@ font_provider_startup :: proc()
 				},
 				color_count  = 1,
 				depth = {
-					pixel_format = .DEPTH,
-					compare = .ALWAYS,
+					pixel_format  = .DEPTH,
+					compare       = .ALWAYS,
 					write_enabled = false,
 				},
-				cull_mode = .NONE,
+				cull_mode    = .NONE,
 				sample_count = 1,
 				// label =
 			})
@@ -213,18 +216,17 @@ font_provider_startup :: proc()
 				min_filter    = Filter.NEAREST,
 				mag_filter    = Filter.NEAREST,
 				mipmap_filter = Filter.NONE,
-				wrap_u = .CLAMP_TO_EDGE,
-				wrap_v = .CLAMP_TO_EDGE,
-				min_lod = -1000.0,
-				max_lod =  1000.0,
+				wrap_u        = .CLAMP_TO_EDGE,
+				wrap_v        = .CLAMP_TO_EDGE,
+				min_lod       = -1000.0,
+				max_lod       =  1000.0,
 				border_color  = BorderColor.OPAQUE_BLACK,
-				compare = .NEVER
+				compare       = .NEVER
 			})
 			verify( sokol_gfx.query_sampler_state( glyph_rt_sampler) < ResourceState.FAILED, "Failed to make atlas_rt_sampler" )
 
 			color_attach := AttachmentDesc {
-				image     = glyph_rt_color,
-				// mip_level = 1,
+				image = glyph_rt_color,
 			}
 
 			glyph_attachments := sokol_gfx.make_attachments({
@@ -242,19 +244,18 @@ font_provider_startup :: proc()
 					0 = {
 						load_action  = .LOAD,
 						store_action = .STORE,
-						// clear_value  = {0.01,0.01,0.01,1},
 						clear_value  = {0.00, 0.00, 0.00, 1.00},
 					}
 				},
 				depth = {
-					load_action = .DONTCARE,
+					load_action  = .DONTCARE,
 					store_action = .DONTCARE,
-					clear_value = 0.0,
+					clear_value  = 0.0,
 				},
 				stencil = {
-					load_action = .DONTCARE,
+					load_action  = .DONTCARE,
 					store_action = .DONTCARE,
-					clear_value = 0,
+					clear_value  = 0,
 				}
 			}
 
@@ -290,7 +291,7 @@ font_provider_startup :: proc()
 				pixel_format = .R8,
 				write_mask   = .RGBA,
 				blend = BlendState {
-					enabled = true,
+					enabled          = true,
 					src_factor_rgb   = .SRC_ALPHA,
 					dst_factor_rgb   = .ONE_MINUS_SRC_ALPHA,
 					op_rgb           = BlendOp.ADD,
@@ -309,11 +310,11 @@ font_provider_startup :: proc()
 				},
 				color_count  = 1,
 				depth = {
-					pixel_format = .DEPTH,
-					compare = .ALWAYS,
+					pixel_format  = .DEPTH,
+					compare       = .ALWAYS,
 					write_enabled = false,
 				},
-				cull_mode = .NONE,
+				cull_mode    = .NONE,
 				sample_count = 1,
 			})
 		}
@@ -352,12 +353,12 @@ font_provider_startup :: proc()
 				min_filter    = Filter.NEAREST,
 				mag_filter    = Filter.NEAREST,
 				mipmap_filter = Filter.NONE,
-				wrap_u = .CLAMP_TO_EDGE,
-				wrap_v = .CLAMP_TO_EDGE,
-				min_lod = -1000.0,
-				max_lod =  1000.0,
+				wrap_u        = .CLAMP_TO_EDGE,
+				wrap_v        = .CLAMP_TO_EDGE,
+				min_lod       = -1000.0,
+				max_lod       =  1000.0,
 				border_color  = BorderColor.OPAQUE_BLACK,
-				compare = .NEVER
+				compare       = .NEVER
 			})
 			verify( sokol_gfx.query_sampler_state( atlas_rt_sampler) < ResourceState.FAILED, "Failed to make atlas_rt_sampler" )
 
@@ -448,8 +449,8 @@ font_provider_startup :: proc()
 				color_count  = 1,
 				sample_count = 1,
 				depth = {
-					pixel_format = app_env.defaults.depth_format,
-					compare = .ALWAYS,
+					pixel_format  = app_env.defaults.depth_format,
+					compare       = .ALWAYS,
 					write_enabled = false,
 				},
 				cull_mode = .NONE,
@@ -478,14 +479,14 @@ font_provider_startup :: proc()
 					}
 				},
 				depth = {
-					load_action = .DONTCARE,
+					load_action  = .DONTCARE,
 					store_action = .DONTCARE,
-					clear_value = 0.0,
+					clear_value  = 0.0,
 				},
 				stencil = {
-					load_action = .DONTCARE,
+					load_action  = .DONTCARE,
 					store_action = .DONTCARE,
-					clear_value = 0,
+					clear_value  = 0,
 				}
 			}
 
@@ -502,7 +503,10 @@ font_provider_reload :: proc()
 	state         := get_state()
 	provider_data := & state.font_provider_data
 
-	ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
+	hmap_chained_reload( provider_data.font_cache, persistent_allocator())
+
+	// ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
+	ve.hot_reload( & provider_data.ve_font_cache, persistent_slab_allocator() )
 }
 
 font_provider_shutdown :: proc()
@@ -514,13 +518,14 @@ font_provider_shutdown :: proc()
 }
 
 font_load :: proc(path_file : string,
-	default_size : f32    = Font_Load_Use_Default_Size,
+	default_size : i32    = Font_Load_Use_Default_Size,
 	desired_id   : string = Font_Load_Gen_ID
 ) -> FontID
 {
-	profile(#procedure)
+	msg := str_fmt_tmp("Loading font: %v", path_file)
+	profile(msg)
+	log(msg)
 
-	logf("Loading font: %v", path_file)
 	provider_data := & get_state().font_provider_data; using provider_data
 
 	font_data, read_succeded : = os.read_entire_file( path_file, persistent_allocator() )
@@ -542,11 +547,47 @@ font_load :: proc(path_file : string,
 	def, set_error := hmap_chained_set(font_cache, key, FontDef{})
 	verify( set_error == AllocatorError.None, "Failed to add new font entry to cache" )
 
-	def.path_file = path_file
+	def.path_file    = path_file
+	def.default_size = default_size
 
-	// TODO(Ed): Load even sizes from 8px to upper bound.
-	def.ve_id = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 18.0 )
+	for font_size : i32 = Font_Size_Interval; font_size <= Font_Largest_Px_Size; font_size += Font_Size_Interval
+	{
+		id    := (font_size / Font_Size_Interval) + (font_size % Font_Size_Interval)
+		ve_id := & def.size_table[id - 1]
+		ve_id^ = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 14.0 )
+	}
 
 	fid := FontID { key, desired_id }
 	return fid
+}
+
+Font_Use_Default_Size :: f32(0.0)
+
+font_provider_resolve_draw_id :: proc( id : FontID, size := Font_Use_Default_Size ) -> ve.FontID
+{
+	state := get_state(); using state
+
+	even_size := math.round(size * (1.0 / f32(Font_Size_Interval))) * f32(Font_Size_Interval)
+	size      := clamp( i32( even_size), 4, Font_Largest_Px_Size )
+	def       := hmap_chained_get( font_provider_data.font_cache, id.key )
+	size       = size if size != i32(Font_Use_Default_Size) else def.default_size
+
+	id    := (size / Font_Size_Interval) + (size % Font_Size_Interval)
+	ve_id := def.size_table[ id - 1 ]
+
+	width  := app_window.extent.x * 2
+	height := app_window.extent.y * 2
+	return ve_id
+}
+
+measure_text_size :: proc( text : string, font : FontID, font_size := Font_Use_Default_Size, spacing : f32 ) -> Vec2
+{
+	state := get_state(); using state
+
+	// profile(#procedure)
+	px_size := math.round( font_size )
+	ve_id   := font_provider_resolve_draw_id( font, font_size )
+
+	measured := ve.measure_text_size( & font_provider_data.ve_font_cache, ve_id, text )
+	return measured
 }

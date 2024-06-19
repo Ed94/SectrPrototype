@@ -49,6 +49,17 @@ pool_list_init :: proc( pool : ^PoolList, capacity : u32 )
 	back  = -1
 }
 
+pool_list_free :: proc( pool : ^PoolList )
+{
+
+}
+
+pool_list_reload :: proc( pool : ^PoolList, allocator : Allocator )
+{
+	pool.items.backing     = allocator
+	pool.free_list.backing = allocator
+}
+
 pool_list_push_front :: proc( pool : ^PoolList, value : PoolListValue )
 {
 	using pool
@@ -134,6 +145,17 @@ LRU_init :: proc( cache : ^LRU_Cache, capacity : u32 ) {
 	pool_list_init( & cache.key_queue, capacity )
 }
 
+LRU_free :: proc( cache : ^LRU_Cache )
+{
+
+}
+
+LRU_reload :: proc( cache : ^LRU_Cache, allocator : Allocator )
+{
+	hmap_zpl_reload( & cache.table, allocator )
+	pool_list_reload( & cache.key_queue, allocator )
+}
+
 LRU_hash_key :: #force_inline proc( key : u64 ) -> ( hash : u64 ) {
 	bytes := transmute( [8]byte ) key
 	hash   = fnv64a( bytes[:] )
@@ -172,7 +194,8 @@ LRU_peek :: proc( cache : ^LRU_Cache, key : u64 ) -> i32 {
 	return iter.value
 }
 
-LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64 {
+LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64
+{
 	hash_key := LRU_hash_key( key )
 	iter     := get( & cache.table, hash_key )
 	if iter != nil {

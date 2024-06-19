@@ -112,19 +112,19 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		using input_events
 
 		error : AllocatorError
-		events, error  = make( Queue(InputEvent), 4 * Kilo, persistent_allocator() )
+		events, error  = make( Queue(InputEvent), 4 * Kilo, persistent_slab_allocator() )
 		ensure(error == AllocatorError.None, "Failed to allocate input.events array")
 
-		key_events, error = make( Queue(InputKeyEvent), Kilo, persistent_allocator() )
+		key_events, error = make( Queue(InputKeyEvent), Kilo, persistent_slab_allocator() )
 		ensure(error == AllocatorError.None, "Failed to allocate key_events array")
 
-		mouse_events, error = make( Queue(InputMouseEvent), 2 * Kilo, persistent_allocator() )
+		mouse_events, error = make( Queue(InputMouseEvent), 2 * Kilo, persistent_slab_allocator() )
 		ensure(error == AllocatorError.None, "Failed to allocate mouse_events array")
 
-		codes_pressed, error = make( Array(rune), Kilo, persistent_allocator() )
+		codes_pressed, error = make( Array(rune), Kilo, persistent_slab_allocator() )
 		ensure(error == AllocatorError.None, "Failed to allocate codes_pressed array")
 
-		staged_input_events, error = make( Array(InputEvent), 8 * Kilo, persistent_allocator() )
+		staged_input_events, error = make( Array(InputEvent), 8 * Kilo, persistent_slab_allocator() )
 		ensure(error == AllocatorError.None, "Failed to allocate input_staged_events array")
 	}
 
@@ -416,9 +416,16 @@ hot_reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_
 	slab_reload( persistent_slab, persistent_allocator() )
 
 	// input_reload()
+	{
+		using input_events
+		reload( & events, persistent_slab_allocator())
+		reload( & key_events, persistent_slab_allocator())
+		reload( & mouse_events, persistent_slab_allocator())
+		codes_pressed.backing = persistent_slab_allocator()
+		staged_input_events.backing = persistent_slab_allocator()
+	}
 
-	// font_provider_reload()
-	hmap_chained_reload( font_provider_data.font_cache, persistent_allocator())
+	font_provider_reload()
 
 	str_cache_reload( & string_cache, persistent_allocator(), persistent_allocator() )
 	str_cache_set_module_ctx( & string_cache )
@@ -512,7 +519,7 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 }
 
 // Lifted out of tick so that sokol_app_frame_callback can do it as well.
-tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_ms : f64, host_delta_ns : Duration )
+tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_ms : f64, host_delta_ns : Duration, can_sleep := true )
 {
 	profile(#procedure)
 	state := get_state(); using state
@@ -536,7 +543,7 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 		sleep_ms       := frametime_target_ms - frametime_elapsed_ms
 		pre_sleep_tick := time.tick_now()
 
-		if sleep_ms > 0 {
+		if can_sleep && sleep_ms > 0 {
 			thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
 			// thread__highres_wait( sleep_ms )
 		}

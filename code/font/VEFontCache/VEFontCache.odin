@@ -355,6 +355,43 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	shaper_init( & shaper_ctx )
 }
 
+hot_reload :: proc( ctx : ^Context, allocator : Allocator )
+{
+	ctx.backing       = allocator
+	context.allocator = ctx.backing
+
+	using ctx
+
+	entries.backing   = allocator
+	temp_path.backing = allocator
+	hmap_zpl_reload( & temp_codepoint_seen, allocator )
+	draw_list.vertices.backing  = allocator
+	draw_list.indices.backing   = allocator
+	draw_list.calls.backing     = allocator
+
+	LRU_reload( & atlas.region_a.state, allocator)
+	LRU_reload( & atlas.region_b.state, allocator)
+	LRU_reload( & atlas.region_c.state, allocator)
+	LRU_reload( & atlas.region_d.state, allocator)
+
+	LRU_reload( & shape_cache.state, allocator )
+	for idx : u32 = 0; idx < u32(shape_cache.storage.capacity); idx += 1 {
+		stroage_entry := & shape_cache.storage.data[idx]
+		using stroage_entry
+
+		glyphs.backing    = allocator
+		positions.backing = allocator
+	}
+
+	atlas.draw_list.calls.backing    = allocator
+	atlas.draw_list.indices.backing  = allocator
+	atlas.draw_list.vertices.backing = allocator
+
+	atlas.clear_draw_list.calls.backing    = allocator
+	atlas.clear_draw_list.indices.backing  = allocator
+	atlas.clear_draw_list.vertices.backing = allocator
+}
+
 // ve_foncache_shutdown
 shutdown :: proc( ctx : ^Context )
 {
@@ -677,6 +714,37 @@ is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
 	if glyph_index == 0 do return true
 	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
 	return false
+}
+
+measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> (measured : Vec2)
+{
+	assert( ctx != nil )
+	assert( font >= 0 && font < FontID(ctx.entries.num) )
+
+	atlas := ctx.atlas
+
+	shaped := shape_text_cached( ctx, font, text_utf8 )
+
+	entry := & ctx.entries.data[ font ]
+
+	batch_start_idx : i32 = 0
+	for index : i32 = 0; index < i32(shaped.glyphs.num); index += 1
+	{
+		glyph_index := shaped.glyphs.data[ index ]
+		if is_empty( ctx, entry, glyph_index ) do continue
+
+		bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
+		bounds_width  := bounds_1.x - bounds_0.x
+		bounds_height := bounds_1.y - bounds_0.y
+
+		bounds := Vec2 {
+			cast(f32) cast(u32) (f32(bounds_width)  * entry.size_scale - f32(atlas.glyph_padding)),
+			cast(f32) cast(u32) (f32(bounds_height) * entry.size_scale - f32(atlas.glyph_padding)),
+		}
+		measured += bounds
+	}
+
+	return measured
 }
 
 reset_batch_codepoint_state :: proc( ctx : ^Context ) {

@@ -43,8 +43,6 @@ render :: proc()
 	do_nothing : bool
 	do_nothing = false
 
-	time.sleep(10000)
-
 	// The below are most likely limited to a "depth layer" and so
 	// different depth layers need different draw pass combos (of the 3 constructive passes)
 	// Will need to profile how expensive it is for batching with the UI box rendering

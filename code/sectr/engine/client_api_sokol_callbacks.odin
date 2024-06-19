@@ -45,7 +45,7 @@ sokol_app_frame_callback :: proc "c" ()
 	should_close |= tick_work_frame( sokol_delta_ms )
 	profile_end()
 
-	tick_frametime( & client_tick, sokol_delta_ms, sokol_delta_ns )
+	tick_frametime( & client_tick, sokol_delta_ms, sokol_delta_ns, can_sleep = false )
 	window.resized = false
 }
 

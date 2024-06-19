@@ -289,6 +289,8 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 	assert( ctx != nil )
 	assert( font >= 0 && font < FontID(ctx.entries.num) )
 
+	context.allocator = ctx.backing
+
 	shaped := shape_text_cached( ctx, font, text_utf8 )
 
 	snap_width  := f32(ctx.snap_width)
