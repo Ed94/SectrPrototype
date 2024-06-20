@@ -32,26 +32,6 @@ Side :: enum i32 {
 // 	Count,
 // }
 
-// UI_AnchorPresets :: enum u32 {
-// 	Top_Left,
-// 	Top_Right,
-// 	Bottom_Right,
-// 	Bottom_Left,
-// 	Center_Left,
-// 	Center_Top,
-// 	Center_Right,
-// 	Center_Bottom,
-// 	Center,
-// 	Left_Wide,
-// 	Top_Wide,
-// 	Right_Wide,
-// 	Bottom_Wide,
-// 	VCenter_Wide,
-// 	HCenter_Wide,
-// 	Full,
-// 	Count,
-// }
-
 UI_Cursor :: struct {
 	placeholder : int,
 }
@@ -78,7 +58,6 @@ UI_ScalarConstraint :: struct {
 
 UI_Scalar2 :: [Axis2.Count]UI_Scalar
 
-
 // UI_BoxFlags_Stack_Size    :: 512
 UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
@@ -88,7 +67,7 @@ UI_Built_Boxes_Array_Size :: 128 * Kilobyte
 
 // TODO(Ed): Rename to UI_Context
 UI_State :: struct {
-	// TODO(Ed) : Use these
+	// TODO(Ed) : Use these?
 	// build_arenas : [2]Arena,
 	// build_arena  : ^ Arena,
 

@@ -97,7 +97,7 @@ sokol_app_log_callback :: proc "c" (
 	logf( "%-80s %s::%v", cloned_msg, cloned_tag, line_nr, level = odin_level )
 }
 
-// TODO(Ed): This needs to queue to a job stask for a event callback handling thread to deal with.
+// TODO(Ed): Does this need to be queued to a separate thread?
 sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 {
 	state := get_state(); using state

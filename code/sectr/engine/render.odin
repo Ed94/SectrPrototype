@@ -119,7 +119,7 @@ render_mode_screenspace :: proc()
 		content := str_fmt_buffer( draw_text_scratch[:], format, ..args )
 		debug_draw_text( content, position, 12.0 )
 
-		debug.draw_debug_text_y += 14
+		debug.draw_debug_text_y += 12
 	}
 
 	debug.debug_text_vis = true

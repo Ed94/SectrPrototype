@@ -154,17 +154,15 @@ eval_point_on_bezier4 :: proc( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
 }
 
 screenspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
-	scale.x    = (scale.x / width ) * 2.0
-	scale.y    = (scale.y / height) * 2.0
-	position.x = position.x * (2.0 / width)  - 1.0
-	position.y = position.y * (2.0 / height) - 1.0
+	quotient    := 1.0 / Vec2 { width, height }
+	(position^) = (position^) * quotient * 2.0 - 1.0
+	(scale^)    = (scale^)    * quotient * 2.0
 }
 
 textspace_x_form :: proc( position, scale : ^Vec2, width, height : f32 ) {
-	position.x /= width
-	position.y /= height
-	scale.x    /= width
-	scale.y    /= height
+	quotient := 1.0 / Vec2 { width, height }
+	(position^) *= quotient
+	(scale^)    *= quotient
 }
 
 InitAtlasRegionParams :: struct {

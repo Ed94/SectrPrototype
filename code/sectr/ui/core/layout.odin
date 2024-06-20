@@ -3,6 +3,25 @@ package sectr
 import "core:math"
 import "core:math/linalg"
 
+// UI_AnchorPresets :: enum u32 {
+// 	Top_Left,
+// 	Top_Right,
+// 	Bottom_Right,
+// 	Bottom_Left,
+// 	Center_Left,
+// 	Center_Top,
+// 	Center_Right,
+// 	Center_Bottom,
+// 	Center,
+// 	Left_Wide,
+// 	Top_Wide,
+// 	Right_Wide,
+// 	Bottom_Wide,
+// 	VCenter_Wide,
+// 	HCenter_Wide,
+// 	Full,
+// 	Count,
+// }
 
 // Anchor_
 
@@ -15,7 +34,6 @@ LayoutAlign_OriginTL_Centered     :: Vec2{0.5, 0.5}
 LayoutAlign_OriginTL_Bottom       :: Vec2{0.5,   1}
 LayoutAlign_OriginTL_BottomLeft   :: Vec2{  0,   1}
 LayoutAlign_OriginTL_BottomRight  :: Vec2{  1,   1}
-
 
 Layout_OriginCenter_Centered :: Vec2{0.5, 0.5}
 

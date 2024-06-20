@@ -191,6 +191,9 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 		input.mouse.btns[id].ended_down = prev_btn.ended_down
 	}
 
+	input.mouse.raw_pos = prev_input.mouse.raw_pos
+	input.mouse.pos     = prev_input.mouse.pos
+
 	input_events := input_events
 	using input_events
 
@@ -266,11 +269,12 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 				case .Mouse_Move:
 				case .Mouse_Enter:
 				case .Mouse_Leave:
-					// Handled elsewhere
+					// Handled below
 			}
 
-			input.mouse.pos   = event.pos
-			input.mouse.delta = event.delta
+			input.mouse.raw_pos = event.pos
+			input.mouse.pos     = render_to_screen_pos( event.pos )
+			input.mouse.delta   = event.delta
 		}
 	}
 

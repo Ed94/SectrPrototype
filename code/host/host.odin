@@ -123,16 +123,40 @@ setup_memory :: proc( profiler : ^SpallProfiler ) -> ClientMemory
 	// Setup the static arena for the entire application
 	{
 		alloc_error : AllocatorError
-		persistent, alloc_error = varena_init( sectr.Memory_Base_Address_Persistent, sectr.Memory_Reserve_Persistent, sectr.Memory_Commit_Initial_Persistent, nil, dbg_name = "persistent" )
+		persistent, alloc_error = varena_init(
+			sectr.Memory_Base_Address_Persistent,
+			sectr.Memory_Reserve_Persistent,
+			sectr.Memory_Commit_Initial_Persistent,
+			growth_policy    = nil,
+			allow_any_resize = false,
+			dbg_name         = "persistent" )
 		verify( alloc_error == .None, "Failed to allocate persistent virtual arena for the sectr module")
 
-		frame, alloc_error = varena_init( sectr.Memory_Base_Address_Frame, sectr.Memory_Reserve_Frame, sectr.Memory_Commit_Initial_Frame, nil, allow_any_reize = true, dbg_name = "frame" )
+		frame, alloc_error = varena_init(
+			sectr.Memory_Base_Address_Frame,
+			sectr.Memory_Reserve_Frame,
+			sectr.Memory_Commit_Initial_Frame,
+			growth_policy    = nil,
+			allow_any_resize = true,
+			dbg_name         = "frame" )
 		verify( alloc_error == .None, "Failed to allocate frame virtual arena for the sectr module")
 
-		transient, alloc_error = varena_init( sectr.Memory_Base_Address_Transient, sectr.Memory_Reserve_Transient, sectr.Memory_Commit_Initial_Transient, nil, allow_any_reize = true, dbg_name = "transient" )
+		transient, alloc_error = varena_init(
+			sectr.Memory_Base_Address_Transient,
+			sectr.Memory_Reserve_Transient,
+			sectr.Memory_Commit_Initial_Transient,
+			growth_policy    = nil,
+			allow_any_resize = true,
+			dbg_name         = "transient" )
 		verify( alloc_error == .None, "Failed to allocate transient virtual arena for the sectr module")
 
-		files_buffer, alloc_error = varena_init( sectr.Memory_Base_Address_Files_Buffer, sectr.Memory_Reserve_FilesBuffer, sectr.Memory_Commit_Initial_Filebuffer, nil, dbg_name = "files_buffer" )
+		files_buffer, alloc_error = varena_init(
+			sectr.Memory_Base_Address_Files_Buffer,
+			sectr.Memory_Reserve_FilesBuffer,
+			sectr.Memory_Commit_Initial_Filebuffer,
+			growth_policy    = nil,
+			allow_any_resize = true,
+			dbg_name         = "files_buffer" )
 		verify( alloc_error == .None, "Failed to allocate files buffer virtual arena for the sectr module")
 	}
 
@@ -149,8 +173,8 @@ setup_memory :: proc( profiler : ^SpallProfiler ) -> ClientMemory
 				file_resize( snapshot_file, sectr.Memory_Chunk_Size )
 			}
 		}
-		map_error                : MapFileError
-		map_flags                : MapFileFlags = { MapFileFlag.Read, MapFileFlag.Write }
+		map_error : MapFileError
+		map_flags : MapFileFlags = { MapFileFlag.Read, MapFileFlag.Write }
 		sectr_snapshot, map_error = virtual.map_file_from_file_descriptor( uintptr(snapshot_file), map_flags )
 		verify( map_error == MapFileError.None, "Failed to allocate snapshot memory for the sectr module" )
 		file_close(snapshot_file)
@@ -250,7 +274,7 @@ sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, lo
 
 fmt_backing : [16 * Kilobyte] u8
 
-persistent_backing : [2 * Megabyte] byte
+persistent_backing : [2  * Megabyte] byte
 transient_backing  : [32 * Megabyte] byte
 
 main :: proc()

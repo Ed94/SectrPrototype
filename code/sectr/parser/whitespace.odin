@@ -98,7 +98,7 @@ PWS_LineArray_ReserveSize  :: 32 * Kilobyte
 PWS_ParseResult :: struct {
 	content   : string,
 	tokens    : Array(PWS_Token),
-	nodes     : Array(PWS_AST), // Nodes should be dumped in a pool.
+	nodes     : Array(PWS_AST), // Nodes should be dumped in a pool?
 	lines     : Array( ^PWS_AST),
 	errors    : [PWS_ParseError_Max] PWS_ParseError,
 }

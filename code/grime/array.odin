@@ -310,14 +310,3 @@ array_block_size :: proc "contextless" ( self : Array( $Type ) ) -> u64 {
 	block_size  := cast(u64) (header_size + self.capacity * size_of(Type))
 	return block_size
 }
-
-array_memtracker_entry :: proc( self : Array( $Type ), name : string ) -> MemoryTrackerEntry {
-	header_size :: size_of(ArrayHeader(Type))
-	block_size  := cast(uintptr) (header_size + (cast(uintptr) self.capacity) * size_of(Type))
-
-	block_start := transmute(^u8) self.header
-	block_end   := ptr_offset( block_start, block_size )
-
-	tracker_entry := MemoryTrackerEntry { name, block_start, block_end }
-	return tracker_entry
-}
