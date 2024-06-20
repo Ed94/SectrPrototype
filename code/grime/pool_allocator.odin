@@ -25,7 +25,8 @@ Pool :: struct {
 PoolHeader :: struct {
 	backing  : Allocator,
 	dbg_name : string,
-	tracker  : MemoryTracker,
+	tracker        : MemoryTracker,
+	// bucket_tracker : MemoryTracker,
 
 	zero_bucket     : b32,
 	block_size      : uint,
@@ -57,6 +58,7 @@ pool_init :: proc (
 	alignment           : uint = mem.DEFAULT_ALIGNMENT,
 	allocator           : Allocator = context.allocator,
 	dbg_name            : string = "",
+	enable_mem_tracking : b32 = false,
 ) -> ( pool : Pool, alloc_error : AllocatorError )
 {
 	header_size := align_forward_int( size_of(PoolHeader), int(alignment) )
@@ -76,8 +78,9 @@ pool_init :: proc (
 	pool.bucket_capacity  = bucket_capacity
 	pool.alignment        = alignment
 
-	when ODIN_DEBUG {
+	if Track_Memory && enable_mem_tracking {
 		memtracker_init( & pool.tracker, allocator, Kilobyte * 96, dbg_name )
+		// memtracker_init( & pool.bucket_tracker, allocator, Kilobyte * 96, dbg_name )
 	}
 
 	if bucket_reserve_num > 0 {
@@ -104,8 +107,9 @@ pool_destroy :: proc ( using self : Pool )
 
 	free( self.header, backing )
 
-	when ODIN_DEBUG {
+	if Track_Memory && self.tracker.entries.header != nil {
 		memtracker_clear( self.tracker )
+		// memtracker_clear( self.bucket_tracker )
 	}
 }
 
@@ -132,6 +136,10 @@ pool_allocate_buckets :: proc( pool : Pool, num_buckets : uint ) -> AllocatorErr
 		bucket_memory, alloc_error = alloc_bytes_non_zeroed( to_allocate, int(pool.alignment), pool.backing )
 	}
 	pool_validate( pool )
+
+	// if Track_Memory && pool.tracker.entries.header != nil {
+	// 	memtracker_register_auto_name_slice( & pool.bucket_tracker, bucket_memory)
+	// }
 
 	// log(str_fmt_tmp("Bucket memory size: %d bytes, without header: %d", len(bucket_memory), len(bucket_memory) - int(header_size)))
 
@@ -195,7 +203,7 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 			slice.zero(block)
 		}
 
-		when ODIN_DEBUG {
+		if Track_Memory && pool.tracker.entries.header != nil {
 			memtracker_register_auto_name_slice( & pool.tracker, block)
 		}
 		return
@@ -258,7 +266,7 @@ pool_grab :: proc( pool : Pool, zero_memory := false ) -> ( block : []byte, allo
 		// log( str_fmt_tmp("Zeroed memory - Range(%p to %p)", block_ptr,  cast(rawptr) (uintptr(block_ptr) + uintptr(pool.block_size))))
 	}
 
-	when ODIN_DEBUG {
+	if Track_Memory && pool.tracker.entries.header != nil {
 		memtracker_register_auto_name_slice( & pool.tracker, block)
 	}
 	return
@@ -289,7 +297,7 @@ pool_release :: proc( self : Pool, block : []byte, loc := #caller_location )
 
 	start := new_free_block
 	end   := transmute(rawptr) (uintptr(new_free_block) + uintptr(self.block_size) - 1)
-	when ODIN_DEBUG {
+	if Track_Memory && self.tracker.entries.header != nil {
 		memtracker_unregister( self.tracker, { start, end } )
 	}
 }

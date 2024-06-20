@@ -92,7 +92,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
 
 		alloc_error : AllocatorError
-		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = Persistent_Slab_DBG_Name )
+		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = Persistent_Slab_DBG_Name, enable_mem_tracking = true )
 		verify( alloc_error == .None, "Failed to allocate the persistent slab" )
 
 		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator(), dbg_name = Transient_Slab_DBG_Name )

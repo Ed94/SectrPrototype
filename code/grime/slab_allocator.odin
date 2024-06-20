@@ -27,6 +27,7 @@ package grime
 import "base:runtime"
 import "core:mem"
 import "core:slice"
+import "core:strings"
 
 SlabSizeClass :: struct {
 	bucket_capacity : uint,
@@ -55,7 +56,12 @@ slab_allocator :: proc( slab : Slab ) -> ( allocator : Allocator ) {
 	return
 }
 
-slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocator : Allocator = context.allocator,  dbg_name : string = "", should_zero_buckets : b32 = false ) -> ( slab : Slab, alloc_error : AllocatorError )
+slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0,
+	allocator           : Allocator = context.allocator,
+	dbg_name            : string    = "",
+	should_zero_buckets : b32       = false,
+	enable_mem_tracking : b32       = false,
+) -> ( slab : Slab, alloc_error : AllocatorError )
 {
 	header_size :: size_of( SlabHeader )
 
@@ -66,10 +72,10 @@ slab_init :: proc( policy : ^SlabPolicy, bucket_reserve_num : uint = 0, allocato
 	slab.header   = cast( ^SlabHeader) raw_mem
 	slab.backing  = allocator
 	slab.dbg_name = dbg_name
-	when ODIN_DEBUG {
+	if Track_Memory && enable_mem_tracking {
 		memtracker_init( & slab.tracker, allocator, Kilobyte * 256, dbg_name )
 	}
-	alloc_error   = slab_init_pools( slab, policy, bucket_reserve_num, should_zero_buckets )
+	alloc_error = slab_init_pools( slab, policy, bucket_reserve_num, should_zero_buckets )
 	return
 }
 
@@ -80,8 +86,12 @@ slab_init_pools :: proc ( using self : Slab, policy : ^SlabPolicy, bucket_reserv
 	for id in 0 ..< policy.idx {
 		using size_class := policy.items[id]
 
-		pool_dbg_name     := str_fmt("%v pool[%v]", dbg_name, block_size, allocator = backing)
-		pool, alloc_error := pool_init( should_zero_buckets, block_size, bucket_capacity, bucket_reserve_num, block_alignment, backing, pool_dbg_name )
+		name_temp            := str_fmt_tmp("%v pool[%v]", dbg_name, block_size)
+		pool_dbg_name, error := strings.clone( name_temp, allocator = backing )
+		pool, alloc_error := pool_init( should_zero_buckets, block_size, bucket_capacity, bucket_reserve_num, block_alignment, backing,
+			pool_dbg_name,
+			enable_mem_tracking = Track_Memory && tracker.entries.header != nil
+		)
 		if alloc_error != .None do return alloc_error
 
 		push( & self.pools, pool )
@@ -107,7 +117,7 @@ slab_destroy :: proc( using self : Slab )
 	}
 
 	free( self.header, backing )
-	when ODIN_DEBUG {
+	if Track_Memory && self.tracker.entries.header != nil {
 		memtracker_clear(tracker)
 	}
 }
@@ -148,7 +158,7 @@ slab_alloc :: proc( self : Slab,
 		slice.zero(data)
 	}
 
-	when ODIN_DEBUG {
+	if Track_Memory && self.tracker.entries.header != nil {
 		memtracker_register_auto_name( & self.tracker, raw_data(block), & block[ len(block) - 1 ] )
 	}
 	return
@@ -165,7 +175,7 @@ slab_free :: proc( using self : Slab, data : []byte, loc := #caller_location )
 			start := raw_data(data)
 			end   := ptr_offset(start, pool.block_size - 1)
 
-			when ODIN_DEBUG {
+			if Track_Memory && self.tracker.entries.header != nil {
 				memtracker_unregister( self.tracker, { start, end } )
 			}
 
@@ -255,13 +265,13 @@ slab_resize :: proc( using self : Slab,
 		start := raw_data( data )
 		end   := rawptr(uintptr(start) + uintptr(pool_old.block_size) - 1)
 
-		when ODIN_DEBUG {
+		if Track_Memory && self.tracker.entries.header != nil {
 			memtracker_unregister( self.tracker, { start, end } )
 		}
 	}
 
 	new_data = new_block[ :new_size]
-	when ODIN_DEBUG {
+	if Track_Memory && self.tracker.entries.header != nil {
 		memtracker_register_auto_name( & self.tracker, raw_data(new_block), & new_block[ len(new_block) - 1 ] )
 	}
 	return
@@ -273,7 +283,7 @@ slab_reset :: proc( slab : Slab )
 		pool := slab.pools.items[id]
 		pool_reset( pool )
 	}
-	when ODIN_DEBUG {
+	when Track_Memory {
 		memtracker_clear(slab.tracker)
 	}
 }

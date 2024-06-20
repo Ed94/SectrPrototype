@@ -57,7 +57,8 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 	pool_bucket_cap         : uint   = 1 * Kilo,
 	pool_bucket_reserve_num : uint   = 0,
 	pool_alignment          : uint   = mem.DEFAULT_ALIGNMENT,
-	dbg_name                : string = ""
+	dbg_name                : string = "",
+	enable_mem_tracking     : b32    = false,
 ) -> (table : HMapChained(Type), error : AllocatorError)
 {
 	header_size := size_of(HMapChainedHeader(Type))
@@ -75,7 +76,8 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 		bucket_reserve_num  = pool_bucket_reserve_num,
 		alignment           = pool_alignment,
 		allocator           = allocator,
-		dbg_name            = str_intern(str_fmt("%v: pool", dbg_name)).str
+		dbg_name            = str_intern(str_fmt("%v: pool", dbg_name)).str,
+		enable_mem_tracking = enable_mem_tracking,
 	)
 	data          := transmute([^] ^HMapChainedSlot(Type)) (transmute( [^]HMapChainedHeader(Type)) table.header)[1:]
 	table.lookup   = slice_ptr( data, int(lookup_capacity) )

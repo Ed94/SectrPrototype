@@ -29,7 +29,7 @@ VArena :: struct {
 	dbg_name         : string,
 	commit_used      : uint,
 	growth_policy    : VArena_GrowthPolicyProc,
-	allow_any_reize  : b32,
+	allow_any_resize : b32,
 	mutex            : sync.Mutex,
 }
 
@@ -61,7 +61,7 @@ varena_allocator :: proc( arena : ^VArena ) -> ( allocator : Allocator ) {
 
 // Default growth_policy is nil
 varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
-	growth_policy : VArena_GrowthPolicyProc, allow_any_reize : b32 = false, dbg_name : string
+	growth_policy : VArena_GrowthPolicyProc, allow_any_resize : b32 = false, dbg_name : string, enable_mem_tracking : b32 = false,
 ) -> ( arena : VArena, alloc_error : AllocatorError)
 {
 	page_size := uint(virtual_get_page_size())
@@ -86,9 +86,9 @@ varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
 	else {
 		arena.growth_policy = growth_policy
 	}
-	arena.allow_any_reize = allow_any_reize
+	arena.allow_any_resize = allow_any_resize
 
-	when ODIN_DEBUG {
+	if Track_Memory && enable_mem_tracking {
 		memtracker_init( & arena.tracker, runtime.heap_allocator(), Kilobyte * 128, dbg_name )
 	}
 	return
@@ -165,7 +165,7 @@ varena_alloc :: proc( using self : ^VArena,
 		mem_zero( data_ptr, int(requested_size) )
 	}
 
-	when ODIN_DEBUG {
+	if Track_Memory && self.tracker.entries.header != nil {
 		memtracker_register_auto_name( & tracker, & data[0], & data[len(data) - 1] )
 	}
 	return
@@ -176,7 +176,7 @@ varena_free_all :: proc( using self : ^VArena )
 	sync.mutex_guard( & mutex )
 	commit_used = 0
 
-	when ODIN_DEBUG && Track_Memory {
+	if Track_Memory && self.tracker.entries.header != nil {
 		array_clear(tracker.entries)
 	}
 }
@@ -251,13 +251,13 @@ varena_allocator_proc :: proc(
 				}
 			}
 
-			verify( old_memory_offset == current_offset || arena.allow_any_reize,
+			verify( old_memory_offset == current_offset || arena.allow_any_resize,
 				"Cannot resize existing allocation in vitual arena to a larger size unless it was the last allocated" )
 
 			log_backing : [Kilobyte * 16]byte
 			backing_slice := byte_slice( & log_backing[0], len(log_backing))
 
-			if old_memory_offset != current_offset && arena.allow_any_reize
+			if old_memory_offset != current_offset && arena.allow_any_resize
 			{
 				// Give it new memory and copy the old over. Old memory is unrecoverable until clear.
 				new_region : []byte
@@ -266,7 +266,7 @@ varena_allocator_proc :: proc(
 					ensure(false, "Failed to grab new region")
 					data = byte_slice( old_memory, old_size )
 
-					when ODIN_DEBUG {
+				if Track_Memory && arena.tracker.entries.header != nil {
 						memtracker_register_auto_name( & arena.tracker, & data[0], & data[len(data) - 1] )
 					}
 					return
@@ -276,7 +276,7 @@ varena_allocator_proc :: proc(
 				data = new_region
 				// log( str_fmt_tmp("varena resize (new): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size))
 
-				when ODIN_DEBUG {
+				when Track_Memory {
 					memtracker_register_auto_name( & arena.tracker, & data[0], & data[len(data) - 1] )
 				}
 				return
@@ -293,7 +293,7 @@ varena_allocator_proc :: proc(
 			data = byte_slice( old_memory, size )
 			// log( str_fmt_tmp("varena resize (expanded): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size))
 
-			when ODIN_DEBUG {
+			if Track_Memory && arena.tracker.entries.header != nil {
 				memtracker_register_auto_name( & arena.tracker, & data[0], & data[len(data) - 1] )
 			}
 			return
