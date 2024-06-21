@@ -70,10 +70,10 @@ font_provider_startup :: proc()
 	provider_data := & state.font_provider_data; using provider_data
 
 	error : AllocatorError
-	font_cache, error = make( HMapChained(FontDef), hmap_closest_prime(1 * Kilo), persistent_allocator() /*dbg_name = "font_cache"*/ )
+	font_cache, error = make( HMapChained(FontDef), hmap_closest_prime(1 * Kilo), persistent_allocator(), dbg_name = "font_cache" )
 	verify( error == AllocatorError.None, "Failed to allocate font_cache" )
 
-	ve.init( & provider_data.ve_font_cache, .STB_TrueType, allocator = persistent_slab_allocator() )
+	ve.init( & provider_data.ve_font_cache, .STB_TrueType, allocator = persistent_allocator() )
 	log("VEFontCached initialized")
 
 	ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
@@ -552,7 +552,7 @@ font_load :: proc(path_file : string,
 
 	for font_size : i32 = Font_Size_Interval; font_size <= Font_Largest_Px_Size; font_size += Font_Size_Interval
 	{
-		logf("Loading at size %v", font_size)
+		// logf("Loading at size %v", font_size)
 		id    := (font_size / Font_Size_Interval) + (font_size % Font_Size_Interval)
 		ve_id := & def.size_table[id - 1]
 		ve_id^ = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 14.0 )

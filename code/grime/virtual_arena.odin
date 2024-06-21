@@ -276,7 +276,7 @@ varena_allocator_proc :: proc(
 				data = new_region
 				// log( str_fmt_tmp("varena resize (new): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size))
 
-				when Track_Memory {
+				if Track_Memory && arena.tracker.entries.header != nil {
 					memtracker_register_auto_name( & arena.tracker, & data[0], & data[len(data) - 1] )
 				}
 				return

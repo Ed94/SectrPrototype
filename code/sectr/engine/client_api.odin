@@ -92,7 +92,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
 
 		alloc_error : AllocatorError
-		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = Persistent_Slab_DBG_Name, enable_mem_tracking = true )
+		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = Persistent_Slab_DBG_Name, enable_mem_tracking = false )
 		verify( alloc_error == .None, "Failed to allocate the persistent slab" )
 
 		transient_slab, alloc_error = slab_init( & default_slab_policy, allocator = transient_allocator(), dbg_name = Transient_Slab_DBG_Name )
@@ -254,23 +254,23 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	if true
 	{
 		font_provider_startup()
-		// path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
-		// font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 24.0, "RecMonoSemiCasual_Regular" )
+		path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
+		font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 24.0, "RecMonoSemiCasual_Regular" )
 
-		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
-		// font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
+		path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
+		font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
 
 		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
 		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
 
-		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
-		// font_open_sans  = font_load( path_open_sans, 24.0, "OpenSans" )
+		path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
+		font_open_sans  = font_load( path_open_sans, 24.0, "OpenSans" )
 
-		// path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
-		// font_noto_sans  = font_load( path_noto_sans, 24.0, "NotoSans" )
+		path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
+		font_noto_sans  = font_load( path_noto_sans, 24.0, "NotoSans" )
 
-		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
-		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 24.0, "Arial_Unicode_MS" )
+		path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
+		font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 24.0, "Arial_Unicode_MS" )
 
 		default_font = font_firacode
 		log( "Default font loaded" )

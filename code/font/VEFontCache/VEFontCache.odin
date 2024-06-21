@@ -15,6 +15,7 @@ Changes:
 */
 package VEFontCache
 
+import "base:runtime"
 import "core:math"
 import "core:mem"
 
@@ -625,7 +626,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 			next_evict_codepoint := LRU_get_next_evicted( & region.state )
 			assert( next_evict_codepoint != 0xFFFFFFFFFFFFFFFF )
 
-			atlas_index = LRU_peek( & region.state, next_evict_codepoint )
+			atlas_index = LRU_peek( & region.state, next_evict_codepoint, must_find = true )
 			assert( atlas_index != -1 )
 
 			evicted := LRU_put( & region.state, lru_code, atlas_index )
@@ -763,16 +764,17 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 	if shape_cache_idx == -1
 	{
 		if shape_cache.next_cache_id < i32(state.capacity) {
-			shape_cache_idx = shape_cache.next_cache_id
-			LRU_put( state, hash, shape_cache_idx )
+			shape_cache_idx            = shape_cache.next_cache_id
 			shape_cache.next_cache_id += 1
+			evicted := LRU_put( state, hash, shape_cache_idx )
+			assert( evicted == hash )
 		}
 		else
 		{
 			next_evict_idx := LRU_get_next_evicted( state )
 			assert( next_evict_idx != 0xFFFFFFFFFFFFFFFF )
 
-			shape_cache_idx = LRU_peek( state, next_evict_idx )
+			shape_cache_idx = LRU_peek( state, next_evict_idx, must_find = true )
 			assert( shape_cache_idx != - 1 )
 
 			LRU_put( state, hash, shape_cache_idx )

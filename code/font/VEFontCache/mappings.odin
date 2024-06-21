@@ -8,6 +8,8 @@ import "core:mem"
 
 Kilobyte :: mem.Kilobyte
 
+slice_ptr :: mem.slice_ptr
+
 Arena :: mem.Arena
 
 arena_allocator :: mem.arena_allocator
@@ -46,6 +48,7 @@ hmap_chained_destroy :: grime.hmap_chained_destroy
 hmap_chained_init    :: grime.hmap_chained_init
 hmap_chained_get     :: grime.hmap_chained_get
 hmap_chained_remove  :: grime.hmap_chained_remove
+hmap_chained_reload  :: grime.hmap_chained_reload
 hmap_chained_set     :: grime.hmap_chained_set
 hmap_closest_prime   :: grime.hmap_closest_prime
 

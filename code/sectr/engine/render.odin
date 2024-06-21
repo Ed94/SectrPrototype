@@ -125,7 +125,7 @@ render_mode_screenspace :: proc()
 	debug.debug_text_vis = true
 	if debug.debug_text_vis
 	{
-		fps_msg       := str_fmt( "FPS: %0.2f", fps_avg)
+		fps_msg       := str_fmt( "FPS: %d", frame)
 		fps_msg_width := measure_text_size( fps_msg, default_font, 12.0, 0.0 ).x
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 } - { 5, 5 }
 		debug_draw_text( fps_msg, fps_msg_pos, 38.0, color = Color_Red )
@@ -133,7 +133,7 @@ render_mode_screenspace :: proc()
 		// debug_text( "Screen Width : %v", rl.GetScreenWidth () )
 		// debug_text( "Screen Height: %v", rl.GetScreenHeight() )
 		// debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
-		debug_text( "frametime                 : %f ms", frametime_delta_ms )
+		debug_text( "frametime                 : %d ms", frame )
 		// debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
 		if replay.mode == ReplayMode.Record {
 			debug_text( "Recording Input")

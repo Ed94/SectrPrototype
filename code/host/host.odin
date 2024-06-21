@@ -128,9 +128,9 @@ setup_memory :: proc( profiler : ^SpallProfiler ) -> ClientMemory
 			sectr.Memory_Reserve_Persistent,
 			sectr.Memory_Commit_Initial_Persistent,
 			growth_policy    = nil,
-			allow_any_resize = false,
+			allow_any_resize = true,
 			dbg_name         = "persistent",
-			enable_mem_tracking = true )
+			enable_mem_tracking = false )
 		verify( alloc_error == .None, "Failed to allocate persistent virtual arena for the sectr module")
 
 		frame, alloc_error = varena_init(

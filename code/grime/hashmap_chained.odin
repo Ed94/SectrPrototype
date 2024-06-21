@@ -13,8 +13,8 @@ and direct pointers are kept across the codebase instead of a key to the slot.
 */
 package grime
 
-import "core:mem"
 import "base:runtime"
+import "core:mem"
 
 HTable_Minimum_Capacity :: 4 * Kilobyte
 
@@ -26,6 +26,7 @@ HMapChainedSlot :: struct( $Type : typeid ) {
 }
 
 HMapChainedHeader :: struct( $ Type : typeid ) {
+	tracker  : MemoryTracker,
 	pool     : Pool,
 	lookup   : [] ^HMapChainedSlot(Type),
 	dbg_name : string,
@@ -62,7 +63,7 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 ) -> (table : HMapChained(Type), error : AllocatorError)
 {
 	header_size := size_of(HMapChainedHeader(Type))
-	size  := header_size + int(lookup_capacity) * size_of( ^HMapChainedSlot(Type)) + size_of(int)
+	size  := header_size + int(lookup_capacity) * size_of( ^HMapChainedSlot(Type))
 
 	raw_mem : rawptr
 	raw_mem, error = alloc( size, allocator = allocator )
@@ -79,9 +80,14 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 		dbg_name            = str_intern(str_fmt("%v: pool", dbg_name)).str,
 		enable_mem_tracking = enable_mem_tracking,
 	)
-	data          := transmute([^] ^HMapChainedSlot(Type)) (transmute( [^]HMapChainedHeader(Type)) table.header)[1:]
+	data          := transmute(^^HMapChainedSlot(Type)) memory_after_header(table.header)
 	table.lookup   = slice_ptr( data, int(lookup_capacity) )
 	table.dbg_name = dbg_name
+
+	if Track_Memory && enable_mem_tracking {
+		memtracker_init( & table.tracker, allocator, Kilobyte * 16, dbg_name )
+	}
+
 	return
 }
 
@@ -115,9 +121,6 @@ hmap_chained_get :: proc( using self : HMapChained($Type), key : u64) -> ^Type
 {
 	// profile(#procedure)
 	hash_index   := hmap_chained_lookup_id(self, key)
-	// if hash_index == 565 {
-	// 	runtime.debug_trap()
-	// }
 	surface_slot := lookup[hash_index]
 
 	if surface_slot == nil {
@@ -128,9 +131,13 @@ hmap_chained_get :: proc( using self : HMapChained($Type), key : u64) -> ^Type
 		return & surface_slot.value
 	}
 
-	for slot := surface_slot.next; slot != nil; slot = slot.next {
+	for slot := surface_slot.next; slot != nil; slot = slot.next
+	{
 		if slot.occupied && slot.key == key {
-			return & surface_slot.value
+			if self.dbg_name != "" && self.tracker.entries.header != nil {
+				logf( "%v: Retrieved %v in lookup[%v] which shows key as %v", self.dbg_name, key, hash_index, slot.key )
+			}
+			return & slot.value
 		}
 	}
 
@@ -139,14 +146,15 @@ hmap_chained_get :: proc( using self : HMapChained($Type), key : u64) -> ^Type
 
 hmap_chained_reload :: proc( self : HMapChained($Type), allocator : Allocator )
 {
-	pool_reload(self.pool, allocator)
+	// pool_reload(self.pool, allocator)
 }
 
 // Returns true if an slot was actually found and marked as vacant
 // Entries already found to be vacant will not return true
 hmap_chained_remove :: proc( self : HMapChained($Type), key : u64 ) -> b32
 {
-	surface_slot := self.lookup[hmap_chained_lookup_id(self, key)]
+	hash_index   := hmap_chained_lookup_id(self, key)
+	surface_slot := self.lookup[hash_index]
 
 	if surface_slot == nil {
 		return false
@@ -154,13 +162,24 @@ hmap_chained_remove :: proc( self : HMapChained($Type), key : u64 ) -> b32
 
 	if surface_slot.occupied && surface_slot.key == key {
 		surface_slot.occupied = false
+		surface_slot.value    = {}
+		surface_slot.key      = {}
+		if self.dbg_name != "" && self.tracker.entries.header != nil {
+			logf( "%v: Removed %v in lookup[%v]", self.dbg_name, key, hash_index )
+		}
 		return true
 	}
 
-	for slot := surface_slot.next; slot != nil; slot = slot.next 
+	nest_id : i32 = 1
+	for slot := surface_slot.next; slot != nil; slot = slot.next
 	{
 		if slot.occupied && slot.key == key {
 			slot.occupied = false
+			slot.value    = {}
+			slot.key      = {}
+			if self.dbg_name != "" && self.tracker.entries.header != nil {
+				logf( "%v: Removed %v in lookup[%v] nest_id: %v", self.dbg_name, key, hash_index, nest_id )
+			}
 			return true
 		}
 	}
@@ -176,62 +195,69 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 	using self
 	hash_index   := hmap_chained_lookup_id(self, key)
 	surface_slot := lookup[hash_index]
-	set_slot :: #force_inline proc( using self : HMapChained(Type),
-		slot  : ^HMapChainedSlot(Type),
-		key   : u64,
-		value : Type
-	) -> (^ Type, AllocatorError )
-	{
-		error := AllocatorError.None
-		if slot.next == nil {
-			block        : []byte
-			block, error = pool_grab(pool, false)
-			next        := transmute( ^HMapChainedSlot(Type)) & block[0]
-			next^ = {}
-			slot.next    = next
-			next.prev    = slot
-		}
-		slot.key      = key
-		slot.value    = value
-		slot.occupied = true
-		return & slot.value, error
-	}
 
-	if surface_slot == nil {
-		block, error         := pool_grab(pool, false)
-		surface_slot         := transmute( ^HMapChainedSlot(Type)) & block[0]
+	slot_size := size_of(HMapChainedSlot(Type))
+	if surface_slot == nil
+	{
+		block, error := pool_grab(pool, false)
+		surface_slot := transmute( ^HMapChainedSlot(Type)) raw_data(block)
 		surface_slot^ = {}
+
 		surface_slot.key      = key
 		surface_slot.value    = value
 		surface_slot.occupied = true
-		if error != AllocatorError.None {
-			ensure(error != AllocatorError.None, "Allocation failure for chained slot in hash table")
-			return nil, error
-		}
+
 		lookup[hash_index] = surface_slot
 
-		block, error = pool_grab(pool, false)
-		next             := transmute( ^HMapChainedSlot(Type)) & block[0]
-		next^ = {}
-		surface_slot.next = next
-		next.prev         = surface_slot
+		if Track_Memory && tracker.entries.header != nil {
+			memtracker_register_auto_name_slice( & self.tracker, block)
+		}
 		return & surface_slot.value, error
 	}
 
 	if ! surface_slot.occupied
 	{
-		result, error := set_slot( self, surface_slot, key, value)
-		return result, error
+		surface_slot.key      = key
+		surface_slot.value    = value
+		surface_slot.occupied = true
+		if dbg_name != "" && tracker.entries.header != nil {
+			logf( "%v: Set     %v in lookup[%v]", self.dbg_name, key, hash_index )
+		}
+
+		return & surface_slot.value, .None
 	}
 
-	slot : ^HMapChainedSlot(Type) = surface_slot.next
-	for ; slot != nil; slot = slot.next
+	slot : ^HMapChainedSlot(Type) = surface_slot
+	nest_id : i32 = 1
+	for ;; slot = slot.next
 	{
-		if !slot.occupied
+		error : AllocatorError
+		if slot.next == nil
 		{
-			result, error := set_slot( self, slot, key, value)
-			return result, error
+			block        : []byte
+			block, error = pool_grab(pool, false)
+			next        := transmute( ^HMapChainedSlot(Type)) raw_data(block)
+
+			slot.next      = next
+			slot.next^     = {}
+			slot.next.prev = slot
+			if Track_Memory && tracker.entries.header != nil {
+				memtracker_register_auto_name_slice( & self.tracker, block)
+			}
 		}
+
+		if ! slot.next.occupied
+		{
+			slot.next.key      = key
+			slot.next.value    = value
+			slot.next.occupied = true
+			if dbg_name != "" && tracker.entries.header != nil {
+				logf( "%v: Set     %v in lookup[%v] nest_id: %v", self.dbg_name, key, hash_index, nest_id )
+			}
+			return & slot.next.value, .None
+		}
+
+		nest_id += 1
 	}
 	ensure(false, "Somehow got to a null slot that wasn't preemptively allocated from a previus set")
 	return nil, AllocatorError.None
