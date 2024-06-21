@@ -73,7 +73,7 @@ font_provider_startup :: proc()
 	font_cache, error = make( HMapChained(FontDef), hmap_closest_prime(1 * Kilo), persistent_allocator(), dbg_name = "font_cache" )
 	verify( error == AllocatorError.None, "Failed to allocate font_cache" )
 
-	ve.init( & provider_data.ve_font_cache, .STB_TrueType, allocator = persistent_allocator() )
+	ve.init( & provider_data.ve_font_cache, .STB_TrueType, allocator = persistent_slab_allocator() )
 	log("VEFontCached initialized")
 
 	ve.configure_snap( & provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )

@@ -72,6 +72,9 @@ pool_list_push_front :: proc( pool : ^PoolList, value : PoolListValue )
 	assert( free_list.num == u64(capacity - size) )
 
 	id := array_back( free_list )
+	if pool.dbg_name != "" {
+		logf("pool_list: back %v", id)
+	}
 	array_pop( free_list )
 	items.data[ id ].prev  = -1
 	items.data[ id ].next  = front

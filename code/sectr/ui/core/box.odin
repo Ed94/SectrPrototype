@@ -124,6 +124,7 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return hmap_zpl_get( ui_context().prev_cache, cast(u64) box.key ) }
 
+// Traveral pritorizes immeidate children
 ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 {
 	using state := get_state()
@@ -132,14 +133,13 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 	{
 		// Check to make sure parent is present on the screen, if its not don't bother.
 		is_app_ui := ui_context == & screen_ui
-		if intersects_range2( ui_view_bounds(), box.computed.bounds)
-		{
+		if intersects_range2( ui_view_bounds(), box.computed.bounds) {
 			return box.first
 		}
 	}
 
 	if box.next != nil do return box.next
-	// There is no more adjacent nodes
+	// There are no more adjacent nodes
 
 	parent := box.parent
 	// Attempt to find a parent with a next, otherwise we just return a parent with nil
@@ -153,4 +153,34 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 
 	// Lift back up to parent, and set it to its next.
 	return parent.next
+}
+
+// Traveral pritorizes traversing a "anestry layer"
+ui_box_traverse_next_layer_based :: proc "contextless" ( box : ^UI_Box, skip_intersection_test := false ) -> (^UI_Box)
+{
+	using state := get_state()
+
+	parent := box.parent
+	if parent != nil
+	{
+		if parent.last != box
+		{
+			if box.next != nil do return box.next
+			// There are no more adjacent nodes
+		}
+	}
+
+	// Either is root OR
+	// Parent children exhausted, this should be the last box of this ancestry
+	// Do children if they are available.
+	if box.first != nil
+	{
+		// Check to make sure parent is present on the screen, if its not don't bother.
+		if ! skip_intersection_test && intersects_range2( ui_view_bounds(), box.computed.bounds) {
+			return box.first
+		}
+	}
+
+	// We should have exhausted the list if we're on the last box of teh last parent
+	return nil
 }

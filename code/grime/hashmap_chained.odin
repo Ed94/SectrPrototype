@@ -15,6 +15,7 @@ package grime
 
 import "base:runtime"
 import "core:mem"
+import "core:strings"
 
 HTable_Minimum_Capacity :: 4 * Kilobyte
 
@@ -55,7 +56,7 @@ hmap_closest_prime :: proc( capacity : uint ) -> uint
 
 hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_capacity : uint,
   allocator               := context.allocator,
-	pool_bucket_cap         : uint   = 1 * Kilo,
+	pool_bucket_cap         : uint   = 0,
 	pool_bucket_reserve_num : uint   = 0,
 	pool_alignment          : uint   = mem.DEFAULT_ALIGNMENT,
 	dbg_name                : string = "",
@@ -69,6 +70,11 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 	raw_mem, error = alloc( size, allocator = allocator )
 	if error != AllocatorError.None do return
 
+	pool_bucket_cap := pool_bucket_cap
+	if pool_bucket_cap == 0 {
+		pool_bucket_cap = cast(uint) int(lookup_capacity) * size_of( HMapChainedSlot(Type))
+	}
+
 	table.header      = cast( ^HMapChainedHeader(Type)) raw_mem
 	table.pool, error = pool_init(
 		should_zero_buckets = false,
@@ -77,7 +83,7 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 		bucket_reserve_num  = pool_bucket_reserve_num,
 		alignment           = pool_alignment,
 		allocator           = allocator,
-		dbg_name            = str_intern(str_fmt("%v: pool", dbg_name)).str,
+		dbg_name            = strings.clone(str_fmt_tmp("%v: pool", dbg_name), allocator = allocator),
 		enable_mem_tracking = enable_mem_tracking,
 	)
 	data          := transmute(^^HMapChainedSlot(Type)) memory_after_header(table.header)

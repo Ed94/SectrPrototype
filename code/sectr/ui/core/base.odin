@@ -65,6 +65,11 @@ UI_Parent_Stack_Size      :: 512
 // UI_Built_Boxes_Array_Size :: 8
 UI_Built_Boxes_Array_Size :: 128 * Kilobyte
 
+UI_RenderQueueEntry :: struct {
+	using links : DLL_NodePN(UI_RenderQueueEntry),
+	box : ^UI_Box,
+}
+
 // TODO(Ed): Rename to UI_Context
 UI_State :: struct {
 	// TODO(Ed) : Use these?
@@ -77,7 +82,9 @@ UI_State :: struct {
 	prev_cache : ^HMapZPL( UI_Box ),
 	curr_cache : ^HMapZPL( UI_Box ),
 
-	render_queue : Array(UI_RenderBoxInfo),
+	// render_queue_builder : SubArena,
+	render_queue         : DLL_NodeFL(UI_RenderQueueEntry),
+	render_list          : Array(UI_RenderBoxInfo),
 
 	null_box : ^UI_Box, // This was used with the Linked list interface...
 	root     : ^UI_Box,
@@ -120,7 +127,7 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 	ui.prev_cache = (& ui.caches[0])
 
 	allocation_error : AllocatorError
-	ui.render_queue, allocation_error = make( Array(UI_RenderBoxInfo), UI_Built_Boxes_Array_Size, cache_allocator, fixed_cap = true )
+	ui.render_list, allocation_error = make( Array(UI_RenderBoxInfo), UI_Built_Boxes_Array_Size, cache_allocator, fixed_cap = true )
 	verify( allocation_error == AllocatorError.None, "Failed to allocate render queue" )
 
 	log("ui_startup completed")
@@ -132,7 +139,7 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 	for & cache in ui.caches {
 		hmap_zpl_reload( & cache, cache_allocator)
 	}
-	ui.render_queue.backing = cache_allocator
+	ui.render_list.backing = cache_allocator
 }
 
 // TODO(Ed) : Is this even needed?
@@ -150,7 +157,7 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 
 	stack_clear( & layout_combo_stack )
 	stack_clear( & style_combo_stack )
-	array_clear( render_queue )
+	array_clear( render_list )
 
 	curr_cache, prev_cache = swap( curr_cache, prev_cache )
 
@@ -187,21 +194,72 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			}
 			computed.content    = computed.bounds
 		}
+
 		for current := root.first; current != nil; current = ui_box_tranverse_next( current )
 		{
 			if ! current.computed.fresh {
 				ui_box_compute_layout( current )
 			}
-
-			// Enqueue for rendering
-			array_append( & ui.render_queue, UI_RenderBoxInfo {
-				current.computed,
-				current.style,
-				current.text,
-				current.layout.font_size,
-				current.layout.border_width,
-			})
 		}
+
+		
+
+		// Render order is "layer-based" and thus needs a new traversal done
+		// ui.render_queue.first     = new(UI_RenderQueueEntry)
+		// ui.render_queue.first.box = root.first
+		// for current := root.first.next; current != nil; current = ui_box_traverse_next_layer_based( current )
+		// {
+		// 	entry     := new(UI_RenderQueueEntry)
+		// 	entry.box  = current
+		// 	// Enqueue box to render
+		// 	// Would be best to use a linked list tied to a sub-arena
+		// 	dll_push_back( & ui.render_queue.first, entry )
+		// 	ui.render_queue.last = entry
+		// }
+
+		// enqueued_id : i32 = 0
+		// for enqueued := ui.render_queue.first; enqueued != nil; enqueued = enqueued.next
+		// {
+		// 	/*
+		// 		For each enqueue box:
+		// 		1. Check to see if any overlap (traverse all Queued Entries and check to see if their bounds overlap)
+		// 		2. If they do, the box & its children must be popped off the current ancestry layer and moved to the start of the next
+		// 			(This could problably be an iteration where we just pop and push_back until we reach the adjacent box of the same layer)
+		// 	*/
+		// 	// other_id : i32 = 0
+		// 	for other := enqueued.next; other != nil; other = other.next
+		// 	{
+		// 		if intersects_range2( enqueued.box.computed.bounds, other.box.computed.bounds)
+		// 		{
+		// 			// Intersection occured, other's box is on top, it and its children must be deferred to the next layer
+		// 			next_layer_start := other.next
+		// 			for ; next_layer_start != nil; next_layer_start = next_layer_start.next
+		// 			{
+		// 				if next_layer_start.box == other.box.first do break
+		// 			}
+
+		// 			other.next            = next_layer_start
+		// 			other.prev            = next_layer_start.prev
+		// 			next_layer_start.prev = other
+		// 			enqueued.next         = other.prev
+		// 			break
+		// 		}
+		// 	}
+		// }
+
+		// Queue should be optimized now to generate the final draw list
+		// for enqueued := ui.render_queue.first; enqueued != nil; enqueued = enqueued.next
+		// {
+		// 	using enqueued.box
+		// 	// Enqueue for rendering
+		// 	array_append( & ui.render_list, UI_RenderBoxInfo {
+		// 		computed,
+		// 		style,
+		// 		text,
+		// 		layout.font_size,
+		// 		layout.border_width,
+		// 	})
+		// }
 	}
 
 	get_state().ui_context = nil

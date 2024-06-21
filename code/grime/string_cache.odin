@@ -31,7 +31,7 @@ to_str_runes_pair_via_runes  :: #force_inline proc ( content : []rune ) -> StrRu
 
 StringCache :: struct {
 	slab      : Slab,
-	table     : HMapZPL(StrRunesPair),
+	table     : HMapChained(StrRunesPair),
 }
 
 // This is the default string cache for the runtime module.
@@ -70,25 +70,25 @@ str_cache_init :: proc( table_allocator, slabs_allocator : Allocator ) -> (cache
 	cache.slab, alloc_error = slab_init( & policy, allocator = slabs_allocator, dbg_name = dbg_name )
 	verify(alloc_error == .None, "Failed to initialize the string cache" )
 
-	cache.table, alloc_error = make( HMapZPL(StrRunesPair), 4 * Megabyte, table_allocator, dbg_name )
+	cache.table, alloc_error = make( HMapChained(StrRunesPair), 1 * Kilo, table_allocator, dbg_name = dbg_name )
 	return
 }
 
 str_cache_reload :: #force_inline proc ( cache : ^StringCache, table_allocator, slabs_allocator : Allocator  ) {
 	slab_reload( cache.slab, table_allocator )
-	hmap_zpl_reload( & cache.table, slabs_allocator )
+	hmap_chained_reload( cache.table, slabs_allocator )
 }
 
 str_cache_set_module_ctx :: #force_inline proc "contextless" ( cache : ^StringCache ) { Module_String_Cache = cache }
 str_intern_key           :: #force_inline proc( content : string ) ->  StringKey      { return cast(StringKey) crc32( transmute([]byte) content ) }
-str_intern_lookup        :: #force_inline proc( key : StringKey )  -> (^StrRunesPair) { return hmap_zpl_get( & Module_String_Cache.table, transmute(u64) key ) }
+str_intern_lookup        :: #force_inline proc( key : StringKey )  -> (^StrRunesPair) { return hmap_chained_get( Module_String_Cache.table, transmute(u64) key ) }
 
 str_intern :: proc( content : string ) -> StrRunesPair
 {
 	// profile(#procedure)
 	cache  := Module_String_Cache
 	key    := str_intern_key(content)
-	result := hmap_zpl_get( & cache.table, transmute(u64) key )
+	result := hmap_chained_get( cache.table, transmute(u64) key )
 	if result != nil {
 		return (result ^)
 	}
@@ -104,7 +104,7 @@ str_intern :: proc( content : string ) -> StrRunesPair
 	verify( alloc_error == .None, "String cache had a backing allocator error" )
 	// slab_validate_pools( cache.slab.backing )
 
-	result, alloc_error = hmap_zpl_set( & cache.table, transmute(u64) key, StrRunesPair { transmute(string) str_mem, runes } )
+	result, alloc_error = hmap_chained_set( cache.table, transmute(u64) key, StrRunesPair { transmute(string) str_mem, runes } )
 	verify( alloc_error == .None, "String cache had a backing allocator error" )
 	// slab_validate_pools( cache.slab.backing )
 
