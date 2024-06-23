@@ -1,6 +1,7 @@
 package VEFontCache
 
 import "core:hash"
+	crc64  :: hash.crc64_xz
 	crc32  :: hash.crc32
 	fnv64a :: hash.fnv64a
 

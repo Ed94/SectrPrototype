@@ -124,15 +124,18 @@ ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 
 ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return hmap_zpl_get( ui_context().prev_cache, cast(u64) box.key ) }
 
+// TODO(Ed): Rename to ui_box_tranverse_view_next
 // Traveral pritorizes immeidate children
-ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
+ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box, bypass_intersection_test := false ) -> (^ UI_Box)
 {
 	using state := get_state()
 	// If current has children, do them first
 	if box.first != nil
 	{
 		// Check to make sure parent is present on the screen, if its not don't bother.
-		is_app_ui := ui_context == & screen_ui
+		if bypass_intersection_test {
+			return box.first
+		}
 		if intersects_range2( ui_view_bounds(), box.computed.bounds) {
 			return box.first
 		}
@@ -156,7 +159,7 @@ ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box ) -> (^ UI_Box)
 }
 
 // Traveral pritorizes traversing a "anestry layer"
-ui_box_traverse_next_layer_based :: proc "contextless" ( box : ^UI_Box, skip_intersection_test := false ) -> (^UI_Box)
+ui_box_traverse_next_layer_based :: proc "contextless" ( box : ^UI_Box, bypass_intersection_test := false ) -> (^UI_Box)
 {
 	using state := get_state()
 
@@ -166,8 +169,8 @@ ui_box_traverse_next_layer_based :: proc "contextless" ( box : ^UI_Box, skip_int
 		if parent.last != box
 		{
 			if box.next != nil do return box.next
-			// There are no more adjacent nodes
 		}
+		// There are no more adjacent nodes
 	}
 
 	// Either is root OR
@@ -176,7 +179,10 @@ ui_box_traverse_next_layer_based :: proc "contextless" ( box : ^UI_Box, skip_int
 	if box.first != nil
 	{
 		// Check to make sure parent is present on the screen, if its not don't bother.
-		if ! skip_intersection_test && intersects_range2( ui_view_bounds(), box.computed.bounds) {
+		if bypass_intersection_test {
+			return box.first
+		}
+		if intersects_range2( ui_view_bounds(), box.computed.bounds) {
 			return box.first
 		}
 	}

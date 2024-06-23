@@ -64,7 +64,7 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 ) -> (table : HMapChained(Type), error : AllocatorError)
 {
 	header_size := size_of(HMapChainedHeader(Type))
-	size  := header_size + int(lookup_capacity) * size_of( ^HMapChainedSlot(Type))
+	size  := header_size + int(lookup_capacity) * size_of( ^HMapChainedSlot(Type)) + size_of(int)
 
 	raw_mem : rawptr
 	raw_mem, error = alloc( size, allocator = allocator )
@@ -72,7 +72,7 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 
 	pool_bucket_cap := pool_bucket_cap
 	if pool_bucket_cap == 0 {
-		pool_bucket_cap = cast(uint) int(lookup_capacity) * size_of( HMapChainedSlot(Type))
+		pool_bucket_cap = cast(uint) int(lookup_capacity) * size_of( HMapChainedSlot(Type)) * 2
 	}
 
 	table.header      = cast( ^HMapChainedHeader(Type)) raw_mem
@@ -205,7 +205,9 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 	slot_size := size_of(HMapChainedSlot(Type))
 	if surface_slot == nil
 	{
-		block, error := pool_grab(pool, false)
+		raw_mem, error := alloc( size_of(HMapChainedSlot(Type)), allocator = pool.backing)
+		block := slice_ptr(transmute([^]byte) raw_mem, slot_size)
+		// block, error := pool_grab(pool, false)
 		surface_slot := transmute( ^HMapChainedSlot(Type)) raw_data(block)
 		surface_slot^ = {}
 
@@ -240,8 +242,11 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 		error : AllocatorError
 		if slot.next == nil
 		{
+			raw_mem : rawptr
 			block        : []byte
-			block, error = pool_grab(pool, false)
+			raw_mem, error = alloc( size_of(HMapChainedSlot(Type)), allocator = pool.backing)
+			block          = slice_ptr(transmute([^]byte) raw_mem, slot_size)
+			// block, error = pool_grab(pool, false)
 			next        := transmute( ^HMapChainedSlot(Type)) raw_data(block)
 
 			slot.next      = next

@@ -241,6 +241,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			load_action = .CLEAR,
 			clear_value = { 0, 0, 0, 1 }
 		}
+		render_data.pass_actions.empty_action.colors[0] = sokol_gfx.Color_Attachment_Action {
+			load_action = .LOAD,
+			clear_value = { 0, 0, 0, 1 }
+		}
 	}
 
 	// Setup sokol_gp
@@ -277,7 +281,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	}
 
 	// Setup the screen ui state
-	if false
+	if true
 	{
 		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
 		ui_floating_startup( & screen_ui.floating, 1 * Kilobyte, 1 * Kilobyte, persistent_slab_allocator(), "screen ui floating manager" )
@@ -292,7 +296,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	// Demo project setup
 	// TODO(Ed): This will eventually have to occur when the user either creates or loads a workspace. I don't know 
-	if false
+	if true
 	{
 		using project
 		path           = str_intern("./")

@@ -11,11 +11,43 @@ import gp         "thirdparty:sokol/gp"
 
 PassActions :: struct {
 	bg_clear_black : gfx.Pass_Action,
-
+	empty_action   : gfx.Pass_Action,
 }
 
 RenderState :: struct {
 	pass_actions : PassActions,
+}
+
+gp_set_color :: #force_inline proc( color : RGBA8 ) {
+	color := normalize_rgba8(color);
+	gp.set_color( color.r, color.g, color.b, color.a )
+}
+
+draw_filled_circle :: proc(x, y, radius: f32, edges: int) {
+	if edges < 3 do return // Need at least 3 edges to form a shape
+
+	triangles := make([]gp.Triangle, edges)
+	// defer delete(triangles)
+
+	center := gp.Point{x, y}
+
+	for i in 0..<edges {
+			angle1 := 2 * math.PI * f32(i) / f32(edges)
+			angle2 := 2 * math.PI * f32(i+1) / f32(edges)
+
+			p1 := gp.Point{
+					x + radius * math.cos(angle1),
+					y + radius * math.sin(angle1),
+			}
+			p2 := gp.Point{
+					x + radius * math.cos(angle2),
+					y + radius * math.sin(angle2),
+			}
+
+			triangles[i] = gp.Triangle{center, p1, p2}
+	}
+
+	gp.draw_filled_triangles(raw_data(triangles), u32(len(triangles)))
 }
 
 // Draw text using a string and normalized screen coordinates
@@ -69,6 +101,28 @@ render_mode_2d_workspace :: proc()
 	profile(#procedure)
 	state  := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
 	cam    := & project.workspace.cam
+
+	screen_extent := app_window.extent
+	screen_size   := app_window.extent * 2
+	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
+
+	cam_zoom_ratio := 1.0 / cam.zoom
+
+	gp.begin( i32(screen_size.x), i32(screen_size.y) )
+	gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
+	gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
+
+	gp.translate( cam.position.x * cam.zoom, cam.position.y * cam.zoom )
+	gp.scale( cam.zoom, cam.zoom )
+
+	gp_set_color(Color_White)
+	draw_filled_circle(0, 0, 4, 24)
+
+	// Enqueue gp pass to sokol gfx
+	gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
+	gp.flush()
+	gp.end()
+	gfx.end_pass()
 }
 
 render_mode_screenspace :: proc()
@@ -82,6 +136,23 @@ render_mode_screenspace :: proc()
 	ve.configure_snap( & font_provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
 	render_screen_ui()
+
+	screen_extent := app_window.extent
+	screen_size   := app_window.extent * 2
+	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
+
+	gp.begin( i32(screen_size.x), i32(screen_size.y) )
+	gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
+	gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
+
+	gp_set_color(Color_Screen_Center_Dot)
+	draw_filled_circle(0, 0, 2, 24)
+
+	gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
+	gp.flush()
+	gp.end()
+	gfx.end_pass()
+
 
 	debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color := Color_White, font : FontID = Font_Default )
 	{
@@ -125,7 +196,7 @@ render_mode_screenspace :: proc()
 	debug.debug_text_vis = true
 	if debug.debug_text_vis
 	{
-		fps_msg       := str_fmt( "FPS: %d", frame)
+		fps_msg       := str_fmt( "FPS: %0.2f", fps_avg)
 		fps_msg_width := measure_text_size( fps_msg, default_font, 12.0, 0.0 ).x
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 } - { 5, 5 }
 		debug_draw_text( fps_msg, fps_msg_pos, 38.0, color = Color_Red )
@@ -133,7 +204,7 @@ render_mode_screenspace :: proc()
 		// debug_text( "Screen Width : %v", rl.GetScreenWidth () )
 		// debug_text( "Screen Height: %v", rl.GetScreenHeight() )
 		// debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
-		debug_text( "frametime                 : %d ms", frame )
+		debug_text( "frametime                 : %0.3f ms", frametime_delta32() )
 		// debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
 		if replay.mode == ReplayMode.Record {
 			debug_text( "Recording Input")
@@ -151,6 +222,40 @@ render_mode_screenspace :: proc()
 			debug_text("Mouse Position (Workspace View): %v", screen_to_ws_view_pos(input.mouse.pos) )
 			// rl.DrawCircleV( input.mouse.raw_pos,                    10, Color_White_A125 )
 			// rl.DrawCircleV( screen_to_render_pos(input.mouse.pos),  2, Color_BG )
+		}
+
+		if false
+		{
+			ui := & project.workspace.ui
+
+			debug_text("Box Count (Workspace): %v", ui.built_box_count )
+
+			hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
+			active_box := ui_box_from_key( ui.curr_cache, ui.active )
+			if hot_box != nil {
+				debug_text("Worksapce Hot    Box   : %v", hot_box.label.str )
+				debug_text("Workspace Hot    Range2: %v", hot_box.computed.bounds.pts)
+			}
+			if active_box != nil{
+				debug_text("Workspace Active Box: %v", active_box.label.str )
+			}
+		}
+
+		if false
+		{
+			ui := & screen_ui
+
+			debug_text("Box Count: %v", ui.built_box_count )
+
+			hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
+			active_box := ui_box_from_key( ui.curr_cache, ui.active )
+			if hot_box != nil {
+				debug_text("Hot    Box   : %v", hot_box.label.str )
+				debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
+			}
+			if active_box != nil{
+				debug_text("Active Box: %v", active_box.label.str )
+			}
 		}
 
 		render_text_layer()

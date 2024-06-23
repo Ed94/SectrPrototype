@@ -166,8 +166,8 @@ update :: proc( delta_time : f64 ) -> b32
 
 		config.cam_max_zoom = 30
 		config.cam_zoom_sensitivity_digital = 0.04
-		config.cam_min_zoom = 0.04
-		config.cam_zoom_mode = .Digital
+		// config.cam_min_zoom = 0.04
+		config.cam_zoom_mode = .Smooth
 		switch config.cam_zoom_mode
 		{
 			case .Smooth:
@@ -196,7 +196,7 @@ update :: proc( delta_time : f64 ) -> b32
 		{
 			if is_within_screenspace(input.mouse.pos) {
 				pan_velocity := input.mouse.delta * vec2(1, -1) * ( 1 / cam.zoom )
-				cam.position -= pan_velocity
+				cam.position += pan_velocity
 			}
 		}
 	}

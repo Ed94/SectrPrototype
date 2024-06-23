@@ -754,8 +754,8 @@ reset_batch_codepoint_state :: proc( ctx : ^Context ) {
 shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> ^ShapedText
 {
 	font := font
-	// hash := cast(u64) crc32( transmute([]u8) text_utf8 )
-	hash := label_hash( text_utf8 )
+	hash := cast(u64) crc32( transmute([]u8) text_utf8 )
+	// hash := label_hash( text_utf8 )
 
 	shape_cache := & ctx.shape_cache
 	state       := & ctx.shape_cache.state

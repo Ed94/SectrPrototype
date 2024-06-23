@@ -65,10 +65,14 @@ UI_Parent_Stack_Size      :: 512
 // UI_Built_Boxes_Array_Size :: 8
 UI_Built_Boxes_Array_Size :: 128 * Kilobyte
 
-UI_RenderQueueEntry :: struct {
-	using links : DLL_NodePN(UI_RenderQueueEntry),
-	box : ^UI_Box,
+UI_RenderEntry :: struct {
+	info        : UI_RenderBoxInfo,
+	using links : DLL_NodeFull(UI_RenderEntry),
+	parent      : ^UI_RenderEntry,
+	layer_id    : i32,
 }
+
+UI_RenderLayer :: DLL_NodeFL(UI_RenderEntry)
 
 // TODO(Ed): Rename to UI_Context
 UI_State :: struct {
@@ -83,7 +87,7 @@ UI_State :: struct {
 	curr_cache : ^HMapZPL( UI_Box ),
 
 	// render_queue_builder : SubArena,
-	render_queue         : DLL_NodeFL(UI_RenderQueueEntry),
+	render_queue         : Array(UI_RenderLayer),
 	render_list          : Array(UI_RenderBoxInfo),
 
 	null_box : ^UI_Box, // This was used with the Linked list interface...
@@ -146,7 +150,6 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 ui_shutdown :: proc() {
 }
 
-
 ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 {
 	profile(#procedure)
@@ -195,74 +198,184 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			computed.content    = computed.bounds
 		}
 
+		// Auto-layout and initial render_queue generation
+		render_queue := array_to_slice(ui.render_queue)
 		for current := root.first; current != nil; current = ui_box_tranverse_next( current )
 		{
 			if ! current.computed.fresh {
 				ui_box_compute_layout( current )
 			}
+
+			// TODO(Ed): Eventually put this into a sub-arena
+			entry, error := new(UI_RenderEntry)
+			(entry^) = UI_RenderEntry {
+				info = {
+					current.computed,
+					current.style,
+					current.text,
+					current.layout.font_size,
+					current.layout.border_width,
+				},
+				layer_id = current.ancestors -1,
+			}
+
+			if entry.layer_id >= i32(ui.render_queue.num) {
+				append( & ui.render_queue, UI_RenderLayer {})
+				render_queue = array_to_slice(ui.render_queue)
+			}
+
+			// push_back to next layer
+			layer := & render_queue[entry.layer_id]
+			if layer.first == nil {
+				layer.first = entry
+			}
+			else if layer.last == nil {
+				layer.first.next = entry
+				entry.prev       = layer.first
+				layer.last       = entry
+			}
+			else {
+				layer.last.next = entry
+				entry.prev      = layer.last
+				layer.last      = entry
+			}
+			// dll_full_push_back( layer, entry, nil )
+
+			// If there is a parent entry, give it a reference to the child entry
+			parent_entry  : ^UI_RenderEntry
+			if entry.layer_id > 0 {
+				parent_layer := & render_queue[entry.layer_id - 1]
+				parent_entry  = parent_layer.last
+				entry.parent  = parent_entry
+
+				// dll_fl_append( parent_entry, entry )
+
+				if parent_entry.first == nil {
+					parent_entry.first = entry
+				}
+				else {
+					parent_entry.last = entry
+				}
+			}
 		}
 
-		
+		// render_queue overlap corrections & render_list generation
+		render_queue = array_to_slice(ui.render_queue)
+		for & layer in render_queue
+		{
+			to_increment, error := make( Array(^UI_RenderEntry), 4 * Kilo )
+			verify( error == .None, "Faied to make to_increment array.")
 
-		// Render order is "layer-based" and thus needs a new traversal done
-		// ui.render_queue.first     = new(UI_RenderQueueEntry)
-		// ui.render_queue.first.box = root.first
-		// for current := root.first.next; current != nil; current = ui_box_traverse_next_layer_based( current )
-		// {
-		// 	entry     := new(UI_RenderQueueEntry)
-		// 	entry.box  = current
-		// 	// Enqueue box to render
-		// 	// Would be best to use a linked list tied to a sub-arena
-		// 	dll_push_back( & ui.render_queue.first, entry )
-		// 	ui.render_queue.last = entry
-		// }
+			for entry := layer.first; entry != nil; entry = entry.next
+			{
+				for neighbor := entry.next; neighbor != nil; neighbor = neighbor.next
+				{
+					if ! intersects_range2( entry.info.computed.bounds, neighbor.info.computed.bounds) do continue
 
-		// enqueued_id : i32 = 0
-		// for enqueued := ui.render_queue.first; enqueued != nil; enqueued = enqueued.next
-		// {
-		// 	/*
-		// 		For each enqueue box:
-		// 		1. Check to see if any overlap (traverse all Queued Entries and check to see if their bounds overlap)
-		// 		2. If they do, the box & its children must be popped off the current ancestry layer and moved to the start of the next
-		// 			(This could problably be an iteration where we just pop and push_back until we reach the adjacent box of the same layer)
-		// 	*/
-		// 	// other_id : i32 = 0
-		// 	for other := enqueued.next; other != nil; other = other.next
-		// 	{
-		// 		if intersects_range2( enqueued.box.computed.bounds, other.box.computed.bounds)
-		// 		{
-		// 			// Intersection occured, other's box is on top, it and its children must be deferred to the next layer
-		// 			next_layer_start := other.next
-		// 			for ; next_layer_start != nil; next_layer_start = next_layer_start.next
-		// 			{
-		// 				if next_layer_start.box == other.box.first do break
-		// 			}
+					append( & to_increment, neighbor )
+				} // for neighbor := entry.next; neighbor != nil; neighbor = neighbor.next
+			} // for entry := layer.first; entry != nil; entry = entry.next
 
-		// 			other.next            = next_layer_start
-		// 			other.prev            = next_layer_start.prev
-		// 			next_layer_start.prev = other
-		// 			enqueued.next         = other.prev
-		// 			break
-		// 		}
-		// 	}
-		// }
+			to_inc_slice := array_to_slice(to_increment)
+			for entry in to_inc_slice
+			{
+				pop_layer      := render_queue[entry.layer_id]
+				entry.layer_id += 1
+				if entry.layer_id >= i32(ui.render_queue.num) {
+					append( & ui.render_queue, UI_RenderLayer {} )
+					render_queue = array_to_slice(ui.render_queue)
+				}
+				push_layer := render_queue[entry.layer_id]
 
-		// Queue should be optimized now to generate the final draw list
-		// for enqueued := ui.render_queue.first; enqueued != nil; enqueued = enqueued.next
-		// {
-		// 	using enqueued.box
-		// 	// Enqueue for rendering
-		// 	array_append( & ui.render_list, UI_RenderBoxInfo {
-		// 		computed,
-		// 		style,
-		// 		text,
-		// 		layout.font_size,
-		// 		layout.border_width,
-		// 	})
-		// }
+
+				// pop entry from layer
+				prev      := entry.prev
+				prev.next  = entry.next
+				if entry == pop_layer.last {
+					pop_layer.last = prev
+				}
+
+				// push entry to next layer
+				if push_layer.first == nil {
+					push_layer.first = entry
+				}
+				else if push_layer.last == nil {
+					push_layer.last       = entry
+					entry.prev            = push_layer.first
+					push_layer.first.next = entry
+					entry.next            = nil
+				}
+				else {
+					push_layer.last.next = entry
+					entry.prev           = push_layer.last
+					push_layer.last      = entry
+					entry.next           = nil
+				}
+
+				// increment children's layers
+				if entry.first != nil
+				{
+					for child := entry.first; child != nil; child = ui_render_entry_tranverse( child )
+					{
+						pop_layer      := render_queue[child.layer_id]
+						child.layer_id += 1
+
+						if child.layer_id >= i32(ui.render_queue.num) {
+							append( & ui.render_queue, UI_RenderLayer {})
+							render_queue = array_to_slice(ui.render_queue)
+						}
+						push_layer := render_queue[child.layer_id]
+
+						// pop from current layer
+						if child == pop_layer.first {
+							pop_layer.first = nil
+						}
+						if child == pop_layer.last {
+							pop_layer.last = child.prev
+						}
+
+						// push_back to next layer
+						if push_layer.first == nil {
+							push_layer.first = child
+						}
+						else if push_layer.last == nil {
+							push_layer.first.next = child
+							child.prev            = push_layer.first
+							push_layer.last       = child
+						}
+						else {
+							push_layer.last.next = child
+							child.prev           = push_layer.last
+							push_layer.last      = child
+						}
+					} // for child := neighbor.first; child != nil; child = ui_render_entry_traverse_depth( child )
+				} // 	if entry.first != nil
+			} // for entry in to_inc_slice
+		} // for & layer in render_queue
 	}
 
 	get_state().ui_context = nil
+}
+
+ui_render_entry_tranverse :: proc( entry : ^UI_RenderEntry ) -> ^UI_RenderEntry
+{
+	// using state := get_state()
+	parent := entry.parent
+	if parent != nil
+	{
+		if parent.last != entry
+		{
+			if entry.next != nil do return entry.next
+		}
+	}
+
+	// If there any children, do them next.
+	if entry.first != nil {
+		return entry.first
+	}
+
+	// Iteration exhausted
+	return nil
 }
 
 @(deferred_in = ui_graph_build_end)

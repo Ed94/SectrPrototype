@@ -19,6 +19,8 @@ Color_Blue  :: RGBA8 {  90,  90, 230, 255 }
 Color_Red   :: RGBA8 { 230,  90,  90, 255 }
 Color_White :: RGBA8 { 255, 255, 255, 255 }
 
+Color_Screen_Center_Dot :: RGBA8 { 180, 180, 180, 10}
+
 Color_Transparent          :: RGBA8 {   0,   0,   0,   0 }
 Color_BG                   :: RGBA8 {  55,  55,  60, 255 }
 Color_BG_TextBox           :: RGBA8 {  32,  32,  32, 180 }
