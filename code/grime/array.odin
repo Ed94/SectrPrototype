@@ -186,15 +186,15 @@ array_back :: proc( self : Array($Type) ) -> Type {
 	return value
 }
 
-// array_push_back :: proc( using self : Array( $ Type)) -> b32 {
-// 	if num == capacity {
-// 		return false
-// 	}
+array_push_back :: proc( using self : Array( $ Type)) -> b32 {
+	if num == capacity {
+		return false
+	}
 
-// 	data[ num ] = value
-// 	num        += 1
-// 	return true
-// }
+	data[ num ] = value
+	num        += 1
+	return true
+}
 
 array_clear :: proc "contextless" ( using self : Array( $ Type ), zero_data : b32 = false ) {
 	if zero_data {

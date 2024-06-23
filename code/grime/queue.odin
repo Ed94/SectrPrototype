@@ -1,7 +1,9 @@
 package grime
 
+import "base:runtime"
 import "core:container/queue"
 
+// Note(Ed): Fixed size queue DOES NOT act as a RING BUFFER
 make_queue :: proc( $QueueType : typeid/Queue($Type), capacity := queue.DEFAULT_CAPACITY, allocator := context.allocator, fixed_cap : bool = false ) -> (result : Queue(Type), error : AllocatorError)
 {
 	allocator := allocator
@@ -19,7 +21,9 @@ make_queue :: proc( $QueueType : typeid/Queue($Type), capacity := queue.DEFAULT_
 
 push_back_slice_queue :: proc( self : ^$QueueType / Queue($Type), slice : []Type ) -> ( error : AllocatorError )
 {
+	if len(slice) == 0 do return
 	queue.push_back_elems( self, ..slice )
+
 	return
 }
 

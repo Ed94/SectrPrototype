@@ -80,12 +80,12 @@ render :: proc()
 	profile(#procedure)
 	state := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
 
+	clear_pass := gfx.Pass { action = render_data.pass_actions.bg_clear_black, swapchain = sokol_glue.swapchain() }
+	clear_pass.action.colors[0].clear_value = transmute(gfx.Color) normalize_rgba8( config.color_theme.bg )
 
 	// TODO(Ed): Eventually we want to only update when state is dirty/user has done an action
-	gfx.begin_pass(gfx.Pass { action = render_data.pass_actions.bg_clear_black, swapchain = sokol_glue.swapchain() })
+	gfx.begin_pass(clear_pass)
 	gfx.end_pass();
-
-	// render_mode_3d()
 
 	render_mode_2d_workspace()
 	render_mode_screenspace()
@@ -133,25 +133,35 @@ render_mode_screenspace :: proc()
 	cam    := & project.workspace.cam
 	win_extent := state.app_window.extent
 
-	ve.configure_snap( & font_provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
-
-	render_screen_ui()
-
 	screen_extent := app_window.extent
 	screen_size   := app_window.extent * 2
 	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
 
-	gp.begin( i32(screen_size.x), i32(screen_size.y) )
-	gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
-	gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
+	ve.configure_snap( & font_provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
-	gp_set_color(Color_Screen_Center_Dot)
-	draw_filled_circle(0, 0, 2, 24)
+	render_screen_ui()
 
-	gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
-	gp.flush()
-	gp.end()
-	gfx.end_pass()
+	Render_Reference_Dots:
+	{
+		gp.begin( i32(screen_size.x), i32(screen_size.y) )
+		gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
+		gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
+
+		gp_set_color(Color_Screen_Center_Dot)
+		draw_filled_circle(0, 0, 2, 24)
+
+		Mouse_Position:
+		{
+			mouse_pos := input.mouse.pos
+			gp_set_color({ 180, 180, 180, 20})
+			draw_filled_circle( mouse_pos.x, mouse_pos.y, 4, 24 )
+		}
+
+		gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
+		gp.flush()
+		gp.end()
+		gfx.end_pass()
+	}
 
 
 	debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color := Color_White, font : FontID = Font_Default )
@@ -183,8 +193,8 @@ render_mode_screenspace :: proc()
 		cam            := & project.workspace.cam
 		screen_corners := screen_get_corners()
 
-		position   := screen_corners.top_right
-		position.x -= app_window.extent.x * 0.5
+		position   := screen_corners.top_left
+		position.x = 0
 		position.y -= debug.draw_debug_text_y
 
 		content := str_fmt_buffer( draw_text_scratch[:], format, ..args )
@@ -201,18 +211,33 @@ render_mode_screenspace :: proc()
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_width, 0 } - { 5, 5 }
 		debug_draw_text( fps_msg, fps_msg_pos, 38.0, color = Color_Red )
 
-		// debug_text( "Screen Width : %v", rl.GetScreenWidth () )
-		// debug_text( "Screen Height: %v", rl.GetScreenHeight() )
-		// debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
+		debug_text( "Screen Width : %v", screen_size.x )
+		debug_text( "Screen Height: %v", screen_size.y )
+		debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
 		debug_text( "frametime                 : %0.3f ms", frametime_delta32() )
-		// debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
+		debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
 		if replay.mode == ReplayMode.Record {
 			debug_text( "Recording Input")
 		}
 		if replay.mode == ReplayMode.Playback {
 			debug_text( "Replaying Input")
 		}
-		// debug_text("Zoom Target: %v", project.workspace.zoom_target)
+		debug_text("Zoom Target: %v", project.workspace.zoom_target)
+
+		if true
+		{
+			using input_events
+
+			id := 0
+			iter_obj  := iterator( & mouse_events ); iter := & iter_obj
+			for event := next( iter ); event != nil; event = next( iter )
+			{
+				if id >= 4 do break
+				id += 1
+
+				debug_text("Mouse Event: %v", event )
+			}
+		}
 
 		if debug.mouse_vis {
 			debug_text("Mouse scroll: %v", input.mouse.scroll )

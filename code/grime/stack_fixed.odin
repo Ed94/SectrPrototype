@@ -12,7 +12,7 @@ stack_clear :: #force_inline proc ( using stack : ^StackFixed( $Type, $Size)) {
 }
 
 stack_push :: #force_inline proc( using stack : ^ StackFixed( $ Type, $ Size ), value : Type ) {
-	assert( idx < len( items ), "Attempted to push on a full stack" )
+	assert( idx < u32(len( items )), "Attempted to push on a full stack" )
 
 	items[ idx ] = value
 	idx += 1

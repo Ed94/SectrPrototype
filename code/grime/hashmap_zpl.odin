@@ -8,7 +8,7 @@ was I believe exclusively when I didn't set the base addresss of vmem
 OR when I was attempting to use Casey's brute force replay feature with memory.
 5-26-2024 Update:
 TODO(Ed): There is a Raw_Map structure defined in base:runtime/core.odin
-We can use the regulare dynamic 
+We can use the regulare dynamic
 ---------------------------------------------------------------------------------------------------------
 
 This implementation uses two ZPL-Based Arrays to hold entires and the actual hash table.

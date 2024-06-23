@@ -53,9 +53,9 @@ InputMouseEvent :: struct {
 }
 
 InputEvents :: struct {
-	events       : Queue(InputEvent),
-	key_events   : Queue(InputKeyEvent),
-	mouse_events : Queue(InputMouseEvent),
+	events       : RingBufferFixed(InputEvent, 640),
+	key_events   : RingBufferFixed(InputKeyEvent, 128),
+	mouse_events : RingBufferFixed(InputMouseEvent, 512),
 
 	codes_pressed : Array(rune),
 }
@@ -138,6 +138,8 @@ pull_staged_input_events :: proc(  input : ^InputState, input_events : ^InputEve
 					scroll      = event.mouse.scroll,
 					modifiers   = event.modifiers,
 				})
+				// logf("Detected scroll: %v", event.mouse.scroll)
+
 			case .Mouse_Move:
 				push( & mouse_events, InputMouseEvent {
 					frame_id    = event.frame_id,
@@ -200,8 +202,8 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 	@static prev_frame : u64 = 0
 
 	last_frame : u64 = 0
-	if events.len > 0 {
-		last_frame = peek_back( & events).frame_id
+	if events.num > 0 {
+		last_frame = peek_back( events).frame_id
 	}
 
 	// No new events, don't update
@@ -209,17 +211,18 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 
 	Iterate_Key_Events:
 	{
-		iter_obj  := iterator( key_events ); iter := & iter_obj
+		iter_obj  := iterator( & key_events ); iter := & iter_obj
 		for event := next( iter ); event != nil; event = next( iter )
 		{
+			// logf("last_frame (iter): %v", last_frame)
+			// logf("frame      (iter): %v", event.frame_id )
 			if last_frame > event.frame_id {
 				break
 			}
-			// logf("last_frame (iter): %v", last_frame)
-			// logf("frame      (iter): %v", event.frame_id )
-
 			key      := & input.keyboard.keys[event.key]
 			prev_key :=   prev_input.keyboard.keys[event.key]
+
+			// logf("key event: %v", event)
 
 			first_transition := key.half_transitions == 0
 
@@ -237,7 +240,7 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 
 	Iterate_Mouse_Events:
 	{
-		iter_obj  := iterator( mouse_events ); iter := & iter_obj
+		iter_obj  := iterator( & mouse_events ); iter := & iter_obj
 		for event := next( iter ); event != nil; event = next( iter )
 		{
 			if last_frame > event.frame_id {
@@ -252,6 +255,8 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 				btn.ended_down        = ended_down
 			}
 
+			// logf("mouse event: %v", event)
+
 			#partial switch event.type {
 				case .Mouse_Pressed:
 					btn      := & input.mouse.btns[event.btn]
@@ -264,7 +269,7 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 					process_digital_btn( btn, prev_btn, false )
 
 				case .Mouse_Scroll:
-					input.mouse.scroll += event.scroll.x
+					input.mouse.scroll += event.scroll
 
 				case .Mouse_Move:
 				case .Mouse_Enter:

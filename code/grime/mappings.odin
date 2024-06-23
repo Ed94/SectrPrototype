@@ -148,6 +148,7 @@ is_power_of_two :: proc {
 
 iterator :: proc {
 	iterator_queue,
+	iterator_ringbuf_fixed,
 }
 
 make :: proc {

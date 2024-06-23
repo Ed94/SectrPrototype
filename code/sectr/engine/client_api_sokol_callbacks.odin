@@ -73,7 +73,8 @@ sokol_app_log_callback :: proc "c" (
 	message_or_null:  cstring,
 	line_nr:          u32,
 	filename_or_null: cstring,
-	user_data:        rawptr) {
+	user_data:        rawptr)
+{
 	context = get_state().sokol_context
 
 	odin_level : LogLevel

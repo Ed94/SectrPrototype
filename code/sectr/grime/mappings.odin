@@ -30,8 +30,8 @@ import "base:runtime"
 
 import c "core:c/libc"
 
-import "core:container/queue"
-	Queue :: queue.Queue
+// import "core:container/queue"
+	// Queue :: queue.Queue
 
 // import "core:dynlib"
 
@@ -188,11 +188,25 @@ import "codebase:grime"
 	hmap_zpl_reload :: grime.hmap_zpl_reload
 	hmap_zpl_set    :: grime.hmap_zpl_set
 
-	make_queue :: grime.make_queue
+	// make_queue :: grime.make_queue
 
-	next_queue_iterator :: grime.next_queue_iterator
+	// next_queue_iterator :: grime.next_queue_iterator
 
 	Pool :: grime.Pool
+
+	RingBufferFixed         :: grime.RingBufferFixed
+	RingBufferFixedIterator :: grime.RingBufferFixedIterator
+
+	ringbuf_fixed_clear      :: grime.ringbuf_fixed_clear
+	ringbuf_fixed_is_full    :: grime.ringbuf_fixed_is_full
+	ringbuf_fixed_is_empty   :: grime.ringbuf_fixed_is_empty
+	ringbuf_fixed_peak_back  :: grime.ringbuf_fixed_peak_back
+	ringbuf_fixed_push       :: grime.ringbuf_fixed_push
+	ringbuf_fixed_push_slice :: grime.ringbuf_fixed_push_slice
+	ringbuf_fixed_pop        :: grime.ringbuf_fixed_pop
+
+	iterator_ringbuf_fixed :: grime.iterator_ringbuf_fixed
+	next_ringbuf_fixed_iterator :: grime.next_ringbuf_fixed_iterator
 
 	Slab          :: grime.Slab
 	SlabPolicy    :: grime.SlabPolicy
@@ -368,14 +382,15 @@ is_power_of_two :: proc {
 }
 
 iterator :: proc {
-	grime.iterator_queue,
+	// grime.iterator_queue,
+	grime.iterator_ringbuf_fixed,
 }
 
 make :: proc {
 	array_init,
 	hmap_chained_init,
 	hmap_zpl_init,
-	make_queue,
+	// make_queue,
 
 	// Usual
 	make_slice,
@@ -396,16 +411,17 @@ mov_avg_exp :: proc {
 }
 
 next :: proc {
-	next_queue_iterator,
+	// next_queue_iterator,
+	next_ringbuf_fixed_iterator,
 }
 
 peek_back :: proc {
-	queue.peek_back,
+	ringbuf_fixed_peak_back,
 }
 
-peek_front :: proc {
-	queue.peek_front,
-}
+// peek_front :: proc {
+// 	queue.peek_front,
+// }
 
 pixels_to_cm :: proc {
 	f32_pixels_to_cm,
@@ -444,8 +460,11 @@ pressed :: proc {
 }
 
 push :: proc {
-	queue.push_back,
-	grime.push_back_slice_queue,
+	ringbuf_fixed_push,
+	ringbuf_fixed_push_slice,
+
+	// queue.push_back,
+	// grime.push_back_slice_queue,
 
 	stack_push,
 	stack_allocator_push,
@@ -474,10 +493,6 @@ reload :: proc {
 	grime.reload_array,
 	grime.reload_queue,
 	grime.reload_map,
-}
-
-space_left :: proc {
-	queue.space,
 }
 
 scope :: proc {

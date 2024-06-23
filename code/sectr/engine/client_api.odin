@@ -112,14 +112,14 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		using input_events
 
 		error : AllocatorError
-		events, error  = make( Queue(InputEvent), 4 * Kilo, persistent_allocator(), fixed_cap = true )
-		ensure(error == AllocatorError.None, "Failed to allocate input.events array")
+		// events, error  = make( RingBuffer(InputEvent), 4 * Kilo, persistent_allocator(), fixed_cap = true )
+		// ensure(error == AllocatorError.None, "Failed to allocate input.events array")
 
-		key_events, error = make( Queue(InputKeyEvent), Kilo, persistent_allocator(), fixed_cap = true )
-		ensure(error == AllocatorError.None, "Failed to allocate key_events array")
+		// key_events, error = make( RingBuffer(InputKeyEvent), Kilo, persistent_allocator(), fixed_cap = true )
+		// ensure(error == AllocatorError.None, "Failed to allocate key_events array")
 
-		mouse_events, error = make( Queue(InputMouseEvent), 2 * Kilo, persistent_allocator(), fixed_cap = true )
-		ensure(error == AllocatorError.None, "Failed to allocate mouse_events array")
+		// mouse_events, error = make( RingBuffer(InputMouseEvent), 3 * Kilo, persistent_allocator(), fixed_cap = true )
+		// ensure(error == AllocatorError.None, "Failed to allocate mouse_events array")
 
 		codes_pressed, error = make( Array(rune), Kilo, persistent_slab_allocator() )
 		ensure(error == AllocatorError.None, "Failed to allocate codes_pressed array")
@@ -422,9 +422,9 @@ hot_reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_
 	// input_reload()
 	{
 		using input_events
-		reload( & events, runtime.nil_allocator())
-		reload( & key_events, runtime.nil_allocator())
-		reload( & mouse_events, runtime.nil_allocator())
+		// reload( & events, runtime.nil_allocator())
+		// reload( & key_events, runtime.nil_allocator())
+		// reload( & mouse_events, runtime.nil_allocator())
 		codes_pressed.backing       = persistent_slab_allocator()
 		staged_input_events.backing = persistent_slab_allocator()
 	}
@@ -532,7 +532,7 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 
 	// profile("Client tick timing processing")
 
-	config.engine_refresh_hz = uint(monitor_refresh_hz)
+	// config.engine_refresh_hz = uint(monitor_refresh_hz)
 	// config.engine_refresh_hz = 10
 	frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 	sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
