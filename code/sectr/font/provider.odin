@@ -12,7 +12,7 @@ Font_Largest_Px_Size       :: 72
 Font_Size_Interval         :: 2
 
 Font_Default            :: FontID { 0, "" }
-Font_Default_Point_Size :: 18.0
+Font_Default_Point_Size :: 16.0
 
 Font_Load_Use_Default_Size :: -1
 Font_Load_Gen_ID           :: ""

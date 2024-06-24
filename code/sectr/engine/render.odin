@@ -26,7 +26,8 @@ gp_set_color :: #force_inline proc( color : RGBA8 ) {
 	gp.set_color( color.r, color.g, color.b, color.a )
 }
 
-draw_filled_circle :: proc(x, y, radius: f32, edges: int) {
+draw_filled_circle :: proc(x, y, radius: f32, edges: int)
+{
 	if edges < 3 do return // Need at least 3 edges to form a shape
 
 	triangles     := make([]gp.Triangle, edges)
@@ -99,22 +100,35 @@ render :: proc()
 	profile(#procedure)
 	state := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
 
-	ve.flush_draw_list( & font_provider_data.ve_font_cache )
-	font_provider_data.vbuf_layer_offset  = 0
-	font_provider_data.ibuf_layer_offset  = 0
-	font_provider_data.calls_layer_offset = 0
-
 	clear_pass := gfx.Pass { action = render_data.pass_actions.bg_clear_black, swapchain = sokol_glue.swapchain() }
 	clear_pass.action.colors[0].clear_value = transmute(gfx.Color) normalize_rgba8( config.color_theme.bg )
 
-	// TODO(Ed): Eventually we want to only update when state is dirty/user has done an action
+	screen_extent := app_window.extent
+	screen_size   := app_window.extent * 2
+	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
+
+	gp.begin( i32(screen_size.x), i32(screen_size.y) )
+	gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
+	gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
+
+	gp.set_blend_mode( .BLEND )
+	gp_set_color(config.color_theme.bg)
+	gp.clear()
+
 	gfx.begin_pass(clear_pass)
+	gp.flush()
 	gfx.end_pass();
 
 	render_mode_2d_workspace()
 	render_mode_screenspace()
 
+	gp.end()
+
 	gfx.commit()
+	ve.flush_draw_list( & font_provider_data.ve_font_cache )
+	font_provider_data.vbuf_layer_offset  = 0
+	font_provider_data.ibuf_layer_offset  = 0
+	font_provider_data.calls_layer_offset = 0
 }
 
 // TODO(Ed): Eventually this needs to become a 'viewport within a UI'
@@ -134,7 +148,6 @@ render_mode_2d_workspace :: proc()
 	Render_Reference_Dots:
 	{
 		profile("render_reference_dots (workspace)")
-		gp.begin( i32(screen_size.x), i32(screen_size.y) )
 		gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
 		gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
 
@@ -142,12 +155,28 @@ render_mode_2d_workspace :: proc()
 		gp.scale( cam.zoom, cam.zoom )
 
 		gp_set_color(Color_White)
-		draw_filled_circle(0, 0, 4, 24)
+		draw_filled_circle(0, 0, 2 * cam_zoom_ratio, 24)
 
-		// Enqueue gp pass to sokol gfx
+		if false
+		{
+			gp.set_color( 1.0, 0, 0, 0.25 )
+			gp.draw_filled_rect(100, 100, 100, 100 )
+
+			gp.set_color( 0.0, 1.0, 0, 0.25 )
+			gp.draw_filled_rect(50, 50, 100, 100 )
+		}
+
+		Mouse_Position:
+		{
+			mouse_pos := (input.mouse.pos) * cam_zoom_ratio - cam.position
+			gp_set_color( Color_GreyRed )
+			draw_filled_circle( mouse_pos.x, mouse_pos.y, 4, 24 )
+		}
+
+		gp.reset_transform()
+
 		gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
 		gp.flush()
-		gp.end()
 		gfx.end_pass()
 	}
 }
@@ -171,7 +200,6 @@ render_mode_screenspace :: proc()
 	Render_Reference_Dots:
 	{
 		profile("render_reference_dots (screen)")
-		gp.begin( i32(screen_size.x), i32(screen_size.y) )
 		gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
 		gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
 
@@ -181,13 +209,12 @@ render_mode_screenspace :: proc()
 		Mouse_Position:
 		{
 			mouse_pos := input.mouse.pos
-			gp_set_color({ 180, 180, 180, 20})
+			gp_set_color( Color_White_A125 )
 			draw_filled_circle( mouse_pos.x, mouse_pos.y, 4, 24 )
 		}
 
 		gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
 		gp.flush()
-		gp.end()
 		gfx.end_pass()
 	}
 
@@ -332,7 +359,6 @@ render_screen_ui :: proc()
 
 	render_list := array_to_slice( ui.render_list )
 
-	gp.begin( i32(screen_size.x), i32(screen_size.y) )
 	gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
 	gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
 
@@ -346,16 +372,11 @@ render_screen_ui :: proc()
 			profile("render ui layer")
 			gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
 			gp.flush()
-			gp.end()
 			gfx.end_pass()
 
 			if text_enqueued {
 				render_text_layer()
 			}
-
-			gp.begin( i32(screen_size.x), i32(screen_size.y) )
-			gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
-			gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
 			continue
 		}
 		using entry
@@ -387,13 +408,15 @@ render_screen_ui :: proc()
 				shape_enqueued = true
 			}
 
-			gp_set_color(Color_Red)
-			draw_filled_circle(bounds.min.x, bounds.min.y, 3, 24)
-			shape_enqueued = true
+			if debug.draw_ui_box_bounds_points
+			{
+				gp_set_color(Color_Red)
+				draw_filled_circle(bounds.min.x, bounds.min.y, 3, 24)
 
-			gp_set_color(Color_Blue)
-			draw_filled_circle(bounds.max.x, bounds.max.y, 3, 24)
-			shape_enqueued = true
+				gp_set_color(Color_Blue)
+				draw_filled_circle(bounds.max.x, bounds.max.y, 3, 24)
+				shape_enqueued = true
+			}
 		}
 
 		if len(text.str) > 0 && style.font.key != 0 {
@@ -405,7 +428,6 @@ render_screen_ui :: proc()
 	if shape_enqueued {
 		gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
 		gp.flush()
-		gp.end()
 		gfx.end_pass()
 	}
 
@@ -423,7 +445,7 @@ render_text_layer :: proc()
 	ShaderStage :: gfx.Shader_Stage
 
 	state := get_state(); using state
-	font_provider := state.font_provider_data
+	font_provider := & state.font_provider_data
 	using font_provider
 
 	// ve.optimize_draw_list( & ve_font_cache )
@@ -437,8 +459,11 @@ render_text_layer :: proc()
 	ibuf_layer_slice  := draw_list_index_slice[ ibuf_layer_offset  : ]
 	calls_layer_slice := draw_list_calls_slice[ calls_layer_offset : ]
 
-	gfx.append_buffer( draw_list_vbuf, Range{ raw_data(vbuf_layer_slice), cast(u64) len(vbuf_layer_slice) * size_of(ve.Vertex) })
-	gfx.append_buffer( draw_list_ibuf, Range{ raw_data(ibuf_layer_slice), cast(u64) len(ibuf_layer_slice) * size_of(u32)  })
+	vbuf_ve_range := Range{ raw_data(vbuf_layer_slice), cast(u64) len(vbuf_layer_slice) * size_of(ve.Vertex) }
+	ibuf_ve_range := Range{ raw_data(ibuf_layer_slice), cast(u64) len(ibuf_layer_slice) * size_of(u32)       }
+
+	gfx.append_buffer( draw_list_vbuf, vbuf_ve_range )
+	gfx.append_buffer( draw_list_ibuf, ibuf_ve_range )
 
 	vbuf_layer_offset  = cast(u64) len(draw_list_vert_slice)
 	ibuf_layer_offset  = cast(u64) len(draw_list_index_slice)

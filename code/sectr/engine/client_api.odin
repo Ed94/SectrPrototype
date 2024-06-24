@@ -259,24 +259,24 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	{
 		font_provider_startup()
 		path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
-		font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 24.0, "RecMonoSemiCasual_Regular" )
+		font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 16.0, "RecMonoSemiCasual_Regular" )
 
 		path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
-		font_squidgy_slimes = font_load( path_squidgy_slimes, 24.0, "Squidgy_Slime" )
+		font_squidgy_slimes = font_load( path_squidgy_slimes, 16.0, "Squidgy_Slime" )
 
 		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
-		font_firacode  = font_load( path_firacode, 24.0, "FiraCode" )
+		font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
 
 		path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
-		font_open_sans  = font_load( path_open_sans, 24.0, "OpenSans" )
+		font_open_sans  = font_load( path_open_sans, 16.0, "OpenSans" )
 
 		path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
-		font_noto_sans  = font_load( path_noto_sans, 24.0, "NotoSans" )
+		font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
 
 		path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
-		font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 24.0, "Arial_Unicode_MS" )
+		font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
-		default_font = font_rec_mono_semicasual_reg
+		default_font = font_firacode
 		log( "Default font loaded" )
 	}
 
@@ -503,9 +503,9 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 
 	// config.engine_refresh_hz = 165
 
-	// config.color_theme = App_Thm_Light
+	config.color_theme = App_Thm_Light
 	// config.color_theme = App_Thm_Dusk
-	config.color_theme = App_Thm_Dark
+	// config.color_theme = App_Thm_Dark
 
 	sokol_width  := sokol_app.widthf()
 	sokol_height := sokol_app.heightf()

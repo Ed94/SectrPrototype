@@ -165,7 +165,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	{
 		content_size := content_bounds.max - content_bounds.min
 		text_pos : Vec2
-		text_pos = content_bounds.min + { 0, text_size.y }
+		text_pos = content_bounds.min + { 0, 0  }
 		text_pos += (content_size - text_size) * layout.text_alignment
 
 		computed.text_size = text_size

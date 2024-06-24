@@ -207,7 +207,7 @@ update :: proc( delta_time : f64 ) -> b32
 	ui_screen_tick()
 
 	//region WorkspaceImgui Tick
-	if false
+	if true
 	{
 		profile("Workspace Imgui")
 
@@ -244,7 +244,7 @@ update :: proc( delta_time : f64 ) -> b32
 		scope( frame_style )
 
 		config.ui_resize_border_width = 2.5
-		// test_hover_n_click()
+		test_hover_n_click()
 		// test_draggable()
 		// test_text_box()
 		// test_parenting( & default_layout, & frame_style_default )
