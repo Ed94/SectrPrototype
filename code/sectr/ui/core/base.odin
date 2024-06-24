@@ -72,7 +72,17 @@ UI_RenderEntry :: struct {
 	layer_id    : i32,
 }
 
-UI_RenderLayer :: DLL_NodeFL(UI_RenderEntry)
+UI_RenderLayer :: DLL_NodeFL(UI_RenderEntry)\
+
+UI_RenderBoxInfo :: struct {
+	using computed : UI_Computed,
+	using style    : UI_Style,
+	text           : StrRunesPair,
+	font_size      : UI_Scalar,
+	border_width   : UI_Scalar,
+	label          : StrRunesPair,
+	layer_signal   : b32,
+}
 
 // TODO(Ed): Rename to UI_Context
 UI_State :: struct {
@@ -131,8 +141,12 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 	ui.prev_cache = (& ui.caches[0])
 
 	allocation_error : AllocatorError
+
+	ui.render_queue, allocation_error = make( Array(UI_RenderLayer), 32, cache_allocator )
+	verify( allocation_error == AllocatorError.None, "Failed to allcate render_queue")
+
 	ui.render_list, allocation_error = make( Array(UI_RenderBoxInfo), UI_Built_Boxes_Array_Size, cache_allocator, fixed_cap = true )
-	verify( allocation_error == AllocatorError.None, "Failed to allocate render queue" )
+	verify( allocation_error == AllocatorError.None, "Failed to allocate rener_list" )
 
 	log("ui_startup completed")
 }
@@ -143,7 +157,8 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 	for & cache in ui.caches {
 		hmap_zpl_reload( & cache, cache_allocator)
 	}
-	ui.render_list.backing = cache_allocator
+	ui.render_queue.backing = cache_allocator
+	ui.render_list.backing  = cache_allocator
 }
 
 // TODO(Ed) : Is this even needed?
@@ -160,6 +175,7 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 
 	stack_clear( & layout_combo_stack )
 	stack_clear( & style_combo_stack )
+	array_clear( render_queue )
 	array_clear( render_list )
 
 	curr_cache, prev_cache = swap( curr_cache, prev_cache )
@@ -215,6 +231,8 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 					current.text,
 					current.layout.font_size,
 					current.layout.border_width,
+					current.label,
+					false,
 				},
 				layer_id = current.ancestors -1,
 			}
@@ -224,15 +242,17 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 				render_queue = array_to_slice(ui.render_queue)
 			}
 
+			// else if layer.last == nil {
+			// 	layer.first.next = entry
+			// 	entry.prev       = layer.first
+			// 	layer.last       = entry
+			// }
+
 			// push_back to next layer
 			layer := & render_queue[entry.layer_id]
 			if layer.first == nil {
 				layer.first = entry
-			}
-			else if layer.last == nil {
-				layer.first.next = entry
-				entry.prev       = layer.first
-				layer.last       = entry
+				layer.last  = entry
 			}
 			else {
 				layer.last.next = entry
@@ -248,34 +268,48 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 				parent_entry  = parent_layer.last
 				entry.parent  = parent_entry
 
-				// dll_fl_append( parent_entry, entry )
-
 				if parent_entry.first == nil {
 					parent_entry.first = entry
+					parent_entry.last  = entry
 				}
 				else {
 					parent_entry.last = entry
 				}
+				// dll_fl_append( parent_entry, entry )
 			}
 		}
 
 		// render_queue overlap corrections & render_list generation
 		render_queue = array_to_slice(ui.render_queue)
-		for & layer in render_queue
+		for layer_id : i32 = 0; layer_id < i32(ui.render_queue.num); layer_id += 1
 		{
+			layer := & ui.render_queue.data[ layer_id ]
+			append( & ui.render_list, UI_RenderBoxInfo { layer_signal = true })
+
 			to_increment, error := make( Array(^UI_RenderEntry), 4 * Kilo )
 			verify( error == .None, "Faied to make to_increment array.")
 
+			to_inc_last_iterated : i32 = 0
 			for entry := layer.first; entry != nil; entry = entry.next
 			{
 				for neighbor := entry.next; neighbor != nil; neighbor = neighbor.next
 				{
-					if ! intersects_range2( entry.info.computed.bounds, neighbor.info.computed.bounds) do continue
+					if ! overlap_range2( entry.info.computed.bounds, neighbor.info.computed.bounds) do continue
 
+					
 					append( & to_increment, neighbor )
 				} // for neighbor := entry.next; neighbor != nil; neighbor = neighbor.next
+
+				if entry == to_increment.data[ to_inc_last_iterated ] {
+					to_inc_last_iterated += 1
+				}
+				else {
+					// This entry stayed in this layer, we can append the value
+					array_append_value( & ui.render_list, entry.info )
+				}
 			} // for entry := layer.first; entry != nil; entry = entry.next
 
+			// Move overlaping entries & their children's by 1 layer
 			to_inc_slice := array_to_slice(to_increment)
 			for entry in to_inc_slice
 			{
@@ -287,7 +321,6 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 				}
 				push_layer := render_queue[entry.layer_id]
 
-
 				// pop entry from layer
 				prev      := entry.prev
 				prev.next  = entry.next
@@ -298,12 +331,7 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 				// push entry to next layer
 				if push_layer.first == nil {
 					push_layer.first = entry
-				}
-				else if push_layer.last == nil {
-					push_layer.last       = entry
-					entry.prev            = push_layer.first
-					push_layer.first.next = entry
-					entry.next            = nil
+					push_layer.last  = entry
 				}
 				else {
 					push_layer.last.next = entry
@@ -311,6 +339,12 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 					push_layer.last      = entry
 					entry.next           = nil
 				}
+				// else if push_layer.last == nil {
+				// 	push_layer.last       = entry
+				// 	entry.prev            = push_layer.first
+				// 	push_layer.first.next = entry
+				// 	entry.next            = nil
+				// }
 
 				// increment children's layers
 				if entry.first != nil
@@ -337,22 +371,28 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 						// push_back to next layer
 						if push_layer.first == nil {
 							push_layer.first = child
-						}
-						else if push_layer.last == nil {
-							push_layer.first.next = child
-							child.prev            = push_layer.first
-							push_layer.last       = child
+							push_layer.last  = child
 						}
 						else {
 							push_layer.last.next = child
 							child.prev           = push_layer.last
 							push_layer.last      = child
 						}
+
+						// else if push_layer.last == nil {
+						// 	push_layer.first.next = child
+						// 	child.prev            = push_layer.first
+						// 	push_layer.last       = child
+						// }
+
 					} // for child := neighbor.first; child != nil; child = ui_render_entry_traverse_depth( child )
 				} // 	if entry.first != nil
 			} // for entry in to_inc_slice
 		} // for & layer in render_queue
 	}
+
+	render_queue := array_to_slice(ui.render_queue)
+	render_list  := array_to_slice(ui.render_list)
 
 	get_state().ui_context = nil
 }

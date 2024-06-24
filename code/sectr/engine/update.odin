@@ -195,7 +195,7 @@ update :: proc( delta_time : f64 ) -> b32
 		if debug_actions.cam_mouse_pan
 		{
 			if is_within_screenspace(input.mouse.pos) {
-				pan_velocity := input.mouse.delta * vec2(1, -1) * ( 1 / cam.zoom )
+				pan_velocity := input.mouse.delta * ( 1 / cam.zoom )
 				cam.position += pan_velocity
 			}
 		}
@@ -204,7 +204,7 @@ update :: proc( delta_time : f64 ) -> b32
 
 	// TODO(Ed): We need input buffer so that we can consume input actions based on the UI with priority
 
-	// ui_screen_tick()
+	ui_screen_tick()
 
 	//region WorkspaceImgui Tick
 	if false

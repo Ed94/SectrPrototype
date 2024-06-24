@@ -413,7 +413,7 @@ configure_snap :: proc( ctx : ^Context, snap_width, snap_height : u32 ) {
 }
 
 // ve_fontcache_load
-load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 ) -> FontID
+load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 ) -> (font_id : FontID)
 {
 	assert( ctx != nil )
 	assert( len(data) > 0 )
@@ -421,6 +421,7 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 	context.allocator = backing
 
 	id : i32 = -1
+
 	for index : i32 = 0; index < i32(entries.num); index += 1 {
 		if entries.data[index].used do continue
 		id = index
@@ -435,6 +436,7 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 	entry := & entries.data[ id ]
 	{
 		using entry
+
 		parser_info = parser_load_font( & parser_ctx, label, data )
 		// assert( parser_info != nil, "VEFontCache.load_font: Failed to load font info from parser" )
 
@@ -448,9 +450,12 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 
 		shaper_info = shaper_load_font( & shaper_ctx, label, data, transmute(rawptr) id )
 		// assert( shaper_info != nil, "VEFontCache.load_font: Failed to load font from shaper")
-
-		return id
 	}
+	entry.id = FontID(id)
+	ctx.entries.data[ id ].id = FontID(id)
+
+	font_id = FontID(id)
+	return
 }
 
 // ve_fontcache_unload
@@ -740,7 +745,8 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 			cast(f32) cast(u32) (f32(bounds_width)  * entry.size_scale - f32(atlas.glyph_padding)),
 			cast(f32) cast(u32) (f32(bounds_height) * entry.size_scale - f32(atlas.glyph_padding)),
 		}
-		measured += bounds
+		measured.x += bounds.x
+		measured.y = max(measured.y, bounds.y)
 	}
 
 	return measured

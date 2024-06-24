@@ -19,6 +19,22 @@ intersects_range2 :: #force_inline proc "contextless" ( a, b: Range2 ) -> bool
 	return true;
 }
 
+// AABB: Separating Axis Theorem
+overlap_range2 :: #force_inline proc "contextless" ( a, b: Range2 ) -> bool
+{
+	// Check if there's no overlap on the x-axis
+	if a.max.x <= b.min.x || b.max.x <= a.min.x {
+			return false; // No overlap on x-axis means no intersection
+	}
+	// Check if there's no overlap on the y-axis
+	if a.max.y <= b.min.y || b.max.y <= a.min.y {
+			return false; // No overlap on y-axis means no intersection
+	}
+	// If neither of the above conditions are true, there's at least a partial overlap
+	return true;
+}
+
+
 // TODO(Ed): Do we need this? Also does it even work (looks unfinished)?
 is_within_screenspace :: #force_inline proc "contextless" ( pos : Vec2 ) -> b32 {
 	state         := get_state(); using state

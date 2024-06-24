@@ -164,6 +164,7 @@ import "codebase:grime"
 	array_to_slice     :: grime.array_to_slice
 	array_init         :: grime.array_init
 	array_append       :: grime.array_append
+	array_append_value :: grime.array_append_value
 	array_append_array :: grime.array_append_array
 	array_append_at    :: grime.array_append_at
 	array_clear        :: grime.array_clear

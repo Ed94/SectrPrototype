@@ -37,6 +37,10 @@ FontProviderData :: struct
 	draw_list_vbuf : sokol_gfx.Buffer,
 	draw_list_ibuf : sokol_gfx.Buffer,
 
+	vbuf_layer_offset  : u64,
+	ibuf_layer_offset  : u64,
+	calls_layer_offset : u64,
+
 	glyph_shader  : sokol_gfx.Shader,
 	atlas_shader  : sokol_gfx.Shader,
 	screen_shader : sokol_gfx.Shader,
@@ -547,6 +551,11 @@ font_load :: proc(path_file : string,
 	def, set_error := hmap_chained_set(font_cache, key, FontDef{})
 	verify( set_error == AllocatorError.None, "Failed to add new font entry to cache" )
 
+	default_size := default_size
+	if default_size < 0 {
+		default_size = Font_Default_Point_Size
+	}
+
 	def.path_file    = path_file
 	def.default_size = default_size
 
@@ -555,7 +564,8 @@ font_load :: proc(path_file : string,
 		// logf("Loading at size %v", font_size)
 		id    := (font_size / Font_Size_Interval) + (font_size % Font_Size_Interval)
 		ve_id := & def.size_table[id - 1]
-		ve_id^ = ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, 14.0 )
+		ve_ret_id := ve.load_font( & provider_data.ve_font_cache, desired_id, font_data, f32(font_size) )
+		(ve_id^) = ve_ret_id
 	}
 
 	fid := FontID { key, desired_id }
@@ -570,8 +580,9 @@ font_provider_resolve_draw_id :: proc( id : FontID, size := Font_Use_Default_Siz
 
 	def           := hmap_chained_get( font_provider_data.font_cache, id.key )
 	size          := size == 0.0 ? f32(def.default_size) : size
+	// size          :f32 = 14.0
 	even_size     := math.round(size * (1.0 / f32(Font_Size_Interval))) * f32(Font_Size_Interval)
-	resolved_size := clamp( i32( even_size), 2, Font_Largest_Px_Size )
+	resolved_size := clamp( i32( even_size), 14, Font_Largest_Px_Size )
 
 	id    := (resolved_size / Font_Size_Interval) + (resolved_size % Font_Size_Interval)
 	ve_id := def.size_table[ id - 1 ]

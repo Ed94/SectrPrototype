@@ -279,7 +279,7 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 
 			input.mouse.raw_pos = event.pos
 			input.mouse.pos     = render_to_screen_pos( event.pos )
-			input.mouse.delta   = event.delta
+			input.mouse.delta   = event.delta * { 1, -1 }
 		}
 	}
 

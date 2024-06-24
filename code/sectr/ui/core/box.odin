@@ -19,14 +19,6 @@ UI_NavLinks :: struct {
 	left, right, up, down : ^UI_Box,
 }
 
-UI_RenderBoxInfo :: struct {
-	using computed : UI_Computed,
-	using style    : UI_Style,
-	text           : StrRunesPair,
-	font_size      : UI_Scalar,
-	border_width   : UI_Scalar,
-}
-
 UI_Box :: struct {
 	// Cache ID
 	key   : UI_Key,

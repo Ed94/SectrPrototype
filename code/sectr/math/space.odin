@@ -189,7 +189,7 @@ view_get_corners :: #force_inline proc "contextless"() -> BoundsCorners2 {
 render_to_screen_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
 	extent := & get_state().app_window.extent
 	result := Vec2 {
-		pos.x - extent.x,
+		pos.x      - extent.x,
 		pos.y * -1 + extent.y
 	}
 	return result
@@ -209,7 +209,7 @@ screen_to_ws_view_pos :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
 // Centered screen space to conventional screen space used for rendering
 screen_to_render_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
 	screen_extent := transmute(Vec2) get_state().app_window.extent
-	return pos * {1, -1} + { screen_extent.x, screen_extent.y }
+	return pos * {1, 1} + { screen_extent.x, screen_extent.y }
 }
 
 // TODO(Ed): These should assume a cam_context or have the ability to provide it in params

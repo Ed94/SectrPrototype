@@ -276,13 +276,15 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 24.0, "Arial_Unicode_MS" )
 
-		default_font = font_firacode
+		default_font = font_rec_mono_semicasual_reg
 		log( "Default font loaded" )
 	}
 
 	// Setup the screen ui state
 	if true
 	{
+		profile("screen ui")
+
 		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
 		ui_floating_startup( & screen_ui.floating, 1 * Kilobyte, 1 * Kilobyte, persistent_slab_allocator(), "screen ui floating manager" )
 
@@ -298,6 +300,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// TODO(Ed): This will eventually have to occur when the user either creates or loads a workspace. I don't know 
 	if true
 	{
+		profile("project setup")
 		using project
 		path           = str_intern("./")
 		name           = str_intern( "First Project" )
@@ -437,7 +440,7 @@ hot_reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_
 	slab_reload( frame_slab, frame_allocator())
 	slab_reload( transient_slab, transient_allocator())
 
-	// ui_reload( & get_state().project.workspace.ui, cache_allocator =  persistent_slab_allocator() )
+	ui_reload( & get_state().project.workspace.ui, cache_allocator =  persistent_slab_allocator() )
 
 	log("Module reloaded")
 }
