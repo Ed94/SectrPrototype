@@ -503,8 +503,8 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 
 	// config.engine_refresh_hz = 165
 
-	config.color_theme = App_Thm_Light
-	// config.color_theme = App_Thm_Dusk
+	// config.color_theme = App_Thm_Light
+	config.color_theme = App_Thm_Dusk
 	// config.color_theme = App_Thm_Dark
 
 	sokol_width  := sokol_app.widthf()
@@ -551,7 +551,7 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 		pre_sleep_tick := time.tick_now()
 
 		if can_sleep && sleep_ms > 0 {
-			thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
+			// thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
 			// thread__highres_wait( sleep_ms )
 		}
 

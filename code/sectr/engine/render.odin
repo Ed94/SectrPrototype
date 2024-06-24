@@ -19,12 +19,7 @@ RenderState :: struct {
 	pass_actions : PassActions,
 }
 
-#region("Draw Helpers")
-
-gp_set_color :: #force_inline proc( color : RGBA8 ) {
-	color := normalize_rgba8(color);
-	gp.set_color( color.r, color.g, color.b, color.a )
-}
+#region("Helpers")
 
 draw_filled_circle :: proc(x, y, radius: f32, edges: int)
 {
@@ -53,6 +48,15 @@ draw_filled_circle :: proc(x, y, radius: f32, edges: int)
 	gp.draw_filled_triangles(raw_data(triangles), u32(len(triangles)))
 }
 
+draw_rect :: proc( rect : Range2, color : RGBA8 ) {
+	using rect
+	render_set_color( color )
+
+	size     := max - min
+	position := min
+	gp.draw_filled_rect( position.x, position.y, size.x, size.y )
+}
+
 draw_rect_border :: proc( rect : Range2, border_width: f32)
 {
 	rect_size    := rect.max - rect.min
@@ -68,7 +72,7 @@ draw_rect_border :: proc( rect : Range2, border_width: f32)
 }
 
 // Draw text using a string and normalized render coordinates
-draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, pos : Vec2, color := Color_White )
+draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, pos : Vec2, color := Color_White, scale : f32 = 1.0 )
 {
 	state := get_state(); using state
 	width  := app_window.extent.x * 2
@@ -78,14 +82,14 @@ draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, po
 	color_norm := normalize_rgba8(color)
 
 	ve.set_colour( & font_provider_data.ve_font_cache, color_norm )
-	ve.draw_text( & font_provider_data.ve_font_cache, ve_id, content, pos, Vec2{1 / width, 1 / height} )
+	ve.draw_text( & font_provider_data.ve_font_cache, ve_id, content, pos, Vec2{1 / width, 1 / height} * scale )
 	return
 }
 
 // Draw text using a string and extent-based screen coordinates
 draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, pos : Vec2, color := Color_White )
 {
-	profile(#procedure)
+	// profile(#procedure)
 	state          := get_state(); using state
 	screen_size    := app_window.extent * 2
 	render_pos     := screen_to_render_pos(pos)
@@ -93,37 +97,80 @@ draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, 
 	draw_text_string_pos_norm( content, id, size, normalized_pos, color )
 }
 
-#endregion("Draw Helpers")
+draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size : f32, pos : Vec2, cam : Camera, color := Color_White )
+{
+	// profile(#procedure)
+	cam_offset := Vec2 {
+		cam.position.x,
+		cam.position.y,
+	}
+
+	pos_offset := pos + cam_offset * cam.zoom
+
+	cam_zoom_ratio := 1 / cam.zoom
+
+	state          := get_state(); using state
+	screen_size    := app_window.extent * 2
+	render_pos     := screen_to_render_pos(pos_offset)
+	normalized_pos := render_pos * (1.0 / screen_size)
+	draw_text_string_pos_norm( content, id, size, normalized_pos, color, cam.zoom )
+}
+
+// TODO(Ed): Eventually the workspace will need a viewport for drawing text
+
+render_flush_gp :: #force_inline proc()
+{
+	gfx.begin_pass( gfx.Pass { action = get_state().render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
+	gp.flush()
+	gfx.end_pass()
+}
+
+@(deferred_none=gp.reset_transform)
+render_set_camera :: #force_inline proc( cam : Camera )
+{
+	gp.translate( cam.position.x * cam.zoom, cam.position.y * cam.zoom )
+	gp.scale( cam.zoom, cam.zoom )
+}
+
+render_set_color :: #force_inline proc( color : RGBA8 ) {
+	color := normalize_rgba8(color);
+	gp.set_color( color.r, color.g, color.b, color.a )
+}
+
+render_set_view_space :: #force_inline proc( extent : Extents2 )
+{
+	size := extent * 2
+	gp.viewport(0, 0, i32(size.x), i32(size.y))
+	gp.project( -extent.x, extent.x, extent.y, -extent.y )
+}
+
+#endregion("Helpers")
 
 render :: proc()
 {
 	profile(#procedure)
 	state := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
 
-	clear_pass := gfx.Pass { action = render_data.pass_actions.bg_clear_black, swapchain = sokol_glue.swapchain() }
-	clear_pass.action.colors[0].clear_value = transmute(gfx.Color) normalize_rgba8( config.color_theme.bg )
-
 	screen_extent := app_window.extent
 	screen_size   := app_window.extent * 2
 	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
 
 	gp.begin( i32(screen_size.x), i32(screen_size.y) )
-	gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
-	gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
-
 	gp.set_blend_mode( .BLEND )
-	gp_set_color(config.color_theme.bg)
-	gp.clear()
 
-	gfx.begin_pass(clear_pass)
-	gp.flush()
-	gfx.end_pass();
-
-	render_mode_2d_workspace()
-	render_mode_screenspace()
-
+	// Clear the gp surface
+	{
+		render_set_view_space(screen_extent)
+		render_set_color(config.color_theme.bg)
+		gp.clear()
+		render_flush_gp()
+	}
+	// Workspace and screen rendering passes
+	{
+		render_mode_2d_workspace()
+		render_mode_screenspace()
+	}
 	gp.end()
-
 	gfx.commit()
 	ve.flush_draw_list( & font_provider_data.ve_font_cache )
 	font_provider_data.vbuf_layer_offset  = 0
@@ -137,7 +184,7 @@ render_mode_2d_workspace :: proc()
 {
 	profile(#procedure)
 	state  := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
-	cam    := & project.workspace.cam
+	cam    := project.workspace.cam
 
 	screen_extent := app_window.extent
 	screen_size   := app_window.extent * 2
@@ -145,16 +192,16 @@ render_mode_2d_workspace :: proc()
 
 	cam_zoom_ratio := 1.0 / cam.zoom
 
-	Render_Reference_Dots:
+	// TODO(Ed): Eventually will be the viewport extents
+	ve.configure_snap( & font_provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
+
+	Render_Debug:
 	{
 		profile("render_reference_dots (workspace)")
-		gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
-		gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
+		render_set_view_space(screen_extent)
+		render_set_camera(cam)
 
-		gp.translate( cam.position.x * cam.zoom, cam.position.y * cam.zoom )
-		gp.scale( cam.zoom, cam.zoom )
-
-		gp_set_color(Color_White)
+		render_set_color(Color_White)
 		draw_filled_circle(0, 0, 2 * cam_zoom_ratio, 24)
 
 		if false
@@ -166,19 +213,70 @@ render_mode_2d_workspace :: proc()
 			gp.draw_filled_rect(50, 50, 100, 100 )
 		}
 
-		Mouse_Position:
+		mouse_pos := input.mouse.pos * cam_zoom_ratio - cam.position
+		render_set_color( Color_GreyRed )
+		draw_filled_circle( mouse_pos.x, mouse_pos.y, 4, 24 )
+
+		render_flush_gp()
+	}
+
+	render_set_view_space(screen_extent)
+	render_set_camera(cam)
+
+	ui := & project.workspace.ui
+	render_list := array_to_slice( ui.render_list )
+
+	text_enqueued  : b32 = false
+	shape_enqueued : b32 = false
+
+	for entry, id in render_list
+	{
+		already_passed_signal := id > 0 && render_list[ id - 1 ].layer_signal
+		if !already_passed_signal && entry.layer_signal
 		{
-			mouse_pos := (input.mouse.pos) * cam_zoom_ratio - cam.position
-			gp_set_color( Color_GreyRed )
-			draw_filled_circle( mouse_pos.x, mouse_pos.y, 4, 24 )
+			profile("render ui layer")
+			render_flush_gp()
+			if text_enqueued do render_text_layer()
+			continue
+		}
+		using entry
+
+		profile("enqueue box")
+
+		GP_Render:
+		{
+			// profile("draw_shapes")
+			if style.bg_color.a != 0
+			{
+				draw_rect( bounds, style.bg_color )
+				shape_enqueued = true
+			}
+
+			if style.border_color.a != 0 && border_width > 0 {
+				render_set_color( style.border_color )
+				draw_rect_border( bounds, border_width )
+				shape_enqueued = true
+			}
+
+			if debug.draw_ui_box_bounds_points
+			{
+				render_set_color(Color_Red)
+				draw_filled_circle(bounds.min.x, bounds.min.y, 3, 24)
+
+				render_set_color(Color_Blue)
+				draw_filled_circle(bounds.max.x, bounds.max.y, 3, 24)
+				shape_enqueued = true
+			}
 		}
 
-		gp.reset_transform()
-
-		gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
-		gp.flush()
-		gfx.end_pass()
+		if len(text.str) > 0 && style.font.key != 0 {
+			draw_text_string_pos_extent_zoomed( text.str, default_font, font_size, computed.text_pos, cam, style.text_color )
+			text_enqueued = true
+		}
 	}
+
+	if shape_enqueued do render_flush_gp()
+	if text_enqueued  do render_text_layer()
 }
 
 render_mode_screenspace :: proc()
@@ -200,67 +298,51 @@ render_mode_screenspace :: proc()
 	Render_Reference_Dots:
 	{
 		profile("render_reference_dots (screen)")
-		gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
-		gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
+		render_set_view_space(screen_extent)
 
-		gp_set_color(Color_Screen_Center_Dot)
+		render_set_color(Color_Screen_Center_Dot)
 		draw_filled_circle(0, 0, 2, 24)
 
 		Mouse_Position:
 		{
 			mouse_pos := input.mouse.pos
-			gp_set_color( Color_White_A125 )
+			render_set_color( Color_White_A125 )
 			draw_filled_circle( mouse_pos.x, mouse_pos.y, 4, 24 )
 		}
 
-		gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
-		gp.flush()
-		gfx.end_pass()
-	}
-
-	debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color := Color_White, font : FontID = Font_Default )
-	{
-		state := get_state(); using state
-
-		if len( content ) == 0 {
-			return
-		}
-
-		font := font
-		if font.key == Font_Default.key {
-			font = default_font
-		}
-		// pos := screen_to_render_pos(pos)
-
-		draw_text_string_pos_extent( content, font, size, pos, color )
-	}
-
-	debug_text :: proc( format : string, args : ..any )
-	{
-		@static draw_text_scratch : [Kilobyte * 8]u8
-
-		state := get_state(); using state
-		if debug.draw_debug_text_y > 800 {
-			debug.draw_debug_text_y = 0
-		}
-
-		cam            := & project.workspace.cam
-		screen_corners := screen_get_corners()
-
-		position   := screen_corners.top_left
-		position.y -= debug.draw_debug_text_y
-
-		content := str_fmt_buffer( draw_text_scratch[:], format, ..args )
-
-		text_size := measure_text_size( content, default_font, 14.0, 0.0 )
-		debug_draw_text( content, position, 14.0 )
-
-		debug.draw_debug_text_y += text_size.y + 4
+		render_flush_gp()
 	}
 
 	debug.debug_text_vis = true
 	if debug.debug_text_vis
 	{
+		debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color := Color_White, font : FontID = Font_Default )
+		{
+			state := get_state(); using state
+			if len( content ) == 0 do return
+
+			font := font
+			if font.key == Font_Default.key do font = default_font
+			draw_text_string_pos_extent( content, font, size, pos, color )
+		}
+
+		debug_text :: proc( format : string, args : ..any )
+		{
+			state := get_state(); using state
+			if debug.draw_debug_text_y > 800 do debug.draw_debug_text_y = 0
+
+			cam            := & project.workspace.cam
+			screen_corners := screen_get_corners()
+
+			position   := screen_corners.top_left
+			position.y -= debug.draw_debug_text_y
+
+			content := str_fmt( format, ..args )
+			text_size := measure_text_size( content, default_font, 14.0, 0.0 )
+			debug_draw_text( content, position, 14.0 )
+			debug.draw_debug_text_y += text_size.y + 4
+		}
+
 		profile("debug_text_vis")
 		fps_size : f32 = 14.0
 		fps_msg       := str_fmt( "FPS: %0.2f", fps_avg)
@@ -281,7 +363,7 @@ render_mode_screenspace :: proc()
 		}
 		debug_text("Zoom Target: %v", project.workspace.zoom_target)
 
-		if false
+		if true
 		{
 			using input_events
 
@@ -302,11 +384,9 @@ render_mode_screenspace :: proc()
 			debug_text("Mouse Position (Render)        : %v", input.mouse.raw_pos )
 			debug_text("Mouse Position (Screen)        : %v", input.mouse.pos )
 			debug_text("Mouse Position (Workspace View): %v", screen_to_ws_view_pos(input.mouse.pos) )
-			// rl.DrawCircleV( input.mouse.raw_pos,                    10, Color_White_A125 )
-			// rl.DrawCircleV( screen_to_render_pos(input.mouse.pos),  2, Color_BG )
 		}
 
-		if false
+		if true
 		{
 			ui := & project.workspace.ui
 
@@ -323,7 +403,7 @@ render_mode_screenspace :: proc()
 			}
 		}
 
-		if false
+		if true
 		{
 			ui := & screen_ui
 
@@ -354,29 +434,21 @@ render_screen_ui :: proc()
 	screen_extent := app_window.extent
 	screen_size   := app_window.extent * 2
 	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
+	render_set_view_space(screen_extent)
 
 	ui := & screen_ui
-
-	render_list := array_to_slice( ui.render_list )
-
-	gp.viewport(0, 0, i32(screen_size.x), i32(screen_size.y))
-	gp.project( -screen_extent.x, screen_extent.x, screen_extent.y, -screen_extent.y )
 
 	text_enqueued  : b32 = false
 	shape_enqueued : b32 = false
 
+	render_list := array_to_slice( ui.render_list )
 	for entry, id in render_list
 	{
 		if entry.layer_signal
 		{
 			profile("render ui layer")
-			gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
-			gp.flush()
-			gfx.end_pass()
-
-			if text_enqueued {
-				render_text_layer()
-			}
+			render_flush_gp()
+			if text_enqueued do render_text_layer()
 			continue
 		}
 		using entry
@@ -389,7 +461,7 @@ render_screen_ui :: proc()
 
 			draw_rect :: proc( rect : Range2, color : RGBA8 ) {
 				using rect
-				gp_set_color( color )
+				render_set_color( color )
 
 				size     := max - min
 				position := min
@@ -403,17 +475,17 @@ render_screen_ui :: proc()
 			}
 
 			if style.border_color.a != 0 && border_width > 0 {
-				gp_set_color( style.border_color )
+				render_set_color( style.border_color )
 				draw_rect_border( bounds, border_width )
 				shape_enqueued = true
 			}
 
 			if debug.draw_ui_box_bounds_points
 			{
-				gp_set_color(Color_Red)
+				render_set_color(Color_Red)
 				draw_filled_circle(bounds.min.x, bounds.min.y, 3, 24)
 
-				gp_set_color(Color_Blue)
+				render_set_color(Color_Blue)
 				draw_filled_circle(bounds.max.x, bounds.max.y, 3, 24)
 				shape_enqueued = true
 			}
@@ -425,15 +497,8 @@ render_screen_ui :: proc()
 		}
 	}
 
-	if shape_enqueued {
-		gfx.begin_pass( gfx.Pass { action = render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
-		gp.flush()
-		gfx.end_pass()
-	}
-
-	if text_enqueued {
-		render_text_layer()
-	}
+	if shape_enqueued do render_flush_gp()
+	if text_enqueued  do render_text_layer()
 }
 
 render_text_layer :: proc()
@@ -448,7 +513,9 @@ render_text_layer :: proc()
 	font_provider := & state.font_provider_data
 	using font_provider
 
-	// ve.optimize_draw_list( & ve_font_cache )
+	// TODO(Ed): All this functionality for being able to segregate rendering of the drawlist incrementally should be lifted to the library itself (VEFontCache)
+
+	ve.optimize_draw_list( & ve_font_cache.draw_list, calls_layer_offset )
 	draw_list := ve.get_draw_list( & ve_font_cache )
 
 	draw_list_vert_slice  := array_to_slice(draw_list.vertices)

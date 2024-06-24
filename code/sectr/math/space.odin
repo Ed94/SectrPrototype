@@ -202,7 +202,7 @@ render_to_ws_view_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
 screen_to_ws_view_pos :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
 	state := get_state(); using state
 	cam   := & project.workspace.cam
-	result := Vec2 { cam.position.x, -cam.position.y}  + Vec2 { pos.x, pos.y } * (1 / cam.zoom)
+	result := Vec2 { cam.position.x, -cam.position.y} + Vec2 { pos.x, pos.y } * (1 / cam.zoom)
 	return result
 }
 

@@ -25,7 +25,8 @@ ParserFontInfo :: struct {
 	using _ : struct #raw_union {
 		stbtt_info    : stbtt.fontinfo,
 		freetype_info : freetype.Face
-	}
+	},
+	data : []byte,
 }
 
 GlyphVertType :: enum u8 {
@@ -96,6 +97,7 @@ parser_load_font :: proc( ctx : ^ParserContext, label : string, data : []byte ) 
 	}
 
 	font.label = label
+	font.data  = data
 	return
 }
 
@@ -209,7 +211,7 @@ parser_get_glyph_box :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (
 		case .STB_TrueType:
 			x0, y0, x1, y1 : i32
 			// {
-			// 	success := stbtt.InitFont( & font.stbtt_info, raw_data(data), 0 )
+			// 	success := stbtt.InitFont( & font.stbtt_info, raw_data(font.data), 0 )
 			// }
 			success := cast(bool) stbtt.GetGlyphBox( & font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
 			assert( success )
@@ -394,7 +396,16 @@ parser_is_glyph_empty :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> 
 	return false
 }
 
-parser_scale_for_pixel_height :: #force_inline proc( font : ^ParserFontInfo, size : f32 ) -> f32
+parser_scale :: #force_inline proc( font : ^ParserFontInfo, size : f32 ) -> f32
+{
+	size_scale := size < 0.0 ?                            \
+		parser_scale_for_pixel_height( font, -size )        \
+	: parser_scale_for_mapping_em_to_pixels( font, size )
+	// size_scale = 1.0
+	return size_scale
+}
+
+parser_scale_for_pixel_height :: proc( font : ^ParserFontInfo, size : f32 ) -> f32
 {
 	switch font.kind {
 		case .Freetype:

@@ -4,10 +4,7 @@ A port of (https://github.com/hypernewbie/VEFontCache) to Odin.
 Status:
 This port is heavily tied to the grime package in SectrPrototype.
 
-TODO(Ed): Make an idiomatic port of this for Odin (or just dupe the data structures...)
-
 Changes:
-- Support for freetype(WIP)
 - Font Parser & Glyph Shaper are abstracted to their own interface
 - Font Face parser info stored separately from entries
 - ve_fontcache_loadfile not ported (just use odin's core:os or os2), then call load_font
@@ -759,9 +756,15 @@ reset_batch_codepoint_state :: proc( ctx : ^Context ) {
 
 shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> ^ShapedText
 {
+	@static buffer : [64 * Kilobyte]byte
+
 	font := font
-	hash := cast(u64) crc64( transmute([]u8) text_utf8 )
-	// hash := label_hash( text_utf8 )
+
+	font_bytes := slice_ptr( transmute(^byte) & font, size_of(FontID) )
+	copy( buffer[:], font_bytes )
+	copy( buffer[: size_of(FontID) + len(text_utf8) ], transmute( []byte) text_utf8 )
+
+	hash := label_hash( transmute(string) buffer[: size_of(FontID) + len(text_utf8)] )
 
 	shape_cache := & ctx.shape_cache
 	state       := & ctx.shape_cache.state

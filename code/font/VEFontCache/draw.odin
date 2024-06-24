@@ -219,15 +219,6 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 		end_index   = cast(u32) ctx.draw_list.indices.num
 	}
 	append( & ctx.draw_list.calls, call )
-
-	// NOTE(Ed): Never done in the original
-	// Clear glyph_update_FBO
-	// call.pass = .Glyph
-	// call.start_index       = 0
-	// call.end_index         = 0
-	// call.clear_before_draw = true
-	// append( & ctx.draw_list.calls, call )
-
 	return true
 }
 
@@ -291,17 +282,125 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 
 	context.allocator = ctx.backing
 
-	shaped := shape_text_cached( ctx, font, text_utf8 )
-
+	position    := position
 	snap_width  := f32(ctx.snap_width)
 	snap_height := f32(ctx.snap_height)
-
-	position := position
 	if ctx.snap_width  > 0 do position.x = cast(f32) cast(u32) (position.x * snap_width  + 0.5) / snap_width
 	if ctx.snap_height > 0 do position.y = cast(f32) cast(u32) (position.y * snap_height + 0.5) / snap_height
 
-	entry := & ctx.entries.data[ font ]
+	entry  := & ctx.entries.data[ font ]
 
+	post_shapes_draw_cursor_pos : Vec2
+	last_shaped                 : ^ShapedText
+
+	ChunkType   :: enum u32 { Visible, Formatting }
+	chunk_kind  : ChunkType
+	chunk_start : int = 0
+	chunk_end   : int = 0
+
+	text_utf8_bytes := transmute([]u8) text_utf8
+	text_chunk      : string
+
+	when true {
+	text_chunk = transmute(string) text_utf8_bytes[ : ]
+	if len(text_chunk) > 0 {
+		shaped := shape_text_cached( ctx, font, text_chunk )
+		post_shapes_draw_cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+		ctx.cursor_pos = post_shapes_draw_cursor_pos
+		position   += shaped.end_cursor_pos
+		last_shaped = shaped
+	}
+	}
+	else {
+	last_byte_offset : int = 0
+	byte_offset      : int = 0
+	for codepoint, offset in text_utf8
+	{
+		Rune_Space           :: ' '
+		Rune_Tab             :: '\t'
+		Rune_Carriage_Return :: '\r'
+		Rune_Line_Feed       :: '\n'
+		// Rune_Tab_Vertical :: '\v'
+
+		byte_offset = offset
+
+		switch codepoint
+		{
+			case Rune_Space: fallthrough
+			case Rune_Tab: fallthrough
+			case Rune_Line_Feed: fallthrough
+			case Rune_Carriage_Return:
+				if chunk_kind == .Formatting {
+					chunk_end        = byte_offset
+					last_byte_offset = byte_offset
+				}
+				else
+				{
+					text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset]
+					if len(text_chunk) > 0 {
+						shaped := shape_text_cached( ctx, font, text_chunk )
+						post_shapes_draw_cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+						ctx.cursor_pos = post_shapes_draw_cursor_pos
+						position   += shaped.end_cursor_pos
+						last_shaped = shaped
+					}
+
+					chunk_start = byte_offset
+					chunk_end   = chunk_start
+					chunk_kind  = .Formatting
+
+					last_byte_offset = byte_offset
+					continue
+				}
+		}
+
+		// Visible Chunk
+		if chunk_kind == .Visible {
+			chunk_end        = byte_offset
+			last_byte_offset = byte_offset
+		}
+		else
+		{
+			text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset ]
+			if len(text_chunk) > 0 {
+				shaped := shape_text_cached( ctx, font, text_chunk )
+				post_shapes_draw_cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+				ctx.cursor_pos = post_shapes_draw_cursor_pos
+				position   += shaped.end_cursor_pos
+				last_shaped = shaped
+			}
+
+			chunk_start = byte_offset
+			chunk_end   = chunk_start
+			chunk_kind  = .Visible
+
+			last_byte_offset = byte_offset
+		}
+	}
+
+	text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset ]
+	if len(text_chunk) > 0 {
+		shaped := shape_text_cached( ctx, font, text_chunk )
+		post_shapes_draw_cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+		ctx.cursor_pos = post_shapes_draw_cursor_pos
+		position   += shaped.end_cursor_pos
+		last_shaped = shaped
+	}
+
+	chunk_start = byte_offset
+	chunk_end   = chunk_start
+	chunk_kind  = .Visible
+
+	last_byte_offset = byte_offset
+
+	ctx.cursor_pos = post_shapes_draw_cursor_pos
+	}
+	return true
+}
+
+// Helper for draw_text, all raw text content should be confirmed to be either formatting or visible shapes before getting cached.
+draw_text_shape :: proc( ctx : ^Context, font : FontID, entry : ^Entry, shaped : ^ShapedText, position, scale : Vec2, snap_width, snap_height : f32 ) -> (cursor_pos : Vec2)
+{
 	batch_start_idx : i32 = 0
 	for index : i32 = 0; index < i32(shaped.glyphs.num); index += 1
 	{
@@ -309,6 +408,7 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 		if is_empty( ctx, entry, glyph_index )              do continue
 		if can_batch_glyph( ctx, font, entry, glyph_index ) do continue
 
+		// Glyph has not been catched, needs to be directly drawn.
 		draw_text_batch( ctx, entry, shaped, batch_start_idx, index, position, scale )
 		reset_batch_codepoint_state( ctx )
 
@@ -323,9 +423,8 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 
 	draw_text_batch( ctx, entry, shaped, batch_start_idx, i32(shaped.glyphs.num), position, scale )
 	reset_batch_codepoint_state( ctx )
-	ctx.cursor_pos = position + shaped.end_cursor_pos * scale
-
-	return true
+	cursor_pos = position + shaped.end_cursor_pos * scale
+	return
 }
 
 draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText, batch_start_idx, batch_end_idx : i32, position, scale : Vec2 )
@@ -375,6 +474,11 @@ get_draw_list :: proc( ctx : ^Context ) -> ^DrawList {
 	return & ctx.draw_list
 }
 
+// TODO(Ed): See render.odin's render_text_layer, should provide the ability to get a slice of the draw list to render the latest layer
+DrawListLayer :: struct {}
+get_draw_list_layer :: proc() -> DrawListLayer { return {} }
+flush_layer :: proc( draw_list : ^DrawList ) {}
+
 // ve_fontcache_merge_drawlist
 merge_draw_list :: proc( dst, src : ^DrawList )
 {
@@ -403,19 +507,18 @@ merge_draw_list :: proc( dst, src : ^DrawList )
 	}
 }
 
-// Call during a full depth layer pass to optimize the final draw list when necessary
-optimize_draw_list :: proc( ctx : ^Context )
+optimize_draw_list :: proc( draw_list : ^DrawList, call_offset : u64 )
 {
-	assert( ctx != nil )
+	assert( draw_list != nil )
 
-	calls := array_to_slice(ctx.draw_list.calls)
+	calls := array_to_slice(draw_list.calls)
 
-	write_index : i32 = 0
-	for index : i32 = 1; index < i32(ctx.draw_list.calls.num); index += 1
+	write_index : u64 = call_offset
+	for index : u64 = 1 + call_offset; index < u64(draw_list.calls.num); index += 1
 	{
 		assert( write_index <= index )
-		draw_0 := & ctx.draw_list.calls.data[ write_index ]
-		draw_1 := & ctx.draw_list.calls.data[ index ]
+		draw_0 := & draw_list.calls.data[ write_index ]
+		draw_1 := & draw_list.calls.data[ index ]
 
 		merge : b32 = true
 		if draw_0.pass      != draw_1.pass        do merge = false
@@ -436,11 +539,11 @@ optimize_draw_list :: proc( ctx : ^Context )
 			// logf("can't merge %v : %v %v", draw_0.pass, write_index, index )
 			write_index += 1
 			if write_index != index {
-				draw_2 := & ctx.draw_list.calls.data[ write_index ]
+				draw_2 := & draw_list.calls.data[ write_index ]
 				draw_2^ = draw_1^
 			}
 		}
 	}
 
-	resize( & ctx.draw_list.calls, u64(write_index + 1) )
+	resize( & draw_list.calls, u64(write_index + 1) )
 }
