@@ -8,7 +8,7 @@ import sokol_glue "thirdparty:sokol/glue"
 
 
 Font_Provider_Use_Freetype :: false
-Font_Largest_Px_Size       :: 72
+Font_Largest_Px_Size       :: 132
 Font_Size_Interval         :: 2
 
 Font_Default            :: FontID { 0, "" }
@@ -217,8 +217,8 @@ font_provider_startup :: proc()
 			})
 
 			glyph_rt_sampler = sokol_gfx.make_sampler( SamplerDescription {
-				min_filter    = Filter.NEAREST,
-				mag_filter    = Filter.NEAREST,
+				min_filter    = Filter.LINEAR,
+				mag_filter    = Filter.LINEAR,
 				mipmap_filter = Filter.NONE,
 				wrap_u        = .CLAMP_TO_EDGE,
 				wrap_v        = .CLAMP_TO_EDGE,
@@ -354,8 +354,8 @@ font_provider_startup :: proc()
 			verify( sokol_gfx.query_image_state(atlas_rt_depth) < ResourceState.FAILED, "Failed to make atlas_rt_depth")
 
 			atlas_rt_sampler = sokol_gfx.make_sampler( SamplerDescription {
-				min_filter    = Filter.NEAREST,
-				mag_filter    = Filter.NEAREST,
+				min_filter    = Filter.LINEAR,
+				mag_filter    = Filter.LINEAR,
 				mipmap_filter = Filter.NONE,
 				wrap_u        = .CLAMP_TO_EDGE,
 				wrap_v        = .CLAMP_TO_EDGE,

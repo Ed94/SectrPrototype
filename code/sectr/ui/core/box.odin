@@ -118,7 +118,7 @@ ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return hm
 
 // TODO(Ed): Rename to ui_box_tranverse_view_next
 // Traveral pritorizes immeidate children
-ui_box_tranverse_next :: proc "contextless" ( box : ^ UI_Box, bypass_intersection_test := false ) -> (^ UI_Box)
+ui_box_tranverse_next_depth_based :: proc "contextless" ( box : ^ UI_Box, bypass_intersection_test := false ) -> (^ UI_Box)
 {
 	using state := get_state()
 	// If current has children, do them first

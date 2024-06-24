@@ -167,6 +167,7 @@ update :: proc( delta_time : f64 ) -> b32
 		config.cam_max_zoom = 30
 		config.cam_zoom_sensitivity_digital = 0.04
 		// config.cam_min_zoom = 0.04
+		config.cam_zoom_sensitivity_smooth = 0.02
 		config.cam_zoom_mode = .Smooth
 		switch config.cam_zoom_mode
 		{
