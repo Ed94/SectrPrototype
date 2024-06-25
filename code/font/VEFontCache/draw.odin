@@ -1,5 +1,7 @@
 package VEFontCache
 
+import "core:math"
+
 DrawCall :: struct {
 	pass              : FrameBufferPass,
 	start_index       : u32,
@@ -123,8 +125,8 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 	dst        := position + scale * bounds_scaled
 	dst_width  := scale.x * glyph_dst_width
 	dst_height := scale.y * glyph_dst_height
-	dst.x      -= scale.x * f32(ctx.atlas.glyph_padding)
-	dst.y      -= scale.y * f32(ctx.atlas.glyph_padding)
+	dst.x      -= scale.x * f32(ctx.atlas.draw_padding)
+	dst.y      -= scale.y * f32(ctx.atlas.draw_padding)
 	dst_size   := Vec2{ dst_width, dst_height }
 
 	glyph_size := Vec2 { glyph_width, glyph_height }
@@ -158,8 +160,8 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 
 	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
 
-	bounds_width  := bounds_1.x - bounds_0.x
-	bounds_height := bounds_1.y - bounds_0.y
+	bounds_width  := f32(bounds_1.x - bounds_0.x)
+	bounds_height := f32(bounds_1.y - bounds_0.y)
 
 	// Decide which atlas to target
 	region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
@@ -167,7 +169,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	// E region is special case and not cached to atlas
 	if region_kind == .E
 	{
-		directly_draw_massive_glyph( ctx, entry, glyph_index, bounds_0, bounds_width, bounds_height, over_sample, position, scale )
+		directly_draw_massive_glyph( ctx, entry, glyph_index, bounds_0, cast(i32) bounds_width, cast(i32) bounds_height, over_sample, position, scale )
 		return true
 	}
 
@@ -180,32 +182,36 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 	}
 
 	atlas := & ctx.atlas
+	atlas_width   := f32(atlas.width)
+	atlas_height  := f32(atlas.height)
+	glyph_padding := f32(atlas.glyph_padding)
 
 	// Figure out the source bounding box in the atlas texture
-	atlas_position, atlas_width, atlas_height := atlas_bbox( atlas, region_kind, atlas_index )
+	glyph_atlas_position, glyph_atlas_width, glyph_atlas_height := atlas_bbox( atlas, region_kind, atlas_index )
 
-	glyph_position := atlas_position //* {1, 2}
-	glyph_width    := f32(bounds_width)  * entry.size_scale
-	glyph_height   := f32(bounds_height) * entry.size_scale
+	glyph_width    := bounds_width  * entry.size_scale
+	glyph_height   := bounds_height * entry.size_scale
 
-	glyph_width  += 2 * f32(atlas.glyph_padding)
-	glyph_height += 2 * f32(atlas.glyph_padding)
+	glyph_width  += glyph_padding
+	glyph_height += glyph_padding
 	glyph_scale  := Vec2 { glyph_width, glyph_height }
 
-	bounds_0_scaled := Vec2{ f32(bounds_0.x), f32(bounds_0.y) } * entry.size_scale - { 0.5, 0.5 }
+	bounds_0_scaled := Vec2{ f32(bounds_0.x), f32(bounds_0.y) } * entry.size_scale //- { 0.5, 0.5 }
 	bounds_0_scaled  = {
-		cast(f32) cast(i32) bounds_0_scaled.x,
-		cast(f32) cast(i32) bounds_0_scaled.y,
+		math.ceil(bounds_0_scaled.x),
+		math.ceil(bounds_0_scaled.y),
 	}
+	// dst := position * scale * bounds_0_scaled
 	dst := Vec2 {
-		position.x + scale.x * bounds_0_scaled.x,
-		position.y + scale.y * bounds_0_scaled.y,
+		position.x + bounds_0_scaled.x * scale.x,
+		position.y + bounds_0_scaled.y * scale.y,
 	}
 	dst_width  := scale.x * glyph_width
 	dst_height := scale.y * glyph_height
-	dst        -= scale * { f32(atlas.glyph_padding), f32(atlas.glyph_padding) }
+	dst        -= scale   * glyph_padding
 	dst_scale  := Vec2 { dst_width, dst_height }
-	textspace_x_form( & glyph_position, & glyph_scale, f32(atlas.width), f32(atlas.height) )
+
+	textspace_x_form( & glyph_atlas_position, & glyph_scale, atlas_width, atlas_height )
 
 	// Add the glyph drawcall
 	call := DrawCall_Default
@@ -215,7 +221,7 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 		colour      = ctx.colour
 		start_index = cast(u32) ctx.draw_list.indices.num
 
-		blit_quad( & ctx.draw_list, dst, dst + dst_scale, glyph_position, glyph_position + glyph_scale )
+		blit_quad( & ctx.draw_list, dst, dst + dst_scale, glyph_atlas_position, glyph_atlas_position + glyph_scale )
 		end_index   = cast(u32) ctx.draw_list.indices.num
 	}
 	append( & ctx.draw_list.calls, call )

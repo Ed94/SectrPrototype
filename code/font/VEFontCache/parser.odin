@@ -438,8 +438,8 @@ parser_scale_for_mapping_em_to_pixels :: proc( font : ^ParserFontInfo, size : f3
 			FT_Point_10             :: 64.0
 
 			points_per_em := (size / system_dpi ) * DPT_DPI
-			freetype.set_char_size( font.freetype_info, 0, cast(freetype.F26Dot6) (f32(points_per_em) * FT_Point_10), cast(u32) DPT_DPI, cast(u32) DPT_DPI )
-			size_scale := size / cast(f32) font.freetype_info.units_per_em;
+			freetype.set_char_size( font.freetype_info, 0, cast(freetype.F26Dot6) f32(points_per_em * FT_Point_10), cast(u32) DPT_DPI, cast(u32) DPT_DPI )
+			size_scale := f32(f64(size) / cast(f64) font.freetype_info.units_per_em)
 			return size_scale
 
 		case .STB_TrueType:

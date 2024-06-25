@@ -17,11 +17,13 @@ import "core:mem"
 
 Advance_Snap_Smallfont_Size :: 12
 
-Colour :: [4]f32
-Vec2   :: [2]f32
-Vec2i  :: [2]i32
+Colour  :: [4]f32
+Vec2    :: [2]f32
+Vec2i   :: [2]i32
+Vec2_64 :: [2]f64
 
-vec2_from_scalar :: proc( scalar : f32 ) -> Vec2 { return { scalar, scalar } }
+vec2_from_scalar  :: #force_inline proc( scalar : f32  ) -> Vec2    { return { scalar, scalar } }
+vec2_64_from_vec2 :: #force_inline proc( v2     : Vec2 ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
 
 FontID  :: distinct i64
 Glyph   :: distinct i32
@@ -98,7 +100,7 @@ InitAtlasParams :: struct {
 InitAtlasParams_Default :: InitAtlasParams {
 	width         = 4096,
 	height        = 2048,
-	glyph_padding = 1,
+	glyph_padding = 2,
 
 	region_a = {
 		width  = 32,
@@ -125,9 +127,10 @@ InitGlyphDrawParams :: struct {
 }
 
 InitGlyphDrawParams_Default :: InitGlyphDrawParams {
-	over_sample   = { 8, 8 },
+	over_sample   = { 4, 4 },
 	buffer_batch  = 4,
 	draw_padding  = InitAtlasParams_Default.glyph_padding,
+	// draw_padding  = InitAtlasParams_Default.glyph_padding,
 }
 
 InitShapeCacheParams :: struct {
@@ -159,7 +162,7 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	context.allocator = ctx.backing
 
 	if curve_quality == 0 {
-		curve_quality = 6
+		curve_quality = 12
 	}
 	ctx.curve_quality = curve_quality
 
@@ -525,8 +528,8 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 
 	// Get hb_font text metrics. These are unscaled!
 	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
-	bounds_width  := bounds_1.x - bounds_0.x
-	bounds_height := bounds_1.y - bounds_0.y
+	bounds_width  := f32(bounds_1.x - bounds_0.x)
+	bounds_height := f32(bounds_1.y - bounds_0.y)
 
 	region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
 
@@ -560,8 +563,12 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 		assert( LRU_get( & region.state, lru_code ) != - 1 )
 	}
 
-	atlas         := & ctx.atlas
-	glyph_padding := cast(f32) atlas.glyph_padding
+	atlas               := & ctx.atlas
+	atlas_width         := f32(atlas.width)
+	atlas_height        := f32(atlas.height)
+	glyph_buffer_width  := f32(atlas.buffer_width)
+	glyph_buffer_height := f32(atlas.buffer_height)
+	glyph_padding       := cast(f32) atlas.glyph_padding
 
 	if ctx.debug_print
 	{
@@ -572,42 +579,41 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 
 	// Draw oversized glyph to update FBO
 	glyph_draw_scale       := over_sample * entry.size_scale
-	glyph_draw_translate   := Vec2 { -f32(bounds_0.x), -f32(bounds_0.y) } * glyph_draw_scale + Vec2{ glyph_padding, glyph_padding }
+	glyph_draw_translate   := -1 * Vec2 { f32(bounds_0.x), f32(bounds_0.y) } * glyph_draw_scale + vec2( glyph_padding )
 	glyph_draw_translate.x  = cast(f32) (i32(glyph_draw_translate.x + 0.9999999))
 	glyph_draw_translate.y  = cast(f32) (i32(glyph_draw_translate.y + 0.9999999))
 
 	// Allocate a glyph_update_FBO region
-	gwidth_scaled_px := i32( f32(bounds_width) * f32(glyph_draw_scale.x) + 1.0 ) + i32(2 * over_sample.x * glyph_padding)
+	gwidth_scaled_px := i32( bounds_width * glyph_draw_scale.x + 1.0 ) + i32(over_sample.x * glyph_padding)
   if i32(atlas.update_batch_x + gwidth_scaled_px) >= i32(atlas.buffer_width) {
 		flush_glyph_buffer_to_atlas( ctx )
 	}
 
 	// Calculate the src and destination regions
 	dst_position, dst_width, dst_height := atlas_bbox( atlas, region_kind, atlas_index )
-	dst_glyph_position := dst_position  + { glyph_padding, glyph_padding }
-	dst_glyph_width    := f32(bounds_width)  * entry.size_scale
-	dst_glyph_height   := f32(bounds_height) * entry.size_scale
-	dst_glyph_position -= { glyph_padding, glyph_padding }
-	dst_glyph_width  += 2 * glyph_padding
-	dst_glyph_height += 2 * glyph_padding
+	dst_glyph_position := dst_position
+	dst_glyph_width    := bounds_width  * entry.size_scale
+	dst_glyph_height   := bounds_height * entry.size_scale
+	dst_glyph_width    += glyph_padding
+	dst_glyph_height   += glyph_padding
 
 	dst_size       := Vec2 { dst_width, dst_height }
 	dst_glyph_size := Vec2 { dst_glyph_width, dst_glyph_height }
-	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, f32(atlas.width), f32(atlas.height) )
-	screenspace_x_form( & dst_position,       & dst_size,       f32(atlas.width), f32(atlas.height) )
+	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, atlas_width, atlas_height )
+	screenspace_x_form( & dst_position,       & dst_size,       atlas_width, atlas_height )
 
 	src_position := Vec2 { f32(atlas.update_batch_x), 0 }
 	src_size     := Vec2 {
-		f32(bounds_width)  * glyph_draw_scale.x,
-		f32(bounds_height) * glyph_draw_scale.y,
+		bounds_width  * glyph_draw_scale.x,
+		bounds_height * glyph_draw_scale.y,
 	}
-	src_size += 2 * over_sample * glyph_padding
-	textspace_x_form( & src_position, & src_size, f32(atlas.buffer_width), f32(atlas.buffer_height) )
+	src_size += over_sample * glyph_padding
+	textspace_x_form( & src_position, & src_size, glyph_buffer_width, glyph_buffer_height )
 
 	// Advance glyph_update_batch_x and calculate final glyph drawing transform
 	glyph_draw_translate.x += f32(atlas.update_batch_x)
 	atlas.update_batch_x   += gwidth_scaled_px
-	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, f32(atlas.buffer_width), f32(atlas.buffer_height))
+	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, glyph_buffer_width, glyph_buffer_height )
 
 	call : DrawCall
 	{
@@ -652,7 +658,7 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 	atlas   := ctx.atlas
 	shaped  := shape_text_cached( ctx, font, text_utf8 )
 	entry   := & ctx.entries.data[ font ]
-	padding := 2 * cast(f32) atlas.glyph_padding
+	padding := cast(f32) atlas.glyph_padding
 
 	for index : i32 = 0; index < i32(shaped.glyphs.num); index += 1
 	{
@@ -666,14 +672,14 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 		// region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
 
 		glyph_size := Vec2 {
-			f32(bounds_width)  * entry.size_scale + padding,
-			f32(bounds_height) * entry.size_scale + padding,
+			f32(bounds_width)  * entry.size_scale, //+ padding,
+			f32(bounds_height) * entry.size_scale, //+ padding,
 		}
 
 		dummy_position : Vec2
 		measured.y = max(measured.y, glyph_size.y)
 	}
-	measured.x = shaped.end_cursor_pos.x - padding
+	measured.x = shaped.end_cursor_pos.x
 
 	return measured
 }
