@@ -116,6 +116,14 @@ add_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> Range2 {
 	return result
 }
 
+// mul_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> Range2 {
+// 	result := Range2 { pts = {
+// 		a.p0 + b.p0,
+// 		a.p1 + b.p1,
+// 	}}
+// 	return result
+// }
+
 sub_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> Range2 {
 	// result := Range2 { array = a.array - b.array }
 	result := Range2 { mat = a.mat - b.mat }

@@ -72,7 +72,7 @@ hmap_chained_init :: proc( $HMapChainedType : typeid/HMapChained($Type), lookup_
 
 	pool_bucket_cap := pool_bucket_cap
 	if pool_bucket_cap == 0 {
-		pool_bucket_cap = cast(uint) int(lookup_capacity) * size_of( HMapChainedSlot(Type)) * 2
+		pool_bucket_cap = cast(uint) int(lookup_capacity) * size_of( HMapChainedSlot(Type)) //* 2
 	}
 
 	table.header      = cast( ^HMapChainedHeader(Type)) raw_mem

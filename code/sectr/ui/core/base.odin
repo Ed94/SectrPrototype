@@ -506,12 +506,13 @@ ui_top_ancestor :: #force_inline proc "contextless" ( box : ^UI_Box ) -> (^UI_Bo
 
 ui_view_bounds :: #force_inline proc "contextless" () -> (range : Range2) {
 	using state := get_state();
-	if ui_context == & screen_ui {
-		return screen_get_bounds()
-	}
-	else {
+	// if ui_context == & screen_ui {
+	// 	return screen_get_bounds()
+	// }
+	// else {
+	
 		return view_get_bounds()
-	}
+	// }
 }
 
 ui_context :: #force_inline proc() -> ^UI_State { return get_state().ui_context }

@@ -168,8 +168,11 @@ view_get_bounds :: #force_inline proc "contextless"() -> Range2 {
 	cam            := & project.workspace.cam
 	screen_extent  := state.app_window.extent
 	cam_zoom_ratio := 1.0 / cam.zoom
-	bottom_left  := Vec2 { cam.position.x, cam.position.y } + Vec2 {  screen_extent.x, screen_extent.y} * cam_zoom_ratio
-	top_right    := Vec2 { cam.position.x, cam.position.y } + Vec2 {  screen_extent.x, screen_extent.y} * cam_zoom_ratio
+
+	bottom_left    := Vec2 { -screen_extent.x, -screen_extent.y}
+	top_right      := Vec2 {  screen_extent.x,  screen_extent.y}
+	bottom_left = screen_to_ws_view_pos(bottom_left)
+	top_right   = screen_to_ws_view_pos(top_right)
 	return range2( bottom_left, top_right )
 }
 
@@ -202,7 +205,7 @@ render_to_ws_view_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
 screen_to_ws_view_pos :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
 	state := get_state(); using state
 	cam   := & project.workspace.cam
-	result := (Vec2 { cam.position.x, -cam.position.y} + Vec2 { pos.x, pos.y }) * (1 / cam.zoom)
+	result := pos - cam.position * cam.zoom
 	return result
 }
 

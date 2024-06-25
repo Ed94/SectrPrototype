@@ -77,6 +77,7 @@ render_mode_2d_workspace :: proc()
 		render_set_color(Color_White)
 		draw_filled_circle(0, 0, 2 * cam_zoom_ratio, 24)
 
+		// Blend test
 		if false
 		{
 			gp.set_color( 1.0, 0, 0, 0.25 )
@@ -93,10 +94,25 @@ render_mode_2d_workspace :: proc()
 		render_flush_gp()
 	}
 
+	// Visualize view bounds
+	when true
+	{
+		render_set_view_space(screen_extent)
+		// render_set_camera(cam)
+
+		view_bounds := view_get_bounds()
+		view_bounds.min *= 0.9
+		view_bounds.max *= 0.9
+		draw_rect( view_bounds, { 0, 0, 180, 30 } )
+
+		render_flush_gp()
+	}
+
 	render_set_view_space(screen_extent)
 	render_set_camera(cam)
 
 	ui := & project.workspace.ui
+	ui_context = & project.workspace.ui
 
 	when UI_Render_Method == .Layers {
 		render_list := array_to_slice( ui.render_list )
@@ -106,6 +122,8 @@ render_mode_2d_workspace :: proc()
 	{
 		render_ui_via_box_tree( ui.root, & cam )
 	}
+
+	ui_context = nil
 }
 
 render_mode_screenspace :: proc()
@@ -219,6 +237,8 @@ render_mode_screenspace :: proc()
 		{
 			ui := & project.workspace.ui
 
+			debug_text("Workspace Cam : %v", project.workspace.cam)
+
 			debug_text("Box Count (Workspace): %v", ui.built_box_count )
 
 			hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
@@ -266,6 +286,7 @@ render_screen_ui :: proc()
 	render_set_view_space(screen_extent)
 
 	ui := & screen_ui
+	state.ui_context = & screen_ui
 
 	text_enqueued  : b32 = false
 	shape_enqueued : b32 = false
@@ -278,11 +299,13 @@ render_screen_ui :: proc()
 	{
 		render_ui_via_box_tree( ui.root )
 	}
+
+	state.ui_context = nil
 }
 
 render_text_layer :: proc()
 {
-	// profile("VEFontCache: render text layer")
+	profile("VEFontCache: render text layer")
 
 	Bindings    :: gfx.Bindings
 	Range       :: gfx.Range
@@ -327,7 +350,7 @@ render_text_layer :: proc()
 			// 1. Do the glyph rendering pass
 			// Glyphs are first rendered to an intermediate 2k x 512px R8 texture
 			case .Glyph:
-				// profile("VEFontCache: draw call: glyph")
+				profile("VEFontCache: draw call: glyph")
 				if num_indices == 0 && ! draw_call.clear_before_draw {
 					continue
 				}
@@ -363,7 +386,7 @@ render_text_layer :: proc()
 			// 2. Do the atlas rendering pass
 			// A simple 16-tap box downsample shader is then used to blit from this intermediate texture to the final atlas location
 			case .Atlas:
-				// profile("VEFontCache: draw call: atlas")
+				profile("VEFontCache: draw call: atlas")
 				if num_indices == 0 && ! draw_call.clear_before_draw {
 					continue
 				}
@@ -409,7 +432,7 @@ render_text_layer :: proc()
 					continue
 				}
 
-				// profile("VEFontCache: draw call: target")
+				profile("VEFontCache: draw call: target")
 				width  := u32(app_window.extent.x * 2)
 				height := u32(app_window.extent.y * 2)
 
@@ -467,8 +490,7 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
 	default_font := get_state().default_font
 
 	cam_zoom_ratio := cam != nil ? 1.0 / cam.zoom : 1.0
-
-	circle_radius := cam != nil ? cam_zoom_ratio * 3 : 3
+	circle_radius  := cam != nil ? cam_zoom_ratio * 3 : 3
 
 	for box := root.first; box != nil; box = ui_box_tranverse_next_depth_based( box )
 	{
@@ -483,7 +505,7 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
 
 		using computed
 
-		// profile("enqueue box")
+		profile("enqueue box")
 
 		GP_Render:
 		{
@@ -719,7 +741,6 @@ draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size 
 	text_scale  /= over_sample
 
 	color_norm := normalize_rgba8(color)
-	// logf("zoom_adjust_size: %v", zoom_adjust_size)
 	ve.set_colour( & font_provider_data.ve_font_cache, color_norm )
 	ve.draw_text( & font_provider_data.ve_font_cache, ve_id, content, normalized_pos, text_scale )
 }
