@@ -98,7 +98,7 @@ can_batch_glyph :: proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_in
 	atlas_index := LRU_get( & region.state, lru_code )
 	if atlas_index == - 1
 	{
-		if region.next_idx >= u32( region.state.capacity) {
+		if region.next_idx > u32( region.state.capacity) {
 			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
 			next_evict_codepoint := LRU_get_next_evicted( & region.state )
 			seen := get( & ctx.temp_codepoint_seen, next_evict_codepoint )
