@@ -48,7 +48,7 @@ GlyphDrawBuffer :: struct {
 
 blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}, uv0 : Vec2 = {0, 0}, uv1 : Vec2 = {1, 1} )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	// logf("Blitting: xy0: %0.2f, %0.2f xy1: %0.2f, %0.2f uv0: %0.2f, %0.2f uv1: %0.2f, %0.2f",
 		// p0.x, p0.y, p1.x, p1.y, uv0.x, uv0.y, uv1.x, uv1.y);
 	v_offset := cast(u32) draw_list.vertices.num
@@ -90,7 +90,7 @@ blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}
 }
 
 // ve_fontcache_clear_drawlist
-clear_draw_list :: #force_inline proc ( draw_list : ^DrawList ) {
+clear_draw_list :: proc( draw_list : ^DrawList ) {
 	clear( draw_list.calls )
 	clear( draw_list.indices )
 	clear( draw_list.vertices )
@@ -98,7 +98,7 @@ clear_draw_list :: #force_inline proc ( draw_list : ^DrawList ) {
 
 directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Glyph, bounds_0 : Vec2i, bounds_width, bounds_height : i32, over_sample, position, scale : Vec2 )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	flush_glyph_buffer_to_atlas( ctx )
 
 	// Draw un-antialiased glyph to update FBO.
@@ -156,7 +156,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 
 draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, position, scale : Vec2 ) -> b32
 {
-	// profile(#procedure)
+	profile(#procedure)
 	// Glyph not in current font
 	if glyph_index == 0                                          do return true
 	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
@@ -286,9 +286,9 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 // From there we should maek a 'draw text shape' that breaks up the batch text draws for each of the shapes.
 draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position : Vec2, scale : Vec2 ) -> b32
 {
-	// profile(#procedure)
+	profile(#procedure)
 	assert( ctx != nil )
-	assert( font >= 0 && int(font) < len(ctx.entries) )
+	assert( font >= 0 && font < FontID(ctx.entries.num) )
 
 	context.allocator = ctx.backing
 
@@ -298,7 +298,7 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 	if ctx.snap_width  > 0 do position.x = cast(f32) cast(u32) (position.x * snap_width  + 0.5) / snap_width
 	if ctx.snap_height > 0 do position.y = cast(f32) cast(u32) (position.y * snap_height + 0.5) / snap_height
 
-	entry  := & ctx.entries[ font ]
+	entry  := & ctx.entries.data[ font ]
 
 	// entry.size_scale = parser_scale( & entry.parser_info, entry.size )
 
@@ -415,7 +415,7 @@ draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText, b
 	flush_glyph_buffer_to_atlas( ctx )
 	for index := batch_start_idx; index < batch_end_idx; index += 1
 	{
-		// profile(#procedure)
+		profile(#procedure)
 		glyph_index       := shaped.glyphs.data[ index ]
 		shaped_position   := shaped.positions.data[index]
 		glyph_translate   := position + shaped_position * scale
@@ -428,7 +428,7 @@ draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText, b
 // Helper for draw_text, all raw text content should be confirmed to be either formatting or visible shapes before getting cached.
 draw_text_shape :: proc( ctx : ^Context, font : FontID, entry : ^Entry, shaped : ^ShapedText, position, scale : Vec2, snap_width, snap_height : f32 ) -> (cursor_pos : Vec2)
 {
-	// profile(#procedure)
+	profile(#procedure)
 	batch_start_idx : i32 = 0
 	for index : i32 = 0; index < i32(shaped.glyphs.num); index += 1
 	{
@@ -463,7 +463,7 @@ flush_draw_list :: proc( ctx : ^Context ) {
 
 flush_glyph_buffer_to_atlas :: proc( ctx : ^Context )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	// Flush drawcalls to draw list
 	merge_draw_list( & ctx.draw_list, & ctx.atlas.clear_draw_list )
 	merge_draw_list( & ctx.draw_list, & ctx.atlas.draw_list)
@@ -498,7 +498,7 @@ flush_layer :: proc( draw_list : ^DrawList ) {}
 // ve_fontcache_merge_drawlist
 merge_draw_list :: proc( dst, src : ^DrawList )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	error : AllocatorError
 
 	v_offset := cast(u32) dst.vertices.num
@@ -526,7 +526,7 @@ merge_draw_list :: proc( dst, src : ^DrawList )
 
 optimize_draw_list :: proc( draw_list : ^DrawList, call_offset : u64 )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	assert( draw_list != nil )
 
 	calls := array_to_slice(draw_list.calls)
