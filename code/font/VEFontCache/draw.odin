@@ -290,6 +290,8 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 
 	entry  := & ctx.entries.data[ font ]
 
+	// entry.size_scale = parser_scale( & entry.parser_info, entry.size )
+
 	post_shapes_draw_cursor_pos : Vec2
 	last_shaped                 : ^ShapedText
 

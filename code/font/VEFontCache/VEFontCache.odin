@@ -25,6 +25,8 @@ Colour :: [4]f32
 Vec2   :: [2]f32
 Vec2i  :: [2]i32
 
+vec2_from_scalar :: proc( scalar : f32 ) -> Vec2 { return { scalar, scalar } }
+
 AtlasRegionKind :: enum u8 {
 	None   = 0x00,
 	A      = 0x41,
@@ -103,6 +105,18 @@ set_colour     :: proc( ctx : ^Context, colour : Colour )         { ctx.colour =
 
 font_glyph_lru_code :: #force_inline proc( font : FontID, glyph_index : Glyph ) -> (lru_code : u64)
 {
+	// font        := font
+	// glyph_index := glyph_index
+
+	// font_bytes  := slice_ptr( transmute(^byte) & font,        size_of(FontID) )
+	// glyph_bytes := slice_ptr( transmute(^byte) & glyph_index, size_of(Glyph) )
+
+	// buffer : [32]byte
+	// copy( buffer[:], font_bytes )
+	// copy( buffer[ len(font_bytes) :], glyph_bytes )
+	// hash := fnv64a( transmute([]byte) buffer[: size_of(FontID) + size_of(Glyph) ] )
+	// lru_code = hash
+
 	lru_code = u64(glyph_index) + ( ( 0x100000000 * u64(font) ) & 0xFFFFFFFF00000000 )
 	return
 }
@@ -727,6 +741,7 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 	shaped := shape_text_cached( ctx, font, text_utf8 )
 
 	entry := & ctx.entries.data[ font ]
+	padding := 2 * cast(f32) atlas.glyph_padding
 
 	batch_start_idx : i32 = 0
 	for index : i32 = 0; index < i32(shaped.glyphs.num); index += 1
@@ -738,13 +753,17 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 		bounds_width  := bounds_1.x - bounds_0.x
 		bounds_height := bounds_1.y - bounds_0.y
 
-		bounds := Vec2 {
-			cast(f32) cast(u32) (f32(bounds_width)  * entry.size_scale - f32(atlas.glyph_padding)),
-			cast(f32) cast(u32) (f32(bounds_height) * entry.size_scale - f32(atlas.glyph_padding)),
+		// region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
+
+		glyph_size := Vec2 {
+			f32(bounds_width)  * entry.size_scale + padding,
+			f32(bounds_height) * entry.size_scale + padding,
 		}
-		measured.x += bounds.x
-		measured.y = max(measured.y, bounds.y)
+
+		dummy_position : Vec2
+		measured.y = max(measured.y, glyph_size.y)
 	}
+	measured.x = shaped.end_cursor_pos.x - padding
 
 	return measured
 }
@@ -760,9 +779,13 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 
 	font := font
 
-	font_bytes := slice_ptr( transmute(^byte) & font, size_of(FontID) )
-	copy( buffer[:], font_bytes )
-	copy( buffer[: size_of(FontID) + len(text_utf8) ], transmute( []byte) text_utf8 )
+	buffer_slice := buffer[:]
+	font_bytes   := slice_ptr( transmute(^byte) & font, size_of(FontID) )
+	copy( buffer_slice, font_bytes )
+
+	text_bytes             := transmute( []byte) text_utf8
+	buffer_slice_post_font := buffer[size_of(FontID) : size_of(FontID) + len(text_utf8) ]
+	copy( buffer_slice_post_font, text_bytes )
 
 	hash := label_hash( transmute(string) buffer[: size_of(FontID) + len(text_utf8)] )
 
@@ -859,6 +882,6 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText
 			prev_codepoint = codepoint
 		}
 
-		// output.end_cursor_pos = position
+		output.end_cursor_pos = position
 	}
 }
