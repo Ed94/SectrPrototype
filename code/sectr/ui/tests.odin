@@ -132,10 +132,10 @@ test_text_box :: proc()
 
 	@static pos : Vec2
 	layout := ui_layout_peek().default
-	layout.text_alignment = { 1.0, 1.0 }
+	layout.text_alignment = { 0.0, 0.0 }
 	// style.flags     = { .Size_To_Text  }
 	layout.padding   = { 10, 10, 10, 10 }
-	layout.font_size = 32
+	layout.font_size = 16
 	ui_layout( layout)
 
 	text := str_intern( "Lorem ipsum dolor sit amet")
@@ -150,7 +150,6 @@ test_text_box :: proc()
 	}
 
 	text_box.layout.pos = pos
-
 	text_box.layout.size.min = { text_box.computed.text_size.x * 1.5, text_box.computed.text_size.y * 3 }
 }
 
@@ -162,13 +161,13 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 
 	text_layout := default_layout^
 	text_layout.flags = {
-		.Origin_At_Anchor_Center,
+		// .Origin_At_Anchor_Center,
 		.Fixed_Position_X, .Fixed_Position_Y,
 		.Fixed_Width, .Fixed_Height,
 	}
 	text_layout.text_alignment = { 0.0, 0.5 }
-	text_layout.alignment = { 0.0, 1.0 }
-	text_layout.size.min = { 1600, 30 }
+	text_layout.alignment = { 0.0, 0.0 }
+	text_layout.size.min = { 1600, 20 }
 	text_style := frame_style_default ^
 	text_style_combo := to_ui_style_combo(text_style)
 	text_style_combo.default.bg_color  = Color_Transparent
@@ -211,7 +210,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 			ui_parent(line_hbox)
 
 			chunk_layout          := text_layout
-			chunk_layout.alignment = { 0.0, 1.0 }
+			chunk_layout.alignment = { 0.0, 0.5 }
 			chunk_layout.anchor    = range2({ 0.0, 0 }, { 0.0, 0 })
 			chunk_layout.pos       = {}
 			chunk_layout.flags     = { .Fixed_Position_X, .Size_To_Text }
@@ -287,12 +286,12 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 		if len(line_hbox.text.str) > 0 {
 			array_append( widgets_ptr, line_hbox )
 			text_layout.pos.x  = text_layout.pos.x
-			text_layout.pos.y += size_range2(line_hbox.computed.bounds).y
+			text_layout.pos.y += size_range2(line_hbox.computed.bounds).y - 8
 		}
 		else {
 			widget := & widgets.data[ widgets.num - 1 ]
 			if widget.box != nil {
-				text_layout.pos.y += size_range2( widget.computed.bounds ).y
+				text_layout.pos.y += size_range2( widget.computed.bounds ).y - 8
 			}
 		}
 
