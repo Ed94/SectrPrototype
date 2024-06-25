@@ -56,7 +56,7 @@ Context :: struct {
 	parser_ctx  : ParserContext,
 	shaper_ctx  : ShaperContext,
 
-	entries : Array(Entry),
+	entries : [dynamic]Entry,
 
 	temp_path               : Array(Vec2),
 	temp_codepoint_seen     : map[u64]bool,
@@ -149,10 +149,10 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	atlas_params                := InitAtlasParams_Default,
 	glyph_draw_params           := InitGlyphDrawParams_Default,
 	shape_cache_params          := InitShapeCacheParams_Default,
-	curve_quality               : u32 = 12,
-	entires_reserve             : u32 = Kilobyte,
-	temp_path_reserve           : u32 = Kilobyte,
-	temp_codepoint_seen_reserve : u32 = 1024,
+	curve_quality               : u32 = 6,
+	entires_reserve             : u32 = 512,
+	temp_path_reserve           : u32 = 512,
+	temp_codepoint_seen_reserve : u32 = 512,
 )
 {
 	assert( ctx != nil, "Must provide a valid context" )
@@ -162,18 +162,18 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	context.allocator = ctx.backing
 
 	if curve_quality == 0 {
-		curve_quality = 12
+		curve_quality = 6
 	}
 	ctx.curve_quality = curve_quality
 
 	error : AllocatorError
-	entries, error = make( Array(Entry), u64(entires_reserve) )
+	entries, error = make( [dynamic]Entry, entires_reserve )
 	assert(error == .None, "VEFontCache.init : Failed to allocate entries")
 
 	temp_path, error = make( Array(Vec2), u64(temp_path_reserve) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
-	temp_codepoint_seen, error = make( map[u64]bool )//, hmap_closest_prime( uint(temp_codepoint_seen_reserve)) )
+	temp_codepoint_seen, error = make( map[u64]bool, hmap_closest_prime( uint(temp_codepoint_seen_reserve)) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
 	draw_list.vertices, error = make( Array(Vertex), 4 * Kilobyte )
@@ -277,7 +277,8 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 
 	using ctx
 
-	entries.backing   = allocator
+	// entries.backing   = allocator
+	reload_array( & entries, allocator )
 	temp_path.backing = allocator
 	reload_map( & ctx.temp_codepoint_seen, allocator )
 
@@ -318,7 +319,7 @@ shutdown :: proc( ctx : ^Context )
 	context.allocator = ctx.backing
 	using ctx
 
-	for & entry in array_to_slice(entries) {
+	for & entry in entries {
 		unload_font( ctx, entry.id )
 	}
 
@@ -328,7 +329,7 @@ shutdown :: proc( ctx : ^Context )
 #endregion("lifetime")
 
 // ve_fontcache_configure_snap
-configure_snap :: proc( ctx : ^Context, snap_width, snap_height : u32 ) {
+configure_snap :: #force_inline proc( ctx : ^Context, snap_width, snap_height : u32 ) {
 	assert( ctx != nil )
 	ctx.snap_width  = snap_width
 	ctx.snap_height = snap_height
@@ -344,18 +345,18 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 
 	id : i32 = -1
 
-	for index : i32 = 0; index < i32(entries.num); index += 1 {
-		if entries.data[index].used do continue
+	for index : i32 = 0; index < i32(len(entries)); index += 1 {
+		if entries[index].used do continue
 		id = index
 		break
 	}
 	if id == -1 {
-		append( & entries, Entry {})
-		id = cast(i32) entries.num - 1
+		append_elem( & entries, Entry {})
+		id = cast(i32) len(entries) - 1
 	}
-	assert( id >= 0 && id < i32(entries.num) )
+	assert( id >= 0 && id < i32(len(entries)) )
 
-	entry := & entries.data[ id ]
+	entry := & entries[ id ]
 	{
 		using entry
 
@@ -374,7 +375,7 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 		// assert( shaper_info != nil, "VEFontCache.load_font: Failed to load font from shaper")
 	}
 	entry.id = FontID(id)
-	ctx.entries.data[ id ].id = FontID(id)
+	ctx.entries[ id ].id = FontID(id)
 
 	font_id = FontID(id)
 	return
@@ -384,11 +385,11 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 unload_font :: proc( ctx : ^Context, font : FontID )
 {
 	assert( ctx != nil )
-	assert( font >= 0 && u64(font) < ctx.entries.num )
+	assert( font >= 0 && int(font) < len(ctx.entries) )
 	context.allocator = ctx.backing
 
 	using ctx
-	entry     := & entries.data[ font ]
+	entry     := & ctx.entries[ font ]
 	entry.used = false
 
 	parser_unload_font( & entry.parser_info )
@@ -397,10 +398,10 @@ unload_font :: proc( ctx : ^Context, font : FontID )
 
 cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, translate : Vec2  ) -> b32
 {
-	profile(#procedure)
+	// profile(#procedure)
 	assert( ctx != nil )
-	assert( font >= 0 && u64(font) < ctx.entries.num )
-	entry := & ctx.entries.data[ font ]
+	assert( font >= 0 && int(font) < len(ctx.entries) )
+	entry := & ctx.entries[ font ]
 	if glyph_index == Glyph(0) {
 		// Note(Original Author): Glyph not in current hb_font
 		return false
@@ -520,10 +521,10 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 
 cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph )
 {
-	profile(#procedure)
+	// profile(#procedure)
 	assert( ctx != nil )
-	assert( font >= 0 && font < FontID(ctx.entries.num) )
-	entry := & ctx.entries.data[ font ]
+	assert( font >= 0 && int(font) < len(ctx.entries) )
+	entry := & ctx.entries[ font ]
 
 	if glyph_index == 0 do return
 	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return
@@ -640,10 +641,10 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 	cache_glyph( ctx, font, glyph_index, glyph_draw_scale, glyph_draw_translate )
 }
 
-get_cursor_pos :: proc( ctx : ^Context                  ) -> Vec2 { return ctx.cursor_pos }
-set_colour     :: proc( ctx : ^Context, colour : Colour )         { ctx.colour = colour }
+get_cursor_pos :: #force_inline proc "contextless" ( ctx : ^Context                  ) -> Vec2 { return ctx.cursor_pos }
+set_colour     :: #force_inline proc "contextless" ( ctx : ^Context, colour : Colour )         { ctx.colour = colour }
 
-is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
+is_empty :: #force_inline proc ( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
 {
 	if glyph_index == 0 do return true
 	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
@@ -652,15 +653,15 @@ is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
 
 measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> (measured : Vec2)
 {
-	profile(#procedure)
+	// profile(#procedure)
 	assert( ctx != nil )
-	assert( font >= 0 && font < FontID(ctx.entries.num) )
+	assert( font >= 0 && int(font) < len(ctx.entries) )
 
 	context.allocator = ctx.backing
 
 	atlas   := ctx.atlas
 	shaped  := shape_text_cached( ctx, font, text_utf8 )
-	entry   := & ctx.entries.data[ font ]
+	entry   := & ctx.entries[ font ]
 	padding := cast(f32) atlas.glyph_padding
 
 	for index : i32 = 0; index < i32(shaped.glyphs.num); index += 1
@@ -669,20 +670,11 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 		if is_empty( ctx, entry, glyph_index ) do continue
 
 		bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
-		bounds_width  := bounds_1.x - bounds_0.x
-		bounds_height := bounds_1.y - bounds_0.y
+		bounds_size := bounds_1 - bounds_0
 
-		// region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
-
-		glyph_size := Vec2 {
-			f32(bounds_width)  * entry.size_scale, //+ padding,
-			f32(bounds_height) * entry.size_scale, //+ padding,
-		}
-
-		dummy_position : Vec2
+		glyph_size := Vec2 { f32(bounds_size.x), f32(bounds_size.y) } * entry.size_scale
 		measured.y = max(measured.y, glyph_size.y)
 	}
 	measured.x = shaped.end_cursor_pos.x
-
 	return measured
 }

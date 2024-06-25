@@ -88,9 +88,9 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) 
 	return
 }
 
-can_batch_glyph :: proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_index : Glyph ) -> b32
+can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_index : Glyph ) -> b32
 {
-	profile(#procedure)
+	// profile(#procedure)
 	assert( ctx != nil )
 	assert( entry.id == font )
 
@@ -129,7 +129,7 @@ can_batch_glyph :: proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_in
 	return true
 }
 
-decide_codepoint_region :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph
+decide_codepoint_region :: #force_inline proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph
 ) -> (region_kind : AtlasRegionKind, region : ^AtlasRegion, over_sample : Vec2)
 {
 	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) {

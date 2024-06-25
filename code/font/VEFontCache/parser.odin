@@ -113,7 +113,7 @@ parser_unload_font :: proc( font : ^ParserFontInfo )
 	}
 }
 
-parser_find_glyph_index :: proc( font : ^ParserFontInfo, codepoint : rune ) -> (glyph_index : Glyph)
+parser_find_glyph_index :: #force_inline proc "contextless" ( font : ^ParserFontInfo, codepoint : rune ) -> (glyph_index : Glyph)
 {
 	switch font.kind
 	{
@@ -140,7 +140,7 @@ parser_free_shape :: proc( font : ^ParserFontInfo, shape : ParserGlyphShape )
 	}
 }
 
-parser_get_codepoint_horizontal_metrics :: proc( font : ^ParserFontInfo, codepoint : rune ) -> ( advance, to_left_side_glyph : i32 )
+parser_get_codepoint_horizontal_metrics :: #force_inline proc "contextless" ( font : ^ParserFontInfo, codepoint : rune ) -> ( advance, to_left_side_glyph : i32 )
 {
 	switch font.kind
 	{
@@ -164,7 +164,7 @@ parser_get_codepoint_horizontal_metrics :: proc( font : ^ParserFontInfo, codepoi
 	return
 }
 
-parser_get_codepoint_kern_advance :: proc( font : ^ParserFontInfo, prev_codepoint, codepoint : rune ) -> i32
+parser_get_codepoint_kern_advance :: #force_inline proc "contextless" ( font : ^ParserFontInfo, prev_codepoint, codepoint : rune ) -> i32
 {
 	switch font.kind
 	{
@@ -184,7 +184,7 @@ parser_get_codepoint_kern_advance :: proc( font : ^ParserFontInfo, prev_codepoin
 	return -1
 }
 
-parser_get_font_vertical_metrics :: proc( font : ^ParserFontInfo ) -> (ascent, descent, line_gap : i32 )
+parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : ^ParserFontInfo ) -> (ascent, descent, line_gap : i32 )
 {
 	switch font.kind
 	{
@@ -196,7 +196,7 @@ parser_get_font_vertical_metrics :: proc( font : ^ParserFontInfo ) -> (ascent, d
 	return
 }
 
-parser_get_glyph_box :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (bounds_0, bounds_1 : Vec2i)
+parser_get_glyph_box :: #force_inline proc ( font : ^ParserFontInfo, glyph_index : Glyph ) -> (bounds_0, bounds_1 : Vec2i)
 {
 	switch font.kind
 	{
@@ -370,7 +370,7 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 	return
 }
 
-parser_is_glyph_empty :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> b32
+parser_is_glyph_empty :: #force_inline proc "contextless" ( font : ^ParserFontInfo, glyph_index : Glyph ) -> b32
 {
 	switch font.kind
 	{
@@ -393,7 +393,7 @@ parser_is_glyph_empty :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> 
 	return false
 }
 
-parser_scale :: #force_inline proc( font : ^ParserFontInfo, size : f32 ) -> f32
+parser_scale :: #force_inline proc "contextless" ( font : ^ParserFontInfo, size : f32 ) -> f32
 {
 	size_scale := size < 0.0 ?                            \
 		parser_scale_for_pixel_height( font, -size )        \
@@ -402,7 +402,7 @@ parser_scale :: #force_inline proc( font : ^ParserFontInfo, size : f32 ) -> f32
 	return size_scale
 }
 
-parser_scale_for_pixel_height :: proc( font : ^ParserFontInfo, size : f32 ) -> f32
+parser_scale_for_pixel_height :: #force_inline proc "contextless" ( font : ^ParserFontInfo, size : f32 ) -> f32
 {
 	switch font.kind {
 		case .Freetype:
@@ -416,7 +416,7 @@ parser_scale_for_pixel_height :: proc( font : ^ParserFontInfo, size : f32 ) -> f
 	return 0
 }
 
-parser_scale_for_mapping_em_to_pixels :: proc( font : ^ParserFontInfo, size : f32 ) -> f32
+parser_scale_for_mapping_em_to_pixels :: #force_inline proc "contextless" ( font : ^ParserFontInfo, size : f32 ) -> f32
 {
 	switch font.kind {
 		case .Freetype:
