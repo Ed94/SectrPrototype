@@ -16,7 +16,7 @@ ShapedTextCache :: struct {
 
 shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> ^ShapedText
 {
-	profile(#procedure)
+	// profile(#procedure)
 	@static buffer : [64 * Kilobyte]byte
 
 	font := font
@@ -62,12 +62,12 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 
 shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText, text_utf8 : string )
 {
-	profile(#procedure)
+	// profile(#procedure)
 	assert( ctx != nil )
-	assert( font >= 0 && font < FontID(ctx.entries.num) )
+	assert( font >= 0 && int(font) < len(ctx.entries) )
 
 	use_full_text_shape := ctx.text_shape_adv
-	entry := & ctx.entries.data[ font ]
+	entry := & ctx.entries[ font ]
 
 	clear( output.glyphs )
 	clear( output.positions )

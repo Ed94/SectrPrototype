@@ -121,15 +121,15 @@ pool_list_erase :: proc( pool : ^PoolList, iter : PoolListIter )
 	}
 }
 
-pool_list_peek_back :: proc ( pool : ^PoolList ) -> PoolListValue {
-	assert( pool.back != - 1 )
+pool_list_peek_back :: #force_inline proc "contextless" ( pool : ^PoolList ) -> PoolListValue {
+	// assert( pool.back != - 1 )
 	value := pool.items.data[ pool.back ].value
 	return value
 }
 
-pool_list_pop_back :: proc( pool : ^PoolList ) -> PoolListValue {
+pool_list_pop_back :: #force_inline proc( pool : ^PoolList ) -> PoolListValue {
 	if pool.size <= 0 do return 0
-	assert( pool.back != -1 )
+	// assert( pool.back != -1 )
 
 	value := pool.items.data[ pool.back ].value
 	pool_list_erase( pool, pool.back )
@@ -164,7 +164,7 @@ LRU_free :: proc( cache : ^LRU_Cache )
 
 }
 
-LRU_reload :: proc( cache : ^LRU_Cache, allocator : Allocator )
+LRU_reload :: #force_inline proc( cache : ^LRU_Cache, allocator : Allocator )
 {
 	reload_map( & cache.table, allocator )
 	pool_list_reload( & cache.key_queue, allocator )
@@ -177,7 +177,7 @@ LRU_hash_key :: #force_inline proc( key : u64 ) -> ( hash : u64 ) {
 	return
 }
 
-LRU_find :: proc( cache : ^LRU_Cache, key : u64, must_find := false ) -> (LRU_Link, bool) {
+LRU_find :: #force_inline proc "contextless" ( cache : ^LRU_Cache, key : u64, must_find := false ) -> (LRU_Link, bool) {
 	// hash := LRU_hash_key( key )
 	// link := get( cache.table, hash )
 	// if link == nil && must_find {
@@ -189,7 +189,7 @@ LRU_find :: proc( cache : ^LRU_Cache, key : u64, must_find := false ) -> (LRU_Li
 	return link, success
 }
 
-LRU_get :: proc( cache : ^LRU_Cache, key : u64 ) -> i32 {
+LRU_get :: #force_inline proc( cache : ^LRU_Cache, key : u64 ) -> i32 {
 	iter, success := LRU_find( cache, key )
 	if success == false {
 		return -1
@@ -198,7 +198,7 @@ LRU_get :: proc( cache : ^LRU_Cache, key : u64 ) -> i32 {
 	return iter.value
 }
 
-LRU_get_next_evicted :: proc( cache : ^LRU_Cache ) -> u64
+LRU_get_next_evicted :: #force_inline proc "contextless" ( cache : ^LRU_Cache ) -> u64
 {
 	if cache.key_queue.size >= cache.capacity {
 		evict := pool_list_peek_back( & cache.key_queue )
@@ -207,7 +207,7 @@ LRU_get_next_evicted :: proc( cache : ^LRU_Cache ) -> u64
 	return 0xFFFFFFFFFFFFFFFF
 }
 
-LRU_peek :: proc( cache : ^LRU_Cache, key : u64, must_find := false ) -> i32 {
+LRU_peek :: #force_inline proc ( cache : ^LRU_Cache, key : u64, must_find := false ) -> i32 {
 	iter, success := LRU_find( cache, key, must_find )
 	if success == false {
 		return -1
@@ -215,7 +215,7 @@ LRU_peek :: proc( cache : ^LRU_Cache, key : u64, must_find := false ) -> i32 {
 	return iter.value
 }
 
-LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64
+LRU_put :: #force_inline proc ( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64
 {
 	// hash_key := LRU_hash_key( key )
 	iter, success := cache.table[key]
