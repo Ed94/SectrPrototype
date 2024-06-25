@@ -20,11 +20,13 @@ uniform ve_blit_atlas_fs_params {
 
 float down_sample( vec2 uv, vec2 texture_size )
 {
+	float down_sample_scale = 1.0f / 4.0f;
+
 	float value =
-		texture(sampler2D( ve_blit_atlas_src_texture, ve_blit_atlas_src_sampler ), uv + vec2( 0.0f, 0.0f ) * texture_size ).x * 0.25f
-	+	texture(sampler2D( ve_blit_atlas_src_texture, ve_blit_atlas_src_sampler ), uv + vec2( 0.0f, 1.0f ) * texture_size ).x * 0.25f
-	+	texture(sampler2D( ve_blit_atlas_src_texture, ve_blit_atlas_src_sampler ), uv + vec2( 1.0f, 0.0f ) * texture_size ).x * 0.25f
-	+	texture(sampler2D( ve_blit_atlas_src_texture, ve_blit_atlas_src_sampler ), uv + vec2( 1.0f, 1.0f ) * texture_size ).x * 0.25f;
+		texture(sampler2D( ve_blit_atlas_src_texture, ve_blit_atlas_src_sampler ), uv + vec2( 0.0f, 0.0f ) * texture_size ).x * down_sample_scale
+	+	texture(sampler2D( ve_blit_atlas_src_texture, ve_blit_atlas_src_sampler ), uv + vec2( 0.0f, 1.0f ) * texture_size ).x * down_sample_scale
+	+	texture(sampler2D( ve_blit_atlas_src_texture, ve_blit_atlas_src_sampler ), uv + vec2( 1.0f, 0.0f ) * texture_size ).x * down_sample_scale
+	+	texture(sampler2D( ve_blit_atlas_src_texture, ve_blit_atlas_src_sampler ), uv + vec2( 1.0f, 1.0f ) * texture_size ).x * down_sample_scale;
 	return value;
 }
 
@@ -34,11 +36,13 @@ void main()
 	const vec2 texture_size = 1.0f / vec2( 2048.0f, 512.0f ); // VEFontCache.Context.buffer_width/buffer_height
 	if ( region == 0 || region == 1 || region == 2 )
 	{
+		float down_sample_scale = 1.0f / 4.0f;
+
 		float alpha =
-			down_sample( uv + vec2( -1.0f, -1.5f ) * texture_size, texture_size ) * 0.25f
-		+	down_sample( uv + vec2(  0.5f, -1.5f ) * texture_size, texture_size ) * 0.25f
-		+	down_sample( uv + vec2( -1.5f,  0.5f ) * texture_size, texture_size ) * 0.25f
-		+	down_sample( uv + vec2(  0.5f,  0.5f ) * texture_size, texture_size ) * 0.25f;
+			down_sample( uv + vec2( -1.0f, -1.5f ) * texture_size, texture_size ) * down_sample_scale
+		+	down_sample( uv + vec2(  0.5f, -1.5f ) * texture_size, texture_size ) * down_sample_scale
+		+	down_sample( uv + vec2( -1.5f,  0.5f ) * texture_size, texture_size ) * down_sample_scale
+		+	down_sample( uv + vec2(  0.5f,  0.5f ) * texture_size, texture_size ) * down_sample_scale;
 		frag_color = vec4( 1.0f, 1.0f, 1.0f, alpha );
 	}
 	else

@@ -173,10 +173,10 @@ render_mode_screenspace :: proc()
 		}
 
 		profile("debug_text_vis")
-		fps_size : f32 = 14.0
+		fps_size : f32 = 16.0
 		fps_msg       := str_fmt( "FPS: %0.2f", fps_avg)
 		fps_msg_size  := measure_text_size( fps_msg, default_font, fps_size, 0.0 )
-		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_size.x * 2, fps_msg_size.y }
+		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_size.x, fps_msg_size.y }
 		debug_draw_text( fps_msg, fps_msg_pos, fps_size, color = Color_Red )
 
 		debug_text( "Screen Width : %v", screen_size.x )
@@ -466,6 +466,10 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
 	debug        := get_state().debug
 	default_font := get_state().default_font
 
+	cam_zoom_ratio := cam != nil ? 1.0 / cam.zoom : 1.0
+
+	circle_radius := cam != nil ? cam_zoom_ratio * 3 : 3
+
 	for box := root.first; box != nil; box = ui_box_tranverse_next_depth_based( box )
 	{
 		text_enqueued  : b32 = false
@@ -496,13 +500,25 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
 				shape_enqueued = true
 			}
 
+			line_thickness := 1 * cam_zoom_ratio
+
+			if debug.draw_ui_padding_bounds && equal_range2( computed.content, computed.padding )
+			{
+				render_set_color( RGBA8_Debug_UI_Padding_Bounds )
+				draw_rect_border( computed.padding, line_thickness )
+			}
+			else if debug.draw_ui_content_bounds {
+				render_set_color( RGBA8_Debug_UI_Content_Bounds )
+				draw_rect_border( computed.content, line_thickness )
+			}
+
 			if debug.draw_ui_box_bounds_points
 			{
 				render_set_color(Color_Red)
-				draw_filled_circle(bounds.min.x, bounds.min.y, 3, 24)
+				draw_filled_circle(bounds.min.x, bounds.min.y, circle_radius, 24)
 
 				render_set_color(Color_Blue)
-				draw_filled_circle(bounds.max.x, bounds.max.y, 3, 24)
+				draw_filled_circle(bounds.max.x, bounds.max.y, circle_radius, 24)
 				shape_enqueued = true
 			}
 		}
@@ -644,8 +660,8 @@ draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, po
 	width  := app_window.extent.x * 2
 	height := app_window.extent.y * 2
 
-	ve_id      := font_provider_resolve_draw_id( id, size )
-	color_norm := normalize_rgba8(color)
+	ve_id, resolved_size := font_provider_resolve_draw_id( id, size )
+	color_norm           := normalize_rgba8(color)
 
 	ve.set_colour( & font_provider_data.ve_font_cache, color_norm )
 	ve.draw_text( & font_provider_data.ve_font_cache, ve_id, content, pos, Vec2{1 / width, 1 / height} * scale )
@@ -665,21 +681,47 @@ draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, 
 
 draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size : f32, pos : Vec2, cam : Camera, color := Color_White )
 {
+	state := get_state(); using state
+
 	// profile(#procedure)
 	cam_offset := Vec2 {
 		cam.position.x,
 		cam.position.y,
 	}
 
-	pos_offset := pos + cam_offset * cam.zoom
-
+	pos_offset     := (pos + cam_offset)
 	cam_zoom_ratio := 1 / cam.zoom
 
-	state          := get_state(); using state
 	screen_size    := app_window.extent * 2
-	render_pos     := screen_to_render_pos(pos_offset)
-	normalized_pos := render_pos * (1.0 / screen_size)
-	draw_text_string_pos_norm( content, id, size * cam.zoom, normalized_pos, color, cam.zoom )
+	screen_scale   := (1.0 / screen_size)
+	render_pos     := ws_view_to_render_pos(pos)
+	normalized_pos := render_pos * screen_scale
+
+	// Oversample font-size for any render under a camera
+	over_sample : f32 = 2.0
+
+	zoom_adjust_size := size * cam.zoom
+	zoom_adjust_size *= over_sample
+
+	ve_id, resolved_size := font_provider_resolve_draw_id( id, zoom_adjust_size	)
+
+	text_scale : Vec2 = screen_scale
+	// if config.cam_zoom_mode == .Smooth
+	{
+		f32_resolved_size := f32(resolved_size)
+		diff_scalar       := 1 + (zoom_adjust_size - f32_resolved_size) / f32_resolved_size
+		text_scale         =  diff_scalar * screen_scale
+		text_scale.x       = clamp( text_scale.x, 0, screen_size.x )
+		text_scale.y       = clamp( text_scale.y, 0, screen_size.y )
+	}
+
+	// Downsample back
+	text_scale  /= over_sample
+
+	color_norm := normalize_rgba8(color)
+	// logf("zoom_adjust_size: %v", zoom_adjust_size)
+	ve.set_colour( & font_provider_data.ve_font_cache, color_norm )
+	ve.draw_text( & font_provider_data.ve_font_cache, ve_id, content, normalized_pos, text_scale )
 }
 
 // TODO(Ed): Eventually the workspace will need a viewport for drawing text

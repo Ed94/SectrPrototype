@@ -164,10 +164,10 @@ update :: proc( delta_time : f64 ) -> b32
 			workspace.zoom_target = cam.zoom
 		}
 
-		config.cam_max_zoom = 30
-		config.cam_zoom_sensitivity_digital = 0.04
-		// config.cam_min_zoom = 0.04
-		config.cam_zoom_sensitivity_smooth = 0.02
+		config.cam_max_zoom = 10
+		config.cam_min_zoom = 0.10
+		config.cam_zoom_sensitivity_digital = 0.05
+		config.cam_zoom_sensitivity_smooth  = 2.0
 		config.cam_zoom_mode = .Smooth
 		switch config.cam_zoom_mode
 		{
@@ -181,7 +181,7 @@ update :: proc( delta_time : f64 ) -> b32
 				cam.zoom    += (workspace.zoom_target - cam.zoom) * lerp_factor * f32(delta_time)
 				cam.zoom     = clamp(cam.zoom, config.cam_min_zoom, config.cam_max_zoom) // Ensure cam.zoom stays within bounds
 			case .Digital:
-				zoom_delta            := input.mouse.scroll.y * config.cam_zoom_sensitivity_digital
+				zoom_delta            := clamp(input.mouse.scroll.y, -1, 1) * config.cam_zoom_sensitivity_digital
 				workspace.zoom_target  = clamp(workspace.zoom_target + zoom_delta, config.cam_min_zoom, config.cam_max_zoom)
 				cam.zoom = workspace.zoom_target
 		}
@@ -225,7 +225,7 @@ update :: proc( delta_time : f64 ) -> b32
 			flags          = frame_style_flags,
 			anchor         = {},
 			// alignment      = { 0.5, 0.5 },
-			font_size      = 30,
+			font_size      = 12,
 			text_alignment = { 0.0, 0.0 },
 			// corner_radii   = { 0.2, 0.2, 0.2, 0.2 },
 			pos            = { 0, 0 },
@@ -249,7 +249,7 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_draggable()
 		// test_text_box()
 		// test_parenting( & default_layout, & frame_style_default )
-		// test_whitespace_ast( & default_layout, & frame_style_default )
+		test_whitespace_ast( & default_layout, & frame_style_default )
 	}
 	//endregion Workspace Imgui Tick
 

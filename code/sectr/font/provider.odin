@@ -8,11 +8,11 @@ import sokol_glue "thirdparty:sokol/glue"
 
 
 Font_Provider_Use_Freetype :: false
-Font_Largest_Px_Size       :: 132
+Font_Largest_Px_Size       :: 110
 Font_Size_Interval         :: 2
 
 Font_Default            :: FontID { 0, "" }
-Font_Default_Point_Size :: 16.0
+Font_Default_Point_Size :: 12.0
 
 Font_Load_Use_Default_Size :: -1
 Font_Load_Gen_ID           :: ""
@@ -119,18 +119,20 @@ font_provider_startup :: proc()
 		screen_shader = sokol_gfx.make_shader(ve_draw_text_shader_desc(backend) )
 
 		draw_list_vbuf = sokol_gfx.make_buffer( BufferDesciption {
-			size  = size_of([4]f32) * Kilo * 128,
+			size  = size_of([4]f32) * Kilo * 512,
 			usage = BufferUsage.STREAM,
 			type  = BufferType.VERTEXBUFFER,
 		})
 		verify( sokol_gfx.query_buffer_state( draw_list_vbuf) < ResourceState.FAILED, "Failed to make draw_list_vbuf" )
 
 		draw_list_ibuf = sokol_gfx.make_buffer( BufferDesciption {
-			size  = size_of(u32) * Kilo * 32,
+			size  = size_of(u32) * Kilo * 256,
 			usage = BufferUsage.STREAM,
 			type  = BufferType.INDEXBUFFER,
 		})
 		verify( sokol_gfx.query_buffer_state( draw_list_ibuf) < ResourceState.FAILED, "Failed to make draw_list_iubuf" )
+
+		Image_Filter := Filter.LINEAR
 
 		// glyph_pipeline
 		{
@@ -217,15 +219,16 @@ font_provider_startup :: proc()
 			})
 
 			glyph_rt_sampler = sokol_gfx.make_sampler( SamplerDescription {
-				min_filter    = Filter.LINEAR,
-				mag_filter    = Filter.LINEAR,
-				mipmap_filter = Filter.NONE,
-				wrap_u        = .CLAMP_TO_EDGE,
-				wrap_v        = .CLAMP_TO_EDGE,
-				min_lod       = -1000.0,
-				max_lod       =  1000.0,
-				border_color  = BorderColor.OPAQUE_BLACK,
-				compare       = .NEVER
+				min_filter     = Image_Filter,
+				mag_filter     = Image_Filter,
+				mipmap_filter  = Filter.NONE,
+				wrap_u         = .CLAMP_TO_EDGE,
+				wrap_v         = .CLAMP_TO_EDGE,
+				min_lod        = -1000.0,
+				max_lod        =  1000.0,
+				border_color   = BorderColor.OPAQUE_BLACK,
+				compare        = .NEVER,
+				max_anisotropy = 1,
 			})
 			verify( sokol_gfx.query_sampler_state( glyph_rt_sampler) < ResourceState.FAILED, "Failed to make atlas_rt_sampler" )
 
@@ -354,15 +357,16 @@ font_provider_startup :: proc()
 			verify( sokol_gfx.query_image_state(atlas_rt_depth) < ResourceState.FAILED, "Failed to make atlas_rt_depth")
 
 			atlas_rt_sampler = sokol_gfx.make_sampler( SamplerDescription {
-				min_filter    = Filter.LINEAR,
-				mag_filter    = Filter.LINEAR,
-				mipmap_filter = Filter.NONE,
-				wrap_u        = .CLAMP_TO_EDGE,
-				wrap_v        = .CLAMP_TO_EDGE,
-				min_lod       = -1000.0,
-				max_lod       =  1000.0,
-				border_color  = BorderColor.OPAQUE_BLACK,
-				compare       = .NEVER
+				min_filter     = Image_Filter,
+				mag_filter     = Image_Filter,
+				mipmap_filter  = Filter.NONE,
+				wrap_u         = .CLAMP_TO_EDGE,
+				wrap_v         = .CLAMP_TO_EDGE,
+				min_lod        = -1000.0,
+				max_lod        =  1000.0,
+				border_color   = BorderColor.OPAQUE_BLACK,
+				compare        = .NEVER,
+				max_anisotropy = 1,
 			})
 			verify( sokol_gfx.query_sampler_state( atlas_rt_sampler) < ResourceState.FAILED, "Failed to make atlas_rt_sampler" )
 
@@ -574,22 +578,18 @@ font_load :: proc(path_file : string,
 
 Font_Use_Default_Size :: f32(0.0)
 
-font_provider_resolve_draw_id :: proc( id : FontID, size := Font_Use_Default_Size ) -> ve.FontID
+font_provider_resolve_draw_id :: proc( id : FontID, size := Font_Use_Default_Size ) -> (ve_id :ve.FontID, resolved_size : i32)
 {
 	state := get_state(); using state
 
 	def           := hmap_chained_get( font_provider_data.font_cache, id.key )
 	size          := size == 0.0 ? f32(def.default_size) : size
-	// size          :f32 = 14.0
 	even_size     := math.round(size * (1.0 / f32(Font_Size_Interval))) * f32(Font_Size_Interval)
-	resolved_size := clamp( i32( even_size), 14, Font_Largest_Px_Size )
+	resolved_size  = clamp( i32( even_size), 14, Font_Largest_Px_Size )
 
 	id    := (resolved_size / Font_Size_Interval) + (resolved_size % Font_Size_Interval)
-	ve_id := def.size_table[ id - 1 ]
-
-	width  := app_window.extent.x * 2
-	height := app_window.extent.y * 2
-	return ve_id
+	ve_id  = def.size_table[ id - 1 ]
+	return
 }
 
 measure_text_size :: proc( text : string, font : FontID, font_size := Font_Use_Default_Size, spacing : f32 ) -> Vec2
@@ -597,8 +597,7 @@ measure_text_size :: proc( text : string, font : FontID, font_size := Font_Use_D
 	state := get_state(); using state
 
 	// profile(#procedure)
-	px_size := math.round( font_size )
-	ve_id   := font_provider_resolve_draw_id( font, font_size )
+	ve_id, size := font_provider_resolve_draw_id( font, font_size )
 
 	measured := ve.measure_text_size( & font_provider_data.ve_font_cache, ve_id, text )
 	return measured

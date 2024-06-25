@@ -71,11 +71,14 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	adjusted_size.y = max( adjusted_max_size_y, layout.size.min.y)
 
 	text_size : Vec2
-	if layout.font_size == computed.text_size.y {
-		text_size = computed.text_size
-	}
-	else {
-		text_size = cast(Vec2) measure_text_size( box.text.str, style.font, layout.font_size, 0 )
+	if len(box.text.str) > 0
+	{
+		if layout.font_size == computed.text_size.y {
+			text_size = computed.text_size
+		}
+		else {
+			text_size = cast(Vec2) measure_text_size( box.text.str, style.font, layout.font_size, 0 )
+		}
 	}
 
 	if size_to_text {

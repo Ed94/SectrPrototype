@@ -289,7 +289,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		ui_floating_startup( & screen_ui.floating, 1 * Kilobyte, 1 * Kilobyte, persistent_slab_allocator(), "screen ui floating manager" )
 
 		using screen_ui
-		menu_bar.pos  = { -60, 0 }
+		menu_bar.pos  = { -260, -200 }
 		// menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
 		menu_bar.size = {140, 40}
 
@@ -498,14 +498,14 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	// rl.PollInputEvents()
 
 	debug.draw_ui_box_bounds_points = false
-	debug.draw_UI_padding_bounds = false
+	debug.draw_ui_padding_bounds = false
 	debug.draw_ui_content_bounds = false
 
 	// config.engine_refresh_hz = 165
 
 	// config.color_theme = App_Thm_Light
-	config.color_theme = App_Thm_Dusk
-	// config.color_theme = App_Thm_Dark
+	// config.color_theme = App_Thm_Dusk
+	config.color_theme = App_Thm_Dark
 
 	sokol_width  := sokol_app.widthf()
 	sokol_height := sokol_app.heightf()
