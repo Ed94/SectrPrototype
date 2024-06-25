@@ -13,7 +13,6 @@ font_glyph_lru_code :: #force_inline proc( font : FontID, glyph_index : Glyph ) 
 	// copy( buffer[ len(font_bytes) :], glyph_bytes )
 	// hash := fnv64a( transmute([]byte) buffer[: size_of(FontID) + size_of(Glyph) ] )
 	// lru_code = hash
-
 	lru_code = u64(glyph_index) + ( ( 0x100000000 * u64(font) ) & 0xFFFFFFFF00000000 )
 	return
 }
@@ -31,10 +30,10 @@ shape_lru_hash :: #force_inline proc( label : string ) -> u64 {
 // ve_fontcache_eval_bezier (quadratic)
 eval_point_on_bezier3 :: proc( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
 {
-	p0    := vec2_64_from_vec2(p0)
-	p1    := vec2_64_from_vec2(p1)
-	p2    := vec2_64_from_vec2(p2)
-	alpha := f64(alpha)
+	// p0    := vec2_64_from_vec2(p0)
+	// p1    := vec2_64_from_vec2(p1)
+	// p2    := vec2_64_from_vec2(p2)
+	// alpha := f64(alpha)
 
 	weight_start   := (1 - alpha) * (1 - alpha)
 	weight_control := 2.0 * (1 - alpha) * alpha
@@ -53,11 +52,11 @@ eval_point_on_bezier3 :: proc( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
 // ve_fontcache_eval_bezier (cubic)
 eval_point_on_bezier4 :: proc( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
 {
-	p0    := vec2_64_from_vec2(p0)
-	p1    := vec2_64_from_vec2(p1)
-	p2    := vec2_64_from_vec2(p2)
-	p3    := vec2_64_from_vec2(p3)
-	alpha := f64(alpha)
+	// p0    := vec2_64_from_vec2(p0)
+	// p1    := vec2_64_from_vec2(p1)
+	// p2    := vec2_64_from_vec2(p2)
+	// p3    := vec2_64_from_vec2(p3)
+	// alpha := f64(alpha)
 
 	weight_start := (1 - alpha) * (1 - alpha) * (1 - alpha)
 	weight_c_a   := 3 * (1 - alpha) * (1 - alpha) * alpha
@@ -74,7 +73,7 @@ eval_point_on_bezier4 :: proc( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
 }
 
 reset_batch_codepoint_state :: proc( ctx : ^Context ) {
-	clear( & ctx.temp_codepoint_seen )
+	clear_map( & ctx.temp_codepoint_seen )
 	ctx.temp_codepoint_seen_num = 0
 }
 

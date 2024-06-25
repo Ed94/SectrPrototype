@@ -16,6 +16,7 @@ ShapedTextCache :: struct {
 
 shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> ^ShapedText
 {
+	profile(#procedure)
 	@static buffer : [64 * Kilobyte]byte
 
 	font := font
@@ -61,6 +62,7 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 
 shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText, text_utf8 : string )
 {
+	profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && font < FontID(ctx.entries.num) )
 

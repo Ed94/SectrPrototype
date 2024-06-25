@@ -146,14 +146,14 @@ LRU_Link :: struct {
 LRU_Cache :: struct {
 	capacity  : u32,
 	num       : u32,
-	table     : HMapChained(LRU_Link),
+	table     :  map[u64]LRU_Link,
 	key_queue : PoolList,
 }
 
 LRU_init :: proc( cache : ^LRU_Cache, capacity : u32, dbg_name : string = "" ) {
 	error : AllocatorError
 	cache.capacity     = capacity
-	cache.table, error = make( HMapChained(LRU_Link), hmap_closest_prime( uint(capacity)) )
+	cache.table, error = make( map[u64]LRU_Link, hmap_closest_prime( uint(capacity)) )
 	assert( error == .None, "VEFontCache.LRU_init : Failed to allocate cache's table")
 
 	pool_list_init( & cache.key_queue, capacity, dbg_name = dbg_name )
@@ -166,7 +166,7 @@ LRU_free :: proc( cache : ^LRU_Cache )
 
 LRU_reload :: proc( cache : ^LRU_Cache, allocator : Allocator )
 {
-	hmap_chained_reload( cache.table, allocator )
+	reload_map( & cache.table, allocator )
 	pool_list_reload( & cache.key_queue, allocator )
 }
 
@@ -177,19 +177,21 @@ LRU_hash_key :: #force_inline proc( key : u64 ) -> ( hash : u64 ) {
 	return
 }
 
-LRU_find :: proc( cache : ^LRU_Cache, key : u64, must_find := false ) -> ^LRU_Link {
-	hash := LRU_hash_key( key )
-	link := get( cache.table, hash )
+LRU_find :: proc( cache : ^LRU_Cache, key : u64, must_find := false ) -> (LRU_Link, bool) {
+	// hash := LRU_hash_key( key )
+	// link := get( cache.table, hash )
 	// if link == nil && must_find {
 	// 	runtime.debug_trap()
 	// 	link = get( cache.table, hash )
 	// }
-	return link
+
+	link, success := cache.table[key]
+	return link, success
 }
 
 LRU_get :: proc( cache : ^LRU_Cache, key : u64 ) -> i32 {
-	iter := LRU_find( cache, key )
-	if iter == nil {
+	iter, success := LRU_find( cache, key )
+	if success == false {
 		return -1
 	}
 	LRU_refresh( cache, key )
@@ -206,8 +208,8 @@ LRU_get_next_evicted :: proc( cache : ^LRU_Cache ) -> u64
 }
 
 LRU_peek :: proc( cache : ^LRU_Cache, key : u64, must_find := false ) -> i32 {
-	iter := LRU_find( cache, key, must_find )
-	if iter == nil {
+	iter, success := LRU_find( cache, key, must_find )
+	if success == false {
 		return -1
 	}
 	return iter.value
@@ -215,9 +217,9 @@ LRU_peek :: proc( cache : ^LRU_Cache, key : u64, must_find := false ) -> i32 {
 
 LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64
 {
-	hash_key := LRU_hash_key( key )
-	iter     := get( cache.table, hash_key )
-	if iter != nil {
+	// hash_key := LRU_hash_key( key )
+	iter, success := cache.table[key]
+	if success {
 		LRU_refresh( cache, key )
 		iter.value = value
 		return key
@@ -227,11 +229,11 @@ LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64
 	if cache.key_queue.size >= cache.capacity {
 		evict = pool_list_pop_back( & cache.key_queue )
 
-		evict_hash := LRU_hash_key( evict )
+		// evict_hash := LRU_hash_key( evict )
 		// if cache.table.dbg_name != "" {
 		// 	logf("%v: Evicted   %v with hash: %v", cache.table.dbg_name, evict, evict_hash)
 		// }
-		hmap_chained_remove( cache.table, evict_hash )
+		delete_key( & cache.table, evict )
 		cache.num -= 1
 	}
 
@@ -240,17 +242,16 @@ LRU_put :: proc( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64
 	// 	logf("%v: Pushed   %v with hash: %v", cache.table.dbg_name, key, hash_key )
 	// }
 
-	set( cache.table, hash_key, LRU_Link {
+	cache.table[key] = LRU_Link {
 		value = value,
 		ptr   = cache.key_queue.front
-	})
-
+	}
 	cache.num += 1
 	return evict
 }
 
 LRU_refresh :: proc( cache : ^LRU_Cache, key : u64 ) {
-	link := LRU_find( cache, key )
+	link, success := LRU_find( cache, key )
 	// if cache.table.dbg_name != "" {
 	// 	logf("%v: Refreshed %v", cache.table.dbg_name, key)
 	// }

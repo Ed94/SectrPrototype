@@ -90,6 +90,7 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) 
 
 can_batch_glyph :: proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_index : Glyph ) -> b32
 {
+	profile(#procedure)
 	assert( ctx != nil )
 	assert( entry.id == font )
 
@@ -111,10 +112,10 @@ can_batch_glyph :: proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_in
 		if region.next_idx > u32( region.state.capacity) {
 			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
 			next_evict_codepoint := LRU_get_next_evicted( & region.state )
-			seen := get( & ctx.temp_codepoint_seen, next_evict_codepoint )
-			assert(seen != nil)
+			seen, success := ctx.temp_codepoint_seen[next_evict_codepoint]
+			assert(success != false)
 
-			if (seen^) {
+			if (seen) {
 				return false
 			}
 		}
@@ -123,7 +124,7 @@ can_batch_glyph :: proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_in
 	}
 
 	assert( LRU_get( & region.state, lru_code ) != -1 )
-	set( & ctx.temp_codepoint_seen, lru_code, true )
+	ctx.temp_codepoint_seen[lru_code] = true
 	ctx.temp_codepoint_seen_num += 1
 	return true
 }

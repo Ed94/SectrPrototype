@@ -62,6 +62,8 @@ hmap_zpl_reload :: grime.hmap_zpl_reload
 hmap_zpl_remove :: grime.hmap_zpl_remove
 hmap_zpl_set    :: grime.hmap_zpl_set
 
+reload_map :: grime.reload_map
+
 // Pool :: grime.Pool
 
 StackFixed :: grime.StackFixed
@@ -76,6 +78,8 @@ stack_push_contextless :: grime.stack_push_contextless
 // logging
 log  :: grime.log
 logf :: grime.logf
+
+profile :: grime.profile
 
 //#region("Proc overload mappings")
 
@@ -110,6 +114,7 @@ make :: proc {
 	array_init,
 	hmap_chained_init,
 	hmap_zpl_init,
+	make_map,
 }
 
 // reload :: proc {

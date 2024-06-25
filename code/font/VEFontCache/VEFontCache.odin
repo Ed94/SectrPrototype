@@ -59,7 +59,7 @@ Context :: struct {
 	entries : Array(Entry),
 
 	temp_path               : Array(Vec2),
-	temp_codepoint_seen     : HMapZPL(bool),
+	temp_codepoint_seen     : map[u64]bool,
 	temp_codepoint_seen_num : u32,
 
 	snap_width  : u32,
@@ -152,7 +152,7 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	curve_quality               : u32 = 12,
 	entires_reserve             : u32 = Kilobyte,
 	temp_path_reserve           : u32 = Kilobyte,
-	temp_codepoint_seen_reserve : u32 = 512,
+	temp_codepoint_seen_reserve : u32 = 1024,
 )
 {
 	assert( ctx != nil, "Must provide a valid context" )
@@ -173,7 +173,7 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	temp_path, error = make( Array(Vec2), u64(temp_path_reserve) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
-	temp_codepoint_seen, error = make( HMapZPL(bool), u64(hmap_closest_prime( uint(temp_codepoint_seen_reserve))) )
+	temp_codepoint_seen, error = make( map[u64]bool )//, hmap_closest_prime( uint(temp_codepoint_seen_reserve)) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
 	draw_list.vertices, error = make( Array(Vertex), 4 * Kilobyte )
@@ -279,7 +279,7 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 
 	entries.backing   = allocator
 	temp_path.backing = allocator
-	hmap_zpl_reload( & ctx.temp_codepoint_seen, allocator )
+	reload_map( & ctx.temp_codepoint_seen, allocator )
 
 	draw_list.vertices.backing  = allocator
 	draw_list.indices.backing   = allocator
@@ -397,6 +397,7 @@ unload_font :: proc( ctx : ^Context, font : FontID )
 
 cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, translate : Vec2  ) -> b32
 {
+	profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && u64(font) < ctx.entries.num )
 	entry := & ctx.entries.data[ font ]
@@ -519,6 +520,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 
 cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph )
 {
+	profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && font < FontID(ctx.entries.num) )
 	entry := & ctx.entries.data[ font ]
@@ -650,6 +652,7 @@ is_empty :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
 
 measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> (measured : Vec2)
 {
+	profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && font < FontID(ctx.entries.num) )
 

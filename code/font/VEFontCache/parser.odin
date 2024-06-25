@@ -210,9 +210,6 @@ parser_get_glyph_box :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) -> (
 
 		case .STB_TrueType:
 			x0, y0, x1, y1 : i32
-			// {
-			// 	success := stbtt.InitFont( & font.stbtt_info, raw_data(font.data), 0 )
-			// }
 			success := cast(bool) stbtt.GetGlyphBox( & font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
 			assert( success )
 
