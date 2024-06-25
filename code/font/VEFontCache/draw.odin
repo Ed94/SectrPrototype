@@ -400,6 +400,20 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 	return true
 }
 
+draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText, batch_start_idx, batch_end_idx : i32, position, scale : Vec2 )
+{
+	flush_glyph_buffer_to_atlas( ctx )
+	for index := batch_start_idx; index < batch_end_idx; index += 1
+	{
+		glyph_index       := shaped.glyphs.data[ index ]
+		shaped_position   := shaped.positions.data[index]
+		glyph_translate   := position + shaped_position * scale
+		glyph_cached      := draw_cached_glyph( ctx, entry, glyph_index, glyph_translate, scale)
+		assert( glyph_cached == true )
+	}
+}
+
+
 // Helper for draw_text, all raw text content should be confirmed to be either formatting or visible shapes before getting cached.
 draw_text_shape :: proc( ctx : ^Context, font : FontID, entry : ^Entry, shaped : ^ShapedText, position, scale : Vec2, snap_width, snap_height : f32 ) -> (cursor_pos : Vec2)
 {
@@ -427,19 +441,6 @@ draw_text_shape :: proc( ctx : ^Context, font : FontID, entry : ^Entry, shaped :
 	reset_batch_codepoint_state( ctx )
 	cursor_pos = position + shaped.end_cursor_pos * scale
 	return
-}
-
-draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText, batch_start_idx, batch_end_idx : i32, position, scale : Vec2 )
-{
-	flush_glyph_buffer_to_atlas( ctx )
-	for index := batch_start_idx; index < batch_end_idx; index += 1
-	{
-		glyph_index       := shaped.glyphs.data[ index ]
-		shaped_position   := shaped.positions.data[index]
-		glyph_translate   := position + shaped_position * scale
-		glyph_cached      := draw_cached_glyph( ctx, entry, glyph_index, glyph_translate, scale)
-		assert( glyph_cached == true )
-	}
 }
 
 // ve_fontcache_flush_drawlist

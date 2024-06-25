@@ -24,6 +24,7 @@ TODO Additional Features:
 * Support for harfbuzz
 * Ability to set a draw transform, viewport and projection
   * By default the library's position is in unsigned normalized render space
+* Allow curve_quality to be set on a per-font basis
 
 TODO Optimizations:
 

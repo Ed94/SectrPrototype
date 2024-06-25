@@ -137,4 +137,8 @@ underlying_slice :: proc {
 	array_underlying_slice,
 }
 
+vec2 :: proc {
+	vec2_from_scalar,
+}
+
 //#endregion("Proc overload mappings")

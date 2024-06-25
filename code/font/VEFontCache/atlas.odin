@@ -1,5 +1,15 @@
 package VEFontCache
 
+AtlasRegionKind :: enum u8 {
+	None   = 0x00,
+	A      = 0x41,
+	B      = 0x42,
+	C      = 0x43,
+	D      = 0x44,
+	E      = 0x45,
+	Ignore = 0xFF, // ve_fontcache_cache_glyph_to_atlas uses a -1 value in clear draw call
+}
+
 AtlasRegion :: struct {
 	state : LRU_Cache,
 
