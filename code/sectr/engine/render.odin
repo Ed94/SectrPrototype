@@ -182,16 +182,17 @@ render_mode_screenspace :: proc()
 			screen_corners := screen_get_corners()
 
 			position   := screen_corners.top_left
+			position.x += 2
 			position.y -= debug.draw_debug_text_y
 
 			content := str_fmt( format, ..args )
 			text_size := measure_text_size( content, default_font, 14.0, 0.0 )
 			debug_draw_text( content, position, 14.0 )
-			debug.draw_debug_text_y += text_size.y + 4
+			debug.draw_debug_text_y += text_size.y + 3
 		}
 
 		profile("debug_text_vis")
-		fps_size : f32 = 16.0
+		fps_size : f32 = 14.0
 		fps_msg       := str_fmt( "FPS: %0.2f", fps_avg)
 		fps_msg_size  := measure_text_size( fps_msg, default_font, fps_size, 0.0 )
 		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_size.x, fps_msg_size.y }
@@ -218,7 +219,7 @@ render_mode_screenspace :: proc()
 			iter_obj  := iterator( & mouse_events ); iter := & iter_obj
 			for event := next( iter ); event != nil; event = next( iter )
 			{
-				if id >= 4 do break
+				if id >= 2 do break
 				id += 1
 
 				debug_text("Mouse Event: %v", event )
@@ -227,10 +228,10 @@ render_mode_screenspace :: proc()
 
 		if debug.mouse_vis {
 			debug_text("Mouse scroll: %v", input.mouse.scroll )
-			debug_text("Mouse Delta                    : %v", input.mouse.delta )
-			debug_text("Mouse Position (Render)        : %v", input.mouse.raw_pos )
-			debug_text("Mouse Position (Screen)        : %v", input.mouse.pos )
-			debug_text("Mouse Position (Workspace View): %v", screen_to_ws_view_pos(input.mouse.pos) )
+			debug_text("Mouse Delta                    : %0.2f", input.mouse.delta )
+			debug_text("Mouse Position (Render)        : %0.2f", input.mouse.raw_pos )
+			debug_text("Mouse Position (Screen)        : %0.2f", input.mouse.pos )
+			debug_text("Mouse Position (Workspace View): %0.2f", screen_to_ws_view_pos(input.mouse.pos) )
 		}
 
 		if true
@@ -267,6 +268,15 @@ render_mode_screenspace :: proc()
 			if active_box != nil{
 				debug_text("Active Box: %v", active_box.label.str )
 			}
+		}
+
+		if true {
+			state.config.font_size_canvas_scalar = 1.0
+			zoom_adjust_size := 16 * state.project.workspace.cam.zoom
+			over_sample      := zoom_adjust_size < 12 ? 1.0 : f32(state.config.font_size_canvas_scalar)
+			debug_text("font_size_canvas_scalar: %v", config.font_size_canvas_scalar)
+			ve_id, resolved_size := font_provider_resolve_draw_id( default_font, zoom_adjust_size * over_sample )
+			debug_text("font_size resolved: %v px", resolved_size)
 		}
 
 		render_text_layer()
@@ -492,10 +502,18 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
 	cam_zoom_ratio := cam != nil ? 1.0 / cam.zoom : 1.0
 	circle_radius  := cam != nil ? cam_zoom_ratio * 3 : 3
 
+	text_enqueued  : b32 = false
+	shape_enqueued : b32 = false
+
+	previous_layer : i32 = 0
 	for box := root.first; box != nil; box = ui_box_tranverse_next_depth_based( box )
 	{
-		text_enqueued  : b32 = false
-		shape_enqueued : b32 = false
+		if box.ancestors != previous_layer {
+			if shape_enqueued do render_flush_gp()
+			if text_enqueued  do render_text_layer()
+			shape_enqueued = false
+			text_enqueued  = false
+		}
 
 		border_width := box.layout.border_width
 		computed     := box.computed
@@ -509,7 +527,7 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
 
 		GP_Render:
 		{
-			// profile("draw_shapes")
+			profile("draw_shapes")
 			if style.bg_color.a != 0
 			{
 				draw_rect( bounds, style.bg_color )
@@ -555,9 +573,11 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
 			text_enqueued = true
 		}
 
-		if shape_enqueued do render_flush_gp()
-		if text_enqueued  do render_text_layer()
+		previous_layer = box.ancestors
 	}
+
+	if shape_enqueued do render_flush_gp()
+	if text_enqueued  do render_text_layer()
 }
 
 render_ui_via_box_list :: proc( render_list : []UI_RenderBoxInfo, cam : ^Camera = nil )
@@ -693,7 +713,7 @@ draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, po
 // Draw text using a string and extent-based screen coordinates
 draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, pos : Vec2, color := Color_White )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	state          := get_state(); using state
 	screen_size    := app_window.extent * 2
 	render_pos     := screen_to_render_pos(pos)
@@ -703,9 +723,9 @@ draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, 
 
 draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size : f32, pos : Vec2, cam : Camera, color := Color_White )
 {
+	profile(#procedure)
 	state := get_state(); using state
 
-	// profile(#procedure)
 	cam_offset := Vec2 {
 		cam.position.x,
 		cam.position.y,
@@ -719,10 +739,10 @@ draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size 
 	render_pos     := ws_view_to_render_pos(pos)
 	normalized_pos := render_pos * screen_scale
 
-	// Oversample font-size for any render under a camera
-	over_sample : f32 = 2.0
-
 	zoom_adjust_size := size * cam.zoom
+
+	// Over-sample font-size for any render under a camera
+	over_sample : f32 = zoom_adjust_size < 12 ? 1.0 : f32(state.config.font_size_canvas_scalar)
 	zoom_adjust_size *= over_sample
 
 	ve_id, resolved_size := font_provider_resolve_draw_id( id, zoom_adjust_size	)
@@ -737,7 +757,7 @@ draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size 
 		text_scale.y       = clamp( text_scale.y, 0, screen_size.y )
 	}
 
-	// Downsample back
+	// Down-sample back
 	text_scale  /= over_sample
 
 	color_norm := normalize_rgba8(color)
@@ -749,6 +769,7 @@ draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size 
 
 render_flush_gp :: #force_inline proc()
 {
+	profile(#procedure)
 	gfx.begin_pass( gfx.Pass { action = get_state().render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
 	gp.flush()
 	gfx.end_pass()

@@ -129,18 +129,23 @@ slab_alloc :: proc( self : Slab,
 	loc    := #caller_location
 ) -> ( data : []byte, alloc_error : AllocatorError )
 {
+
 	// profile(#procedure)
 	pool : Pool
 	id : u32 = 0
 	for ; id < self.pools.idx; id += 1 {
 			pool = self.pools.items[id]
 
-			if pool.block_size >= size && pool.alignment >= alignment {
+			adjusted_alignment := clamp(alignment, pool.alignment, alignment)
+			aligned_size       := size + (adjusted_alignment - 1)
+			if pool.block_size >= aligned_size {
 					break
 			}
 	}
 	verify( id < self.pools.idx, "There is not a size class in the slab's policy to satisfy the requested allocation", location = loc )
 	verify( pool.header != nil,  "Requested alloc not supported by the slab allocator", location = loc )
+
+	adjusted_alignment := clamp(alignment, pool.alignment, alignment)
 
 	block : []byte
 	slab_validate_pools( self )
@@ -153,7 +158,11 @@ slab_alloc :: proc( self : Slab,
 	}
 	// log( str_fmt_tmp("%v: Retrieved block: %p %d", self.dbg_name, raw_data(block), len(block) ))
 
-	data = byte_slice(raw_data(block), size)
+	// Align the block
+	block_start   := uintptr(raw_data(block))
+	aligned_start := memory_aign_forward(block_start, uintptr(adjusted_alignment))
+
+	data = byte_slice(transmute(rawptr) aligned_start, size)
 	if zero_memory {
 		slice.zero(data)
 	}

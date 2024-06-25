@@ -39,14 +39,15 @@ Module_String_Cache : ^StringCache
 
 str_cache_init :: proc( table_allocator, slabs_allocator : Allocator ) -> (cache : StringCache)
 {
-	alignment := uint(mem.DEFAULT_ALIGNMENT)
+	// alignment := uint(mem.DEFAULT_ALIGNMENT)
+	alignment := uint(64)
 
 	policy     : SlabPolicy
 	policy_ptr := & policy
-	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,              8, alignment })
-	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             16, alignment })
-	push( policy_ptr, SlabSizeClass { 128 * Kilobyte,             32, alignment })
-	push( policy_ptr, SlabSizeClass { 128 * Kilobyte,             64, alignment })
+	// push( policy_ptr, SlabSizeClass {  64 * Kilobyte,              8, alignment })
+	// push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             16, alignment })
+	// push( policy_ptr, SlabSizeClass { 128 * Kilobyte,             32, alignment })
+	push( policy_ptr, SlabSizeClass { 640 * Kilobyte,             64, alignment })
 	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,            128, alignment })
 	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,            256, alignment })
 	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,            512, alignment })

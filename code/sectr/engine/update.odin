@@ -165,10 +165,10 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 
 		config.cam_max_zoom = 10
-		config.cam_min_zoom = 0.10
+		config.cam_min_zoom = 0.05
 		config.cam_zoom_sensitivity_digital = 0.05
 		config.cam_zoom_sensitivity_smooth  = 2.0
-		config.cam_zoom_mode = .Digital
+		config.cam_zoom_mode = .Smooth
 		switch config.cam_zoom_mode
 		{
 			case .Smooth:
@@ -247,9 +247,9 @@ update :: proc( delta_time : f64 ) -> b32
 		config.ui_resize_border_width = 2.5
 		// test_hover_n_click()
 		// test_draggable()
-		test_text_box()
+		// test_text_box()
 		// test_parenting( & default_layout, & frame_style_default )
-		// test_whitespace_ast( & default_layout, & frame_style_default )
+		test_whitespace_ast( & default_layout, & frame_style_default )
 	}
 	//endregion Workspace Imgui Tick
 

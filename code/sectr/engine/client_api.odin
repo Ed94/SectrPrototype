@@ -68,7 +68,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	// Setup Persistent Slabs & String Cache
 	{
-		alignment := uint(mem.DEFAULT_ALIGNMENT)
+		// alignment := uint(mem.DEFAULT_ALIGNMENT)
+		alignment := uint(64) // Doing the cache line
 
 		policy_ptr := & default_slab_policy
 		push( policy_ptr, SlabSizeClass {  128 * Kilobyte,   1 * Kilobyte, alignment })
@@ -150,6 +151,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		ui_resize_border_width = 5
 
 		color_theme = App_Thm_Dusk
+
+		font_size_canvas_scalar = 2.0
 	}
 
 	Desired_OS_Scheduler_MS :: 1
@@ -325,8 +328,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
 		}
 
-		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
-		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
 		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )

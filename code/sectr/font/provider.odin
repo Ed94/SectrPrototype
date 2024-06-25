@@ -8,7 +8,7 @@ import sokol_glue "thirdparty:sokol/glue"
 
 
 Font_Provider_Use_Freetype :: false
-Font_Largest_Px_Size       :: 110
+Font_Largest_Px_Size       :: 172
 Font_Size_Interval         :: 2
 
 Font_Default            :: FontID { 0, "" }
@@ -119,14 +119,14 @@ font_provider_startup :: proc()
 		screen_shader = sokol_gfx.make_shader(ve_draw_text_shader_desc(backend) )
 
 		draw_list_vbuf = sokol_gfx.make_buffer( BufferDesciption {
-			size  = size_of([4]f32) * Kilo * 512,
+			size  = size_of([4]f32) * Kilo * 1024,
 			usage = BufferUsage.STREAM,
 			type  = BufferType.VERTEXBUFFER,
 		})
 		verify( sokol_gfx.query_buffer_state( draw_list_vbuf) < ResourceState.FAILED, "Failed to make draw_list_vbuf" )
 
 		draw_list_ibuf = sokol_gfx.make_buffer( BufferDesciption {
-			size  = size_of(u32) * Kilo * 256,
+			size  = size_of(u32) * Kilo * 512,
 			usage = BufferUsage.STREAM,
 			type  = BufferType.INDEXBUFFER,
 		})
@@ -563,7 +563,7 @@ font_load :: proc(path_file : string,
 	def.path_file    = path_file
 	def.default_size = default_size
 
-	for font_size : i32 = Font_Size_Interval; font_size <= Font_Largest_Px_Size; font_size += Font_Size_Interval
+	for font_size : i32 = clamp( Font_Size_Interval, 10, Font_Size_Interval ); font_size <= Font_Largest_Px_Size; font_size += Font_Size_Interval
 	{
 		// logf("Loading at size %v", font_size)
 		id    := (font_size / Font_Size_Interval) + (font_size % Font_Size_Interval)
@@ -585,7 +585,7 @@ font_provider_resolve_draw_id :: proc( id : FontID, size := Font_Use_Default_Siz
 	def           := hmap_chained_get( font_provider_data.font_cache, id.key )
 	size          := size == 0.0 ? f32(def.default_size) : size
 	even_size     := math.round(size * (1.0 / f32(Font_Size_Interval))) * f32(Font_Size_Interval)
-	resolved_size  = clamp( i32( even_size), 14, Font_Largest_Px_Size )
+	resolved_size  = clamp( i32( even_size), 12, Font_Largest_Px_Size )
 
 	id    := (resolved_size / Font_Size_Interval) + (resolved_size % Font_Size_Interval)
 	ve_id  = def.size_table[ id - 1 ]

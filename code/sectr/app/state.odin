@@ -154,11 +154,14 @@ AppConfig :: struct {
 
 	engine_refresh_hz : uint,
 
+
 	timing_fps_moving_avg_alpha : f32,
 
 	ui_resize_border_width : f32,
 
 	color_theme : AppColorTheme,
+
+	font_size_canvas_scalar : f32,
 }
 
 AppWindow :: struct {

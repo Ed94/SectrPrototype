@@ -181,12 +181,12 @@ array_append_at_slice :: proc( using self : ^Array( $ Type ), items : []Type, id
 	return AllocatorError.None
 }
 
-array_back :: proc( self : Array($Type) ) -> Type {
+array_back :: #force_inline proc "contextless" ( self : Array($Type) ) -> Type {
 	value := self.data[self.num - 1]
 	return value
 }
 
-array_push_back :: proc( using self : Array( $ Type)) -> b32 {
+array_push_back :: #force_inline proc "contextless" ( using self : Array( $ Type)) -> b32 {
 	if num == capacity {
 		return false
 	}
