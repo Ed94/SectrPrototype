@@ -262,7 +262,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 16.0, "RecMonoSemiCasual_Regular" )
 
 		path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
-		font_squidgy_slimes = font_load( path_squidgy_slimes, 16.0, "Squidgy_Slime" )
+		font_squidgy_slimes = font_load( path_squidgy_slimes, 32.0, "Squidgy_Slime" )
 
 		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
 		font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )

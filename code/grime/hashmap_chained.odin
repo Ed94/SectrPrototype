@@ -152,7 +152,7 @@ hmap_chained_get :: proc( using self : HMapChained($Type), key : u64) -> ^Type
 
 hmap_chained_reload :: proc( self : HMapChained($Type), allocator : Allocator )
 {
-	// pool_reload(self.pool, allocator)
+	pool_reload(self.pool, allocator)
 }
 
 // Returns true if an slot was actually found and marked as vacant

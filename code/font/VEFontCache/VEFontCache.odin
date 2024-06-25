@@ -374,7 +374,8 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 
 	entries.backing   = allocator
 	temp_path.backing = allocator
-	hmap_zpl_reload( & temp_codepoint_seen, allocator )
+	hmap_zpl_reload( & ctx.temp_codepoint_seen, allocator )
+
 	draw_list.vertices.backing  = allocator
 	draw_list.indices.backing   = allocator
 	draw_list.calls.backing     = allocator
@@ -400,6 +401,9 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	atlas.clear_draw_list.calls.backing    = allocator
 	atlas.clear_draw_list.indices.backing  = allocator
 	atlas.clear_draw_list.vertices.backing = allocator
+
+	shape_cache.storage.backing = allocator
+	LRU_reload( & shape_cache.state, allocator )
 }
 
 // ve_foncache_shutdown
@@ -735,6 +739,8 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 {
 	assert( ctx != nil )
 	assert( font >= 0 && font < FontID(ctx.entries.num) )
+
+	context.allocator = ctx.backing
 
 	atlas := ctx.atlas
 
