@@ -41,7 +41,7 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) 
 	{
 		case .A:
 			width  = f32(atlas.region_a.width)
-			height = f32(atlas.region_b.height)
+			height = f32(atlas.region_a.height)
 
 			position.x = cast(f32) (( local_idx % atlas.region_a.capacity.x ) * i32(atlas.region_a.width))
 			position.y = cast(f32) (( local_idx / atlas.region_a.capacity.x ) * i32(atlas.region_a.height))
@@ -123,7 +123,7 @@ can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^E
 	return true
 }
 
-decide_codepoint_region :: #force_inline proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph
+decide_codepoint_region :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph
 ) -> (region_kind : AtlasRegionKind, region : ^AtlasRegion, over_sample : Vec2)
 {
 	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) {
@@ -131,14 +131,16 @@ decide_codepoint_region :: #force_inline proc( ctx : ^Context, entry : ^Entry, g
 	}
 
 	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
-	bounds_width  := bounds_1.x - bounds_0.x
-	bounds_height := bounds_1.y - bounds_0.y
+	bounds_width  := f32(bounds_1.x - bounds_0.x)
+	bounds_height := f32(bounds_1.y - bounds_0.y)
 
 	atlas        := & ctx.atlas
 	glyph_buffer := & ctx.glyph_buffer
 
-	bounds_width_scaled  := cast(u32) (f32(bounds_width)  * entry.size_scale + 2.0 * f32(atlas.glyph_padding))
-	bounds_height_scaled := cast(u32) (f32(bounds_height) * entry.size_scale + 2.0 * f32(atlas.glyph_padding))
+	glyph_padding := f32(atlas.glyph_padding) * 2
+
+	bounds_width_scaled  := cast(u32) (bounds_width  * entry.size_scale + glyph_padding)
+	bounds_height_scaled := cast(u32) (bounds_height * entry.size_scale + glyph_padding)
 
 	if bounds_width_scaled <= atlas.region_a.width && bounds_height_scaled <= atlas.region_a.height
 	{

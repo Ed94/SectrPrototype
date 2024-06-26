@@ -6,8 +6,6 @@ Its original purpose was for use in game engines, however its rendeirng quality 
 
 TODO (Making it a more idiomatic library):
 
-* Use Odin's builtin dynamic arrays
-* Use Odin's builtin map type
 * Setup freetype, harfbuzz, depedency management within the library
 
 TODO Documentation:

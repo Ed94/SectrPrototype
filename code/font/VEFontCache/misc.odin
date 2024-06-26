@@ -30,10 +30,10 @@ shape_lru_hash :: #force_inline proc "contextless" ( label : string ) -> u64 {
 // ve_fontcache_eval_bezier (quadratic)
 eval_point_on_bezier3 :: #force_inline proc "contextless" ( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
 {
-	// p0    := vec2_64_from_vec2(p0)
-	// p1    := vec2_64_from_vec2(p1)
-	// p2    := vec2_64_from_vec2(p2)
-	// alpha := f64(alpha)
+	p0    := vec2_64(p0)
+	p1    := vec2_64(p1)
+	p2    := vec2_64(p2)
+	alpha := f64(alpha)
 
 	weight_start   := (1 - alpha) * (1 - alpha)
 	weight_control := 2.0 * (1 - alpha) * alpha
@@ -52,11 +52,11 @@ eval_point_on_bezier3 :: #force_inline proc "contextless" ( p0, p1, p2 : Vec2, a
 // ve_fontcache_eval_bezier (cubic)
 eval_point_on_bezier4 :: #force_inline proc "contextless" ( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
 {
-	// p0    := vec2_64_from_vec2(p0)
-	// p1    := vec2_64_from_vec2(p1)
-	// p2    := vec2_64_from_vec2(p2)
-	// p3    := vec2_64_from_vec2(p3)
-	// alpha := f64(alpha)
+	p0    := vec2_64(p0)
+	p1    := vec2_64(p1)
+	p2    := vec2_64(p2)
+	p3    := vec2_64(p3)
+	alpha := f64(alpha)
 
 	weight_start := (1 - alpha) * (1 - alpha) * (1 - alpha)
 	weight_c_a   := 3 * (1 - alpha) * (1 - alpha) * alpha
@@ -91,7 +91,7 @@ reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
 }
 
 screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, width, height : f32 ) {
-	when false
+	when true
 	{
 		pos_64   := vec2_64_from_vec2(position^)
 		scale_64 := vec2_64_from_vec2(scale^)
@@ -108,15 +108,13 @@ screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2
 	else
 	{
 		quotient : Vec2 = 1.0 / { width, height }
-		pos   := position^  * quotient * 2.0 - 1.0
-		s     := scale^     * quotient * 2.0
-		(position^) = { f32(pos.x), f32(pos.y) }
-		(scale^)    = { f32(s.x), f32(s.y) }
+		(position^) *= quotient * 2.0 - 1.0
+		(scale^)    *= quotient * 2.0
 	}
 }
 
 textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, width, height : f32 ) {
-	when false
+	when true
 	{
 		pos_64   := vec2_64_from_vec2(position^)
 		scale_64 := vec2_64_from_vec2(scale^)
@@ -132,13 +130,8 @@ textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, 
 	}
 	else
 	{
-		pos := position^
-		s   := scale^
-
 		quotient    : Vec2 = 1.0 / { width, height }
-		pos *= quotient
-		s   *= quotient
-		(position^) = { f32(pos.x), f32(pos.y) }
-		(scale^)    = { f32(s.x), f32(s.y) }
+		(position^) *= quotient
+		(scale^)    *= quotient
 	}
 }

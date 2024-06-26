@@ -62,6 +62,7 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, en
 	return & shape_cache.storage[ shape_cache_idx ]
 }
 
+// TODO(Ed): Make position rounding an option
 shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, entry : ^Entry, output : ^ShapedText )
 {
 	// profile(#procedure)
@@ -105,7 +106,7 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, 
 			{
 				position.x  = 0.0
 				position.y -= (ascent - descent + line_gap) * entry.size_scale
-				position.y  = cast(f32) i32( position.y + 0.5 )
+				position.y  = ceil(position.y)
 				prev_codepoint = rune(0)
 				continue
 			}
@@ -116,11 +117,11 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, 
 			append( & output.glyphs, parser_find_glyph_index( & entry.parser_info, codepoint ))
 			advance, to_left_side_glyph = parser_get_codepoint_horizontal_metrics( & entry.parser_info, codepoint )
 
-			// append( & output.positions, Vec2 {
-			// 	cast(f32) i32(position.x + 0.5),
-			// 	position.y
-			// })
-			append( & output.positions, position )
+			append( & output.positions, Vec2 {
+				ceil(position.x),
+				position.y
+			})
+			// append( & output.positions, position )
 
 			position.x    += f32(advance) * entry.size_scale
 			prev_codepoint = codepoint

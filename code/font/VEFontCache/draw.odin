@@ -224,7 +224,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	region      : ^AtlasRegion,
 	over_sample : Vec2 )
 {
-	// profile(#procedure)
+	profile(#procedure)
 
 	// Get hb_font text metrics. These are unscaled!
 	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
@@ -283,8 +283,8 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	glyph_draw_translate.y  = cast(f32) (i32(glyph_draw_translate.y + 0.9999999))
 
 	// Allocate a glyph_update_FBO region
-	gwidth_scaled_px := i32( bounds_width * glyph_draw_scale.x + 1.0 ) + i32(over_sample.x * glyph_padding)
-  if i32(glyph_buffer.batch_x + gwidth_scaled_px) >= i32(glyph_buffer.width) {
+	gwidth_scaled_px := bounds_width * glyph_draw_scale.x + 1.0 + over_sample.x * glyph_padding
+  if i32(f32(glyph_buffer.batch_x) + gwidth_scaled_px) >= i32(glyph_buffer.width) {
 		flush_glyph_buffer_to_atlas( ctx )
 	}
 
@@ -311,7 +311,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 
 	// Advance glyph_update_batch_x and calculate final glyph drawing transform
 	glyph_draw_translate.x += f32(glyph_buffer.batch_x)
-	glyph_buffer.batch_x   += gwidth_scaled_px
+	glyph_buffer.batch_x   += i32(gwidth_scaled_px)
 	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, glyph_buffer_width, glyph_buffer_height )
 
 	call : DrawCall
@@ -524,7 +524,7 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 		append( & draw_list.vertices, vertex )
 	}
 
-	for index : u32 = 1; index < u32(len(path)); index += 1 {
+	for index : u32 = 1; index < cast(u32) len(path); index += 1 {
 		indices := & draw_list.indices
 		append( indices, outside_vertex )
 		append( indices, v_offset + index - 1 )
@@ -577,7 +577,7 @@ draw_text_shape :: proc( ctx : ^Context,
 	// position := position //+ ctx.cursor_pos * scale
 	// profile(#procedure)
 	batch_start_idx : i32 = 0
-	for index : i32 = 0; index < i32(len(shaped.glyphs)); index += 1
+	for index : i32 = 0; index < cast(i32) len(shaped.glyphs); index += 1
 	{
 		glyph_index := shaped.glyphs[ index ]
 		if is_empty( ctx, entry, glyph_index ) do continue
@@ -602,7 +602,7 @@ draw_text_shape :: proc( ctx : ^Context,
 	}
 
 	// flush_glyph_buffer_to_atlas(ctx)
-	draw_text_batch( ctx, entry, shaped, batch_start_idx, i32(len(shaped.glyphs)), position, scale, snap_width , snap_height )
+	draw_text_batch( ctx, entry, shaped, batch_start_idx, cast(i32) len(shaped.glyphs), position, scale, snap_width , snap_height )
 	reset_batch_codepoint_state( ctx )
 	cursor_pos = shaped.end_cursor_pos
 	return

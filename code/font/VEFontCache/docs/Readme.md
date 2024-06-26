@@ -70,4 +70,6 @@ Will update the draw list layer with the latest offset based on the current leng
 
 Provides a Vec2 the width and height occupied by the provided text string. The y is measured to be the the largest glyph box bounds height of the text. The width is derived from the `end_cursor_pos` field from a `ShapedText` entry.
 
+## get_font_vertical_metrics
 
+A wrapper for `parser_get_font_vertical_metrics`. Will provide the ascent, descent, and line_gap for a font entry.
