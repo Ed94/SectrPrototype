@@ -50,6 +50,7 @@ import fmt_io "core:fmt"
 	str_tmp_from_any :: fmt_io.tprint
 
 import "core:math"
+	ceil_f32 :: math.ceil_f32
 
 import "core:mem"
 	align_forward_int       :: mem.align_forward_int

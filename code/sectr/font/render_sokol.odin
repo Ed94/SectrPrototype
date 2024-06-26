@@ -142,8 +142,8 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		glyph_rt_color = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
 			render_target = true,
-			width         = i32(ve_ctx.atlas.buffer_width),
-			height        = i32(ve_ctx.atlas.buffer_height),
+			width         = i32(ve_ctx.glyph_buffer.width),
+			height        = i32(ve_ctx.glyph_buffer.height),
 			num_slices    = 1,
 			num_mipmaps   = 1,
 			usage         = .IMMUTABLE,
@@ -157,8 +157,8 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		glyph_rt_depth = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
 			render_target = true,
-			width         = i32(ve_ctx.atlas.buffer_width),
-			height        = i32(ve_ctx.atlas.buffer_height),
+			width         = i32(ve_ctx.glyph_buffer.width),
+			height        = i32(ve_ctx.glyph_buffer.height),
 			num_slices    = 1,
 			num_mipmaps   = 1,
 			usage         = .IMMUTABLE,

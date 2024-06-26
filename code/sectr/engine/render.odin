@@ -57,7 +57,8 @@ render_mode_2d_workspace :: proc( screen_extent : Vec2, cam : Camera, input : In
 	screen_size    := screen_extent * 2
 
 	// TODO(Ed): Eventually will be the viewport extents
-	ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
+	// ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
+	ve.configure_snap( ve_ctx, 0, 0 )
 
 	Render_Debug:
 	{
@@ -256,7 +257,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 		}
 
 		if true {
-			// state.config.font_size_canvas_scalar = 1
+			state.config.font_size_canvas_scalar = 1
 			zoom_adjust_size := 16 * state.project.workspace.cam.zoom
 			over_sample      := zoom_adjust_size < 12 ? 1.0 : f32(state.config.font_size_canvas_scalar)
 			debug_text("font_size_canvas_scalar: %v", config.font_size_canvas_scalar)
@@ -323,8 +324,8 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 					continue
 				}
 
-				width  := ve_ctx.atlas.buffer_width
-				height := ve_ctx.atlas.buffer_height
+				width  := ve_ctx.glyph_buffer.width
+				height := ve_ctx.glyph_buffer.height
 
 				pass := glyph_pass
 				if draw_call.clear_before_draw {
