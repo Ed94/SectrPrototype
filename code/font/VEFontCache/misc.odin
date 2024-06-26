@@ -72,6 +72,19 @@ eval_point_on_bezier4 :: #force_inline proc "contextless" ( p0, p1, p2, p3 : Vec
 	return { f32(point.x), f32(point.y) }
 }
 
+is_empty :: #force_inline proc ( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
+{
+	if glyph_index == 0 do return true
+	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
+	return false
+}
+
+mark_batch_codepoint_seen :: #force_inline proc ( ctx : ^Context, lru_code : u64 )
+{
+	ctx.temp_codepoint_seen[lru_code] = true
+	ctx.temp_codepoint_seen_num += 1
+}
+
 reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
 	clear_map( & ctx.temp_codepoint_seen )
 	ctx.temp_codepoint_seen_num = 0

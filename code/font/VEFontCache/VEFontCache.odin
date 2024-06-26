@@ -28,11 +28,6 @@ vec2_64_from_vec2 :: #force_inline proc( v2     : Vec2 ) -> Vec2_64 { return { f
 FontID  :: distinct i64
 Glyph   :: distinct i32
 
-Vertex :: struct {
-	pos  : Vec2,
-	u, v : f32,
-}
-
 Entry :: struct {
 	parser_info : ParserFontInfo,
 	shaper_info : ShaperInfo,
@@ -67,6 +62,14 @@ Context :: struct {
 
 	colour     : Colour,
 	cursor_pos : Vec2,
+
+	// draw_cursor_pos : Vec2,
+
+	draw_layer : struct {
+		vertices_offset : int,
+		indices_offset  : int,
+		calls_offset    : int,
+	},
 
 	draw_list   : DrawList,
 	atlas       : Atlas,
@@ -130,7 +133,6 @@ InitGlyphDrawParams_Default :: InitGlyphDrawParams {
 	over_sample   = { 4, 4 },
 	buffer_batch  = 4,
 	draw_padding  = InitAtlasParams_Default.glyph_padding,
-	// draw_padding  = InitAtlasParams_Default.glyph_padding,
 }
 
 InitShapeCacheParams :: struct {
@@ -139,12 +141,12 @@ InitShapeCacheParams :: struct {
 }
 
 InitShapeCacheParams_Default :: InitShapeCacheParams {
-	capacity       = 256,
-	reserve_length = 64,
+	capacity       = 1024,
+	reserve_length = 1024,
 }
 
 // ve_fontcache_init
-init :: proc( ctx : ^Context, parser_kind : ParserKind,
+startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 	allocator                   := context.allocator,
 	atlas_params                := InitAtlasParams_Default,
 	glyph_draw_params           := InitGlyphDrawParams_Default,
@@ -272,9 +274,9 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 
 hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 {
+	assert( ctx != nil )
 	ctx.backing       = allocator
 	context.allocator = ctx.backing
-
 	using ctx
 
 	reload_array( & entries, allocator )
@@ -323,15 +325,8 @@ shutdown :: proc( ctx : ^Context )
 	}
 
 	shaper_shutdown( & shaper_ctx )
-}
 
-#endregion("lifetime")
-
-// ve_fontcache_configure_snap
-configure_snap :: #force_inline proc( ctx : ^Context, snap_width, snap_height : u32 ) {
-	assert( ctx != nil )
-	ctx.snap_width  = snap_width
-	ctx.snap_height = snap_height
+	// TODO(Ed): Finish implementing, there is quite a few resource not released here.
 }
 
 // ve_fontcache_load
@@ -395,259 +390,175 @@ unload_font :: proc( ctx : ^Context, font : FontID )
 	shaper_unload_font( & entry.shaper_info )
 }
 
-cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, translate : Vec2  ) -> b32
-{
-	// profile(#procedure)
+#endregion("lifetime")
+
+#region("drawing")
+
+// ve_fontcache_configure_snap
+configure_snap :: #force_inline proc( ctx : ^Context, snap_width, snap_height : u32 ) {
 	assert( ctx != nil )
-	assert( font >= 0 && int(font) < len(ctx.entries) )
-	entry := & ctx.entries[ font ]
-	if glyph_index == Glyph(0) {
-		// Note(Original Author): Glyph not in current hb_font
-		return false
-	}
-
-	// No shpae to retrieve
-	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
-
-	// Retrieve the shape definition from the parser.
-	shape, error := parser_get_glyph_shape( & entry.parser_info, glyph_index )
-	assert( error == .None )
-	if len(shape) == 0 {
-		return false
-	}
-
-	if ctx.debug_print_verbose
-	{
-		log( "shape:")
-		for vertex in shape
-		{
-			if vertex.type == .Move {
-				logf("move_to %d %d", vertex.x, vertex.y )
-			}
-			else if vertex.type == .Line {
-				logf("line_to %d %d", vertex.x, vertex.y )
-			}
-			else if vertex.type == .Curve {
-				logf("curve_to %d %d through %d %d", vertex.x, vertex.y, vertex.contour_x0, vertex.contour_y0 )
-			}
-			else if vertex.type == .Cubic {
-				logf("cubic_to %d %d through %d %d and %d %d",
-					vertex.x, vertex.y,
-					vertex.contour_x0, vertex.contour_y0,
-					vertex.contour_x1, vertex.contour_y1 )
-			}
-		}
-	}
-
-	/*
-	Note(Original Author):
-	We need a random point that is outside our shape. We simply pick something diagonally across from top-left bound corner.
-	Note that this outside point is scaled alongside the glyph in ve_fontcache_draw_filled_path, so we don't need to handle that here.
-	*/
-	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
-
-	outside := Vec2 {
-		f32(bounds_0.x) - 21,
-		f32(bounds_0.y) - 33,
-	}
-
-	// Note(Original Author): Figure out scaling so it fits within our box.
-	draw := DrawCall_Default
-	draw.pass        = FrameBufferPass.Glyph
-	draw.start_index = u32(len(ctx.draw_list.indices))
-
-	// Note(Original Author);
-	// Draw the path using simplified version of https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac.
-	// Instead of involving fragment shader code we simply make use of modern GPU ability to crunch triangles and brute force curve definitions.
-	path := ctx.temp_path
-	clear( & path)
-	for edge in shape	do switch edge.type
-	{
-		case .Move:
-			if len(path) > 0 {
-				draw_filled_path( & ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose )
-			}
-			clear( & path)
-			fallthrough
-
-		case .Line:
-			append_elem( & path, Vec2{ f32(edge.x), f32(edge.y) })
-
-		case .Curve:
-			assert( len(path) > 0 )
-			p0 := path[ len(path) - 1 ]
-			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
-			p2 := Vec2{ f32(edge.x), f32(edge.y) }
-
-			step  := 1.0 / f32(ctx.curve_quality)
-			alpha := step
-			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
-				append_elem( & path, eval_point_on_bezier3( p0, p1, p2, alpha ))
-				alpha += step
-			}
-
-		case .Cubic:
-			assert( len(path) > 0 )
-			p0 := path[ len(path) - 1]
-			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
-			p2 := Vec2{ f32(edge.contour_x1), f32(edge.contour_y1) }
-			p3 := Vec2{ f32(edge.x), f32(edge.y) }
-
-			step  := 1.0 / f32(ctx.curve_quality)
-			alpha := step
-			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
-				append_elem( & path, eval_point_on_bezier4( p0, p1, p2, p3, alpha ))
-				alpha += step
-			}
-
-		case .None:
-			assert(false, "Unknown edge type or invalid")
-	}
-	if len(path) > 0 {
-		draw_filled_path( & ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose )
-	}
-
-	// Note(Original Author): Apend the draw call
-	draw.end_index = cast(u32) len(ctx.draw_list.indices)
-	if draw.end_index > draw.start_index {
-		append(& ctx.draw_list.calls, draw)
-	}
-
-	parser_free_shape( & entry.parser_info, shape )
-	return true
-}
-
-cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph )
-{
-	// profile(#procedure)
-	assert( ctx != nil )
-	assert( font >= 0 && int(font) < len(ctx.entries) )
-	entry := & ctx.entries[ font ]
-
-	if glyph_index == 0 do return
-	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return
-
-	// Get hb_font text metrics. These are unscaled!
-	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
-	bounds_width  := f32(bounds_1.x - bounds_0.x)
-	bounds_height := f32(bounds_1.y - bounds_0.y)
-
-	region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
-
-	// E region is special case and not cached to atlas.
-	if region_kind == .None || region_kind == .E do return
-
-	// Grab an atlas LRU cache slot.
-	lru_code    := font_glyph_lru_code( font, glyph_index )
-	atlas_index := LRU_get( & region.state, lru_code )
-	if atlas_index == -1
-	{
-		if region.next_idx < region.state.capacity
-		{
-			evicted         := LRU_put( & region.state, lru_code, i32(region.next_idx) )
-			atlas_index      = i32(region.next_idx)
-			region.next_idx += 1
-			assert( evicted == lru_code )
-		}
-		else
-		{
-			next_evict_codepoint := LRU_get_next_evicted( & region.state )
-			assert( next_evict_codepoint != 0xFFFFFFFFFFFFFFFF )
-
-			atlas_index = LRU_peek( & region.state, next_evict_codepoint, must_find = true )
-			assert( atlas_index != -1 )
-
-			evicted := LRU_put( & region.state, lru_code, atlas_index )
-			assert( evicted == next_evict_codepoint )
-		}
-
-		assert( LRU_get( & region.state, lru_code ) != - 1 )
-	}
-
-	atlas               := & ctx.atlas
-	atlas_width         := f32(atlas.width)
-	atlas_height        := f32(atlas.height)
-	glyph_buffer_width  := f32(atlas.buffer_width)
-	glyph_buffer_height := f32(atlas.buffer_height)
-	glyph_padding       := cast(f32) atlas.glyph_padding
-
-	if ctx.debug_print
-	{
-		@static debug_total_cached : i32 = 0
-		logf("glyph %v%v( %v ) caching to atlas region %v at idx %d. %d total glyphs cached.\n", i32(glyph_index), rune(glyph_index), cast(rune) region_kind, atlas_index, debug_total_cached)
-		debug_total_cached += 1
-	}
-
-	// Draw oversized glyph to update FBO
-	glyph_draw_scale       := over_sample * entry.size_scale
-	glyph_draw_translate   := -1 * Vec2 { f32(bounds_0.x), f32(bounds_0.y) } * glyph_draw_scale + vec2( glyph_padding )
-	glyph_draw_translate.x  = cast(f32) (i32(glyph_draw_translate.x + 0.9999999))
-	glyph_draw_translate.y  = cast(f32) (i32(glyph_draw_translate.y + 0.9999999))
-
-	// Allocate a glyph_update_FBO region
-	gwidth_scaled_px := i32( bounds_width * glyph_draw_scale.x + 1.0 ) + i32(over_sample.x * glyph_padding)
-  if i32(atlas.update_batch_x + gwidth_scaled_px) >= i32(atlas.buffer_width) {
-		flush_glyph_buffer_to_atlas( ctx )
-	}
-
-	// Calculate the src and destination regions
-	dst_position, dst_width, dst_height := atlas_bbox( atlas, region_kind, atlas_index )
-	dst_glyph_position := dst_position
-	dst_glyph_width    := bounds_width  * entry.size_scale
-	dst_glyph_height   := bounds_height * entry.size_scale
-	dst_glyph_width    += glyph_padding
-	dst_glyph_height   += glyph_padding
-
-	dst_size       := Vec2 { dst_width, dst_height }
-	dst_glyph_size := Vec2 { dst_glyph_width, dst_glyph_height }
-	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, atlas_width, atlas_height )
-	screenspace_x_form( & dst_position,       & dst_size,       atlas_width, atlas_height )
-
-	src_position := Vec2 { f32(atlas.update_batch_x), 0 }
-	src_size     := Vec2 {
-		bounds_width  * glyph_draw_scale.x,
-		bounds_height * glyph_draw_scale.y,
-	}
-	src_size += over_sample * glyph_padding
-	textspace_x_form( & src_position, & src_size, glyph_buffer_width, glyph_buffer_height )
-
-	// Advance glyph_update_batch_x and calculate final glyph drawing transform
-	glyph_draw_translate.x += f32(atlas.update_batch_x)
-	atlas.update_batch_x   += gwidth_scaled_px
-	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, glyph_buffer_width, glyph_buffer_height )
-
-	call : DrawCall
-	{
-		// Queue up clear on target region on atlas
-		using call
-		pass        = .Atlas
-		region      = .Ignore
-		start_index = cast(u32) len(atlas.clear_draw_list.indices)
-		blit_quad( & atlas.clear_draw_list, dst_position, dst_position + dst_size, { 1.0, 1.0 }, { 1.0, 1.0 } )
-		end_index = cast(u32) len(atlas.clear_draw_list.indices)
-		append( & atlas.clear_draw_list.calls, call )
-
-		// Queue up a blit from glyph_update_FBO to the atlas
-		region      = .None
-		start_index = cast(u32) len(atlas.draw_list.indices)
-		blit_quad( & atlas.draw_list, dst_glyph_position, dst_position + dst_glyph_size, src_position, src_position + src_size )
-		end_index = cast(u32) len(atlas.draw_list.indices)
-		append( & atlas.draw_list.calls, call )
-	}
-
-	// Render glyph to glyph_update_FBO
-	cache_glyph( ctx, font, glyph_index, glyph_draw_scale, glyph_draw_translate )
+	ctx.snap_width  = snap_width
+	ctx.snap_height = snap_height
 }
 
 get_cursor_pos :: #force_inline proc "contextless" ( ctx : ^Context                  ) -> Vec2 { return ctx.cursor_pos }
 set_colour     :: #force_inline proc "contextless" ( ctx : ^Context, colour : Colour )         { ctx.colour = colour }
 
-is_empty :: #force_inline proc ( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
+// TODO(Ed): Change this to be whitespace aware so that we can optimize the caching of shpaes properly.
+// Right now the entire text provided to this call is considered a "shape" this is really bad as basically it invalidates caching for large chunks of text
+// Instead we should be aware of whitespace tokens and the chunks between them (the whitespace lexer could be abused for this). 
+// From there we should maek a 'draw text shape' that breaks up the batch text draws for each of the shapes.
+draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position : Vec2, scale : Vec2 ) -> b32
 {
-	if glyph_index == 0 do return true
-	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
-	return false
+	// profile(#procedure)
+	assert( ctx != nil )
+	assert( font >= 0 && int(font) < len(ctx.entries) )
+
+	ctx.cursor_pos = {}
+
+	position    := position
+	snap_width  := f32(ctx.snap_width)
+	snap_height := f32(ctx.snap_height)
+	if ctx.snap_width  > 0 do position.x = cast(f32) cast(u32) (position.x * snap_width  + 0.5) / snap_width
+	if ctx.snap_height > 0 do position.y = cast(f32) cast(u32) (position.y * snap_height + 0.5) / snap_height
+
+	entry  := & ctx.entries[ font ]
+
+	last_shaped : ^ShapedText
+
+	ChunkType   :: enum u32 { Visible, Formatting }
+	chunk_kind  : ChunkType
+	chunk_start : int = 0
+	chunk_end   : int = 0
+
+	text_utf8_bytes := transmute([]u8) text_utf8
+	text_chunk      : string
+
+	when true {
+	text_chunk = transmute(string) text_utf8_bytes[ : ]
+	if len(text_chunk) > 0 {
+		shaped := shape_text_cached( ctx, font, text_chunk, entry )
+		ctx.cursor_pos = draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+		last_shaped = shaped
+	}
+	}
+	else {
+	last_byte_offset : int = 0
+	byte_offset      : int = 0
+	for codepoint, offset in text_utf8
+	{
+		Rune_Space           :: ' '
+		Rune_Tab             :: '\t'
+		Rune_Carriage_Return :: '\r'
+		Rune_Line_Feed       :: '\n'
+		// Rune_Tab_Vertical :: '\v'
+
+		byte_offset = offset
+
+		switch codepoint
+		{
+			case Rune_Space: fallthrough
+			case Rune_Tab: fallthrough
+			case Rune_Line_Feed: fallthrough
+			case Rune_Carriage_Return:
+				if chunk_kind == .Formatting {
+					chunk_end        = byte_offset
+					last_byte_offset = byte_offset
+				}
+				else
+				{
+					text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset]
+					if len(text_chunk) > 0 {
+						shaped := shape_text_cached( ctx, font, text_chunk, entry )
+						ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+						last_shaped = shaped
+					}
+
+					chunk_start = byte_offset
+					chunk_end   = chunk_start
+					chunk_kind  = .Formatting
+
+					last_byte_offset = byte_offset
+					continue
+				}
+		}
+
+		// Visible Chunk
+		if chunk_kind == .Visible {
+			chunk_end        = byte_offset
+			last_byte_offset = byte_offset
+		}
+		else
+		{
+			text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset ]
+			if len(text_chunk) > 0 {
+				shaped := shape_text_cached( ctx, font, text_chunk, entry )
+				ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+				last_shaped = shaped
+			}
+
+			chunk_start = byte_offset
+			chunk_end   = chunk_start
+			chunk_kind  = .Visible
+
+			last_byte_offset = byte_offset
+		}
+	}
+
+	text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset ]
+	if len(text_chunk) > 0 {
+		shaped := shape_text_cached( ctx, font, text_chunk, entry )
+		ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+		last_shaped = shaped
+	}
+
+	chunk_start = byte_offset
+	chunk_end   = chunk_start
+	chunk_kind  = .Visible
+
+	last_byte_offset = byte_offset
+	}
+	return true
 }
+
+// ve_fontcache_drawlist
+get_draw_list :: proc( ctx : ^Context, optimize_before_returning := true ) -> ^DrawList {
+	assert( ctx != nil )
+	if optimize_before_returning do optimize_draw_list( & ctx.draw_list, 0 )
+
+	return & ctx.draw_list
+}
+
+get_draw_list_layer :: proc( ctx : ^Context, optimize_before_returning := true ) -> (vertices : []Vertex, indices : []u32, calls : []DrawCall) {
+	assert( ctx != nil )
+	if optimize_before_returning do optimize_draw_list( & ctx.draw_list, ctx.draw_layer.calls_offset )
+	vertices = ctx.draw_list.vertices[ ctx.draw_layer.vertices_offset : ]
+	indices  = ctx.draw_list.indices [ ctx.draw_layer.indices_offset  : ]
+	calls    = ctx.draw_list.calls   [ ctx.draw_layer.calls_offset    : ]
+	return
+}
+
+// ve_fontcache_flush_drawlist
+flush_draw_list :: proc( ctx : ^Context ) {
+	assert( ctx != nil )
+	using ctx
+	clear_draw_list( & draw_list )
+	draw_layer.vertices_offset = 0
+	draw_layer.indices_offset  = 0
+	draw_layer.calls_offset    = 0
+}
+
+flush_draw_list_layer :: proc( ctx : ^Context ) {
+	assert( ctx != nil )
+	using ctx
+	draw_layer.vertices_offset = len(draw_list.vertices)
+	draw_layer.indices_offset  = len(draw_list.indices)
+	draw_layer.calls_offset    = len(draw_list.calls)
+}
+
+#endregion("drawing")
+
+#region("metrics")
 
 measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> (measured : Vec2)
 {
@@ -655,11 +566,9 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
-	context.allocator = ctx.backing
-
 	atlas   := ctx.atlas
-	shaped  := shape_text_cached( ctx, font, text_utf8 )
 	entry   := & ctx.entries[ font ]
+	shaped  := shape_text_cached( ctx, font, text_utf8, entry )
 	padding := cast(f32) atlas.glyph_padding
 
 	for index : i32 = 0; index < i32(len(shaped.glyphs)); index += 1
@@ -676,3 +585,15 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 	measured.x = shaped.end_cursor_pos.x
 	return measured
 }
+
+get_font_vertical_metrics :: #force_inline proc ( ctx : ^Context, font : FontID ) -> ( ascent, descent, line_gap : i32 )
+{
+	assert( ctx != nil )
+	assert( font >= 0 && int(font) < len(ctx.entries) )
+
+	entry  := & ctx.entries[ font ]
+	ascent, descent, line_gap = parser_get_font_vertical_metrics( & entry.parser_info )
+	return
+}
+
+#endregion("metrics")

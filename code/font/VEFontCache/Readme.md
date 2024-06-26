@@ -2,6 +2,8 @@
 
 This is a port of the library base on [fork](https://github.com/hypernewbie/VEFontCache)
 
+Its original purpose was for use in game engines, however its rendeirng quality and performance is more than adequate for many other applications.
+
 TODO (Making it a more idiomatic library):
 
 * Use Odin's builtin dynamic arrays

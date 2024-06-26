@@ -14,22 +14,24 @@ ShapedTextCache :: struct {
 	next_cache_id : i32,
 }
 
-shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> ^ShapedText
+shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, entry : ^Entry ) -> ^ShapedText
 {
 	// profile(#procedure)
 	@static buffer : [64 * Kilobyte]byte
 
-	font := font
+	font            := font
+	text_size       := len(text_utf8)
+	sice_end_offset := size_of(FontID) + len(text_utf8)
 
 	buffer_slice := buffer[:]
 	font_bytes   := slice_ptr( transmute(^byte) & font, size_of(FontID) )
 	copy( buffer_slice, font_bytes )
 
 	text_bytes             := transmute( []byte) text_utf8
-	buffer_slice_post_font := buffer[size_of(FontID) : size_of(FontID) + len(text_utf8) ]
+	buffer_slice_post_font := buffer[ size_of(FontID) : sice_end_offset ]
 	copy( buffer_slice_post_font, text_bytes )
 
-	hash := shape_lru_hash( transmute(string) buffer[: size_of(FontID) + len(text_utf8)] )
+	hash := shape_lru_hash( transmute(string) buffer[: sice_end_offset ] )
 
 	shape_cache := & ctx.shape_cache
 	state       := & ctx.shape_cache.state
@@ -54,20 +56,19 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 			LRU_put( state, hash, shape_cache_idx )
 		}
 
-		shape_text_uncached( ctx, font, & shape_cache.storage[ shape_cache_idx ], text_utf8 )
+		shape_text_uncached( ctx, font, text_utf8, entry, & shape_cache.storage[ shape_cache_idx ] )
 	}
 
 	return & shape_cache.storage[ shape_cache_idx ]
 }
 
-shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText, text_utf8 : string )
+shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, entry : ^Entry, output : ^ShapedText )
 {
 	// profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
 	use_full_text_shape := ctx.text_shape_adv
-	entry := & ctx.entries[ font ]
 
 	clear( & output.glyphs )
 	clear( & output.positions )

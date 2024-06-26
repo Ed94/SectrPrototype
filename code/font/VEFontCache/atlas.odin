@@ -88,25 +88,22 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) 
 	return
 }
 
-can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_index : Glyph ) -> b32
+can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_index : Glyph,
+	lru_code    : u64,
+	atlas_index : i32,
+	region_kind : AtlasRegionKind,
+	region      : ^AtlasRegion,
+	over_sample : Vec2
+) -> b32
 {
 	// profile(#procedure)
-	assert( ctx != nil )
-	assert( entry.id == font )
-
-	// Decide which atlas to target
 	assert( glyph_index != -1 )
-	region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
 
 	// E region can't batch
 	if region_kind == .E || region_kind == .None do return false
 	if ctx.temp_codepoint_seen_num > 1024        do return false
-	// Note(Ed): Why 1024?
+	// TODO(Ed): Why 1024?
 
-	// Is this glyph cached?
-	// lru_code    := u64(glyph_index) + ( ( 0x100000000 * u64(font) ) & 0xFFFFFFFF00000000 )
-	lru_code    := font_glyph_lru_code(font, glyph_index)
-	atlas_index := LRU_get( & region.state, lru_code )
 	if atlas_index == - 1
 	{
 		if region.next_idx > u32( region.state.capacity) {
@@ -120,12 +117,11 @@ can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^E
 			}
 		}
 
-		cache_glyph_to_atlas( ctx, font, glyph_index )
+		cache_glyph_to_atlas( ctx, font, glyph_index, lru_code, atlas_index, entry, region_kind, region, over_sample )
 	}
 
 	assert( LRU_get( & region.state, lru_code ) != -1 )
-	ctx.temp_codepoint_seen[lru_code] = true
-	ctx.temp_codepoint_seen_num += 1
+	mark_batch_codepoint_seen( ctx, lru_code)
 	return true
 }
 
