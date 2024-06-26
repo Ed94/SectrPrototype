@@ -175,7 +175,6 @@ LRU_reload :: #force_inline proc( cache : ^LRU_Cache, allocator : Allocator )
 LRU_hash_key :: #force_inline proc( key : u64 ) -> ( hash : u64 ) {
 	bytes := transmute( [8]byte ) key
 	hash   = fnv64a( bytes[:] )
-	// hash = cast(u64) crc64( bytes[:] )
 	return
 }
 

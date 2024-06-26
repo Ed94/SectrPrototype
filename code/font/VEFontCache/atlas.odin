@@ -33,8 +33,6 @@ Atlas :: struct {
 	region_b : AtlasRegion,
 	region_c : AtlasRegion,
 	region_d : AtlasRegion,
-
-	using glyph_update_batch : GlyphDrawBuffer,
 }
 
 atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) -> (position : Vec2, width, height : f32)
@@ -136,7 +134,8 @@ decide_codepoint_region :: #force_inline proc( ctx : ^Context, entry : ^Entry, g
 	bounds_width  := bounds_1.x - bounds_0.x
 	bounds_height := bounds_1.y - bounds_0.y
 
-	atlas := & ctx.atlas
+	atlas        := & ctx.atlas
+	glyph_buffer := & ctx.glyph_buffer
 
 	bounds_width_scaled  := cast(u32) (f32(bounds_width)  * entry.size_scale + 2.0 * f32(atlas.glyph_padding))
 	bounds_height_scaled := cast(u32) (f32(bounds_height) * entry.size_scale + 2.0 * f32(atlas.glyph_padding))
@@ -165,12 +164,12 @@ decide_codepoint_region :: #force_inline proc( ctx : ^Context, entry : ^Entry, g
 		region_kind = .D
 		region      = & atlas.region_d
 	}
-	else if bounds_width_scaled <= atlas.buffer_width && bounds_height_scaled <= atlas.buffer_height
+	else if bounds_width_scaled <= glyph_buffer.width && bounds_height_scaled <= glyph_buffer.height
 	{
 		// Region 'E' for massive glyphs. These are rendered uncached and un-oversampled.
 		region_kind = .E
 		region      = nil
-		if bounds_width_scaled <= atlas.buffer_width / 2 && bounds_height_scaled <= atlas.buffer_height / 2 {
+		if bounds_width_scaled <= glyph_buffer.width / 2 && bounds_height_scaled <= glyph_buffer.height / 2 {
 			over_sample = { 2.0, 2.0 }
 		}
 		else {
@@ -183,7 +182,7 @@ decide_codepoint_region :: #force_inline proc( ctx : ^Context, entry : ^Entry, g
 		return
 	}
 
-	over_sample = ctx.atlas.over_sample
+	over_sample = glyph_buffer.over_sample
 	assert(region != nil)
 	return
 }

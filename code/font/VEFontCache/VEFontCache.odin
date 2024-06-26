@@ -13,7 +13,6 @@ Changes:
 package VEFontCache
 
 import "base:runtime"
-import "core:mem"
 
 Advance_Snap_Smallfont_Size :: 12
 
@@ -22,8 +21,9 @@ Vec2    :: [2]f32
 Vec2i   :: [2]i32
 Vec2_64 :: [2]f64
 
-vec2_from_scalar  :: #force_inline proc( scalar : f32  ) -> Vec2    { return { scalar, scalar } }
-vec2_64_from_vec2 :: #force_inline proc( v2     : Vec2 ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
+vec2_from_scalar  :: #force_inline proc( scalar : f32   ) -> Vec2    { return { scalar, scalar } }
+vec2_64_from_vec2 :: #force_inline proc( v2     : Vec2  ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
+vec2_from_vec2i   :: #force_inline proc( v2i    : Vec2i ) -> Vec2    { return { f32(v2i.x), f32(v2i.y) }}
 
 FontID  :: distinct i64
 Glyph   :: distinct i32
@@ -71,9 +71,10 @@ Context :: struct {
 		calls_offset    : int,
 	},
 
-	draw_list   : DrawList,
-	atlas       : Atlas,
-	shape_cache : ShapedTextCache,
+	draw_list    : DrawList,
+	atlas        : Atlas,
+	glyph_buffer : GlyphDrawBuffer,
+	shape_cache  : ShapedTextCache,
 
 	curve_quality  : u32,
 	text_shape_adv : b32,
@@ -103,7 +104,7 @@ InitAtlasParams :: struct {
 InitAtlasParams_Default :: InitAtlasParams {
 	width         = 4096,
 	height        = 2048,
-	glyph_padding = 2,
+	glyph_padding = 1,
 
 	region_a = {
 		width  = 32,
@@ -151,7 +152,7 @@ startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 	atlas_params                := InitAtlasParams_Default,
 	glyph_draw_params           := InitGlyphDrawParams_Default,
 	shape_cache_params          := InitShapeCacheParams_Default,
-	curve_quality               : u32 = 6,
+	curve_quality               : u32 = 3,
 	entires_reserve             : u32 = 512,
 	temp_path_reserve           : u32 = 512,
 	temp_codepoint_seen_reserve : u32 = 512,
@@ -164,7 +165,7 @@ startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 	context.allocator = ctx.backing
 
 	if curve_quality == 0 {
-		curve_quality = 6
+		curve_quality = 3
 	}
 	ctx.curve_quality = curve_quality
 
@@ -242,11 +243,11 @@ startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 
 	// Note(From original author): We can actually go over VE_FONTCACHE_GLYPHDRAW_BUFFER_BATCH batches due to smart packing!
 	{
-		using atlas
+		using glyph_buffer
 		over_sample   = glyph_draw_params.over_sample
-		buffer_batch  = glyph_draw_params.buffer_batch
-		buffer_width  = region_d.width  * u32(over_sample.x) * buffer_batch
-		buffer_height = region_d.height * u32(over_sample.y)
+		batch         = glyph_draw_params.buffer_batch
+		width         = atlas.region_d.width  * u32(over_sample.x) * batch
+		height        = atlas.region_d.height * u32(over_sample.y)
 		draw_padding  = glyph_draw_params.draw_padding
 
 		draw_list.calls, error = make( [dynamic]DrawCall, cast(u64) glyph_draw_params.buffer_batch * 2 )
@@ -301,13 +302,13 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 		reload_array( & positions, allocator )
 	}
 
-	reload_array( & atlas.draw_list.calls, allocator )
-	reload_array( & atlas.draw_list.indices, allocator )
-	reload_array( & atlas.draw_list.vertices, allocator )
+	reload_array( & glyph_buffer.draw_list.calls, allocator )
+	reload_array( & glyph_buffer.draw_list.indices, allocator )
+	reload_array( & glyph_buffer.draw_list.vertices, allocator )
 
-	reload_array( & atlas.clear_draw_list.calls, allocator )
-	reload_array( & atlas.clear_draw_list.indices, allocator )
-	reload_array( & atlas.clear_draw_list.vertices, allocator )
+	reload_array( & glyph_buffer.clear_draw_list.calls, allocator )
+	reload_array( & glyph_buffer.clear_draw_list.indices, allocator )
+	reload_array( & glyph_buffer.clear_draw_list.vertices, allocator )
 
 	reload_array( & shape_cache.storage, allocator )
 	LRU_reload( & shape_cache.state, allocator )
@@ -358,7 +359,7 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 		// assert( parser_info != nil, "VEFontCache.load_font: Failed to load font info from parser" )
 
 		size = size_px
-		size_scale = size_px < 0.0 ?                             \
+		size_scale = size_px < 0.0 ?                               \
 			parser_scale_for_pixel_height( & parser_info, -size_px ) \
 		: parser_scale_for_mapping_em_to_pixels( & parser_info, size_px )
 		// size_scale = 1.0
@@ -404,10 +405,6 @@ configure_snap :: #force_inline proc( ctx : ^Context, snap_width, snap_height : 
 get_cursor_pos :: #force_inline proc "contextless" ( ctx : ^Context                  ) -> Vec2 { return ctx.cursor_pos }
 set_colour     :: #force_inline proc "contextless" ( ctx : ^Context, colour : Colour )         { ctx.colour = colour }
 
-// TODO(Ed): Change this to be whitespace aware so that we can optimize the caching of shpaes properly.
-// Right now the entire text provided to this call is considered a "shape" this is really bad as basically it invalidates caching for large chunks of text
-// Instead we should be aware of whitespace tokens and the chunks between them (the whitespace lexer could be abused for this). 
-// From there we should maek a 'draw text shape' that breaks up the batch text draws for each of the shapes.
 draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position : Vec2, scale : Vec2 ) -> b32
 {
 	// profile(#procedure)
@@ -424,8 +421,6 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 
 	entry  := & ctx.entries[ font ]
 
-	last_shaped : ^ShapedText
-
 	ChunkType   :: enum u32 { Visible, Formatting }
 	chunk_kind  : ChunkType
 	chunk_start : int = 0
@@ -434,91 +429,91 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 	text_utf8_bytes := transmute([]u8) text_utf8
 	text_chunk      : string
 
-	when true {
-	text_chunk = transmute(string) text_utf8_bytes[ : ]
-	if len(text_chunk) > 0 {
-		shaped := shape_text_cached( ctx, font, text_chunk, entry )
-		ctx.cursor_pos = draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
-		last_shaped = shaped
-	}
-	}
-	else {
-	last_byte_offset : int = 0
-	byte_offset      : int = 0
-	for codepoint, offset in text_utf8
+	Text_As_Shape :: true
+	when Text_As_Shape
 	{
-		Rune_Space           :: ' '
-		Rune_Tab             :: '\t'
-		Rune_Carriage_Return :: '\r'
-		Rune_Line_Feed       :: '\n'
-		// Rune_Tab_Vertical :: '\v'
-
-		byte_offset = offset
-
-		switch codepoint
+		text_chunk = transmute(string) text_utf8_bytes[ : ]
+		if len(text_chunk) > 0 {
+			shaped        := shape_text_cached( ctx, font, text_chunk, entry )
+			ctx.cursor_pos = draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+		}
+	}
+	else
+	{
+		last_byte_offset : int = 0
+		byte_offset      : int = 0
+		for codepoint, offset in text_utf8
 		{
-			case Rune_Space: fallthrough
-			case Rune_Tab: fallthrough
-			case Rune_Line_Feed: fallthrough
-			case Rune_Carriage_Return:
-				if chunk_kind == .Formatting {
-					chunk_end        = byte_offset
-					last_byte_offset = byte_offset
-				}
-				else
-				{
-					text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset]
-					if len(text_chunk) > 0 {
-						shaped := shape_text_cached( ctx, font, text_chunk, entry )
-						ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
-						last_shaped = shaped
+			Rune_Space           :: ' '
+			Rune_Tab             :: '\t'
+			Rune_Carriage_Return :: '\r'
+			Rune_Line_Feed       :: '\n'
+			// Rune_Tab_Vertical :: '\v'
+
+			byte_offset = offset
+
+			switch codepoint
+			{
+				case Rune_Space: fallthrough
+				case Rune_Tab: fallthrough
+				case Rune_Line_Feed: fallthrough
+				case Rune_Carriage_Return:
+					if chunk_kind == .Formatting
+					{
+						chunk_end        = byte_offset
+						last_byte_offset = byte_offset
 					}
+					else
+					{
+						text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset]
+						if len(text_chunk) > 0 {
+							shaped         := shape_text_cached( ctx, font, text_chunk, entry )
+							ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+						}
 
-					chunk_start = byte_offset
-					chunk_end   = chunk_start
-					chunk_kind  = .Formatting
+						chunk_start = byte_offset
+						chunk_end   = chunk_start
+						chunk_kind  = .Formatting
 
-					last_byte_offset = byte_offset
-					continue
-				}
-		}
-
-		// Visible Chunk
-		if chunk_kind == .Visible {
-			chunk_end        = byte_offset
-			last_byte_offset = byte_offset
-		}
-		else
-		{
-			text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset ]
-			if len(text_chunk) > 0 {
-				shaped := shape_text_cached( ctx, font, text_chunk, entry )
-				ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
-				last_shaped = shaped
+						last_byte_offset = byte_offset
+						continue
+					}
 			}
 
-			chunk_start = byte_offset
-			chunk_end   = chunk_start
-			chunk_kind  = .Visible
+			// Visible Chunk
+			if chunk_kind == .Visible {
+				chunk_end        = byte_offset
+				last_byte_offset = byte_offset
+			}
+			else
+			{
+				text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset ]
+				if len(text_chunk) > 0 {
+					shaped         := shape_text_cached( ctx, font, text_chunk, entry )
+					ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+				}
 
-			last_byte_offset = byte_offset
+				chunk_start = byte_offset
+				chunk_end   = chunk_start
+				chunk_kind  = .Visible
+
+				last_byte_offset = byte_offset
+			}
 		}
+
+		text_chunk = transmute(string) text_utf8_bytes[ chunk_start : ]
+		if len(text_chunk) > 0 {
+			shaped         := shape_text_cached( ctx, font, text_chunk, entry )
+			ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
+		}
+
+		chunk_start = byte_offset
+		chunk_end   = chunk_start
+		chunk_kind  = .Visible
+
+		last_byte_offset = byte_offset
 	}
 
-	text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset ]
-	if len(text_chunk) > 0 {
-		shaped := shape_text_cached( ctx, font, text_chunk, entry )
-		ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
-		last_shaped = shaped
-	}
-
-	chunk_start = byte_offset
-	chunk_end   = chunk_start
-	chunk_kind  = .Visible
-
-	last_byte_offset = byte_offset
-	}
-	
 	return true
 }
 
@@ -526,7 +521,6 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 get_draw_list :: proc( ctx : ^Context, optimize_before_returning := true ) -> ^DrawList {
 	assert( ctx != nil )
 	if optimize_before_returning do optimize_draw_list( & ctx.draw_list, 0 )
-
 	return & ctx.draw_list
 }
 

@@ -4,7 +4,6 @@ Note(Ed): The only reason I didn't directly use harfbuzz is because hamza exists
 */
 
 import "core:c"
-import "core:math"
 import "thirdparty:harfbuzz"
 
 ShaperKind :: enum {
@@ -112,9 +111,9 @@ shaper_shape_from_text :: proc( ctx : ^ShaperContext, info : ^ShaperInfo, output
 				(vertical_position^)  = cast(f32) i32(vertical_position^ + 0.5)
 				continue
 			}
-			if math.abs( size ) <= Advance_Snap_Smallfont_Size
+			if abs( size ) <= Advance_Snap_Smallfont_Size
 			{
-				(position^) = math.ceil( position^ )
+				(position^) = ceil( position^ )
 			}
 
 			append( & output.glyphs, glyph_id )
