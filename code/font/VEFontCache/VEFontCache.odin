@@ -14,7 +14,7 @@ package VEFontCache
 
 import "base:runtime"
 
-Advance_Snap_Smallfont_Size :: 12
+Advance_Snap_Smallfont_Size :: 0
 
 Colour  :: [4]f32
 Vec2    :: [2]f32

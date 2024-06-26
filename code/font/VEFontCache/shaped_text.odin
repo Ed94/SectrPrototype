@@ -116,10 +116,11 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, 
 			append( & output.glyphs, parser_find_glyph_index( & entry.parser_info, codepoint ))
 			advance, to_left_side_glyph = parser_get_codepoint_horizontal_metrics( & entry.parser_info, codepoint )
 
-			append( & output.positions, Vec2 {
-				cast(f32) i32(position.x + 0.5),
-				position.y
-			})
+			// append( & output.positions, Vec2 {
+			// 	cast(f32) i32(position.x + 0.5),
+			// 	position.y
+			// })
+			append( & output.positions, position )
 
 			position.x    += f32(advance) * entry.size_scale
 			prev_codepoint = codepoint
