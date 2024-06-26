@@ -518,6 +518,7 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 
 	last_byte_offset = byte_offset
 	}
+	
 	return true
 }
 

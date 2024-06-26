@@ -9,6 +9,7 @@ That interface is not exposed from this parser but could be added to parser_init
 STB_Truetype has macros for its allocation unfortuantely
 */
 
+import "base:runtime"
 import "core:c"
 import "core:math"
 import stbtt    "vendor:stb/truetype"
@@ -45,7 +46,8 @@ ParserGlyphVertex :: struct {
 	type    : GlyphVertType,
 	padding : u8,
 }
-ParserGlyphShape :: []ParserGlyphVertex
+// A shape can be a dynamic array free_type or an opaque set of data handled by stb_truetype
+ParserGlyphShape :: [dynamic]ParserGlyphVertex
 
 ParserContext :: struct {
 	kind       : ParserKind,
@@ -133,7 +135,7 @@ parser_free_shape :: proc( font : ^ParserFontInfo, shape : ParserGlyphShape )
 	switch font.kind
 	{
 		case .Freetype:
-			delete( array_underlying_slice(shape) )
+			delete(shape)
 
 		case .STB_TrueType:
 			stbtt.FreeShape( & font.stbtt_info, transmute( [^]stbtt.vertex) raw_data(shape) )
@@ -252,7 +254,7 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 				FT_CURVE_TAG_ON    :: 0x01
 				FT_CURVE_TAG_CUBIC :: 0x02
 
-				vertices, error := make( Array(ParserGlyphVertex), 1024 )
+				vertices, error := make( [dynamic]ParserGlyphVertex, 1024 )
 				assert( error == .None )
 
 				// TODO(Ed): This makes freetype second class I guess but VEFontCache doesn't have native support for freetype originally so....
@@ -275,7 +277,7 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 
 						if (tag & FT_CURVE_TAG_ON) != 0
 						{
-							if vertices.num > 0 && !(array_back(vertices).type == .Move )
+							if len(vertices) > 0 && !(vertices[len(vertices) - 1].type == .Move )
 							{
 								// Close the previous contour if needed
 								append(& vertices, ParserGlyphVertex { type = .Line,
@@ -353,16 +355,18 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 					})
 				}
 
-				shape = array_to_slice(vertices)
+				shape = vertices
 			}
 
 		case .STB_TrueType:
 			stb_shape : [^]stbtt.vertex
 			nverts    := stbtt.GetGlyphShape( & font.stbtt_info, cast(i32) glyph_index, & stb_shape )
-			if nverts == 0 || shape == nil {
-				shape = transmute(ParserGlyphShape) stb_shape[0:0]
-			}
-			shape = transmute(ParserGlyphShape) stb_shape[:nverts]
+
+			shape_raw          := transmute( ^runtime.Raw_Dynamic_Array) & shape
+			shape_raw.data      = stb_shape
+			shape_raw.len       = int(nverts)
+			shape_raw.cap       = int(nverts)
+			shape_raw.allocator = runtime.nil_allocator()
 			error = AllocatorError.None
 			return
 	}
