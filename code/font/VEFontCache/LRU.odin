@@ -16,8 +16,8 @@ PoolListItem :: struct {
 }
 
 PoolList :: struct {
-	items     : Array( PoolListItem ),
-	free_list : Array( PoolListIter ),
+	items     : [dynamic]PoolListItem,
+	free_list : [dynamic]PoolListIter,
 	front     : PoolListIter,
 	back      : PoolListIter,
 	size      : u32,
@@ -28,13 +28,13 @@ PoolList :: struct {
 pool_list_init :: proc( pool : ^PoolList, capacity : u32, dbg_name : string = "" )
 {
 	error : AllocatorError
-	pool.items, error = make( Array( PoolListItem ), u64(capacity) )
+	pool.items, error = make( [dynamic]PoolListItem, u64(capacity) )
 	assert( error == .None, "VEFontCache.pool_list_init : Failed to allocate items array")
-	array_resize( & pool.items, u64(capacity) )
+	resize( & pool.items, capacity )
 
-	pool.free_list, error = make( Array( PoolListIter ), u64(capacity) )
+	pool.free_list, error = make( [dynamic]PoolListIter, u64(capacity) )
 	assert( error == .None, "VEFontCache.pool_list_init : Failed to allocate free_list array")
-	array_resize( & pool.free_list, u64(capacity) )
+	resize( & pool.free_list, capacity )
 
 	pool.capacity = capacity
 
@@ -42,8 +42,8 @@ pool_list_init :: proc( pool : ^PoolList, capacity : u32, dbg_name : string = ""
 	using pool
 
 	for id in 0 ..< capacity {
-		free_list.data[id] = i32(id)
-		items.data[id] = {
+		free_list[id] = i32(id)
+		items[id] = {
 			prev = -1,
 			next = -1,
 		}
@@ -60,30 +60,32 @@ pool_list_free :: proc( pool : ^PoolList )
 
 pool_list_reload :: proc( pool : ^PoolList, allocator : Allocator )
 {
-	pool.items.backing     = allocator
-	pool.free_list.backing = allocator
+	reload_array( & pool.items, allocator )
+	reload_array( & pool.free_list, allocator )
 }
 
 pool_list_push_front :: proc( pool : ^PoolList, value : PoolListValue )
 {
 	using pool
 	if size >= capacity do return
-	assert( free_list.num > 0 )
-	assert( free_list.num == u64(capacity - size) )
 
-	id := array_back( free_list )
+	length := len(free_list)
+	assert( length > 0 )
+	assert( length == int(capacity - size) )
+
+	id := free_list[ len(free_list) - 1 ]
 	if pool.dbg_name != "" {
 		logf("pool_list: back %v", id)
 	}
-	array_pop( free_list )
-	items.data[ id ].prev  = -1
-	items.data[ id ].next  = front
-	items.data[ id ].value = value
+	pop( & free_list )
+	items[ id ].prev  = -1
+	items[ id ].next  = front
+	items[ id ].value = value
 	if pool.dbg_name != "" {
 		logf("pool_list: pushed %v into id %v", value, id)
 	}
 
-	if front != -1 do items.data[ front ].prev = id
+	if front != -1 do items[ front ].prev = id
 	if back  == -1 do back = id
 	front  = id
 	size  += 1
@@ -94,14 +96,14 @@ pool_list_erase :: proc( pool : ^PoolList, iter : PoolListIter )
 	using pool
 	if size <= 0 do return
 	assert( iter >= 0 && iter < i32(capacity) )
-	assert( free_list.num == u64(capacity - size) )
+	assert( len(free_list) == int(capacity - size) )
 
-	iter_node := & items.data[ iter ]
+	iter_node := & items[ iter ]
 	prev := iter_node.prev
 	next := iter_node.next
 
-	if iter_node.prev != -1 do items.data[ prev ].next = iter_node.next
-	if iter_node.next != -1 do items.data[ next ].prev = iter_node.prev
+	if iter_node.prev != -1 do items[ prev ].next = iter_node.next
+	if iter_node.next != -1 do items[ next ].prev = iter_node.prev
 
 	if front == iter do front = iter_node.next
 	if back  == iter do back  = iter_node.prev
@@ -121,17 +123,17 @@ pool_list_erase :: proc( pool : ^PoolList, iter : PoolListIter )
 	}
 }
 
-pool_list_peek_back :: #force_inline proc "contextless" ( pool : ^PoolList ) -> PoolListValue {
-	// assert( pool.back != - 1 )
-	value := pool.items.data[ pool.back ].value
+pool_list_peek_back :: #force_inline proc ( pool : ^PoolList ) -> PoolListValue {
+	assert( pool.back != - 1 )
+	value := pool.items[ pool.back ].value
 	return value
 }
 
 pool_list_pop_back :: #force_inline proc( pool : ^PoolList ) -> PoolListValue {
 	if pool.size <= 0 do return 0
-	// assert( pool.back != -1 )
+	assert( pool.back != -1 )
 
-	value := pool.items.data[ pool.back ].value
+	value := pool.items[ pool.back ].value
 	pool_list_erase( pool, pool.back )
 	return value
 }
@@ -198,7 +200,7 @@ LRU_get :: #force_inline proc( cache : ^LRU_Cache, key : u64 ) -> i32 {
 	return iter.value
 }
 
-LRU_get_next_evicted :: #force_inline proc "contextless" ( cache : ^LRU_Cache ) -> u64
+LRU_get_next_evicted :: #force_inline proc ( cache : ^LRU_Cache ) -> u64
 {
 	if cache.key_queue.size >= cache.capacity {
 		evict := pool_list_peek_back( & cache.key_queue )

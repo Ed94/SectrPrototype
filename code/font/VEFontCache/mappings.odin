@@ -89,7 +89,9 @@ append :: proc {
 	grime.array_append_slice,
 	grime.array_append_value,
 
-	// append_elem, append_elems, append_elem_string,
+	append_elem,
+	// append_elems, 
+	// append_elem_string,
 }
 
 append_at :: proc {
@@ -101,6 +103,8 @@ clear :: proc {
 	array_clear,
 	hmap_chained_clear,
 	hmap_zpl_clear,
+
+	clear_dynamic_array,
 }
 
 delete :: proc {
@@ -134,6 +138,8 @@ remove_at :: proc {
 
 resize :: proc {
 	array_resize,
+
+	resize_dynamic_array,
 }
 
 set :: proc {

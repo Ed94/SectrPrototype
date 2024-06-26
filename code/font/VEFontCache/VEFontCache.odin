@@ -58,7 +58,7 @@ Context :: struct {
 
 	entries : [dynamic]Entry,
 
-	temp_path               : Array(Vec2),
+	temp_path               : [dynamic]Vec2,
 	temp_codepoint_seen     : map[u64]bool,
 	temp_codepoint_seen_num : u32,
 
@@ -170,19 +170,19 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 	entries, error = make( [dynamic]Entry, entires_reserve )
 	assert(error == .None, "VEFontCache.init : Failed to allocate entries")
 
-	temp_path, error = make( Array(Vec2), u64(temp_path_reserve) )
+	temp_path, error = make( [dynamic]Vec2, temp_path_reserve )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
 	temp_codepoint_seen, error = make( map[u64]bool, hmap_closest_prime( uint(temp_codepoint_seen_reserve)) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
-	draw_list.vertices, error = make( Array(Vertex), 4 * Kilobyte )
+	draw_list.vertices, error = make( [dynamic]Vertex, 4 * Kilobyte )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.vertices")
 
-	draw_list.indices, error = make( Array(u32), 8 * Kilobyte )
+	draw_list.indices, error = make( [dynamic]u32, 8 * Kilobyte )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.indices")
 
-	draw_list.calls, error = make( Array(DrawCall), 512 )
+	draw_list.calls, error = make( [dynamic]DrawCall, 512 )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.calls")
 
 	init_atlas_region :: proc( region : ^AtlasRegion, params : InitAtlasParams, region_params : InitAtlasRegionParams, factor : Vec2i, expected_cap : i32 ) {
@@ -225,16 +225,16 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 
 	LRU_init( & shape_cache.state, shape_cache_params.capacity )
 
-	shape_cache.storage, error = make( Array(ShapedText), u64(shape_cache_params.capacity) )
+	shape_cache.storage, error = make( [dynamic]ShapedText, shape_cache_params.capacity )
 	assert(error == .None, "VEFontCache.init : Failed to allocate shape_cache.storage")
 
 	for idx : u32 = 0; idx < shape_cache_params.capacity; idx += 1 {
-		stroage_entry := & shape_cache.storage.data[idx]
+		stroage_entry := & shape_cache.storage[idx]
 		using stroage_entry
-		glyphs, error = make( Array(Glyph), cast(u64) shape_cache_params.reserve_length )
+		glyphs, error = make( [dynamic]Glyph, shape_cache_params.reserve_length )
 		assert( error == .None, "VEFontCache.init : Failed to allocate glyphs array for shape cache storage" )
 
-		positions, error = make( Array(Vec2), cast(u64) shape_cache_params.reserve_length )
+		positions, error = make( [dynamic]Vec2, shape_cache_params.reserve_length )
 		assert( error == .None, "VEFontCache.init : Failed to allocate positions array for shape cache storage" )
 	}
 
@@ -247,22 +247,22 @@ init :: proc( ctx : ^Context, parser_kind : ParserKind,
 		buffer_height = region_d.height * u32(over_sample.y)
 		draw_padding  = glyph_draw_params.draw_padding
 
-		draw_list.calls, error = make( Array(DrawCall), cast(u64) glyph_draw_params.buffer_batch * 2 )
+		draw_list.calls, error = make( [dynamic]DrawCall, cast(u64) glyph_draw_params.buffer_batch * 2 )
 		assert( error == .None, "VEFontCache.init : Failed to allocate calls for draw_list" )
 
-		draw_list.indices, error = make( Array(u32), cast(u64) glyph_draw_params.buffer_batch * 2 * 6 )
+		draw_list.indices, error = make( [dynamic]u32, cast(u64) glyph_draw_params.buffer_batch * 2 * 6 )
 		assert( error == .None, "VEFontCache.init : Failed to allocate indices array for draw_list" )
 
-		draw_list.vertices, error = make( Array(Vertex), cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
+		draw_list.vertices, error = make( [dynamic]Vertex, glyph_draw_params.buffer_batch * 2 * 4 )
 		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for draw_list" )
 
-		clear_draw_list.calls, error = make( Array(DrawCall), cast(u64) glyph_draw_params.buffer_batch * 2 )
+		clear_draw_list.calls, error = make( [dynamic]DrawCall, cast(u64) glyph_draw_params.buffer_batch * 2 )
 		assert( error == .None, "VEFontCache.init : Failed to allocate calls for calls for clear_draw_list" )
 
-		clear_draw_list.indices, error = make( Array(u32), cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
+		clear_draw_list.indices, error = make( [dynamic]u32, cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
 		assert( error == .None, "VEFontCache.init : Failed to allocate calls for indices array for clear_draw_list" )
 
-		clear_draw_list.vertices, error = make( Array(Vertex), cast(u64) glyph_draw_params.buffer_batch * 2 * 4 )
+		clear_draw_list.vertices, error = make( [dynamic]Vertex, glyph_draw_params.buffer_batch * 2 * 4 )
 		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for clear_draw_list" )
 	}
 
@@ -277,14 +277,13 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 
 	using ctx
 
-	// entries.backing   = allocator
 	reload_array( & entries, allocator )
-	temp_path.backing = allocator
+	reload_array( & temp_path, allocator )
 	reload_map( & ctx.temp_codepoint_seen, allocator )
 
-	draw_list.vertices.backing  = allocator
-	draw_list.indices.backing   = allocator
-	draw_list.calls.backing     = allocator
+	reload_array( & draw_list.vertices, allocator)
+	reload_array( & draw_list.indices, allocator )
+	reload_array( & draw_list.calls, allocator )
 
 	LRU_reload( & atlas.region_a.state, allocator)
 	LRU_reload( & atlas.region_b.state, allocator)
@@ -292,23 +291,23 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	LRU_reload( & atlas.region_d.state, allocator)
 
 	LRU_reload( & shape_cache.state, allocator )
-	for idx : u32 = 0; idx < u32(shape_cache.storage.capacity); idx += 1 {
-		stroage_entry := & shape_cache.storage.data[idx]
+	for idx : u32 = 0; idx < u32(len(shape_cache.storage)); idx += 1 {
+		stroage_entry := & shape_cache.storage[idx]
 		using stroage_entry
 
-		glyphs.backing    = allocator
-		positions.backing = allocator
+		reload_array( & glyphs, allocator )
+		reload_array( & positions, allocator )
 	}
 
-	atlas.draw_list.calls.backing    = allocator
-	atlas.draw_list.indices.backing  = allocator
-	atlas.draw_list.vertices.backing = allocator
+	reload_array( & atlas.draw_list.calls, allocator )
+	reload_array( & atlas.draw_list.indices, allocator )
+	reload_array( & atlas.draw_list.vertices, allocator )
 
-	atlas.clear_draw_list.calls.backing    = allocator
-	atlas.clear_draw_list.indices.backing  = allocator
-	atlas.clear_draw_list.vertices.backing = allocator
+	reload_array( & atlas.clear_draw_list.calls, allocator )
+	reload_array( & atlas.clear_draw_list.indices, allocator )
+	reload_array( & atlas.clear_draw_list.vertices, allocator )
 
-	shape_cache.storage.backing = allocator
+	reload_array( & shape_cache.storage, allocator )
 	LRU_reload( & shape_cache.state, allocator )
 }
 
@@ -455,42 +454,41 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 	// Note(Original Author): Figure out scaling so it fits within our box.
 	draw := DrawCall_Default
 	draw.pass        = FrameBufferPass.Glyph
-	draw.start_index = u32(ctx.draw_list.indices.num)
+	draw.start_index = u32(len(ctx.draw_list.indices))
 
 	// Note(Original Author);
 	// Draw the path using simplified version of https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac.
 	// Instead of involving fragment shader code we simply make use of modern GPU ability to crunch triangles and brute force curve definitions.
 	path := ctx.temp_path
-	clear(path)
+	clear( & path)
 	for edge in shape	do switch edge.type
 	{
 		case .Move:
-			path_slice := array_to_slice(path)
-			if path.num > 0 {
-				draw_filled_path( & ctx.draw_list, outside, array_to_slice(path), scale, translate, ctx.debug_print_verbose )
+			if len(path) > 0 {
+				draw_filled_path( & ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose )
 			}
-			clear(path)
+			clear( & path)
 			fallthrough
 
 		case .Line:
-			append( & path, Vec2{ f32(edge.x), f32(edge.y) })
+			append_elem( & path, Vec2{ f32(edge.x), f32(edge.y) })
 
 		case .Curve:
-			assert( path.num > 0 )
-			p0 := path.data[ path.num - 1 ]
+			assert( len(path) > 0 )
+			p0 := path[ len(path) - 1 ]
 			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
 			p2 := Vec2{ f32(edge.x), f32(edge.y) }
 
 			step  := 1.0 / f32(ctx.curve_quality)
 			alpha := step
 			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
-				append( & path, eval_point_on_bezier3( p0, p1, p2, alpha ))
+				append_elem( & path, eval_point_on_bezier3( p0, p1, p2, alpha ))
 				alpha += step
 			}
 
 		case .Cubic:
-			assert( path.num > 0 )
-			p0 := path.data[ path.num - 1]
+			assert( len(path) > 0 )
+			p0 := path[ len(path) - 1]
 			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
 			p2 := Vec2{ f32(edge.contour_x1), f32(edge.contour_y1) }
 			p3 := Vec2{ f32(edge.x), f32(edge.y) }
@@ -498,19 +496,19 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, scale, 
 			step  := 1.0 / f32(ctx.curve_quality)
 			alpha := step
 			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
-				append( & path, eval_point_on_bezier4( p0, p1, p2, p3, alpha ))
+				append_elem( & path, eval_point_on_bezier4( p0, p1, p2, p3, alpha ))
 				alpha += step
 			}
 
 		case .None:
 			assert(false, "Unknown edge type or invalid")
 	}
-	if path.num > 0 {
-		draw_filled_path( & ctx.draw_list, outside, array_to_slice(path), scale, translate, ctx.debug_print_verbose )
+	if len(path) > 0 {
+		draw_filled_path( & ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose )
 	}
 
 	// Note(Original Author): Apend the draw call
-	draw.end_index = cast(u32) ctx.draw_list.indices.num
+	draw.end_index = cast(u32) len(ctx.draw_list.indices)
 	if draw.end_index > draw.start_index {
 		append(& ctx.draw_list.calls, draw)
 	}
@@ -624,16 +622,16 @@ cache_glyph_to_atlas :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph
 		using call
 		pass        = .Atlas
 		region      = .Ignore
-		start_index = u32(atlas.clear_draw_list.indices.num)
+		start_index = cast(u32) len(atlas.clear_draw_list.indices)
 		blit_quad( & atlas.clear_draw_list, dst_position, dst_position + dst_size, { 1.0, 1.0 }, { 1.0, 1.0 } )
-		end_index = u32(atlas.clear_draw_list.indices.num)
+		end_index = cast(u32) len(atlas.clear_draw_list.indices)
 		append( & atlas.clear_draw_list.calls, call )
 
 		// Queue up a blit from glyph_update_FBO to the atlas
 		region      = .None
-		start_index = u32(atlas.draw_list.indices.num)
+		start_index = cast(u32) len(atlas.draw_list.indices)
 		blit_quad( & atlas.draw_list, dst_glyph_position, dst_position + dst_glyph_size, src_position, src_position + src_size )
-		end_index = u32(atlas.draw_list.indices.num)
+		end_index = cast(u32) len(atlas.draw_list.indices)
 		append( & atlas.draw_list.calls, call )
 	}
 
@@ -664,9 +662,9 @@ measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 	entry   := & ctx.entries[ font ]
 	padding := cast(f32) atlas.glyph_padding
 
-	for index : i32 = 0; index < i32(shaped.glyphs.num); index += 1
+	for index : i32 = 0; index < i32(len(shaped.glyphs)); index += 1
 	{
-		glyph_index := shaped.glyphs.data[ index ]
+		glyph_index := shaped.glyphs[ index ]
 		if is_empty( ctx, entry, glyph_index ) do continue
 
 		bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )

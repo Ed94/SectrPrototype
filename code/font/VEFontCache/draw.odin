@@ -21,9 +21,9 @@ DrawCall_Default :: DrawCall {
 }
 
 DrawList :: struct {
-	vertices : Array(Vertex),
-	indices  : Array(u32),
-	calls    : Array(DrawCall),
+	vertices : [dynamic]Vertex,
+	indices  : [dynamic]u32,
+	calls    : [dynamic]DrawCall,
 }
 
 FrameBufferPass :: enum u32 {
@@ -51,31 +51,31 @@ blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}
 	// profile(#procedure)
 	// logf("Blitting: xy0: %0.2f, %0.2f xy1: %0.2f, %0.2f uv0: %0.2f, %0.2f uv1: %0.2f, %0.2f",
 		// p0.x, p0.y, p1.x, p1.y, uv0.x, uv0.y, uv1.x, uv1.y);
-	v_offset := cast(u32) draw_list.vertices.num
+	v_offset := cast(u32) len(draw_list.vertices)
 
 	vertex := Vertex {
 		{p0.x, p0.y},
 		uv0.x, uv0.y
 	}
-	append( & draw_list.vertices, vertex )
+	append_elem( & draw_list.vertices, vertex )
 
 	vertex = Vertex {
 		{p0.x, p1.y},
 		uv0.x, uv1.y
 	}
-	append( & draw_list.vertices, vertex )
+	append_elem( & draw_list.vertices, vertex )
 
 	vertex = Vertex {
 		{p1.x, p0.y},
 		uv1.x, uv0.y
 	}
-	append( & draw_list.vertices, vertex )
+	append_elem( & draw_list.vertices, vertex )
 
 	vertex = Vertex {
 		{p1.x, p1.y},
 		uv1.x, uv1.y
 	}
-	append( & draw_list.vertices, vertex )
+	append_elem( & draw_list.vertices, vertex )
 
 	quad_indices : []u32 = {
 		0, 1, 2,
@@ -91,9 +91,9 @@ blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}
 
 // ve_fontcache_clear_drawlist
 clear_draw_list :: #force_inline proc ( draw_list : ^DrawList ) {
-	clear( draw_list.calls )
-	clear( draw_list.indices )
-	clear( draw_list.vertices )
+	clear( & draw_list.calls )
+	clear( & draw_list.indices )
+	clear( & draw_list.vertices )
 }
 
 directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Glyph, bounds_0 : Vec2i, bounds_width, bounds_height : i32, over_sample, position, scale : Vec2 )
@@ -140,9 +140,9 @@ directly_draw_massive_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph : Gly
 		using call
 		pass        = .Target_Uncached
 		colour      = ctx.colour
-		start_index = u32(ctx.draw_list.indices.num)
+		start_index = u32(len(ctx.draw_list.indices))
 		blit_quad( & ctx.draw_list, dst, dst + dst_size, glyph_position, glyph_position + glyph_size )
-		end_index   = u32(ctx.draw_list.indices.num)
+		end_index   = u32(len(ctx.draw_list.indices))
 		append( & ctx.draw_list.calls, call )
 	}
 
@@ -222,10 +222,10 @@ draw_cached_glyph :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph, 
 		using call
 		pass        = .Target
 		colour      = ctx.colour
-		start_index = cast(u32) ctx.draw_list.indices.num
+		start_index = cast(u32) len(ctx.draw_list.indices)
 
 		blit_quad( & ctx.draw_list, dst, dst + dst_scale, glyph_atlas_position, glyph_atlas_position + glyph_scale )
-		end_index   = cast(u32) ctx.draw_list.indices.num
+		end_index   = cast(u32) len(ctx.draw_list.indices)
 	}
 	append( & ctx.draw_list.calls, call )
 	return true
@@ -252,7 +252,7 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 		}
 	}
 
-	v_offset := cast(u32) draw_list.vertices.num
+	v_offset := cast(u32) len(draw_list.vertices)
 	for point in path {
 		vertex := Vertex {
 			pos = point * scale + translate,
@@ -262,7 +262,7 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 		append( & draw_list.vertices, vertex )
 	}
 
-	outside_vertex := cast(u32) draw_list.vertices.num
+	outside_vertex := cast(u32) len(draw_list.vertices)
 	{
 		vertex := Vertex {
 			pos = outside_point * scale + translate,
@@ -416,8 +416,8 @@ draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText, b
 	for index := batch_start_idx; index < batch_end_idx; index += 1
 	{
 		// profile(#procedure)
-		glyph_index       := shaped.glyphs.data[ index ]
-		shaped_position   := shaped.positions.data[index]
+		glyph_index       := shaped.glyphs[ index ]
+		shaped_position   := shaped.positions[index]
 		glyph_translate   := position + shaped_position * scale
 		glyph_cached      := draw_cached_glyph( ctx, entry, glyph_index, glyph_translate, scale)
 		assert( glyph_cached == true )
@@ -430,9 +430,9 @@ draw_text_shape :: proc( ctx : ^Context, font : FontID, entry : ^Entry, shaped :
 {
 	// profile(#procedure)
 	batch_start_idx : i32 = 0
-	for index : i32 = 0; index < i32(shaped.glyphs.num); index += 1
+	for index : i32 = 0; index < i32(len(shaped.glyphs)); index += 1
 	{
-		glyph_index := shaped.glyphs.data[ index ]
+		glyph_index := shaped.glyphs[ index ]
 		if is_empty( ctx, entry, glyph_index )              do continue
 		if can_batch_glyph( ctx, font, entry, glyph_index ) do continue
 
@@ -449,7 +449,7 @@ draw_text_shape :: proc( ctx : ^Context, font : FontID, entry : ^Entry, shaped :
 		batch_start_idx = index
 	}
 
-	draw_text_batch( ctx, entry, shaped, batch_start_idx, i32(shaped.glyphs.num), position, scale )
+	draw_text_batch( ctx, entry, shaped, batch_start_idx, i32(len(shaped.glyphs)), position, scale )
 	reset_batch_codepoint_state( ctx )
 	cursor_pos = position + shaped.end_cursor_pos * scale
 	return
@@ -501,22 +501,24 @@ merge_draw_list :: proc( dst, src : ^DrawList )
 	// profile(#procedure)
 	error : AllocatorError
 
-	v_offset := cast(u32) dst.vertices.num
+	v_offset := cast(u32) len( dst.vertices )
 	// for index : u32 = 0; index < cast(u32) src.vertices.num; index += 1 {
 	// 	error = append( & dst.vertices, src.vertices.data[index] )
 	// 	assert( error == .None )
 	// }
-	error = append( & dst.vertices, src.vertices )
+	num_appended : int
+	num_appended, error = append_elems( & dst.vertices, ..src.vertices[:] )
 	assert( error == .None )
 
-	i_offset := cast(u32) dst.indices.num
-	for index : u32 = 0; index < cast(u32) src.indices.num; index += 1 {
-		error = append( & dst.indices, src.indices.data[index] + v_offset )
+	i_offset := cast(u32) len(dst.indices)
+	for index : u32 = 0; index < cast(u32) len(src.indices); index += 1 {
+		ignored : int
+		ignored, error = append( & dst.indices, src.indices[index] + v_offset )
 		assert( error == .None )
 	}
 
-	for index : u32 = 0; index < cast(u32) src.calls.num; index += 1 {
-		src_call := src.calls.data[ index ]
+	for index : u32 = 0; index < cast(u32) len(src.calls); index += 1 {
+		src_call := src.calls[ index ]
 		src_call.start_index += i_offset
 		src_call.end_index   += i_offset
 		append( & dst.calls, src_call )
@@ -529,14 +531,12 @@ optimize_draw_list :: proc( draw_list : ^DrawList, call_offset : u64 )
 	// profile(#procedure)
 	assert( draw_list != nil )
 
-	calls := array_to_slice(draw_list.calls)
-
 	write_index : u64 = call_offset
-	for index : u64 = 1 + call_offset; index < u64(draw_list.calls.num); index += 1
+	for index : u64 = 1 + call_offset; index < cast(u64) len(draw_list.calls); index += 1
 	{
 		assert( write_index <= index )
-		draw_0 := & draw_list.calls.data[ write_index ]
-		draw_1 := & draw_list.calls.data[ index ]
+		draw_0 := & draw_list.calls[ write_index ]
+		draw_1 := & draw_list.calls[ index ]
 
 		merge : b32 = true
 		if draw_0.pass      != draw_1.pass        do merge = false
@@ -557,11 +557,11 @@ optimize_draw_list :: proc( draw_list : ^DrawList, call_offset : u64 )
 			// logf("can't merge %v : %v %v", draw_0.pass, write_index, index )
 			write_index += 1
 			if write_index != index {
-				draw_2 := & draw_list.calls.data[ write_index ]
+				draw_2 := & draw_list.calls[ write_index ]
 				draw_2^ = draw_1^
 			}
 		}
 	}
 
-	resize( & draw_list.calls, u64(write_index + 1) )
+	resize( & draw_list.calls, write_index + 1 )
 }

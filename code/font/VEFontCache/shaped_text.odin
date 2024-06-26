@@ -3,13 +3,13 @@ package VEFontCache
 import "core:math"
 
 ShapedText :: struct {
-	glyphs         : Array(Glyph),
-	positions      : Array(Vec2),
+	glyphs         : [dynamic]Glyph,
+	positions      : [dynamic]Vec2,
 	end_cursor_pos : Vec2,
 }
 
 ShapedTextCache :: struct {
-	storage       : Array(ShapedText),
+	storage       : [dynamic]ShapedText,
 	state         : LRU_Cache,
 	next_cache_id : i32,
 }
@@ -54,10 +54,10 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -
 			LRU_put( state, hash, shape_cache_idx )
 		}
 
-		shape_text_uncached( ctx, font, & shape_cache.storage.data[ shape_cache_idx ], text_utf8 )
+		shape_text_uncached( ctx, font, & shape_cache.storage[ shape_cache_idx ], text_utf8 )
 	}
 
-	return & shape_cache.storage.data[ shape_cache_idx ]
+	return & shape_cache.storage[ shape_cache_idx ]
 }
 
 shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText, text_utf8 : string )
@@ -69,8 +69,8 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, output : ^ShapedText
 	use_full_text_shape := ctx.text_shape_adv
 	entry := & ctx.entries[ font ]
 
-	clear( output.glyphs )
-	clear( output.positions )
+	clear( & output.glyphs )
+	clear( & output.positions )
 
 	ascent, descent, line_gap := parser_get_font_vertical_metrics( & entry.parser_info )
 
