@@ -43,10 +43,6 @@ poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 	load_project = keyboard.left_control.ended_down && pressed( keyboard.O )
 	save_project = keyboard.left_control.ended_down && pressed( keyboard.S )
 
-	base_replay_bind := keyboard.right_alt.ended_down && pressed( keyboard.L)
-	record_replay     = base_replay_bind &&   keyboard.right_shift.ended_down
-	play_replay       = base_replay_bind && ! keyboard.right_shift.ended_down
-
 	show_debug_text = keyboard.right_alt.ended_down && pressed(keyboard.T)
 	show_mouse_pos  = keyboard.right_alt.ended_down && pressed(keyboard.M)
 
@@ -164,11 +160,11 @@ update :: proc( delta_time : f64 ) -> b32
 			workspace.zoom_target = cam.zoom
 		}
 
-		config.cam_max_zoom = 10
-		config.cam_min_zoom = 0.05
-		config.cam_zoom_sensitivity_digital = 0.05
-		config.cam_zoom_sensitivity_smooth  = 2.0
-		config.cam_zoom_mode = .Smooth
+		// config.cam_max_zoom = 10
+		// config.cam_min_zoom = 0.05
+		// config.cam_zoom_sensitivity_digital = 0.05
+		// config.cam_zoom_sensitivity_smooth  = 2.0
+		// config.cam_zoom_mode = .Smooth
 		switch config.cam_zoom_mode
 		{
 			case .Smooth:

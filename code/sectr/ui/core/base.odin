@@ -515,4 +515,4 @@ ui_view_bounds :: #force_inline proc "contextless" () -> (range : Range2) {
 	// }
 }
 
-ui_context :: #force_inline proc() -> ^UI_State { return get_state().ui_context }
+ui_context :: #force_inline proc "contextless" () -> ^UI_State { return get_state().ui_context }

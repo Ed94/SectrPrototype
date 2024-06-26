@@ -34,8 +34,6 @@ sokol_app_frame_callback :: proc "c" ()
 		// log("sokol_app: Event-based frame callback triggered (detected a resize")
 	// }
 
-	font_provider_reload()
-
 	// sokol_app is the only good reference for a frame-time at this point.
 	sokol_delta_ms := sokol_app.frame_delta()
 	sokol_delta_ns := transmute(Duration) sokol_delta_ms * MS_To_NS

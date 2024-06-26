@@ -24,4 +24,5 @@ context_push :: proc( value : ^($Type) ) {
 
 context_pop :: proc( value : ^($Type) ) {
 	pop( & context_ext().stack )
+	
 }

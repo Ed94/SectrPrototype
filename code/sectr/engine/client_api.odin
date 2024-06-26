@@ -69,7 +69,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// Setup Persistent Slabs & String Cache
 	{
 		// alignment := uint(mem.DEFAULT_ALIGNMENT)
-		alignment := uint(64) // Doing the cache line
+		alignment := uint(16)
 
 		policy_ptr := & default_slab_policy
 		push( policy_ptr, SlabSizeClass {  128 * Kilobyte,   1 * Kilobyte, alignment })
@@ -138,11 +138,11 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		refresh_rate      =    0
 
 		cam_min_zoom                 = 0.10
-		cam_max_zoom                 = 30.0
+		cam_max_zoom                 = 5.0
 		cam_zoom_mode                = .Smooth
 		cam_zoom_smooth_snappiness   = 4.0
-		cam_zoom_sensitivity_digital = 0.2
-		cam_zoom_sensitivity_smooth  = 4.0
+		cam_zoom_sensitivity_digital = 0.05
+		cam_zoom_sensitivity_smooth  = 2.0
 
 		engine_refresh_hz = 0
 
@@ -260,24 +260,24 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// Basic Font Setup
 	if true
 	{
-		font_provider_startup()
-		path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
-		font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 16.0, "RecMonoSemiCasual_Regular" )
+		font_provider_startup( & font_provider_ctx )
+		// path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
+		// font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 16.0, "RecMonoSemiCasual_Regular" )
 
-		path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
-		font_squidgy_slimes = font_load( path_squidgy_slimes, 32.0, "Squidgy_Slime" )
+		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
+		// font_squidgy_slimes = font_load( path_squidgy_slimes, 32.0, "Squidgy_Slime" )
 
 		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
 		font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
 
-		path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
-		font_open_sans  = font_load( path_open_sans, 16.0, "OpenSans" )
+		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
+		// font_open_sans  = font_load( path_open_sans, 16.0, "OpenSans" )
 
-		path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
-		font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
+		// path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
+		// font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
 
-		path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
-		font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
+		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
+		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
 		default_font = font_firacode
 		log( "Default font loaded" )
@@ -328,8 +328,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
 		}
 
-		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
-		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
 		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
@@ -436,7 +436,7 @@ hot_reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_
 		staged_input_events.backing = persistent_slab_allocator()
 	}
 
-	font_provider_reload()
+	font_provider_reload( & font_provider_ctx )
 
 	str_cache_reload( & string_cache, persistent_allocator(), persistent_allocator() )
 	str_cache_set_module_ctx( & string_cache )

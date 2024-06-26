@@ -48,9 +48,9 @@ render :: proc()
 	// Will need to profile how expensive it is for batching with the UI box rendering
 	// since the the text is correlated with the box rendering
 
-	font_provider := & state.font_provider_data
+	font_provider := & state.font_provider_ctx
 	using font_provider
-	// ve_ctx := & font_provider.ve_font_cache
+	// ve_ctx := & font_provider.ve_ctx
 
 	// Triangle Demo
 	if false
@@ -125,14 +125,14 @@ render :: proc()
 		// text_test_str := str_fmt("HELLO VE FONT CACHE!")
 		// text_test_str := str_fmt("C")
 
-		// font_provider := & state.font_provider_data
+		// font_provider := & state.font_provider_ctx
 		fdef := hmap_chained_get( font_cache, default_font.key )
 
 
-		ve.set_colour( & ve_font_cache,  { 1.0, 1.0, 1.0, 1.0 } )
-		ve.configure_snap( & ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
+		ve.set_colour( & ve_ctx,  { 1.0, 1.0, 1.0, 1.0 } )
+		ve.configure_snap( & ve_ctx, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
 
-		ve.draw_text( & ve_font_cache, fdef.ve_id, text_test_str, {0.0, 0.975}, Vec2{1 / width, 1 / height} )
+		ve.draw_text( & ve_ctx, fdef.ve_id, text_test_str, {0.0, 0.975}, Vec2{1 / width, 1 / height} )
 	}
 
 
@@ -144,8 +144,8 @@ render :: proc()
 	{
 		profile("VEFontCache: render frame")
 
-		ve.optimize_draw_list( & ve_font_cache )
-		draw_list := ve.get_draw_list( & ve_font_cache )
+		ve.optimize_draw_list( & ve_ctx )
+		draw_list := ve.get_draw_list( & ve_ctx )
 
 		draw_list_vert_slice  := array_to_slice(draw_list.vertices)
 		draw_list_index_slice := array_to_slice(draw_list.indices)
@@ -169,8 +169,8 @@ render :: proc()
 						continue
 					}
 
-					width  := ve_font_cache.atlas.buffer_width
-					height := ve_font_cache.atlas.buffer_height
+					width  := ve_ctx.atlas.buffer_width
+					height := ve_ctx.atlas.buffer_height
 
 					pass := glyph_pass
 					if draw_call.clear_before_draw {
@@ -205,8 +205,8 @@ render :: proc()
 						continue
 					}
 
-					width  := ve_font_cache.atlas.width
-					height := ve_font_cache.atlas.height
+					width  := ve_ctx.atlas.width
+					height := ve_ctx.atlas.height
 
 					pass := atlas_pass
 					if draw_call.clear_before_draw {
@@ -299,6 +299,6 @@ render :: proc()
 		}
 
 		sokol_gfx.commit()
-		ve.flush_draw_list( & ve_font_cache )
+		ve.flush_draw_list( & ve_ctx )
 	}
 }

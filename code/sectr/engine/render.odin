@@ -40,33 +40,24 @@ render :: proc()
 	}
 	// Workspace and screen rendering passes
 	{
-		render_mode_2d_workspace()
-		render_mode_screenspace()
+		render_mode_2d_workspace( screen_extent, project.workspace.cam, input^, & project.workspace.ui, & font_provider_ctx.ve_ctx, font_provider_ctx.render )
+		render_mode_screenspace( app_window.extent, & screen_ui, & font_provider_ctx.ve_ctx, font_provider_ctx.render, config, & debug )
 	}
 	gp.end()
 	gfx.commit()
-	ve.flush_draw_list( & font_provider_data.ve_font_cache )
-	font_provider_data.vbuf_layer_offset  = 0
-	font_provider_data.ibuf_layer_offset  = 0
-	font_provider_data.calls_layer_offset = 0
+	ve.flush_draw_list( & font_provider_ctx.ve_ctx )
 }
 
 // TODO(Ed): Eventually this needs to become a 'viewport within a UI'
 // This would allow the user to have more than one workspace open at the same time
-render_mode_2d_workspace :: proc()
+render_mode_2d_workspace :: proc( screen_extent : Vec2, cam : Camera, input : InputState, ui : ^UI_State, ve_ctx : ^ve.Context, ve_render : VE_RenderData )
 {
 	profile(#procedure)
-	state  := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
-	cam    := project.workspace.cam
-
-	screen_extent := app_window.extent
-	screen_size   := app_window.extent * 2
-	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
-
 	cam_zoom_ratio := 1.0 / cam.zoom
+	screen_size    := screen_extent * 2
 
 	// TODO(Ed): Eventually will be the viewport extents
-	ve.configure_snap( & font_provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
+	ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
 
 	Render_Debug:
 	{
@@ -111,36 +102,26 @@ render_mode_2d_workspace :: proc()
 	render_set_view_space(screen_extent)
 	render_set_camera(cam)
 
-	ui := & project.workspace.ui
-	ui_context = & project.workspace.ui
-
+	cam := cam
 	when UI_Render_Method == .Layers {
 		render_list := array_to_slice( ui.render_list )
 		render_ui_via_box_list( render_list, & cam )
 	}
 	when UI_Render_Method == .Depth_First
 	{
-		render_ui_via_box_tree( ui.root, & cam )
+		render_ui_via_box_tree( ui.root, screen_extent, ve_ctx, ve_render, & cam )
 	}
-
-	ui_context = nil
 }
 
-render_mode_screenspace :: proc()
+render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State, ve_ctx : ^ve.Context, ve_render : VE_RenderData, config : AppConfig, debug : ^DebugData )
 {
 	profile(#procedure)
-	state := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
-	replay := & Memory_App.replay
-	cam    := & project.workspace.cam
-	win_extent := state.app_window.extent
-
-	screen_extent := app_window.extent
-	screen_size   := app_window.extent * 2
+	screen_size   := screen_extent * 2
 	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
 
-	ve.configure_snap( & font_provider_data.ve_font_cache, u32(state.app_window.extent.x * 2.0), u32(state.app_window.extent.y * 2.0) )
+	ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
 
-	render_screen_ui()
+	render_screen_ui( screen_extent, screen_ui, ve_ctx, ve_render )
 
 	Render_Reference_Dots:
 	{
@@ -152,7 +133,7 @@ render_mode_screenspace :: proc()
 
 		Mouse_Position:
 		{
-			mouse_pos := input.mouse.pos
+			mouse_pos := get_state().input.mouse.pos
 			render_set_color( Color_White_A125 )
 			draw_filled_circle( mouse_pos.x, mouse_pos.y, 4, 24 )
 		}
@@ -163,6 +144,10 @@ render_mode_screenspace :: proc()
 	debug.debug_text_vis = true
 	if debug.debug_text_vis
 	{
+		state := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
+		replay := & Memory_App.replay
+		cam    := & project.workspace.cam
+
 		debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color := Color_White, font : FontID = Font_Default )
 		{
 			state := get_state(); using state
@@ -271,7 +256,7 @@ render_mode_screenspace :: proc()
 		}
 
 		if true {
-			state.config.font_size_canvas_scalar = 1.0
+			// state.config.font_size_canvas_scalar = 1
 			zoom_adjust_size := 16 * state.project.workspace.cam.zoom
 			over_sample      := zoom_adjust_size < 12 ? 1.0 : f32(state.config.font_size_canvas_scalar)
 			debug_text("font_size_canvas_scalar: %v", config.font_size_canvas_scalar)
@@ -279,27 +264,16 @@ render_mode_screenspace :: proc()
 			debug_text("font_size resolved: %v px", resolved_size)
 		}
 
-		render_text_layer()
+		render_text_layer( screen_extent, ve_ctx, ve_render )
 	}
 
 	debug.draw_debug_text_y = 14
 }
 
-render_screen_ui :: proc()
+render_screen_ui :: proc( screen_extent : Extents2, ui : ^UI_State, ve_ctx : ^ve.Context, ve_render : VE_RenderData )
 {
 	profile(#procedure)
-	state  := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
-
-	screen_extent := app_window.extent
-	screen_size   := app_window.extent * 2
-	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
 	render_set_view_space(screen_extent)
-
-	ui := & screen_ui
-	state.ui_context = & screen_ui
-
-	text_enqueued  : b32 = false
-	shape_enqueued : b32 = false
 
 	when UI_Render_Method == .Layers {
 		render_list := array_to_slice( ui.render_list )
@@ -307,36 +281,22 @@ render_screen_ui :: proc()
 	}
 	when UI_Render_Method == .Depth_First
 	{
-		render_ui_via_box_tree( ui.root )
+		render_ui_via_box_tree( ui.root, screen_extent, ve_ctx, ve_render )
 	}
-
-	state.ui_context = nil
 }
 
-render_text_layer :: proc()
+render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : VE_RenderData )
 {
 	profile("VEFontCache: render text layer")
+	using render
 
 	Bindings    :: gfx.Bindings
 	Range       :: gfx.Range
 	ShaderStage :: gfx.Shader_Stage
 
-	state := get_state(); using state
-	font_provider := & state.font_provider_data
-	using font_provider
-
 	// TODO(Ed): All this functionality for being able to segregate rendering of the drawlist incrementally should be lifted to the library itself (VEFontCache)
 
-	ve.optimize_draw_list( & ve_font_cache.draw_list, calls_layer_offset )
-	draw_list := ve.get_draw_list( & ve_font_cache )
-
-	draw_list_vert_slice  := array_to_slice(draw_list.vertices)
-	draw_list_index_slice := array_to_slice(draw_list.indices)
-	draw_list_calls_slice := array_to_slice(draw_list.calls)
-
-	vbuf_layer_slice  := draw_list_vert_slice [ vbuf_layer_offset  : ]
-	ibuf_layer_slice  := draw_list_index_slice[ ibuf_layer_offset  : ]
-	calls_layer_slice := draw_list_calls_slice[ calls_layer_offset : ]
+	vbuf_layer_slice, ibuf_layer_slice, calls_layer_slice := ve.get_draw_list_layer( ve_ctx )
 
 	vbuf_ve_range := Range{ raw_data(vbuf_layer_slice), cast(u64) len(vbuf_layer_slice) * size_of(ve.Vertex) }
 	ibuf_ve_range := Range{ raw_data(ibuf_layer_slice), cast(u64) len(ibuf_layer_slice) * size_of(u32)       }
@@ -344,9 +304,7 @@ render_text_layer :: proc()
 	gfx.append_buffer( draw_list_vbuf, vbuf_ve_range )
 	gfx.append_buffer( draw_list_ibuf, ibuf_ve_range )
 
-	vbuf_layer_offset  = cast(u64) len(draw_list_vert_slice)
-	ibuf_layer_offset  = cast(u64) len(draw_list_index_slice)
-	calls_layer_offset = cast(u64) len(draw_list_calls_slice)
+	ve.flush_draw_list_layer( ve_ctx )
 
 	for & draw_call in calls_layer_slice
 	{
@@ -365,8 +323,8 @@ render_text_layer :: proc()
 					continue
 				}
 
-				width  := ve_font_cache.atlas.buffer_width
-				height := ve_font_cache.atlas.buffer_height
+				width  := ve_ctx.atlas.buffer_width
+				height := ve_ctx.atlas.buffer_height
 
 				pass := glyph_pass
 				if draw_call.clear_before_draw {
@@ -401,8 +359,8 @@ render_text_layer :: proc()
 					continue
 				}
 
-				width  := ve_font_cache.atlas.width
-				height := ve_font_cache.atlas.height
+				width  := ve_ctx.atlas.width
+				height := ve_ctx.atlas.height
 
 				pass := atlas_pass
 				if draw_call.clear_before_draw {
@@ -443,13 +401,13 @@ render_text_layer :: proc()
 				}
 
 				profile("VEFontCache: draw call: target")
-				width  := u32(app_window.extent.x * 2)
-				height := u32(app_window.extent.y * 2)
 
 				pass := screen_pass
 				pass.swapchain = sokol_glue.swapchain()
 				gfx.begin_pass( pass )
 
+				// width  := u32(screen_extent.x * 2)
+				// height := u32(screen_extent.y * 2)
 				// sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
 				// sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
 
@@ -494,7 +452,7 @@ render_text_layer :: proc()
 	}
 }
 
-render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
+render_ui_via_box_tree :: proc( root : ^UI_Box, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
 {
 	debug        := get_state().debug
 	default_font := get_state().default_font
@@ -510,7 +468,7 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
 	{
 		if box.ancestors != previous_layer {
 			if shape_enqueued do render_flush_gp()
-			if text_enqueued  do render_text_layer()
+			if text_enqueued  do render_text_layer( screen_extent, ve_ctx, ve_render )
 			shape_enqueued = false
 			text_enqueued  = false
 		}
@@ -577,10 +535,10 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, cam : ^Camera = nil )
 	}
 
 	if shape_enqueued do render_flush_gp()
-	if text_enqueued  do render_text_layer()
+	if text_enqueued  do render_text_layer( screen_extent, ve_ctx, ve_render )
 }
 
-render_ui_via_box_list :: proc( render_list : []UI_RenderBoxInfo, cam : ^Camera = nil )
+render_ui_via_box_list :: proc( render_list : []UI_RenderBoxInfo, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
 {
 	debug        := get_state().debug
 	default_font := get_state().default_font
@@ -595,7 +553,7 @@ render_ui_via_box_list :: proc( render_list : []UI_RenderBoxInfo, cam : ^Camera 
 		{
 			profile("render ui layer")
 			render_flush_gp()
-			if text_enqueued do render_text_layer()
+			if text_enqueued do render_text_layer( screen_extent, ve_ctx, ve_render )
 			continue
 		}
 		using entry
@@ -640,7 +598,7 @@ render_ui_via_box_list :: proc( render_list : []UI_RenderBoxInfo, cam : ^Camera 
 	}
 
 	if shape_enqueued do render_flush_gp()
-	if text_enqueued  do render_text_layer()
+	if text_enqueued  do render_text_layer( screen_extent, ve_ctx, ve_render )
 }
 
 #region("Helpers")
@@ -705,8 +663,8 @@ draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, po
 	ve_id, resolved_size := font_provider_resolve_draw_id( id, size )
 	color_norm           := normalize_rgba8(color)
 
-	ve.set_colour( & font_provider_data.ve_font_cache, color_norm )
-	ve.draw_text( & font_provider_data.ve_font_cache, ve_id, content, pos, Vec2{1 / width, 1 / height} * scale )
+	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
+	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, content, pos, Vec2{1 / width, 1 / height} * scale )
 	return
 }
 
@@ -742,7 +700,7 @@ draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size 
 	zoom_adjust_size := size * cam.zoom
 
 	// Over-sample font-size for any render under a camera
-	over_sample : f32 = zoom_adjust_size < 12 ? 1.0 : f32(state.config.font_size_canvas_scalar)
+	over_sample : f32 = zoom_adjust_size <= 8 ? 1.0 : f32(state.config.font_size_canvas_scalar)
 	zoom_adjust_size *= over_sample
 
 	ve_id, resolved_size := font_provider_resolve_draw_id( id, zoom_adjust_size	)
@@ -761,8 +719,8 @@ draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size 
 	text_scale  /= over_sample
 
 	color_norm := normalize_rgba8(color)
-	ve.set_colour( & font_provider_data.ve_font_cache, color_norm )
-	ve.draw_text( & font_provider_data.ve_font_cache, ve_id, content, normalized_pos, text_scale )
+	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
+	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, content, normalized_pos, text_scale )
 }
 
 // TODO(Ed): Eventually the workspace will need a viewport for drawing text

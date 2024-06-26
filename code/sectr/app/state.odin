@@ -172,7 +172,7 @@ AppWindow :: struct {
 }
 
 FontData :: struct {
-	provider : FontProviderData,
+	provider : FontProviderContext,
 
 	// TODO(Ed): We can have font constants here I guess but eventually
 	// I rather have fonts configurable for a 'theme' combo
@@ -245,7 +245,7 @@ State :: struct {
 	fps_avg                 : f64,
 
 	// fonts : FontData,
-	font_provider_data : FontProviderData,
+	font_provider_ctx : FontProviderContext,
 
 	font_arial_unicode_ms        : FontID,
 	font_firacode                : FontID,

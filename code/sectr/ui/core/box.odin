@@ -151,9 +151,12 @@ ui_box_tranverse_next_depth_based :: #force_inline proc "contextless" ( box : ^ 
 }
 
 // Traveral pritorizes traversing a "anestry layer"
-ui_box_traverse_next_layer_based :: proc "contextless" ( box : ^UI_Box, bypass_intersection_test := false ) -> (^UI_Box)
+ui_box_traverse_next_layer_based :: proc "contextless" ( box : ^UI_Box, bypass_intersection_test := false, ctx : ^UI_State = nil ) -> (^UI_Box)
 {
-	using state := get_state()
+	ctx := ctx
+	if ctx == nil {
+		ctx = ui_context()
+	}
 
 	parent := box.parent
 	if parent != nil

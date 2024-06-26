@@ -17,13 +17,13 @@ set_profiler_module_context :: #force_inline proc "contextless" ( ctx : ^SpallPr
 
 @(deferred_none = profile_end)
 profile :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {
-	// spall._buffer_begin( & Module_Context.ctx, & Module_Context.buffer, name, "", loc )
+	spall._buffer_begin( & Module_Context.ctx, & Module_Context.buffer, name, "", loc )
 }
 
 profile_begin :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {
-	// spall._buffer_begin( & Module_Context.ctx, & Module_Context.buffer, name, "", loc )
+	spall._buffer_begin( & Module_Context.ctx, & Module_Context.buffer, name, "", loc )
 }
 
 profile_end :: #force_inline proc "contextless" () {
-	// spall._buffer_end( & Module_Context.ctx, & Module_Context.buffer)
+	spall._buffer_end( & Module_Context.ctx, & Module_Context.buffer)
 }
