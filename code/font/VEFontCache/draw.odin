@@ -289,14 +289,14 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	}
 
 	// Calculate the src and destination regions
-	dst_position, dst_width, dst_height := atlas_bbox( atlas, region_kind, atlas_index )
+	dst_position, slot_szie := atlas_bbox( atlas, region_kind, atlas_index )
 	dst_glyph_position := dst_position
 	dst_glyph_width    := bounds_width  * entry.size_scale
 	dst_glyph_height   := bounds_height * entry.size_scale
 	dst_glyph_width    += glyph_padding
 	dst_glyph_height   += glyph_padding
 
-	dst_size       := Vec2 { dst_width, dst_height }
+	dst_size       := slot_szie
 	dst_glyph_size := Vec2 { dst_glyph_width, dst_glyph_height }
 	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, atlas_width, atlas_height )
 	screenspace_x_form( & dst_position,       & dst_size,       atlas_width, atlas_height )
@@ -342,9 +342,7 @@ can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^E
 	atlas_index : i32,
 	region_kind : AtlasRegionKind,
 	region      : ^AtlasRegion,
-	over_sample : Vec2,
-	atlas_slot_position : Vec2,
-	atlas_slot_size : Vec2,
+	over_sample : Vec2
 ) -> b32
 {
 	// profile(#procedure)
@@ -368,7 +366,7 @@ can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^E
 			}
 		}
 
-		cache_glyph_to_atlas( ctx, font, glyph_index, lru_code, atlas_index, entry, region_kind, region, over_sample, atlas_slot_position, atlas_slot_size )
+		cache_glyph_to_atlas( ctx, font, glyph_index, lru_code, atlas_index, entry, region_kind, region, over_sample )
 	}
 
 	assert( LRU_get( & region.state, lru_code ) != -1 )
@@ -487,7 +485,7 @@ draw_cached_glyph :: proc( ctx : ^Context,
 	glyph_padding := f32(atlas.glyph_padding)
 
 	// Figure out the source bounding box in the atlas texture
-	glyph_atlas_position, glyph_atlas_width, glyph_atlas_height := atlas_bbox( atlas, region_kind, atlas_index )
+	glyph_atlas_position, glyph_atlas_size := atlas_bbox( atlas, region_kind, atlas_index )
 
 	glyph_width  := bounds_width  * entry.size_scale
 	glyph_height := bounds_height * entry.size_scale
