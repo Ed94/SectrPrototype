@@ -16,16 +16,6 @@ import "base:runtime"
 
 Advance_Snap_Smallfont_Size :: 0
 
-Colour  :: [4]f32
-Vec2    :: [2]f32
-Vec2i   :: [2]i32
-Vec2_64 :: [2]f64
-
-vec2_from_scalar  :: #force_inline proc "contextless" ( scalar : f32   ) -> Vec2    { return { scalar, scalar }}
-vec2_64_from_vec2 :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
-vec2_from_vec2i   :: #force_inline proc "contextless" ( v2i    : Vec2i ) -> Vec2    { return { f32(v2i.x), f32(v2i.y) }}
-vec2i_from_vec2   :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2i   { return { i32(v2.x), i32(v2.y) }}
-
 FontID  :: distinct i64
 Glyph   :: distinct i32
 

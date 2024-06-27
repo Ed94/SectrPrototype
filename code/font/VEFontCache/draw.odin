@@ -624,7 +624,7 @@ draw_text_shape :: proc( ctx : ^Context,
 	// flush_glyph_buffer_to_atlas(ctx)
 	draw_text_batch( ctx, entry, shaped, batch_start_idx, cast(i32) len(shaped.glyphs), position, scale, snap_width , snap_height )
 	reset_batch_codepoint_state( ctx )
-	cursor_pos = shaped.end_cursor_pos
+	cursor_pos = position + shaped.end_cursor_pos * scae
 	return
 }
 

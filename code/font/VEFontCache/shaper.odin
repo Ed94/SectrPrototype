@@ -69,7 +69,7 @@ shaper_unload_font :: proc( ctx : ^ShaperInfo )
 shaper_shape_from_text :: proc( ctx : ^ShaperContext, info : ^ShaperInfo, output :^ShapedText, text_utf8 : string,
 	ascent, descent, line_gap : i32, size, size_scale : f32 )
 {
-	profile(#procedure)
+	// profile(#procedure)
 	current_script := harfbuzz.Script.UNKNOWN
 	hb_ucfunc      := harfbuzz.unicode_funcs_get_default()
 	harfbuzz.buffer_clear_contents( ctx.hb_buffer )

@@ -1,6 +1,39 @@
 package VEFontCache
 
 import "base:runtime"
+// import core_log "core:log"
+
+Colour  :: [4]f32
+Vec2    :: [2]f32
+Vec2i   :: [2]i32
+Vec2_64 :: [2]f64
+
+vec2_from_scalar  :: #force_inline proc "contextless" ( scalar : f32   ) -> Vec2    { return { scalar, scalar }}
+vec2_64_from_vec2 :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
+vec2_from_vec2i   :: #force_inline proc "contextless" ( v2i    : Vec2i ) -> Vec2    { return { f32(v2i.x), f32(v2i.y) }}
+vec2i_from_vec2   :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2i   { return { i32(v2.x), i32(v2.y) }}
+
+@(require_results) ceil_vec2 :: proc "contextless" ( v : Vec2 ) -> Vec2 { return { ceil_f32(v.x), ceil_f32(v.y) } }
+
+// This buffer is used below excluisvely to prevent any allocator recusion when verbose logging from allocators.
+// This means a single line is limited to 32k buffer (increase naturally if this SOMEHOW becomes a bottleneck...)
+// Logger_Allocator_Buffer : [32 * Kilobyte]u8
+
+// log :: proc( msg : string, level := core_log.Level.Info, loc := #caller_location ) {
+// 	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+// 	context.allocator      = arena_allocator(& temp_arena)
+// 	context.temp_allocator = arena_allocator(& temp_arena)
+
+// 	core_log.log( level, msg, location = loc )
+// }
+
+// logf :: proc( fmt : string, args : ..any,  level := core_log.Level.Info, loc := #caller_location  ) {
+// 	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+// 	context.allocator      = arena_allocator(& temp_arena)
+// 	context.temp_allocator = arena_allocator(& temp_arena)
+
+// 	core_log.logf( level, fmt, ..args, location = loc )
+// }
 
 reload_array :: proc( self : ^[dynamic]$Type, allocator : Allocator ) {
 	raw          := transmute( ^runtime.Raw_Dynamic_Array) self

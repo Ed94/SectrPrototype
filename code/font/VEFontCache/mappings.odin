@@ -47,7 +47,7 @@ ceil :: proc {
 	math.ceil_f64le,
 	math.ceil_f64be,
 
-	grime.ceil_vec2,
+	ceil_vec2,
 }
 
 clear :: proc {
