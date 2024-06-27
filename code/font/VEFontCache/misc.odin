@@ -1,18 +1,6 @@
 package VEFontCache
 
-font_glyph_lru_code :: #force_inline proc "contextless" ( font : FontID, glyph_index : Glyph ) -> (lru_code : u64)
-{
-	// font        := font
-	// glyph_index := glyph_index
-
-	// font_bytes  := slice_ptr( transmute(^byte) & font,        size_of(FontID) )
-	// glyph_bytes := slice_ptr( transmute(^byte) & glyph_index, size_of(Glyph) )
-
-	// buffer : [32]byte
-	// copy( buffer[:], font_bytes )
-	// copy( buffer[ len(font_bytes) :], glyph_bytes )
-	// hash := fnv64a( transmute([]byte) buffer[: size_of(FontID) + size_of(Glyph) ] )
-	// lru_code = hash
+font_glyph_lru_code :: #force_inline proc "contextless" ( font : FontID, glyph_index : Glyph ) -> (lru_code : u64) {
 	lru_code = u64(glyph_index) + ( ( 0x100000000 * u64(font) ) & 0xFFFFFFFF00000000 )
 	return
 }
@@ -79,8 +67,7 @@ is_empty :: #force_inline proc ( ctx : ^Context, entry : ^Entry, glyph_index : G
 	return false
 }
 
-mark_batch_codepoint_seen :: #force_inline proc ( ctx : ^Context, lru_code : u64 )
-{
+mark_batch_codepoint_seen :: #force_inline proc ( ctx : ^Context, lru_code : u64 ) {
 	ctx.temp_codepoint_seen[lru_code] = true
 	ctx.temp_codepoint_seen_num += 1
 }
@@ -90,15 +77,13 @@ reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
 	ctx.temp_codepoint_seen_num = 0
 }
 
-screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, width, height : f32 ) {
+screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, size : Vec2 ) {
 	when true
 	{
 		pos_64   := vec2_64_from_vec2(position^)
 		scale_64 := vec2_64_from_vec2(scale^)
-		width    := f64(width)
-		height   := f64(height)
 
-		quotient : Vec2_64 = 1.0 / { width, height }
+		quotient : Vec2_64 = 1.0 / vec2_64(size)
 		pos_64      = pos_64   * quotient * 2.0 - 1.0
 		scale_64    = scale_64 * quotient * 2.0
 
@@ -107,21 +92,19 @@ screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2
 	}
 	else
 	{
-		quotient : Vec2 = 1.0 / { width, height }
+		quotient : Vec2 = 1.0 / size
 		(position^) *= quotient * 2.0 - 1.0
 		(scale^)    *= quotient * 2.0
 	}
 }
 
-textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, width, height : f32 ) {
+textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, size : Vec2 ) {
 	when true
 	{
 		pos_64   := vec2_64_from_vec2(position^)
 		scale_64 := vec2_64_from_vec2(scale^)
-		width    := f64(width)
-		height   := f64(height)
 
-		quotient : Vec2_64 = 1.0 / { width, height }
+		quotient : Vec2_64 = 1.0 / vec2_64(size)
 		pos_64   *= quotient
 		scale_64 *= quotient
 
@@ -130,7 +113,7 @@ textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, 
 	}
 	else
 	{
-		quotient    : Vec2 = 1.0 / { width, height }
+		quotient    : Vec2 = 1.0 / size
 		(position^) *= quotient
 		(scale^)    *= quotient
 	}

@@ -21,9 +21,10 @@ Vec2    :: [2]f32
 Vec2i   :: [2]i32
 Vec2_64 :: [2]f64
 
-vec2_from_scalar  :: #force_inline proc "contextless" ( scalar : f32   ) -> Vec2    { return { scalar, scalar } }
+vec2_from_scalar  :: #force_inline proc "contextless" ( scalar : f32   ) -> Vec2    { return { scalar, scalar }}
 vec2_64_from_vec2 :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
-vec2_from_vec2i   :: #force_inline proc( v2i    : Vec2i ) -> Vec2    { return { f32(v2i.x), f32(v2i.y) }}
+vec2_from_vec2i   :: #force_inline proc "contextless" ( v2i    : Vec2i ) -> Vec2    { return { f32(v2i.x), f32(v2i.y) }}
+vec2i_from_vec2   :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2i   { return { i32(v2.x), i32(v2.y) }}
 
 FontID  :: distinct i64
 Glyph   :: distinct i32
@@ -131,7 +132,7 @@ InitGlyphDrawParams :: struct {
 }
 
 InitGlyphDrawParams_Default :: InitGlyphDrawParams {
-	over_sample   = { 4, 4 },
+	over_sample   = { 8, 8 },
 	buffer_batch  = 4,
 	draw_padding  = InitAtlasParams_Default.glyph_padding,
 }
@@ -362,7 +363,6 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32 
 		size_scale = size_px < 0.0 ?                               \
 			parser_scale_for_pixel_height( & parser_info, -size_px ) \
 		: parser_scale_for_mapping_em_to_pixels( & parser_info, size_px )
-		// size_scale = 1.0
 
 		used = true
 
@@ -429,91 +429,11 @@ draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position :
 	text_utf8_bytes := transmute([]u8) text_utf8
 	text_chunk      : string
 
-	Text_As_Shape :: true
-	when Text_As_Shape
-	{
-		text_chunk = transmute(string) text_utf8_bytes[ : ]
-		if len(text_chunk) > 0 {
-			shaped        := shape_text_cached( ctx, font, text_chunk, entry )
-			ctx.cursor_pos = draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
-		}
+	text_chunk = transmute(string) text_utf8_bytes[ : ]
+	if len(text_chunk) > 0 {
+		shaped        := shape_text_cached( ctx, font, text_chunk, entry )
+		ctx.cursor_pos = draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
 	}
-	else
-	{
-		last_byte_offset : int = 0
-		byte_offset      : int = 0
-		for codepoint, offset in text_utf8
-		{
-			Rune_Space           :: ' '
-			Rune_Tab             :: '\t'
-			Rune_Carriage_Return :: '\r'
-			Rune_Line_Feed       :: '\n'
-			// Rune_Tab_Vertical :: '\v'
-
-			byte_offset = offset
-
-			switch codepoint
-			{
-				case Rune_Space: fallthrough
-				case Rune_Tab: fallthrough
-				case Rune_Line_Feed: fallthrough
-				case Rune_Carriage_Return:
-					if chunk_kind == .Formatting
-					{
-						chunk_end        = byte_offset
-						last_byte_offset = byte_offset
-					}
-					else
-					{
-						text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset]
-						if len(text_chunk) > 0 {
-							shaped         := shape_text_cached( ctx, font, text_chunk, entry )
-							ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
-						}
-
-						chunk_start = byte_offset
-						chunk_end   = chunk_start
-						chunk_kind  = .Formatting
-
-						last_byte_offset = byte_offset
-						continue
-					}
-			}
-
-			// Visible Chunk
-			if chunk_kind == .Visible {
-				chunk_end        = byte_offset
-				last_byte_offset = byte_offset
-			}
-			else
-			{
-				text_chunk = transmute(string) text_utf8_bytes[ chunk_start : byte_offset ]
-				if len(text_chunk) > 0 {
-					shaped         := shape_text_cached( ctx, font, text_chunk, entry )
-					ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
-				}
-
-				chunk_start = byte_offset
-				chunk_end   = chunk_start
-				chunk_kind  = .Visible
-
-				last_byte_offset = byte_offset
-			}
-		}
-
-		text_chunk = transmute(string) text_utf8_bytes[ chunk_start : ]
-		if len(text_chunk) > 0 {
-			shaped         := shape_text_cached( ctx, font, text_chunk, entry )
-			ctx.cursor_pos += draw_text_shape( ctx, font, entry, shaped, position, scale, snap_width, snap_height )
-		}
-
-		chunk_start = byte_offset
-		chunk_end   = chunk_start
-		chunk_kind  = .Visible
-
-		last_byte_offset = byte_offset
-	}
-
 	return true
 }
 

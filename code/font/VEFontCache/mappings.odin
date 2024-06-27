@@ -74,6 +74,10 @@ vec2 :: proc {
 	vec2_from_vec2i,
 }
 
+vec2i :: proc {
+	vec2i_from_vec2,
+}
+
 vec2_64 :: proc {
 	vec2_64_from_vec2,
 }

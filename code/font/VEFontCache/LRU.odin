@@ -110,9 +110,6 @@ pool_list_erase :: proc( pool : ^PoolList, iter : PoolListIter )
 
 	iter_node.prev  = -1
 	iter_node.next  = -1
-	// if pool.dbg_name != "" {
-	// 	logf("pool_list: erased %v, at id %v", iter_node.value, iter)
-	// }
 	iter_node.value = 0
 	append( & free_list, iter )
 
@@ -179,13 +176,6 @@ LRU_hash_key :: #force_inline proc( key : u64 ) -> ( hash : u64 ) {
 }
 
 LRU_find :: #force_inline proc "contextless" ( cache : ^LRU_Cache, key : u64, must_find := false ) -> (LRU_Link, bool) {
-	// hash := LRU_hash_key( key )
-	// link := get( cache.table, hash )
-	// if link == nil && must_find {
-	// 	runtime.debug_trap()
-	// 	link = get( cache.table, hash )
-	// }
-
 	link, success := cache.table[key]
 	return link, success
 }
@@ -218,7 +208,6 @@ LRU_peek :: #force_inline proc ( cache : ^LRU_Cache, key : u64, must_find := fal
 
 LRU_put :: #force_inline proc ( cache : ^LRU_Cache, key : u64,  value : i32 ) -> u64
 {
-	// hash_key := LRU_hash_key( key )
 	iter, success := cache.table[key]
 	if success {
 		LRU_refresh( cache, key )
@@ -229,20 +218,11 @@ LRU_put :: #force_inline proc ( cache : ^LRU_Cache, key : u64,  value : i32 ) ->
 	evict := key
 	if cache.key_queue.size >= cache.capacity {
 		evict = pool_list_pop_back( & cache.key_queue )
-
-		// evict_hash := LRU_hash_key( evict )
-		// if cache.table.dbg_name != "" {
-		// 	logf("%v: Evicted   %v with hash: %v", cache.table.dbg_name, evict, evict_hash)
-		// }
 		delete_key( & cache.table, evict )
 		cache.num -= 1
 	}
 
 	pool_list_push_front( & cache.key_queue, key )
-	// if cache.table.dbg_name != "" {
-	// 	logf("%v: Pushed   %v with hash: %v", cache.table.dbg_name, key, hash_key )
-	// }
-
 	cache.table[key] = LRU_Link {
 		value = value,
 		ptr   = cache.key_queue.front
@@ -253,9 +233,6 @@ LRU_put :: #force_inline proc ( cache : ^LRU_Cache, key : u64,  value : i32 ) ->
 
 LRU_refresh :: proc( cache : ^LRU_Cache, key : u64 ) {
 	link, success := LRU_find( cache, key )
-	// if cache.table.dbg_name != "" {
-	// 	logf("%v: Refreshed %v", cache.table.dbg_name, key)
-	// }
 	pool_list_erase( & cache.key_queue, link.ptr )
 	pool_list_push_front( & cache.key_queue, key )
 	link.ptr = cache.key_queue.front
