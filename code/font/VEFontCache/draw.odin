@@ -337,6 +337,45 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	cache_glyph( ctx, font, glyph_index, entry, vec2(bounds_0), vec2(bounds_1), glyph_draw_scale, glyph_draw_translate )
 }
 
+can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_index : Glyph,
+	lru_code    : u64,
+	atlas_index : i32,
+	region_kind : AtlasRegionKind,
+	region      : ^AtlasRegion,
+	over_sample : Vec2,
+	atlas_slot_position : Vec2,
+	atlas_slot_size : Vec2,
+) -> b32
+{
+	// profile(#procedure)
+	assert( glyph_index != -1 )
+
+	// E region can't batch
+	if region_kind == .E || region_kind == .None do return false
+	if ctx.temp_codepoint_seen_num > 1024        do return false
+	// TODO(Ed): Why 1024?
+
+	if atlas_index == - 1
+	{
+		if region.next_idx > u32( region.state.capacity) {
+			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
+			next_evict_codepoint := LRU_get_next_evicted( & region.state )
+			seen, success := ctx.temp_codepoint_seen[next_evict_codepoint]
+			assert(success != false)
+
+			if (seen) {
+				return false
+			}
+		}
+
+		cache_glyph_to_atlas( ctx, font, glyph_index, lru_code, atlas_index, entry, region_kind, region, over_sample, atlas_slot_position, atlas_slot_size )
+	}
+
+	assert( LRU_get( & region.state, lru_code ) != -1 )
+	mark_batch_codepoint_seen( ctx, lru_code)
+	return true
+}
+
 // ve_fontcache_clear_drawlist
 clear_draw_list :: #force_inline proc ( draw_list : ^DrawList ) {
 	clear( & draw_list.calls )

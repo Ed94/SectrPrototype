@@ -35,13 +35,13 @@ Atlas :: struct {
 	region_d : AtlasRegion,
 }
 
-atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) -> (position : Vec2, width, height : f32)
+atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) -> (position, size: Vec2)
 {
 	switch region
 	{
 		case .A:
-			width  = f32(atlas.region_a.width)
-			height = f32(atlas.region_a.height)
+			size.x = f32(atlas.region_a.width)
+			size.y = f32(atlas.region_a.height)
 
 			position.x = cast(f32) (( local_idx % atlas.region_a.capacity.x ) * i32(atlas.region_a.width))
 			position.y = cast(f32) (( local_idx / atlas.region_a.capacity.x ) * i32(atlas.region_a.height))
@@ -50,8 +50,8 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) 
 			position.y += f32(atlas.region_a.offset.y)
 
 		case .B:
-			width  = f32(atlas.region_b.width)
-			height = f32(atlas.region_b.height)
+			size.x = f32(atlas.region_b.width)
+			size.y = f32(atlas.region_b.height)
 
 			position.x = cast(f32) (( local_idx % atlas.region_b.capacity.x ) * i32(atlas.region_b.width))
 			position.y = cast(f32) (( local_idx / atlas.region_b.capacity.x ) * i32(atlas.region_b.height))
@@ -60,8 +60,8 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) 
 			position.y += f32(atlas.region_b.offset.y)
 
 		case .C:
-			width  = f32(atlas.region_c.width)
-			height = f32(atlas.region_c.height)
+			size.x = f32(atlas.region_c.width)
+			size.y = f32(atlas.region_c.height)
 
 			position.x = cast(f32) (( local_idx % atlas.region_c.capacity.x ) * i32(atlas.region_c.width))
 			position.y = cast(f32) (( local_idx / atlas.region_c.capacity.x ) * i32(atlas.region_c.height))
@@ -70,8 +70,8 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) 
 			position.y += f32(atlas.region_c.offset.y)
 
 		case .D:
-			width  = f32(atlas.region_d.width)
-			height = f32(atlas.region_d.height)
+			size.x = f32(atlas.region_d.width)
+			size.y = f32(atlas.region_d.height)
 
 			position.x = cast(f32) (( local_idx % atlas.region_d.capacity.x ) * i32(atlas.region_d.width))
 			position.y = cast(f32) (( local_idx / atlas.region_d.capacity.x ) * i32(atlas.region_d.height))
@@ -84,43 +84,6 @@ atlas_bbox :: proc( atlas : ^Atlas, region : AtlasRegionKind, local_idx : i32 ) 
 		case .E:
 	}
 	return
-}
-
-can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_index : Glyph,
-	lru_code    : u64,
-	atlas_index : i32,
-	region_kind : AtlasRegionKind,
-	region      : ^AtlasRegion,
-	over_sample : Vec2
-) -> b32
-{
-	// profile(#procedure)
-	assert( glyph_index != -1 )
-
-	// E region can't batch
-	if region_kind == .E || region_kind == .None do return false
-	if ctx.temp_codepoint_seen_num > 1024        do return false
-	// TODO(Ed): Why 1024?
-
-	if atlas_index == - 1
-	{
-		if region.next_idx > u32( region.state.capacity) {
-			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
-			next_evict_codepoint := LRU_get_next_evicted( & region.state )
-			seen, success := ctx.temp_codepoint_seen[next_evict_codepoint]
-			assert(success != false)
-
-			if (seen) {
-				return false
-			}
-		}
-
-		cache_glyph_to_atlas( ctx, font, glyph_index, lru_code, atlas_index, entry, region_kind, region, over_sample )
-	}
-
-	assert( LRU_get( & region.state, lru_code ) != -1 )
-	mark_batch_codepoint_seen( ctx, lru_code)
-	return true
 }
 
 decide_codepoint_region :: proc( ctx : ^Context, entry : ^Entry, glyph_index : Glyph
