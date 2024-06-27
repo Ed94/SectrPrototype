@@ -219,7 +219,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	region      : ^AtlasRegion,
 	over_sample : Vec2 )
 {
-	profile(#procedure)
+	// profile(#procedure)
 
 	// Get hb_font text metrics. These are unscaled!
 	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
