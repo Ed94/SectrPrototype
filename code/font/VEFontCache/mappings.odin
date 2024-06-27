@@ -12,7 +12,6 @@ import "core:math"
 	ceil_f64   :: math.ceil_f64
 	ceil_f64le :: math.ceil_f64le
 	ceil_f64be :: math.ceil_f64be
-
 import "core:math/linalg"
 import "core:mem"
 	Kilobyte  :: mem.Kilobyte
@@ -25,12 +24,9 @@ import "core:mem"
 	arena_allocator :: mem.arena_allocator
 	arena_init      :: mem.arena_init
 import "codebase:grime"
-	hmap_closest_prime :: grime.hmap_closest_prime
 	log                :: grime.log
 	logf               :: grime.logf
 	profile            :: grime.profile
-	reload_array       :: grime.reload_array
-	reload_map         :: grime.reload_map
 
 //#region("Proc overload mappings")
 

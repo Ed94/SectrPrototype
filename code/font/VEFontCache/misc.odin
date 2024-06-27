@@ -1,5 +1,17 @@
 package VEFontCache
 
+import "base:runtime"
+
+reload_array :: proc( self : ^[dynamic]$Type, allocator : Allocator ) {
+	raw          := transmute( ^runtime.Raw_Dynamic_Array) self
+	raw.allocator = allocator
+}
+
+reload_map :: proc( self : ^map [$KeyType] $EntryType, allocator : Allocator ) {
+	raw          := transmute( ^runtime.Raw_Map) self
+	raw.allocator = allocator
+}
+
 font_glyph_lru_code :: #force_inline proc "contextless" ( font : FontID, glyph_index : Glyph ) -> (lru_code : u64) {
 	lru_code = u64(glyph_index) + ( ( 0x100000000 * u64(font) ) & 0xFFFFFFFF00000000 )
 	return

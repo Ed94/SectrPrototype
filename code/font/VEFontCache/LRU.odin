@@ -152,7 +152,7 @@ LRU_Cache :: struct {
 LRU_init :: proc( cache : ^LRU_Cache, capacity : u32, dbg_name : string = "" ) {
 	error : AllocatorError
 	cache.capacity     = capacity
-	cache.table, error = make( map[u64]LRU_Link, hmap_closest_prime( uint(capacity)) )
+	cache.table, error = make( map[u64]LRU_Link, uint(capacity) )
 	assert( error == .None, "VEFontCache.LRU_init : Failed to allocate cache's table")
 
 	pool_list_init( & cache.key_queue, capacity, dbg_name = dbg_name )

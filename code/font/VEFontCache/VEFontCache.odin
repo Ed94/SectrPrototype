@@ -177,7 +177,7 @@ startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 	temp_path, error = make( [dynamic]Vec2, temp_path_reserve )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
-	temp_codepoint_seen, error = make( map[u64]bool, hmap_closest_prime( uint(temp_codepoint_seen_reserve)) )
+	temp_codepoint_seen, error = make( map[u64]bool, uint(temp_codepoint_seen_reserve) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
 	draw_list.vertices, error = make( [dynamic]Vertex, 4 * Kilobyte )
