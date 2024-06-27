@@ -16,7 +16,8 @@ dump_stacktrace :: proc( allocator := context.temp_allocator ) -> string
 	for line in lines {
 		table.row( log_table, padding, line.symbol, " - ", line.location )
 	}
-	table.build(log_table)
+	// table.build(log_table)
+	// TODO(Ed): regression with the stack trace lib
 
 	writer_builder : StringBuilder
 	str_builder_init( & writer_builder, allocator = allocator )
