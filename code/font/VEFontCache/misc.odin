@@ -180,7 +180,7 @@ else
 	}
 
 	simd_to_vec2 :: #force_inline proc "contextless" (v: Vec2_SIMD) -> Vec2 {
-		return Vec2{simd.extract(v, 0), simd.extract(v, 1)}
+		return Vec2{ simd.extract(v, 0), simd.extract(v, 1) }
 	}
 
 	vec2_add_simd :: #force_inline proc "contextless" (a, b: Vec2) -> Vec2 {
