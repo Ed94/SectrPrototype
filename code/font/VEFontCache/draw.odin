@@ -575,36 +575,62 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 	}
 }
 
-draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText,
+draw_text_batch :: proc(ctx: ^Context, entry: ^Entry, shaped: ^ShapedText,
 	batch_start_idx, batch_end_idx : i32,
-	position,        scale         : Vec2,
-	snap_width,      snap_height   : f32 )
+	position, scale                : Vec2,
+	snap_width, snap_height        : f32 )
 {
-	flush_glyph_buffer_to_atlas( ctx )
+	flush_glyph_buffer_to_atlas(ctx)
+
+	atlas         := & ctx.atlas
+	atlas_size    := Vec2{ f32(atlas.width), f32(atlas.height) }
+	glyph_padding := f32(atlas.glyph_padding)
+
 	for index := batch_start_idx; index < batch_end_idx; index += 1
 	{
-		glyph_index := shaped.glyphs[ index ]
+			glyph_index := shaped.glyphs[index]
 
-		if glyph_index == 0                                          do continue
-		if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do continue
+			if glyph_index == 0 || parser_is_glyph_empty( & entry.parser_info, glyph_index) do continue
 
-		region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
-		lru_code                         := font_glyph_lru_code(entry.id, glyph_index)
-		atlas_index                      := cast(i32) -1
+			region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
+			lru_code                         := font_glyph_lru_code( entry.id, glyph_index )
+			atlas_index                      := region_kind != .E ? LRU_get( & region.state, lru_code ) : -1
+			bounds_0, bounds_1               := parser_get_glyph_box( & entry.parser_info, glyph_index )
+			vbounds_0   := vec2(bounds_0)
+			vbounds_1   := vec2(bounds_1)
+			bounds_size := Vec2 { vbounds_1.x - vbounds_0.x, vbounds_1.y - vbounds_0.y }
 
-		if region_kind != .E do atlas_index = LRU_get( & region.state, lru_code )
-		bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
+			shaped_position := shaped.positions[index]
+			glyph_translate := position + shaped_position * scale
 
-		shaped_position := shaped.positions[index]
-		glyph_translate := position + shaped_position * scale
+			if region_kind == .E
+			{
+					directly_draw_massive_glyph(ctx, entry, glyph_index,
+						vbounds_0, vbounds_1,
+						bounds_size,
+						over_sample, glyph_translate, scale )
+			}
+			else if atlas_index != -1
+			{
+					slot_position, _ := atlas_bbox( atlas, region_kind, atlas_index )
+					glyph_scale      := bounds_size * entry.size_scale + glyph_padding
+					bounds_0_scaled  := ceil( vbounds_0 * entry.size_scale )
+					dst              := glyph_translate + (bounds_0_scaled - glyph_padding) * scale
+					dst_scale        := glyph_scale * scale
+					textspace_x_form( & slot_position, & glyph_scale, atlas_size )
 
-		glyph_cached := draw_cached_glyph( ctx, shaped,
-			entry,       glyph_index,
-			lru_code,    atlas_index,
-			vec2(bounds_0), vec2(bounds_1),
-			region_kind, region, over_sample,
-			glyph_translate, scale )
-		assert( glyph_cached == true )
+					call             := DrawCall_Default
+					call.pass         = .Target
+					call.colour       = ctx.colour
+					call.start_index  = u32(len(ctx.draw_list.indices))
+
+					blit_quad(&ctx.draw_list, 
+						dst,           dst           + dst_scale,
+						slot_position, slot_position + glyph_scale )
+
+					call.end_index = u32(len(ctx.draw_list.indices))
+					append(&ctx.draw_list.calls, call)
+			}
 	}
 }
 
