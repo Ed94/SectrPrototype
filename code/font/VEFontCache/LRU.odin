@@ -28,11 +28,11 @@ PoolList :: struct {
 pool_list_init :: proc( pool : ^PoolList, capacity : u32, dbg_name : string = "" )
 {
 	error : AllocatorError
-	pool.items, error = make( [dynamic]PoolListItem, u64(capacity) )
+	pool.items, error = make( [dynamic]PoolListItem, int(capacity) )
 	assert( error == .None, "VEFontCache.pool_list_init : Failed to allocate items array")
 	resize( & pool.items, capacity )
 
-	pool.free_list, error = make( [dynamic]PoolListIter, u64(capacity) )
+	pool.free_list, error = make( [dynamic]PoolListIter, len = 0, cap = int(capacity) )
 	assert( error == .None, "VEFontCache.pool_list_init : Failed to allocate free_list array")
 	resize( & pool.free_list, capacity )
 
@@ -55,7 +55,7 @@ pool_list_init :: proc( pool : ^PoolList, capacity : u32, dbg_name : string = ""
 
 pool_list_free :: proc( pool : ^PoolList )
 {
- // TODO(Ed): Implement
+	// TODO(Ed): Implement
 }
 
 pool_list_reload :: proc( pool : ^PoolList, allocator : Allocator )
@@ -160,7 +160,7 @@ LRU_init :: proc( cache : ^LRU_Cache, capacity : u32, dbg_name : string = "" ) {
 
 LRU_free :: proc( cache : ^LRU_Cache )
 {
- // TODO(Ed): Implement
+	// TODO(Ed): Implement
 }
 
 LRU_reload :: #force_inline proc( cache : ^LRU_Cache, allocator : Allocator )

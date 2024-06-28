@@ -27,3 +27,10 @@ TODO Additional Features:
 * Ability to set a draw transform, viewport and projection
   * By default the library's position is in unsigned normalized render space
 * Allow curve_quality to be set on a per-font basis
+
+TODO Optimization:
+
+* Look into caching the draw_list for each shape instead of the glyphs/positions 
+  * Each shape is already constrained to a Entry which is restricted to already a size-class for the glyphs
+  * Caching a glyph to atlas or generating the draw command for a glyph quad to screen is expensive for large batches.
+* Attempt to look into chunking shapes again if caching the draw_list for a shape is found to be optimal

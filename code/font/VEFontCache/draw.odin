@@ -60,25 +60,25 @@ blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}
 		{p0.x, p0.y},
 		uv0.x, uv0.y
 	}
-	append_elem( & draw_list.vertices, vertex )
+	append( & draw_list.vertices, vertex )
 
 	vertex = Vertex {
 		{p0.x, p1.y},
 		uv0.x, uv1.y
 	}
-	append_elem( & draw_list.vertices, vertex )
+	append( & draw_list.vertices, vertex )
 
 	vertex = Vertex {
 		{p1.x, p0.y},
 		uv1.x, uv0.y
 	}
-	append_elem( & draw_list.vertices, vertex )
+	append( & draw_list.vertices, vertex )
 
 	vertex = Vertex {
 		{p1.x, p1.y},
 		uv1.x, uv1.y
 	}
-	append_elem( & draw_list.vertices, vertex )
+	append( & draw_list.vertices, vertex )
 
 	quad_indices : []u32 = {
 		0, 1, 2,
@@ -332,7 +332,8 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	cache_glyph( ctx, font, glyph_index, entry, vec2(bounds_0), vec2(bounds_1), glyph_draw_scale, glyph_draw_translate )
 }
 
-can_batch_glyph :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_index : Glyph,
+// If the glyuph is found in the atlas, nothing occurs, otherwise, the glyph call is setup to catch it to the atlas
+check_glyph_in_atlas :: #force_inline proc( ctx : ^Context, font : FontID, entry : ^Entry, glyph_index : Glyph,
 	lru_code    : u64,
 	atlas_index : i32,
 	region_kind : AtlasRegionKind,
@@ -438,7 +439,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context,
 	append( & ctx.draw_list.calls, call )
 }
 
-draw_cached_glyph :: proc( ctx : ^Context,
+draw_cached_glyph :: proc( ctx : ^Context, shaped : ^ShapedText,
 	entry              : ^Entry,
 	glyph_index        : Glyph,
 	lru_code           : u64,
@@ -486,6 +487,24 @@ draw_cached_glyph :: proc( ctx : ^Context,
 
 	textspace_x_form( & slot_position, & glyph_scale, atlas_size )
 
+	// Shape call setup
+	if false
+	{
+		call := DrawCall_Default
+		{
+			using call
+			pass        = .Target
+			colour      = ctx.colour
+			start_index = cast(u32) len(shaped.draw_list.indices)
+
+			blit_quad( & shaped.draw_list,
+				dst,           dst           + dst_scale,
+				slot_position, slot_position + glyph_scale )
+			end_index   = cast(u32) len(shaped.draw_list.indices)
+		}
+		append( & shaped.draw_list.calls, call )
+	}
+
 	// Add the glyph drawcall
 	call := DrawCall_Default
 	{
@@ -500,6 +519,7 @@ draw_cached_glyph :: proc( ctx : ^Context,
 		end_index   = cast(u32) len(ctx.draw_list.indices)
 	}
 	append( & ctx.draw_list.calls, call )
+
 	return true
 }
 
@@ -575,7 +595,7 @@ draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText,
 		shaped_position := shaped.positions[index]
 		glyph_translate := position + shaped_position * scale
 
-		glyph_cached := draw_cached_glyph( ctx,
+		glyph_cached := draw_cached_glyph( ctx, shaped,
 			entry,       glyph_index,
 			lru_code,    atlas_index,
 			vec2(bounds_0), vec2(bounds_1),
@@ -594,6 +614,9 @@ draw_text_shape :: proc( ctx : ^Context,
 	snap_width, snap_height : f32
 ) -> (cursor_pos : Vec2)
 {
+	draw_hash   := shape_draw_hash( shaped, position, scale )
+	dirty_shape := ! (len(shaped.draw_list.calls) > 0) || draw_hash != shaped.draw_hash
+
 	// position := position //+ ctx.cursor_pos * scale
 	// profile(#procedure)
 	batch_start_idx : i32 = 0
@@ -607,7 +630,10 @@ draw_text_shape :: proc( ctx : ^Context,
 		atlas_index                      := cast(i32) -1
 
 		if region_kind != .E do atlas_index = LRU_get( & region.state, lru_code )
-		if can_batch_glyph( ctx, font, entry, glyph_index, lru_code, atlas_index, region_kind, region, over_sample ) do continue
+		if check_glyph_in_atlas( ctx, font, entry, glyph_index, lru_code, atlas_index, region_kind, region, over_sample ) do continue
+
+		// We can no longer directly append the shape as it has missing glyphs in the atlas
+		dirty_shape = true
 
 		// Glyph has not been catched, needs to be directly drawn.
 
@@ -621,10 +647,18 @@ draw_text_shape :: proc( ctx : ^Context,
 		batch_start_idx = index
 	}
 
-	// flush_glyph_buffer_to_atlas(ctx)
-	draw_text_batch( ctx, entry, shaped, batch_start_idx, cast(i32) len(shaped.glyphs), position, scale, snap_width , snap_height )
+	// if dirty_shape {
+		flush_glyph_buffer_to_atlas(ctx)
+		draw_text_batch( ctx, entry, shaped, batch_start_idx, cast(i32) len(shaped.glyphs), position, scale, snap_width , snap_height )
+	// 	shaped.draw_hash = draw_hash
+	// }
+	// else {
+		// flush_glyph_buffer_to_atlas( ctx )
+		// merge_draw_list( & ctx.draw_list, & shaped.draw_list )
+	// }
 	reset_batch_codepoint_state( ctx )
-	cursor_pos = position + shaped.end_cursor_pos * scae
+
+	cursor_pos = position + shaped.end_cursor_pos * scale
 	return
 }
 

@@ -50,13 +50,6 @@ font_glyph_lru_code :: #force_inline proc "contextless" ( font : FontID, glyph_i
 	return
 }
 
-shape_lru_hash :: #force_inline proc "contextless" ( label : string ) -> u64 {
-	hash : u64
-	for str_byte in transmute([]byte) label {
-		hash = ((hash << 8) + hash) + u64(str_byte)
-	}
-	return hash
-}
 
 // For a provided alpha value,
 // allows the function to calculate the position of a point along the curve at any given fraction of its total length
