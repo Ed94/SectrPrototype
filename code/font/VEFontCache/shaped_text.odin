@@ -40,7 +40,6 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, en
 			shape_cache_idx            = shape_cache.next_cache_id
 			shape_cache.next_cache_id += 1
 			evicted := LRU_put( state, lru_code, shape_cache_idx )
-			assert( evicted == lru_code )
 		}
 		else
 		{
@@ -54,7 +53,6 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, en
 		}
 
 		shape_entry := & shape_cache.storage[ shape_cache_idx ]
-		// shape_entry.storage_hash = lru_code
 		shape_text_uncached( ctx, font, text_utf8, entry, shape_entry )
 	}
 

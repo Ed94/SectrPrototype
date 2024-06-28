@@ -56,23 +56,23 @@ blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}
 		// p0.x, p0.y, p1.x, p1.y, uv0.x, uv0.y, uv1.x, uv1.y);
 	v_offset := cast(u32) len(draw_list.vertices)
 
-	quadv : [4]Vertex
-
-	quadv[0] = Vertex {
-		{p0.x, p0.y},
-		uv0.x, uv0.y
-	}
-	quadv[1] = Vertex {
-		{p0.x, p1.y},
-		uv0.x, uv1.y
-	}
-	quadv[2] = Vertex {
-		{p1.x, p0.y},
-		uv1.x, uv0.y
-	}
-	quadv[3] = Vertex {
-		{p1.x, p1.y},
-		uv1.x, uv1.y
+	quadv : [4]Vertex = {
+		{
+			{p0.x, p0.y},
+			uv0.x, uv0.y
+		},
+		{
+			{p0.x, p1.y},
+			uv0.x, uv1.y
+		},
+		{
+			{p1.x, p0.y},
+			uv1.x, uv0.y
+		},
+		{
+			{p1.x, p1.y},
+			uv1.x, uv1.y
+		}
 	}
 	append( & draw_list.vertices, ..quadv[:] )
 
@@ -84,118 +84,81 @@ blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}
 	return
 }
 
-cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, entry : ^Entry, bounds_0, bounds_1 : Vec2, scale, translate : Vec2  ) -> b32
+cache_glyph :: proc(ctx : ^Context, font : FontID, glyph_index : Glyph, entry : ^Entry, bounds_0, bounds_1 : Vec2, scale, translate : Vec2) -> b32
 {
 	// profile(#procedure)
 	if glyph_index == Glyph(0) {
-		// Note(Original Author): Glyph not in current hb_font
 		return false
 	}
 
-	// Retrieve the shape definition from the parser.
-	shape, error := parser_get_glyph_shape( & entry.parser_info, glyph_index )
-	assert( error == .None )
+	shape, error := parser_get_glyph_shape(&entry.parser_info, glyph_index)
+	assert(error == .None)
 	if len(shape) == 0 {
 		return false
 	}
 
-	if ctx.debug_print_verbose
-	{
-		log( "shape:")
-		for vertex in shape
-		{
-			if vertex.type == .Move {
-				logf("move_to %d %d", vertex.x, vertex.y )
-			}
-			else if vertex.type == .Line {
-				logf("line_to %d %d", vertex.x, vertex.y )
-			}
-			else if vertex.type == .Curve {
-				logf("curve_to %d %d through %d %d", vertex.x, vertex.y, vertex.contour_x0, vertex.contour_y0 )
-			}
-			else if vertex.type == .Cubic {
-				logf("cubic_to %d %d through %d %d and %d %d",
-					vertex.x, vertex.y,
-					vertex.contour_x0, vertex.contour_y0,
-					vertex.contour_x1, vertex.contour_y1 )
-			}
-		}
-	}
+	outside := Vec2{bounds_0.x - 21, bounds_0.y - 33}
 
-	/*
-	Note(Original Author):
-	We need a random point that is outside our shape. We simply pick something diagonally across from top-left bound corner.
-	Note that this outside point is scaled alongside the glyph in ve_fontcache_draw_filled_path, so we don't need to handle that here.
-	*/
-	outside := Vec2 {
-		bounds_0.x - 21,
-		bounds_0.y - 33,
-	}
-
-	// Note(Original Author): Figure out scaling so it fits within our box.
-	draw := DrawCall_Default
+	draw            := DrawCall_Default
 	draw.pass        = FrameBufferPass.Glyph
 	draw.start_index = u32(len(ctx.draw_list.indices))
 
-	// Note(Original Author);
-	// Draw the path using simplified version of https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac.
-	// Instead of involving fragment shader code we simply make use of modern GPU ability to crunch triangles and brute force curve definitions.
-	path := & ctx.temp_path
-	clear( path)
-	for edge in shape	do switch edge.type
-	{
+	path := &ctx.temp_path
+	clear(path)
+
+	append_bezier_curve :: #force_inline proc(path: ^[dynamic]Vertex, p0, p1, p2: Vec2, quality: u32) {
+		step := 1.0 / f32(quality)
+		for index := u32(1); index <= quality; index += 1 {
+			alpha := f32(index) * step
+			append( path, Vertex { pos = eval_point_on_bezier3(p0, p1, p2, alpha) } )
+		}
+	}
+
+	append_bezier_curve_cubic :: #force_inline proc(path: ^[dynamic]Vertex, p0, p1, p2, p3: Vec2, quality: u32) {
+		step := 1.0 / f32(quality)
+		for index := u32(1); index <= quality; index += 1 {
+			alpha := f32(index) * step
+			append( path, Vertex { pos = eval_point_on_bezier4(p0, p1, p2, p3, alpha) } )
+		}
+	}
+
+	for edge in shape do #partial switch edge.type {
 		case .Move:
 			if len(path) > 0 {
-				draw_filled_path( & ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose )
+					draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose)
+					clear(path)
 			}
-			clear( path)
 			fallthrough
 
 		case .Line:
-			vertex := Vertex { pos = Vec2{ f32(edge.x), f32(edge.y) } }
-			append( path, vertex)
+			append( path, Vertex { pos = Vec2 { f32(edge.x), f32(edge.y)} } )
 
 		case .Curve:
-			assert( len(path) > 0 )
-			p0 := path[ len(path) - 1 ].pos
+			assert(len(path) > 0)
+			p0 := path[ len(path) - 1].pos
 			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
 			p2 := Vec2{ f32(edge.x), f32(edge.y) }
-
-			step  := 1.0 / f32(ctx.curve_quality)
-			alpha := step
-			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
-				append( path, Vertex { pos = eval_point_on_bezier3( p0, p1, p2, alpha ) })
-				alpha += step
-			}
+			append_bezier_curve( path, p0, p1, p2, ctx.curve_quality )
 
 		case .Cubic:
-			assert( len(path) > 0 )
+			assert( len(path) > 0)
 			p0 := path[ len(path) - 1].pos
 			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
 			p2 := Vec2{ f32(edge.contour_x1), f32(edge.contour_y1) }
 			p3 := Vec2{ f32(edge.x), f32(edge.y) }
-
-			step  := 1.0 / f32(ctx.curve_quality)
-			alpha := step
-			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
-				append( path, Vertex { pos = eval_point_on_bezier4( p0, p1, p2, p3, alpha ) })
-				alpha += step
-			}
-
-		case .None:
-			assert(false, "Unknown edge type or invalid")
+			append_bezier_curve_cubic( path, p0, p1, p2, p3, ctx.curve_quality )
 	}
+
 	if len(path) > 0 {
-		draw_filled_path( & ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose )
+		draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose)
 	}
 
-	// Note(Original Author): Apend the draw call
-	draw.end_index = cast(u32) len(ctx.draw_list.indices)
+	draw.end_index = u32(len(ctx.draw_list.indices))
 	if draw.end_index > draw.start_index {
-		append( & ctx.draw_list.calls, draw)
+		append(&ctx.draw_list.calls, draw)
 	}
 
-	parser_free_shape( & entry.parser_info, shape )
+	parser_free_shape(&entry.parser_info, shape)
 	return true
 }
 
@@ -697,6 +660,34 @@ flush_glyph_buffer_to_atlas :: proc( ctx : ^Context )
 		ctx.glyph_buffer.batch_x = 0
 	}
 }
+
+// flush_glyph_buffer_to_atlas :: proc( ctx : ^Context )
+// {
+// 	// profile(#procedure)
+// 	// Flush drawcalls to draw list
+// 	if len(ctx.glyph_buffer.clear_draw_list.calls) > 0 {
+// 		merge_draw_list( & ctx.draw_list, & ctx.glyph_buffer.clear_draw_list)
+// 		clear_draw_list( & ctx.glyph_buffer.clear_draw_list)
+// 	}
+
+// 	if len(ctx.glyph_buffer.draw_list.calls) > 0 {
+// 		merge_draw_list( & ctx.draw_list, & ctx.glyph_buffer.draw_list)
+// 		clear_draw_list( & ctx.glyph_buffer.draw_list)
+// 	}
+
+// 	// Clear glyph_update_FBO
+// 	if ctx.glyph_buffer.batch_x != 0
+// 	{
+// 			call := DrawCall {
+// 				pass              = .Glyph,
+// 				start_index       = 0,
+// 				end_index         = 0,
+// 				clear_before_draw = true,
+// 			}
+// 			append( & ctx.draw_list.calls, call)
+// 			ctx.glyph_buffer.batch_x = 0
+// 	}
+// }
 
 // ve_fontcache_merge_drawlist
 merge_draw_list :: proc( dst, src : ^DrawList )
