@@ -87,18 +87,19 @@ render_mode_2d_workspace :: proc( screen_extent : Vec2, cam : Camera, input : In
 	}
 
 	// Visualize view bounds
-	when true
+	when false
 	{
-		render_set_view_space(screen_extent)
-		// render_set_camera(cam)
+    render_set_view_space(screen_extent)
+    render_set_camera(cam)  // This should apply the necessary transformation
 
-		view_bounds := view_get_bounds()
-		view_bounds.min *= 0.9
-		view_bounds.max *= 0.9
-		draw_rect( view_bounds, { 0, 0, 180, 30 } )
+    view_bounds := view_get_bounds()
 
-		render_flush_gp()
-	}
+    // Draw the view bounds (should now appear as a rectangle covering the whole screen)
+    draw_rect(view_bounds, {0, 0, 180, 30})
+
+    render_flush_gp()
+		gp.reset_transform()
+}
 
 	render_set_view_space(screen_extent)
 	render_set_camera(cam)
@@ -110,7 +111,7 @@ render_mode_2d_workspace :: proc( screen_extent : Vec2, cam : Camera, input : In
 	}
 	when UI_Render_Method == .Depth_First
 	{
-		render_ui_via_box_tree( ui.root, screen_extent, ve_ctx, ve_render, & cam )
+		render_ui_via_box_tree( ui, screen_extent, ve_ctx, ve_render, & cam )
 	}
 }
 
@@ -259,7 +260,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 		if true {
 			state.config.font_size_canvas_scalar = 2
 			zoom_adjust_size := 16 * state.project.workspace.cam.zoom
-			over_sample      := zoom_adjust_size < 12 ? 1.0 : f32(state.config.font_size_canvas_scalar)
+			over_sample      := f32(state.config.font_size_canvas_scalar)
 			debug_text("font_size_canvas_scalar: %v", config.font_size_canvas_scalar)
 			ve_id, resolved_size := font_provider_resolve_draw_id( default_font, zoom_adjust_size * over_sample )
 			debug_text("font_size resolved: %v px", resolved_size)
@@ -282,7 +283,7 @@ render_screen_ui :: proc( screen_extent : Extents2, ui : ^UI_State, ve_ctx : ^ve
 	}
 	when UI_Render_Method == .Depth_First
 	{
-		render_ui_via_box_tree( ui.root, screen_extent, ve_ctx, ve_render )
+		render_ui_via_box_tree( ui, screen_extent, ve_ctx, ve_render )
 	}
 }
 
@@ -306,6 +307,9 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 	gfx.append_buffer( draw_list_ibuf, ibuf_ve_range )
 
 	ve.flush_draw_list_layer( ve_ctx )
+
+	screen_width  := u32(screen_extent.x * 2)
+	screen_height := u32(screen_extent.y * 2)
 
 	for & draw_call in calls_layer_slice
 	{
@@ -334,8 +338,8 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 				}
 				gfx.begin_pass( pass )
 
-				// sokol_gfx.apply_viewport( 0,0, width, height, origin_top_left = true )
-				// sokol_gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
+				gfx.apply_viewport( 0,0, width, height, origin_top_left = true )
+				gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
 
 				gfx.apply_pipeline( glyph_pipeline )
 
@@ -370,8 +374,8 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 				}
 				gfx.begin_pass( pass )
 
-				// sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
-				// sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
+				gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
+				gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
 
 				gfx.apply_pipeline( atlas_pipeline )
 
@@ -407,10 +411,8 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 				pass.swapchain = sokol_glue.swapchain()
 				gfx.begin_pass( pass )
 
-				// width  := u32(screen_extent.x * 2)
-				// height := u32(screen_extent.y * 2)
-				// sokol_gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
-				// sokol_gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
+				gfx.apply_viewport( 0, 0, screen_width, screen_height, origin_top_left = true )
+				gfx.apply_scissor_rect( 0, 0, screen_width, screen_height, origin_top_left = true )
 
 				gfx.apply_pipeline( screen_pipeline )
 
@@ -453,7 +455,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 	}
 }
 
-render_ui_via_box_tree :: proc( root : ^UI_Box, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
+render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
 {
 	debug        := get_state().debug
 	default_font := get_state().default_font
@@ -464,14 +466,24 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, screen_extent : Vec2, ve_ctx : ^
 	text_enqueued  : b32 = false
 	shape_enqueued : b32 = false
 
+	render_set_view_space(screen_extent)
+	if cam != nil {
+			// gp.reset_transform()
+			// render_set_camera(cam^)  // This should apply the necessary transformation
+	}
+
 	previous_layer : i32 = 0
-	for box := root.first; box != nil; box = ui_box_tranverse_next_depth_first( box )
+	for box := ui.root.first; box != nil; box = ui_box_tranverse_next_depth_first( box, bypass_intersection_test = false, ctx = ui )
 	{
 		if box.ancestors != previous_layer {
 			if shape_enqueued do render_flush_gp()
 			if text_enqueued  do render_text_layer( screen_extent, ve_ctx, ve_render )
 			shape_enqueued = false
 			text_enqueued  = false
+		}
+
+		if ! intersects_range2(ui_view_bounds(ui), box.computed.bounds) {
+			continue
 		}
 
 		border_width := box.layout.border_width
@@ -482,11 +494,11 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, screen_extent : Vec2, ve_ctx : ^
 
 		using computed
 
-		// profile("enqueue box")
+		profile("enqueue box")
 
 		GP_Render:
 		{
-			// profile("draw_shapes")
+			profile("draw_shapes")
 			if style.bg_color.a != 0
 			{
 				draw_rect( bounds, style.bg_color )
@@ -682,7 +694,7 @@ draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, 
 
 draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size : f32, pos : Vec2, cam : Camera, color := Color_White )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	state := get_state(); using state
 
 	cam_offset := Vec2 {
@@ -701,7 +713,7 @@ draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size 
 	zoom_adjust_size := size * cam.zoom
 
 	// Over-sample font-size for any render under a camera
-	over_sample : f32 = zoom_adjust_size <= 8 ? 1.0 : f32(state.config.font_size_canvas_scalar)
+	over_sample : f32 = f32(state.config.font_size_canvas_scalar)
 	zoom_adjust_size *= over_sample
 
 	ve_id, resolved_size := font_provider_resolve_draw_id( id, zoom_adjust_size	)

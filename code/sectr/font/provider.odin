@@ -99,7 +99,7 @@ font_load :: proc(path_file : string,
 	def.path_file    = path_file
 	def.default_size = default_size
 
-	for font_size : i32 = clamp( Font_Size_Interval, 10, Font_Size_Interval ); font_size <= Font_Largest_Px_Size; font_size += Font_Size_Interval
+	for font_size : i32 = clamp( Font_Size_Interval, 2, Font_Size_Interval ); font_size <= Font_Largest_Px_Size; font_size += Font_Size_Interval
 	{
 		// logf("Loading at size %v", font_size)
 		id    := (font_size / Font_Size_Interval) + (font_size % Font_Size_Interval)
@@ -121,7 +121,7 @@ font_provider_resolve_draw_id :: proc( id : FontID, size := Font_Use_Default_Siz
 	def           := hmap_chained_get( font_cache, id.key )
 	size          := size == 0.0 ? f32(def.default_size) : size
 	even_size     := math.round(size * (1.0 / f32(Font_Size_Interval))) * f32(Font_Size_Interval)
-	resolved_size  = clamp( i32( even_size), 12, Font_Largest_Px_Size )
+	resolved_size  = clamp( i32( even_size), 2, Font_Largest_Px_Size )
 
 	id    := (resolved_size / Font_Size_Interval) + (resolved_size % Font_Size_Interval)
 	ve_id  = def.size_table[ id - 1 ]
@@ -133,4 +133,11 @@ measure_text_size :: proc( text : string, font : FontID, font_size := Font_Use_D
 	ve_id, size := font_provider_resolve_draw_id( font, font_size )
 	measured    := ve.measure_text_size( & get_state().font_provider_ctx.ve_ctx, ve_id, text )
 	return measured
+}
+
+get_font_vertical_metrics :: #force_inline proc ( font : FontID, font_size := Font_Use_Default_Size ) -> ( ascent, descent, line_gap : f32 )
+{
+	ve_id, size := font_provider_resolve_draw_id( font, font_size )
+	ascent, descent, line_gap = ve.get_font_vertical_metrics( & get_state().font_provider_ctx.ve_ctx, ve_id )
+	return
 }
