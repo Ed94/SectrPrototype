@@ -699,39 +699,34 @@ merge_draw_list :: proc( dst, src : ^DrawList )
 	}
 }
 
-optimize_draw_list :: proc( draw_list : ^DrawList, call_offset : int )
-{
+optimize_draw_list :: proc(draw_list: ^DrawList, call_offset: int) {
 	// profile(#procedure)
-	assert( draw_list != nil )
+	assert(draw_list != nil)
 
-	write_index : int = call_offset
-	for index : int = 1 + call_offset; index < len(draw_list.calls); index += 1
+	can_merge_draw_calls :: #force_inline proc "contextless" ( a, b : ^DrawCall ) -> bool {
+		result := \
+		a.pass      == b.pass        &&
+		a.end_index == b.start_index &&
+		a.region    == b.region      &&
+		a.colour    == b.colour      &&
+		! b.clear_before_draw
+		return result
+	}
+
+	write_index := call_offset
+	for read_index := call_offset + 1; read_index < len(draw_list.calls); read_index += 1
 	{
-		assert( write_index <= index )
-		draw_0 := & draw_list.calls[ write_index ]
-		draw_1 := & draw_list.calls[ index ]
+		draw_current := & draw_list.calls[write_index]
+		draw_next    := & draw_list.calls[read_index]
 
-		merge : b32 = true
-		if draw_0.pass      != draw_1.pass        do merge = false
-		if draw_0.end_index != draw_1.start_index do merge = false
-		if draw_0.region    != draw_1.region      do merge = false
-		if draw_1.clear_before_draw               do merge = false
-		if draw_0.colour    != draw_1.colour      do merge = false
-
-		if merge
-		{
-			// logf("merging %v : %v %v", draw_0.pass, write_index, index )
-			draw_0.end_index   = draw_1.end_index
-			draw_1.start_index = 0
-			draw_1.end_index   = 0
+		if can_merge_draw_calls(draw_current, draw_next) {
+			draw_current.end_index = draw_next.end_index
 		}
-		else
-		{
-			// logf("can't merge %v : %v %v", draw_0.pass, write_index, index )
+		else {
+			// Move to the next write position and copy the draw call
 			write_index += 1
-			if write_index != index {
-				draw_2 := & draw_list.calls[ write_index ]
-				draw_2^ = draw_1^
+			if write_index != read_index {
+				draw_list.calls[write_index] = (draw_next^)
 			}
 		}
 	}

@@ -116,7 +116,7 @@ reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
 }
 
 screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, size : Vec2 ) {
-	when true
+	if true
 	{
 		pos_64   := vec2_64_from_vec2(position^)
 		scale_64 := vec2_64_from_vec2(scale^)
@@ -130,14 +130,20 @@ screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2
 	}
 	else
 	{
+		pos      := position^
+		scale_32 := scale^
+
 		quotient : Vec2 = 1.0 / size
-		(position^) *= quotient * 2.0 - 1.0
-		(scale^)    *= quotient * 2.0
+		pos       = pos   * quotient * 2.0 - 1.0
+		scale_32  = scale_32 * quotient * 2.0
+
+		(position^) = pos
+		(scale^)    = scale_32
 	}
 }
 
 textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, size : Vec2 ) {
-	when true
+	if true
 	{
 		pos_64   := vec2_64_from_vec2(position^)
 		scale_64 := vec2_64_from_vec2(scale^)
@@ -151,7 +157,7 @@ textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, 
 	}
 	else
 	{
-		quotient    : Vec2 = 1.0 / size
+		quotient : Vec2 = 1.0 / size
 		(position^) *= quotient
 		(scale^)    *= quotient
 	}
