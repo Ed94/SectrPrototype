@@ -168,7 +168,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	{
 		content_size := content_bounds.max - content_bounds.min
 		text_pos : Vec2
-		text_pos = content_bounds.min + { 0, 0  }
+		text_pos = content_bounds.min + { 0, text_size.y * 0.5 }
 		text_pos += (content_size - text_size) * layout.text_alignment
 
 		computed.text_size = text_size
@@ -184,7 +184,7 @@ ui_compute_children_bounding_area :: proc ( box : ^UI_Box )
 
 ui_box_compute_layout_children :: proc( box : ^UI_Box )
 {
-	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next_depth_based( current )
+	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next_depth_first( current )
 	{
 		if current == box do return
 		if current.computed.fresh do continue

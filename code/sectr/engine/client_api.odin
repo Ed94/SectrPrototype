@@ -230,14 +230,14 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		backend := sokol_gfx.query_backend()
 		switch backend
 		{
-        case .D3D11:          logf("sokol_gfx: using D3D11 backend")
-        case .GLCORE, .GLES3: logf("sokol_gfx: using GL backend")
+			case .D3D11:          logf("sokol_gfx: using D3D11 backend")
+			case .GLCORE, .GLES3: logf("sokol_gfx: using GL backend")
 
-        case .METAL_MACOS, .METAL_IOS, .METAL_SIMULATOR:
-        	logf("sokol_gfx: using Metal backend")
+			case .METAL_MACOS, .METAL_IOS, .METAL_SIMULATOR:
+				logf("sokol_gfx: using Metal backend")
 
-        case .WGPU:  logf("sokol_gfx: using WebGPU backend")
-        case .DUMMY: logf("sokol_gfx: using dummy backend")
+			case .WGPU:  logf("sokol_gfx: using WebGPU backend")
+			case .DUMMY: logf("sokol_gfx: using dummy backend")
 		}
 
 		render_data.pass_actions.bg_clear_black.colors[0] = sokol_gfx.Color_Attachment_Action {
@@ -328,8 +328,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
 		}
 
-		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
-		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
 		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )

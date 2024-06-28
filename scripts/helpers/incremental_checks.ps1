@@ -2,37 +2,37 @@
 
 function check-FileForChanges
 {
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$path_file
-    )
+	param(
+		[Parameter(Mandatory=$true)]
+		[string]$path_file
+	)
 
-    if (-not (Test-Path $path_file -PathType Leaf)) {
-        Write-Error "The provided path is not a valid file: $path_file"
-        return $false
-    }
-    $file_name = Split-Path $path_file -Leaf
-    $path_csv  = Join-Path $path_build ($file_name + "_file_hash.csv")
+	if (-not (Test-Path $path_file -PathType Leaf)) {
+		Write-Error "The provided path is not a valid file: $path_file"
+	return $false
+	}
+	$file_name = Split-Path $path_file -Leaf
+	$path_csv  = Join-Path $path_build ($file_name + "_file_hash.csv")
 
-    $csv_file_hash = $null
-    if (Test-Path $path_csv) {
-        $csv_file_hash = Import-Csv $path_csv | Select-Object -ExpandProperty value
-    }
+	$csv_file_hash = $null
+	if (Test-Path $path_csv) {
+		$csv_file_hash = Import-Csv $path_csv | Select-Object -ExpandProperty value
+	}
 
-    $current_hash_info = Get-FileHash -Path $path_file -Algorithm MD5
-    $current_file_hash = $current_hash_info.Hash
+	$current_hash_info = Get-FileHash -Path $path_file -Algorithm MD5
+	$current_file_hash = $current_hash_info.Hash
 
-    # Save the current hash to the CSV
-    [PSCustomObject]@{
-        name  = $path_file
-        value = $current_file_hash
-    } | Export-Csv $path_csv -NoTypeInformation
+	# Save the current hash to the CSV
+	[PSCustomObject]@{
+		name  = $path_file
+ 		value = $current_file_hash
+	} | Export-Csv $path_csv -NoTypeInformation
 
-    if ($csv_file_hash -and $csv_file_hash -eq $current_file_hash) {
-        return $false
-    } else {
-        return $true
-    }
+	if ($csv_file_hash -and $csv_file_hash -eq $current_file_hash) {
+ 		return $false
+	} else {
+ 		return $true
+	}
 }
 
 # Check to see if the module has changed files since the last build

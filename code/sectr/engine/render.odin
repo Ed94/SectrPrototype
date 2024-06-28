@@ -257,7 +257,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 		}
 
 		if true {
-			state.config.font_size_canvas_scalar = 1
+			state.config.font_size_canvas_scalar = 2
 			zoom_adjust_size := 16 * state.project.workspace.cam.zoom
 			over_sample      := zoom_adjust_size < 12 ? 1.0 : f32(state.config.font_size_canvas_scalar)
 			debug_text("font_size_canvas_scalar: %v", config.font_size_canvas_scalar)
@@ -319,7 +319,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 			// 1. Do the glyph rendering pass
 			// Glyphs are first rendered to an intermediate 2k x 512px R8 texture
 			case .Glyph:
-				profile("VEFontCache: draw call: glyph")
+				// profile("VEFontCache: draw call: glyph")
 				if num_indices == 0 && ! draw_call.clear_before_draw {
 					continue
 				}
@@ -355,7 +355,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 			// 2. Do the atlas rendering pass
 			// A simple 16-tap box downsample shader is then used to blit from this intermediate texture to the final atlas location
 			case .Atlas:
-				profile("VEFontCache: draw call: atlas")
+				// profile("VEFontCache: draw call: atlas")
 				if num_indices == 0 && ! draw_call.clear_before_draw {
 					continue
 				}
@@ -401,7 +401,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 					continue
 				}
 
-				profile("VEFontCache: draw call: target")
+				// profile("VEFontCache: draw call: target")
 
 				pass := screen_pass
 				pass.swapchain = sokol_glue.swapchain()
@@ -465,7 +465,7 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, screen_extent : Vec2, ve_ctx : ^
 	shape_enqueued : b32 = false
 
 	previous_layer : i32 = 0
-	for box := root.first; box != nil; box = ui_box_tranverse_next_depth_based( box )
+	for box := root.first; box != nil; box = ui_box_tranverse_next_depth_first( box )
 	{
 		if box.ancestors != previous_layer {
 			if shape_enqueued do render_flush_gp()
@@ -482,11 +482,11 @@ render_ui_via_box_tree :: proc( root : ^UI_Box, screen_extent : Vec2, ve_ctx : ^
 
 		using computed
 
-		profile("enqueue box")
+		// profile("enqueue box")
 
 		GP_Render:
 		{
-			profile("draw_shapes")
+			// profile("draw_shapes")
 			if style.bg_color.a != 0
 			{
 				draw_rect( bounds, style.bg_color )
@@ -552,14 +552,14 @@ render_ui_via_box_list :: proc( render_list : []UI_RenderBoxInfo, screen_extent 
 		already_passed_signal := id > 0 && render_list[ id - 1 ].layer_signal
 		if !already_passed_signal && entry.layer_signal
 		{
-			profile("render ui layer")
+			// profile("render ui layer")
 			render_flush_gp()
 			if text_enqueued do render_text_layer( screen_extent, ve_ctx, ve_render )
 			continue
 		}
 		using entry
 
-		profile("enqueue box")
+		// profile("enqueue box")
 
 		GP_Render:
 		{
@@ -672,7 +672,7 @@ draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, po
 // Draw text using a string and extent-based screen coordinates
 draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, pos : Vec2, color := Color_White )
 {
-	profile(#procedure)
+	// profile(#procedure)
 	state          := get_state(); using state
 	screen_size    := app_window.extent * 2
 	render_pos     := screen_to_render_pos(pos)
@@ -682,7 +682,7 @@ draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, 
 
 draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size : f32, pos : Vec2, cam : Camera, color := Color_White )
 {
-	profile(#procedure)
+	// profile(#procedure)
 	state := get_state(); using state
 
 	cam_offset := Vec2 {
