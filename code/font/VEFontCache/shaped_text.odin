@@ -1,13 +1,10 @@
 package VEFontCache
 
 ShapedText :: struct {
-	// draw_list      : DrawList,
 	glyphs         : [dynamic]Glyph,
 	positions      : [dynamic]Vec2,
 	end_cursor_pos : Vec2,
 	size           : Vec2,
-	// storage_hash   : u64,
-	// draw_hash      : u64,
 }
 
 ShapedTextCache :: struct {
@@ -15,28 +12,6 @@ ShapedTextCache :: struct {
 	state         : LRU_Cache,
 	next_cache_id : i32,
 }
-
-
-// shape_draw_hash :: #force_inline proc "contextless" ( shaped : ^ShapedText, pos, scale : Vec2 ) -> (draw_hash : u64)
-// {
-// 	pos   := pos
-// 	scale := scale
-// 	pos_bytes   := slice_ptr( transmute(^byte) & pos,   size_of(Vec2))
-// 	scale_bytes := slice_ptr( transmute(^byte) & scale, size_of(Vec2))
-
-// 	draw_hash = shaped.storage_hash
-// 	shape_lru_hash( & shaped.draw_hash, pos_bytes )
-// 	shape_lru_hash( & shaped.draw_hash, scale_bytes )
-// 	return
-// }
-
-// shape_lru_hash_og :: #force_inline proc "contextless" ( label : string ) -> u64 {
-// 	hash : u64
-// 	for str_byte in transmute([]byte) label {
-// 		hash = ((hash << 8) + hash) + u64(str_byte)
-// 	}
-// 	return hash
-// }
 
 shape_lru_hash :: #force_inline proc "contextless" ( hash : ^u64, bytes : []byte ) {
 	for value in bytes {
@@ -54,18 +29,6 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, en
 	lru_code : u64
 	shape_lru_hash( & lru_code, font_bytes )
 	shape_lru_hash( & lru_code, text_bytes )
-
-	// @static buffer : [64 * Kilobyte]byte
-	// text_size       := len(text_utf8)
-	// sice_end_offset := size_of(FontID) + len(text_utf8)
-
-	// buffer_slice := buffer[:]
-	// copy( buffer_slice, font_bytes )
-
-	// buffer_slice_post_font := buffer[ size_of(FontID) : sice_end_offset ]
-	// copy( buffer_slice_post_font, text_bytes )
-
-	// lru_code := shape_lru_hash_og( transmute(string) buffer[: sice_end_offset ] )
 
 	shape_cache := & ctx.shape_cache
 	state       := & ctx.shape_cache.state

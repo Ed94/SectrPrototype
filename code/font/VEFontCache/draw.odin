@@ -617,19 +617,6 @@ draw_text_shape :: proc( ctx : ^Context,
 	snap_width, snap_height : f32
 ) -> (cursor_pos : Vec2)
 {
-	// draw_hash   := shape_draw_hash( shaped, position, scale )
-	// dirty_shape := len(shaped.draw_list.calls) == 0 || draw_hash != shaped.draw_hash
-	// if ! dirty_shape {
-	// 	merge_draw_list( & ctx.draw_list, & shaped.draw_list )
-	// 	reset_batch_codepoint_state( ctx )
-	// 	cursor_pos = position + shaped.end_cursor_pos * scale
-	// 	return
-	// }
-	// if dirty_shape {
-	// 	clear_draw_list( & shaped.draw_list )
-	// }
-
-	// position := position //+ ctx.cursor_pos * scale
 	// profile(#procedure)
 	batch_start_idx : i32 = 0
 	for index : i32 = 0; index < cast(i32) len(shaped.glyphs); index += 1
@@ -645,10 +632,6 @@ draw_text_shape :: proc( ctx : ^Context,
 		if check_glyph_in_atlas( ctx, font, entry, glyph_index, lru_code, atlas_index, region_kind, region, over_sample ) do continue
 
 		// We can no longer directly append the shape as it has missing glyphs in the atlas
-		// if !dirty_shape {
-		// 	clear_draw_list( & shaped.draw_list )
-		// }
-		// dirty_shape = true
 
 		// First batch the other cached glyphs
 		// flush_glyph_buffer_to_atlas(ctx)
@@ -660,14 +643,8 @@ draw_text_shape :: proc( ctx : ^Context,
 		batch_start_idx = index
 	}
 
-	// if dirty_shape {
-		flush_glyph_buffer_to_atlas(ctx)
-		draw_text_batch( ctx, entry, shaped, batch_start_idx, cast(i32) len(shaped.glyphs), position, scale, snap_width , snap_height )
-		// shaped.draw_hash = draw_hash
-	// }
-
-	// merge_draw_list( & ctx.draw_list, & shaped.draw_list )
-	// reset_batch_codepoint_state( ctx )
+	draw_text_batch( ctx, entry, shaped, batch_start_idx, cast(i32) len(shaped.glyphs), position, scale, snap_width , snap_height )
+	reset_batch_codepoint_state( ctx )
 
 	cursor_pos = position + shaped.end_cursor_pos * scale
 	return
@@ -759,5 +736,5 @@ optimize_draw_list :: proc( draw_list : ^DrawList, call_offset : int )
 		}
 	}
 
-	resize( & draw_list.calls, write_index + 1 )
+	resize( & draw_list.calls, write_index + 1)
 }
