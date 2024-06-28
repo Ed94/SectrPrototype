@@ -56,37 +56,31 @@ blit_quad :: proc( draw_list : ^DrawList, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}
 		// p0.x, p0.y, p1.x, p1.y, uv0.x, uv0.y, uv1.x, uv1.y);
 	v_offset := cast(u32) len(draw_list.vertices)
 
-	vertex := Vertex {
+	quadv : [4]Vertex
+
+	quadv[0] = Vertex {
 		{p0.x, p0.y},
 		uv0.x, uv0.y
 	}
-	append( & draw_list.vertices, vertex )
-
-	vertex = Vertex {
+	quadv[1] = Vertex {
 		{p0.x, p1.y},
 		uv0.x, uv1.y
 	}
-	append( & draw_list.vertices, vertex )
-
-	vertex = Vertex {
+	quadv[2] = Vertex {
 		{p1.x, p0.y},
 		uv1.x, uv0.y
 	}
-	append( & draw_list.vertices, vertex )
-
-	vertex = Vertex {
+	quadv[3] = Vertex {
 		{p1.x, p1.y},
 		uv1.x, uv1.y
 	}
-	append( & draw_list.vertices, vertex )
+	append( & draw_list.vertices, ..quadv[:] )
 
 	quad_indices : []u32 = {
-		0, 1, 2,
-		2, 1, 3
+		0 + v_offset, 1 + v_offset, 2 + v_offset,
+		2 + v_offset, 1 + v_offset, 3 + v_offset
 	}
-	for index : i32 = 0; index < 6; index += 1 {
-		append( & draw_list.indices, v_offset + quad_indices[ index ] )
-	}
+	append( & draw_list.indices, ..quad_indices[:] )
 	return
 }
 
@@ -146,36 +140,37 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, entry :
 	// Note(Original Author);
 	// Draw the path using simplified version of https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac.
 	// Instead of involving fragment shader code we simply make use of modern GPU ability to crunch triangles and brute force curve definitions.
-	path := ctx.temp_path
-	clear( & path)
+	path := & ctx.temp_path
+	clear( path)
 	for edge in shape	do switch edge.type
 	{
 		case .Move:
 			if len(path) > 0 {
 				draw_filled_path( & ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose )
 			}
-			clear( & path)
+			clear( path)
 			fallthrough
 
 		case .Line:
-			append( & path, Vec2{ f32(edge.x), f32(edge.y) })
+			vertex := Vertex { pos = Vec2{ f32(edge.x), f32(edge.y) } }
+			append( path, vertex)
 
 		case .Curve:
 			assert( len(path) > 0 )
-			p0 := path[ len(path) - 1 ]
+			p0 := path[ len(path) - 1 ].pos
 			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
 			p2 := Vec2{ f32(edge.x), f32(edge.y) }
 
 			step  := 1.0 / f32(ctx.curve_quality)
 			alpha := step
 			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
-				append( & path, eval_point_on_bezier3( p0, p1, p2, alpha ))
+				append( path, Vertex { pos = eval_point_on_bezier3( p0, p1, p2, alpha ) })
 				alpha += step
 			}
 
 		case .Cubic:
 			assert( len(path) > 0 )
-			p0 := path[ len(path) - 1]
+			p0 := path[ len(path) - 1].pos
 			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
 			p2 := Vec2{ f32(edge.contour_x1), f32(edge.contour_y1) }
 			p3 := Vec2{ f32(edge.x), f32(edge.y) }
@@ -183,7 +178,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, entry :
 			step  := 1.0 / f32(ctx.curve_quality)
 			alpha := step
 			for index := i32(0); index < i32(ctx.curve_quality); index += 1 {
-				append( & path, eval_point_on_bezier4( p0, p1, p2, p3, alpha ))
+				append( path, Vertex { pos = eval_point_on_bezier4( p0, p1, p2, p3, alpha ) })
 				alpha += step
 			}
 
@@ -197,7 +192,7 @@ cache_glyph :: proc( ctx : ^Context, font : FontID, glyph_index : Glyph, entry :
 	// Note(Original Author): Apend the draw call
 	draw.end_index = cast(u32) len(ctx.draw_list.indices)
 	if draw.end_index > draw.start_index {
-		append(& ctx.draw_list.calls, draw)
+		append( & ctx.draw_list.calls, draw)
 	}
 
 	parser_free_shape( & entry.parser_info, shape )
@@ -301,10 +296,9 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	glyph_buffer.batch_x   += i32(gwidth_scaled_px)
 	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, glyph_buffer_size )
 
-	call : DrawCall
+	clear_target_region : DrawCall
 	{
-		// Queue up clear on target region on atlas
-		using call
+		using clear_target_region
 		pass        = .Atlas
 		region      = .Ignore
 		start_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
@@ -314,9 +308,12 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 			{ 1.0, 1.0 },  { 1.0, 1.0 } )
 
 		end_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
-		append( & glyph_buffer.clear_draw_list.calls, call )
+	}
 
-		// Queue up a blit from glyph_update_FBO to the atlas
+	blit_to_atlas : DrawCall
+	{
+		using blit_to_atlas
+		pass        = .Atlas
 		region      = .None
 		start_index = cast(u32) len(glyph_buffer.draw_list.indices)
 
@@ -325,8 +322,10 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 			src_position,       src_position  + src_size )
 
 		end_index = cast(u32) len(glyph_buffer.draw_list.indices)
-		append( & glyph_buffer.draw_list.calls, call )
 	}
+
+	append( & glyph_buffer.clear_draw_list.calls, clear_target_region )
+	append( & glyph_buffer.draw_list.calls, blit_to_atlas )
 
 	// Render glyph to glyph_update_FBO
 	cache_glyph( ctx, font, glyph_index, entry, vec2(bounds_0), vec2(bounds_1), glyph_draw_scale, glyph_draw_translate )
@@ -403,7 +402,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context,
 	// Figure out the source rect.
 	glyph_position := Vec2 {}
 	glyph_size     := vec2(glyph_padding_dbl)
-	glyph_dst_size := glyph_size + bounds_scaled
+	glyph_dst_size := glyph_size    + bounds_scaled
 	glyph_size     += bounds_scaled * over_sample
 
 	// Figure out the destination rect.
@@ -416,9 +415,11 @@ directly_draw_massive_glyph :: proc( ctx : ^Context,
 	textspace_x_form( & glyph_position, & glyph_size, glyph_buffer_size )
 
 	// Add the glyph drawcall.
-	call : DrawCall
+	calls : [2]DrawCall
+
+	draw_to_target := & calls[0]
 	{
-		using call
+		using draw_to_target
 		pass        = .Target_Uncached
 		colour      = ctx.colour
 		start_index = u32(len(ctx.draw_list.indices))
@@ -428,15 +429,17 @@ directly_draw_massive_glyph :: proc( ctx : ^Context,
 				glyph_position, glyph_position + glyph_size )
 
 		end_index = u32(len(ctx.draw_list.indices))
-		append( & ctx.draw_list.calls, call )
 	}
 
-	// Clear glyph_update_FBO.
-	call.pass              = .Glyph
-	call.start_index       = 0
-	call.end_index         = 0
-	call.clear_before_draw = true
-	append( & ctx.draw_list.calls, call )
+	clear_glyph_update := & calls[1]
+	{
+		// Clear glyph_update_FBO.
+		clear_glyph_update.pass              = .Glyph
+		clear_glyph_update.start_index       = 0
+		clear_glyph_update.end_index         = 0
+		clear_glyph_update.clear_before_draw = true
+	}
+	append( & ctx.draw_list.calls, ..calls[:] )
 }
 
 draw_cached_glyph :: proc( ctx : ^Context, shaped : ^ShapedText,
@@ -481,14 +484,13 @@ draw_cached_glyph :: proc( ctx : ^Context, shaped : ^ShapedText,
 	bounds_0_scaled := bounds_0 * entry.size_scale //- { 0.5, 0.5 }
 	bounds_0_scaled  = ceil(bounds_0_scaled)
 
-	dst       := position + bounds_0_scaled * scale
-	dst       -= glyph_padding * scale
-	dst_scale := glyph_scale   * scale
+	dst       := position + (bounds_0_scaled - glyph_padding) * scale
+	dst_scale := glyph_scale * scale
 
 	textspace_x_form( & slot_position, & glyph_scale, atlas_size )
 
 	// Shape call setup
-	if false
+	when false
 	{
 		call := DrawCall_Default
 		{
@@ -504,22 +506,23 @@ draw_cached_glyph :: proc( ctx : ^Context, shaped : ^ShapedText,
 		}
 		append( & shaped.draw_list.calls, call )
 	}
-
-	// Add the glyph drawcall
-	call := DrawCall_Default
+	else
 	{
-		using call
-		pass        = .Target
-		colour      = ctx.colour
-		start_index = cast(u32) len(ctx.draw_list.indices)
+		// Add the glyph drawcall
+		call := DrawCall_Default
+		{
+			using call
+			pass        = .Target
+			colour      = ctx.colour
+			start_index = cast(u32) len(ctx.draw_list.indices)
 
-		blit_quad( & ctx.draw_list,
-			dst,           dst           + dst_scale,
-			slot_position, slot_position + glyph_scale )
-		end_index   = cast(u32) len(ctx.draw_list.indices)
+			blit_quad( & ctx.draw_list,
+				dst,           dst           + dst_scale,
+				slot_position, slot_position + glyph_scale )
+			end_index   = cast(u32) len(ctx.draw_list.indices)
+		}
+		append( & ctx.draw_list.calls, call )
 	}
-	append( & ctx.draw_list.calls, call )
-
 	return true
 }
 
@@ -529,7 +532,7 @@ draw_cached_glyph :: proc( ctx : ^Context, shaped : ^ShapedText,
 // Note(Original Author):
 // WARNING: doesn't actually append drawcall; caller is responsible for actually appending the drawcall.
 // ve_fontcache_draw_filled_path
-draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []Vec2,
+draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []Vertex,
 	scale     := Vec2 { 1, 1 },
 	translate := Vec2 { 0, 0 },
 	debug_print_verbose : b32 = false
@@ -539,19 +542,16 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 	{
 		log("outline_path:")
 		for point in path {
-			vec := point * scale + translate
+			vec := point.pos * scale + translate
 			logf(" %0.2f %0.2f", vec.x, vec.y )
 		}
 	}
 
 	v_offset := cast(u32) len(draw_list.vertices)
 	for point in path {
-		vertex := Vertex {
-			pos = point * scale + translate,
-			u = 0,
-			v = 0,
-		}
-		append( & draw_list.vertices, vertex )
+		point := point
+		point.pos = point.pos * scale + translate
+		append( & draw_list.vertices, point )
 	}
 
 	outside_vertex := cast(u32) len(draw_list.vertices)
@@ -566,9 +566,12 @@ draw_filled_path :: proc( draw_list : ^DrawList, outside_point : Vec2, path : []
 
 	for index : u32 = 1; index < cast(u32) len(path); index += 1 {
 		indices := & draw_list.indices
-		append( indices, outside_vertex )
-		append( indices, v_offset + index - 1 )
-		append( indices, v_offset + index )
+		to_add := [3]u32 {
+			outside_vertex,
+			v_offset + index - 1,
+			v_offset + index
+		}
+		append( indices, ..to_add[:] )
 	}
 }
 
@@ -600,7 +603,7 @@ draw_text_batch :: proc( ctx : ^Context, entry : ^Entry, shaped : ^ShapedText,
 			lru_code,    atlas_index,
 			vec2(bounds_0), vec2(bounds_1),
 			region_kind, region, over_sample,
-			glyph_translate, scale)
+			glyph_translate, scale )
 		assert( glyph_cached == true )
 	}
 }
@@ -614,8 +617,17 @@ draw_text_shape :: proc( ctx : ^Context,
 	snap_width, snap_height : f32
 ) -> (cursor_pos : Vec2)
 {
-	draw_hash   := shape_draw_hash( shaped, position, scale )
-	dirty_shape := ! (len(shaped.draw_list.calls) > 0) || draw_hash != shaped.draw_hash
+	// draw_hash   := shape_draw_hash( shaped, position, scale )
+	// dirty_shape := len(shaped.draw_list.calls) == 0 || draw_hash != shaped.draw_hash
+	// if ! dirty_shape {
+	// 	merge_draw_list( & ctx.draw_list, & shaped.draw_list )
+	// 	reset_batch_codepoint_state( ctx )
+	// 	cursor_pos = position + shaped.end_cursor_pos * scale
+	// 	return
+	// }
+	// if dirty_shape {
+	// 	clear_draw_list( & shaped.draw_list )
+	// }
 
 	// position := position //+ ctx.cursor_pos * scale
 	// profile(#procedure)
@@ -633,9 +645,10 @@ draw_text_shape :: proc( ctx : ^Context,
 		if check_glyph_in_atlas( ctx, font, entry, glyph_index, lru_code, atlas_index, region_kind, region, over_sample ) do continue
 
 		// We can no longer directly append the shape as it has missing glyphs in the atlas
-		dirty_shape = true
-
-		// Glyph has not been catched, needs to be directly drawn.
+		// if !dirty_shape {
+		// 	clear_draw_list( & shaped.draw_list )
+		// }
+		// dirty_shape = true
 
 		// First batch the other cached glyphs
 		// flush_glyph_buffer_to_atlas(ctx)
@@ -650,13 +663,11 @@ draw_text_shape :: proc( ctx : ^Context,
 	// if dirty_shape {
 		flush_glyph_buffer_to_atlas(ctx)
 		draw_text_batch( ctx, entry, shaped, batch_start_idx, cast(i32) len(shaped.glyphs), position, scale, snap_width , snap_height )
-	// 	shaped.draw_hash = draw_hash
+		// shaped.draw_hash = draw_hash
 	// }
-	// else {
-		// flush_glyph_buffer_to_atlas( ctx )
-		// merge_draw_list( & ctx.draw_list, & shaped.draw_list )
-	// }
-	reset_batch_codepoint_state( ctx )
+
+	// merge_draw_list( & ctx.draw_list, & shaped.draw_list )
+	// reset_batch_codepoint_state( ctx )
 
 	cursor_pos = position + shaped.end_cursor_pos * scale
 	return

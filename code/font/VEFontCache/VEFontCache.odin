@@ -44,7 +44,7 @@ Context :: struct {
 
 	entries : [dynamic]Entry,
 
-	temp_path               : [dynamic]Vec2,
+	temp_path               : [dynamic]Vertex,
 	temp_codepoint_seen     : map[u64]bool,
 	temp_codepoint_seen_num : u32,
 
@@ -133,8 +133,8 @@ InitShapeCacheParams :: struct {
 }
 
 InitShapeCacheParams_Default :: InitShapeCacheParams {
-	capacity       = 1024,
-	reserve_length = 1024,
+	capacity       = 2048,
+	reserve_length = 2048,
 }
 
 // ve_fontcache_init
@@ -145,8 +145,8 @@ startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 	shape_cache_params          := InitShapeCacheParams_Default,
 	curve_quality               : u32 = 3,
 	entires_reserve             : u32 = 512,
-	temp_path_reserve           : u32 = 512,
-	temp_codepoint_seen_reserve : u32 = 512,
+	temp_path_reserve           : u32 = 1024,
+	temp_codepoint_seen_reserve : u32 = 2048,
 )
 {
 	assert( ctx != nil, "Must provide a valid context" )
@@ -164,7 +164,7 @@ startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 	entries, error = make( [dynamic]Entry, len = 0, cap = entires_reserve )
 	assert(error == .None, "VEFontCache.init : Failed to allocate entries")
 
-	temp_path, error = make( [dynamic]Vec2, len = 0, cap = temp_path_reserve )
+	temp_path, error = make( [dynamic]Vertex, len = 0, cap = temp_path_reserve )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
 	temp_codepoint_seen, error = make( map[u64]bool, uint(temp_codepoint_seen_reserve) )

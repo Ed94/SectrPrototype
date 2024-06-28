@@ -1,13 +1,13 @@
 package VEFontCache
 
 ShapedText :: struct {
-	draw_list      : DrawList,
+	// draw_list      : DrawList,
 	glyphs         : [dynamic]Glyph,
 	positions      : [dynamic]Vec2,
 	end_cursor_pos : Vec2,
 	size           : Vec2,
-	storage_hash   : u64,
-	draw_hash      : u64,
+	// storage_hash   : u64,
+	// draw_hash      : u64,
 }
 
 ShapedTextCache :: struct {
@@ -17,18 +17,18 @@ ShapedTextCache :: struct {
 }
 
 
-shape_draw_hash :: #force_inline proc "contextless" ( shaped : ^ShapedText, pos, scale : Vec2 ) -> (draw_hash : u64)
-{
-	pos   := pos
-	scale := scale
-	pos_bytes   := slice_ptr( transmute(^byte) & pos,   size_of(Vec2))
-	scale_bytes := slice_ptr( transmute(^byte) & scale, size_of(Vec2))
+// shape_draw_hash :: #force_inline proc "contextless" ( shaped : ^ShapedText, pos, scale : Vec2 ) -> (draw_hash : u64)
+// {
+// 	pos   := pos
+// 	scale := scale
+// 	pos_bytes   := slice_ptr( transmute(^byte) & pos,   size_of(Vec2))
+// 	scale_bytes := slice_ptr( transmute(^byte) & scale, size_of(Vec2))
 
-	draw_hash = shaped.storage_hash
-	shape_lru_hash( & shaped.draw_hash, pos_bytes )
-	shape_lru_hash( & shaped.draw_hash, scale_bytes )
-	return
-}
+// 	draw_hash = shaped.storage_hash
+// 	shape_lru_hash( & shaped.draw_hash, pos_bytes )
+// 	shape_lru_hash( & shaped.draw_hash, scale_bytes )
+// 	return
+// }
 
 // shape_lru_hash_og :: #force_inline proc "contextless" ( label : string ) -> u64 {
 // 	hash : u64
@@ -91,7 +91,7 @@ shape_text_cached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, en
 		}
 
 		shape_entry := & shape_cache.storage[ shape_cache_idx ]
-		shape_entry.storage_hash = lru_code
+		// shape_entry.storage_hash = lru_code
 		shape_text_uncached( ctx, font, text_utf8, entry, shape_entry )
 	}
 
@@ -106,7 +106,6 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, 
 
 	use_full_text_shape := ctx.text_shape_adv
 
-	clear_draw_list( & output.draw_list )
 	clear( & output.glyphs )
 	clear( & output.positions )
 
