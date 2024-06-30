@@ -153,6 +153,65 @@ update :: proc( delta_time : f64 ) -> b32
 	//region 2D Camera Manual Nav
 	// TODO(Ed): This should be per workspace view
 	{
+		Digial_Zoom_Snap_Levels := []f32{
+			0.025,  // 0.4px (not practical for text, but allows extreme zoom out)
+			0.03125, // 0.5px
+			0.0375,  // 0.6px
+			0.04375, // 0.7px
+			0.05,    // 0.8px
+			0.05625, // 0.9px
+			0.0625,  // 1px
+			0.075,   // 1.2px
+			0.0875,  // 1.4px
+			0.1,     // 1.6px
+			0.1125,  // 1.8px
+			0.125,   // 2px (first practical font size)
+			0.15,    //
+			0.20,    //
+			0.25,    // 4px
+			0.375,   // 6px
+			0.5,     // 8px
+			0.625,   // 10px
+			0.75,    // 12px
+			0.875,   // 14px
+			1.0,     // 16px (base size)
+			1.125,   // 18px
+			1.25,    // 20px
+			1.375,   // 22px
+			1.5,     // 24px
+			1.625,   // 26px
+			1.75,    // 28px
+			1.875,   // 30px
+			2.0,     // 32px
+			2.125,   // 34px
+			2.25,    // 36px
+			2.375,   // 38px
+			2.5,     // 40px
+			2.625,   // 42px
+			2.75,    // 44px
+			2.875,   // 46px
+			3.0,     // 48px
+			3.125,   // 50px
+			3.25,    // 52px
+			3.375,   // 54px
+			3.5,     // 56px
+			3.625,   // 58px
+			3.75,    // 60px
+			3.875,   // 62px
+			4.0,     // 64px
+			4.125,   // 66px
+			4.25,    // 68px
+			4.375,   // 70px
+			4.5,     // 72px
+			4.625,   // 74px
+			4.75,    // 76px
+			4.875,   // 78px
+			5.0,     // 80px
+		}
+
+		Min_Zoom := Digial_Zoom_Snap_Levels[ 0 ]
+		Max_zoom := Digial_Zoom_Snap_Levels[ len(Digial_Zoom_Snap_Levels) - 1 ]
+
 		// profile("Camera Manual Nav")
 		digital_move_speed : f32 = 1000.0
 
@@ -160,11 +219,30 @@ update :: proc( delta_time : f64 ) -> b32
 			workspace.zoom_target = cam.zoom
 		}
 
-		// config.cam_max_zoom = 10
-		// config.cam_min_zoom = 0.05
-		// config.cam_zoom_sensitivity_digital = 0.05
-		// config.cam_zoom_sensitivity_smooth  = 2.0
-		// config.cam_zoom_mode = .Smooth
+		binary_search_closest :: proc(arr: []f32, target: f32) -> int
+		{
+			low, high := 0, len(arr) - 1
+
+			for low <= high {
+				mid := (low + high) / 2
+				if      arr[ mid ] == target do return mid
+				else if arr[ mid ]  < target do low  = mid + 1
+				else                         do high = mid - 1
+			}
+
+			if low == 0        do return 0
+			if low == len(arr) do return len(arr) - 1
+
+			if abs(arr[low-1] - target) < abs(arr[low] - target) {
+				return low - 1
+			}
+			return low
+		}
+
+		find_closest_zoom_index :: proc(zoom: f32, levels : []f32) -> int {
+			return clamp(binary_search_closest(levels, zoom), 0, len(levels) - 1)
+		}
+
 		switch config.cam_zoom_mode
 		{
 			case .Smooth:
@@ -177,9 +255,26 @@ update :: proc( delta_time : f64 ) -> b32
 				cam.zoom    += (workspace.zoom_target - cam.zoom) * lerp_factor * f32(delta_time)
 				cam.zoom     = clamp(cam.zoom, config.cam_min_zoom, config.cam_max_zoom) // Ensure cam.zoom stays within bounds
 			case .Digital:
-				zoom_delta            := clamp(input.mouse.scroll.y, -1, 1) * config.cam_zoom_sensitivity_digital
-				workspace.zoom_target  = clamp(workspace.zoom_target + zoom_delta, config.cam_min_zoom, config.cam_max_zoom)
-				cam.zoom = workspace.zoom_target
+				zoom_delta := input.mouse.scroll.y
+
+				if zoom_delta != 0 {
+						current_index := find_closest_zoom_index(cam.zoom, Digial_Zoom_Snap_Levels)
+						scroll_speed := max(1, abs(zoom_delta) * config.cam_zoom_scroll_delta_scale)  // Adjust this factor to control sensitivity
+						target_index := current_index
+
+						if zoom_delta > 0 {
+								target_index = min(len(Digial_Zoom_Snap_Levels) - 1, current_index + int(scroll_speed))
+						} else if zoom_delta < 0 {
+								target_index = max(0, current_index - int(scroll_speed))
+						}
+
+						if target_index != current_index {
+								workspace.zoom_target = Digial_Zoom_Snap_Levels[target_index]
+						}
+				}
+
+				// Smooth transition to target zoom
+				cam.zoom = lerp(cam.zoom, workspace.zoom_target, cast(f32) config.cam_zoom_sensitivity_digital)
 		}
 
 		move_velocity : Vec2 = {

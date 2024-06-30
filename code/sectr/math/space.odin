@@ -205,7 +205,8 @@ render_to_ws_view_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
 screen_to_ws_view_pos :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
 	state := get_state(); using state
 	cam   := & project.workspace.cam
-	result := pos - cam.position * cam.zoom
+	cam_zoom_ratio := 1.0 / cam.zoom
+	result         := pos * cam_zoom_ratio - cam.position
 	return result
 }
 
@@ -227,8 +228,17 @@ ws_view_extent :: #force_inline proc "contextless"() -> Extents2 {
 
 // Workspace view to screen space position
 // TODO(Ed): Support a position which would not be centered on the screen if in a viewport
-ws_view_to_screen_pos :: #force_inline proc "contextless"(position: Vec2) -> Vec2 {
-	return position
+ws_view_to_screen_pos :: proc(ws_pos : Vec2) -> Vec2 {
+	cam := &get_state().project.workspace.cam
+	screen_extent := get_state().app_window.extent
+
+	// Apply camera transformation
+	view_pos := (ws_pos - cam.position) * cam.zoom
+
+	// Convert to screen space
+	screen_pos := view_pos
+
+	return screen_pos
 }
 
 ws_view_to_render_pos :: #force_inline proc "contextless"(position: Vec2) -> Vec2 {

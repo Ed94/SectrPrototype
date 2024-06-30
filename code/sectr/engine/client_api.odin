@@ -69,7 +69,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// Setup Persistent Slabs & String Cache
 	{
 		// alignment := uint(mem.DEFAULT_ALIGNMENT)
-		alignment := uint(16)
+		alignment := uint(64)
 
 		policy_ptr := & default_slab_policy
 		push( policy_ptr, SlabSizeClass {  128 * Kilobyte,   1 * Kilobyte, alignment })
@@ -88,9 +88,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		push( policy_ptr, SlabSizeClass {   16 * Megabyte,  16 * Megabyte, alignment })
 		push( policy_ptr, SlabSizeClass {   32 * Megabyte,  32 * Megabyte, alignment })
 		push( policy_ptr, SlabSizeClass {   64 * Megabyte,  64 * Megabyte, alignment })
-		// push( policy_ptr, SlabSizeClass { 128 * Megabyte, 128 * Megabyte, alignment })
-		// push( policy_ptr, SlabSizeClass { 256 * Megabyte, 256 * Megabyte, alignment })
-		// push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 128 * Megabyte, 128 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 256 * Megabyte, 256 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
 
 		alloc_error : AllocatorError
 		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = Persistent_Slab_DBG_Name, enable_mem_tracking = false )
@@ -137,11 +137,12 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		resolution_height =  600
 		refresh_rate      =    0
 
-		cam_min_zoom                 = 0.10
+		cam_min_zoom                 = 0.025
 		cam_max_zoom                 = 5.0
-		cam_zoom_mode                = .Smooth
+		cam_zoom_mode                = .Digital
 		cam_zoom_smooth_snappiness   = 4.0
-		cam_zoom_sensitivity_digital = 0.05
+		cam_zoom_sensitivity_digital = 0.25
+		cam_zoom_scroll_delta_scale  = 0.25
 		cam_zoom_sensitivity_smooth  = 2.0
 
 		engine_refresh_hz = 0
@@ -252,7 +253,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 	// Setup sokol_gp
 	{
-		desc := sokol_gp.Desc {}
+		desc := sokol_gp.Desc {
+			max_vertices = 2 * Mega + 640 * Kilo,
+			max_commands = 1 * Mega,
+		}
 		sokol_gp.setup(desc)
 		verify( cast(b32) sokol_gp.is_valid(), "Failed to setup sokol gp (graphics painter)" )
 	}
@@ -329,7 +333,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		}
 
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
-		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/ve_fontcache.h", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
 		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
@@ -502,8 +508,8 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	// rl.PollInputEvents()
 
 	debug.draw_ui_box_bounds_points = false
-	debug.draw_ui_padding_bounds = false
-	debug.draw_ui_content_bounds = false
+	debug.draw_ui_padding_bounds    = false
+	debug.draw_ui_content_bounds    = false
 
 	// config.engine_refresh_hz = 165
 

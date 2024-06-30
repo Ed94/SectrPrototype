@@ -118,36 +118,33 @@ ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return hm
 
 // TODO(Ed): Rename to ui_box_tranverse_view_next
 // Traveral pritorizes immeidate children
-ui_box_tranverse_next_depth_first :: #force_inline proc "contextless" ( box : ^ UI_Box, bypass_intersection_test := false ) -> (^ UI_Box)
-{
-	using state := get_state()
-	// If current has children, do them first
-	if box.first != nil
-	{
-		// Check to make sure parent is present on the screen, if its not don't bother.
-		if bypass_intersection_test {
-			return box.first
-		}
-		if intersects_range2( ui_view_bounds(), box.computed.bounds) {
-			return box.first
+ui_box_tranverse_next_depth_first :: #force_inline proc "contextless" (box: ^UI_Box, bypass_intersection_test := false, ctx: ^UI_State = nil) -> ^UI_Box {
+	state := get_state(); using state
+	ctx := ctx if ctx != nil else ui_context
+
+	// If current has children, check if we should traverse them
+	if box.first != nil {
+		if bypass_intersection_test || intersects_range2(ui_view_bounds(ctx), box.computed.bounds) {
+				return box.first
 		}
 	}
 
-	if box.next != nil do return box.next
-	// There are no more adjacent nodes
+	// If no children or children are culled, try next sibling
+	if box.next != nil {
+			return box.next
+	}
 
+	// No more siblings, traverse up the tree
 	parent := box.parent
-	// Attempt to find a parent with a next, otherwise we just return a parent with nil
-	for ; parent.parent != nil;
-	{
-		if parent.next != nil {
-			break
-		}
-		parent = parent.parent
+	for parent != nil {
+			if parent.next != nil {
+					return parent.next
+			}
+			parent = parent.parent
 	}
 
-	// Lift back up to parent, and set it to its next.
-	return parent.next
+	// We've reached the end of the tree
+	return nil
 }
 
 // Traveral pritorizes traversing a "anestry layer"

@@ -55,7 +55,7 @@ ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 = f
 				flags          = {},
 				anchor         = range2({},{}),
 				// alignment      = UI_Align_Presets.text_centered,
-				text_alignment = {0.0, 1.5},
+				text_alignment = {0.0, 0},
 				font_size      = 12,
 				margins        = {0, 0, 0, 0},
 				padding        = {0, 0, 0, 0},
@@ -225,7 +225,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					using title
 					layout.anchor.ratio.x = 1.0
 					layout.margins.left   = 10
-					layout.text_alignment = {0, 0.5}
+					layout.text_alignment = {0, 0.0}
 				}
 
 				input_box := ui_widget("settings_menu.engine_refresh.input_box", {.Mouse_Clickable, .Focusable, .Click_To_Focus}); {

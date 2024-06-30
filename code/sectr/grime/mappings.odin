@@ -51,6 +51,7 @@ import fmt_io "core:fmt"
 	str_tmp_from_any :: fmt_io.tprint
 
 import "core:math"
+	lerp :: math.lerp
 
 import "core:math/bits"
 	u64_max :: bits.U64_MAX 

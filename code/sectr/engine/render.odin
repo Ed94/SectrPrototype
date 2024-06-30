@@ -258,7 +258,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 		}
 
 		if true {
-			state.config.font_size_canvas_scalar = 2
+			state.config.font_size_canvas_scalar = 1.5
 			zoom_adjust_size := 16 * state.project.workspace.cam.zoom
 			over_sample      := f32(state.config.font_size_canvas_scalar)
 			debug_text("font_size_canvas_scalar: %v", config.font_size_canvas_scalar)

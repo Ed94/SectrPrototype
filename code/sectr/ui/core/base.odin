@@ -504,15 +504,16 @@ ui_top_ancestor :: #force_inline proc "contextless" ( box : ^UI_Box ) -> (^UI_Bo
 	return ancestor
 }
 
-ui_view_bounds :: #force_inline proc "contextless" () -> (range : Range2) {
-	using state := get_state();
-	// if ui_context == & screen_ui {
-	// 	return screen_get_bounds()
-	// }
-	// else {
-	
+ui_view_bounds :: #force_inline proc "contextless" ( ui : ^UI_State = nil ) -> (range : Range2) {
+	state := get_state(); using state
+	ui := ui; if ui == nil do ui = ui_context
+
+	if ui == & screen_ui {
+		return screen_get_bounds()
+	}
+	else {
 		return view_get_bounds()
-	// }
+	}
 }
 
 ui_context :: #force_inline proc "contextless" () -> ^UI_State { return get_state().ui_context }

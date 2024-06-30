@@ -151,9 +151,9 @@ AppConfig :: struct {
 	cam_zoom_smooth_snappiness   : f32,
 	cam_zoom_sensitivity_smooth  : f32,
 	cam_zoom_sensitivity_digital : f32,
+	cam_zoom_scroll_delta_scale  : f32,
 
 	engine_refresh_hz : uint,
-
 
 	timing_fps_moving_avg_alpha : f32,
 

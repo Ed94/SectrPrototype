@@ -163,17 +163,17 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 	text_layout.flags = {
 		// .Origin_At_Anchor_Center,
 		.Fixed_Position_X, .Fixed_Position_Y,
-		.Fixed_Width, .Fixed_Height,
+		.Fixed_Width,      .Fixed_Height,
 	}
 	text_layout.text_alignment = { 0.0, 0.5 }
-	text_layout.alignment = { 0.0, 0.0 }
-	text_layout.size.min = { 1600, 20 }
+	text_layout.alignment      = { 0.0, 1.0 }
+	text_layout.size.min       = { 1600, 14 }
 	text_style := frame_style_default ^
 	text_style_combo := to_ui_style_combo(text_style)
 	text_style_combo.default.bg_color  = Color_Transparent
-	text_style_combo.disabled.bg_color = Color_Frame_Disabled
-	text_style_combo.hot.bg_color      = Color_Frame_Hover
-	text_style_combo.active.bg_color   = Color_Frame_Select
+	text_style_combo.disabled.bg_color = Color_Transparent
+	text_style_combo.hot.bg_color      = Color_Transparent
+	text_style_combo.active.bg_color   = Color_Transparent
 	scope( text_layout, text_style )
 
 	alloc_error : AllocatorError; success : bool
@@ -204,14 +204,14 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 		ui_layout( text_layout )
 		line_hbox := ui_widget(str_fmt( "line %v", line_id ), {.Mouse_Clickable})
 
-		if line_hbox.key == ui.hot
+		if line_hbox.key == ui.hot && false
 		{
 			line_hbox.text = StrRunesPair {}
 			ui_parent(line_hbox)
 
 			chunk_layout          := text_layout
-			chunk_layout.alignment = { 0.0, 0.5 }
-			chunk_layout.anchor    = range2({ 0.0, 0 }, { 0.0, 0 })
+			chunk_layout.alignment = { 0.0, 0.0 }
+			chunk_layout.anchor    = range2({ 0.0, 0.0 }, { 0.0, 0.0 })
 			chunk_layout.pos       = {}
 			chunk_layout.flags     = { .Fixed_Position_X, .Size_To_Text }
 
@@ -286,12 +286,12 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 		if len(line_hbox.text.str) > 0 {
 			array_append( widgets_ptr, line_hbox )
 			text_layout.pos.x  = text_layout.pos.x
-			text_layout.pos.y += size_range2(line_hbox.computed.bounds).y - 8
+			text_layout.pos.y += size_range2(line_hbox.computed.bounds).y
 		}
 		else {
 			widget := & widgets.data[ widgets.num - 1 ]
 			if widget.box != nil {
-				text_layout.pos.y += size_range2( widget.computed.bounds ).y - 8
+				text_layout.pos.y += size_range2( widget.computed.bounds ).y
 			}
 		}
 
