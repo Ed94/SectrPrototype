@@ -48,7 +48,7 @@ ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 = f
 	{
 		@static theme : UI_Theme
 		@static loaded : b32 = false
-		if ! loaded
+		if ! loaded || true
 		{
 			app_color := app_color_theme()
 			layout := UI_Layout {
@@ -56,7 +56,7 @@ ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 = f
 				anchor         = range2({},{}),
 				// alignment      = UI_Align_Presets.text_centered,
 				text_alignment = {0.0, 0},
-				font_size      = 12,
+				font_size      = 10,
 				margins        = {0, 0, 0, 0},
 				padding        = {0, 0, 0, 0},
 				border_width   = 1.0,
@@ -232,7 +232,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					using input_box
 					layout.flags          = {.Fixed_Width}
 					layout.margins.left   = 5
-					layout.padding.right  = 10
+					layout.padding.right  = 5
 					layout.size.min.x     = 80
 					style.corner_radii[0] = 0.35
 
@@ -273,11 +273,11 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 						scope(theme_text)
 						value_txt = ui_text("settings_menu.engine_refresh.input_box.value", to_str_runes_pair(array_to_slice(value_str)))
 						using value_txt
-						layout.alignment      = {1, 0.0}
-						layout.text_alignment = {0, 0.5}
-						layout.anchor.left    = 1.0
-						layout.flags          = {.Fixed_Width}
-						// layout.size.min       = cast(Vec2) measure_text_size( value_txt.text.str, value_txt.style.font, value_txt.layout.font_size, 0 )
+						layout.alignment      = {0.0, 0.0}
+						layout.text_alignment = {1.0, 0.5}
+						layout.anchor.left    = 0.0
+						// layout.flags          = {.Fixed_Width}
+						layout.size.min       = cast(Vec2) measure_text_size( value_txt.text.str, value_txt.style.font, value_txt.layout.font_size, 0 )
 					}
 				}
 			}

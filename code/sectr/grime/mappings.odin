@@ -51,10 +51,12 @@ import fmt_io "core:fmt"
 	str_tmp_from_any :: fmt_io.tprint
 
 import "core:math"
-	lerp :: math.lerp
+	lerp  :: math.lerp
 
 import "core:math/bits"
-	u64_max :: bits.U64_MAX 
+	u64_max :: bits.U64_MAX
+
+import "core:math/linalg"
 
 import "core:mem"
 	align_forward_int       :: mem.align_forward_int
@@ -364,6 +366,20 @@ dot :: proc {
 // 	ws_view_draw_text_string,
 // 	ws_view_draw_text_StrRunesPair,
 // }
+
+floor :: proc {
+	math.floor_f16,
+	math.floor_f16le,
+	math.floor_f16be,
+	math.floor_f32,
+	math.floor_f32le,
+	math.floor_f32be,
+	math.floor_f64,
+	math.floor_f64le,
+	math.floor_f64be,
+
+	linalg.floor
+}
 
 from_bytes :: proc {
 	str_builder_from_bytes,

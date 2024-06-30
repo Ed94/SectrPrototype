@@ -22,7 +22,7 @@ theme_button :: proc() -> UI_Theme
 			anchor         = range2_zero,
 			alignment      = {0, 0},
 			text_alignment = {0.5, 0.5},
-			font_size      = 16,
+			font_size      = 12,
 			margins        = {0, 0, 0, 0},
 			padding        = {0, 0, 0, 0},
 			border_width   = 1,
@@ -113,7 +113,7 @@ theme_table_row :: proc( is_even : bool ) -> UI_Theme
 {
 	@static theme  : UI_Theme
 	@static loaded : b32 = false
-	if ! loaded
+	if ! loaded || true
 	{
 		app_color := app_color_theme()
 		table_bg : RGBA8
@@ -127,7 +127,7 @@ theme_table_row :: proc( is_even : bool ) -> UI_Theme
 			flags          = {},
 			anchor         = range2({},{}),
 			alignment      = {0, 0},
-			text_alignment = {0.0, 0.0},
+			text_alignment = {0.5, 0.0},
 			font_size      = 16,
 			margins        = {0, 0, 0, 0},
 			padding        = {0, 0, 0, 0},
@@ -276,12 +276,12 @@ theme_window_bar_btn :: proc() -> UI_Theme
 			anchor         = range2({1, 0},{}),
 			alignment      = {0, 0},
 			text_alignment = {0.5, 0.5},
-			font_size      = 16,
+			font_size      = 12,
 			margins        = {0, 0, 0, 0},
 			padding        = {0, 0, 0, 0},
 			border_width   = 1,
 			pos            = {0, 0},
-			size           = range2({50,0},{})
+			size           = range2({60,0},{})
 		}
 		style := UI_Style {
 			bg_color     = app_color.btn_bg_default,

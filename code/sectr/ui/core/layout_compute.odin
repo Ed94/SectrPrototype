@@ -167,6 +167,10 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	if len(box.text.str) > 0
 	{
 		ascent, descent, line_gap := get_font_vertical_metrics(style.font, layout.font_size)
+
+		offset := text_size
+		offset += { 0, -descent }
+
 		content_size := content_bounds.max - content_bounds.min
 		text_pos : Vec2
 		text_pos = content_bounds.min

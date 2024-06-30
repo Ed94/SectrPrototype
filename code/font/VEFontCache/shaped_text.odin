@@ -122,7 +122,7 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, 
 				position.y
 			})
 
-			position.x    += f32(advance) * entry.size_scale
+			position.x    += ceil(f32(advance) * entry.size_scale)
 			prev_codepoint = codepoint
 		}
 

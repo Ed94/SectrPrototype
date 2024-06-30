@@ -490,7 +490,7 @@ draw_text_batch :: proc(ctx: ^Context, entry: ^Entry, shaped: ^ShapedText,
 			slot_position, _ := atlas_bbox( atlas, region_kind, atlas_index )
 			glyph_scale      := bounds_size * entry.size_scale + glyph_padding
 			bounds_0_scaled  := ceil( vbounds_0 * entry.size_scale )
-			dst              := glyph_translate + (bounds_0_scaled - glyph_padding) * scale
+			dst              := glyph_translate + bounds_0_scaled * scale
 			dst_scale        := glyph_scale * scale
 			textspace_x_form( & slot_position, & glyph_scale, atlas_size )
 
