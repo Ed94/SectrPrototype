@@ -1,14 +1,11 @@
 /*
 A port of (https://github.com/hypernewbie/VEFontCache) to Odin.
 
-Status:
-This port is heavily tied to the grime package in SectrPrototype.
-
 Changes:
 - Font Parser & Glyph Shaper are abstracted to their own interface
 - Font Face parser info stored separately from entries
 - ve_fontcache_loadfile not ported (just use odin's core:os or os2), then call load_font
-- Macro defines have been made into runtime parameters
+- Macro defines have been made (mostly) into runtime parameters
 */
 package VEFontCache
 
