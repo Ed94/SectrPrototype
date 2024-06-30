@@ -71,12 +71,12 @@ theme_drop_down_btn :: proc() -> UI_Theme
 			anchor         = range2({0, 0},{}),
 			alignment      = {0, 0},
 			text_alignment = {0.5, 0.5},
-			font_size      = 14,
+			font_size      = 12,
 			margins        = {0, 0, 0, 0},
 			padding        = {0, 0, 0, 0},
 			border_width   = 1,
 			pos            = {0, 0},
-			size           = range2({0,20},{})
+			size           = range2({0,25},{})
 		}
 		style := UI_Style {
 			bg_color     = app_color.btn_bg_default,
@@ -112,8 +112,8 @@ theme_drop_down_btn :: proc() -> UI_Theme
 theme_table_row :: proc( is_even : bool ) -> UI_Theme
 {
 	@static theme  : UI_Theme
-	@static loaded : b32 = false
-	if ! loaded || true
+	// @static loaded : b32 = false
+	// if ! loaded || true
 	{
 		app_color := app_color_theme()
 		table_bg : RGBA8
@@ -128,7 +128,7 @@ theme_table_row :: proc( is_even : bool ) -> UI_Theme
 			anchor         = range2({},{}),
 			alignment      = {0, 0},
 			text_alignment = {0.5, 0.0},
-			font_size      = 16,
+			font_size      = 10,
 			margins        = {0, 0, 0, 0},
 			padding        = {0, 0, 0, 0},
 			border_width   = 0,
@@ -159,7 +159,7 @@ theme_table_row :: proc( is_even : bool ) -> UI_Theme
 			using style_combo.active
 		}
 		theme  = UI_Theme { layout_combo, style_combo }
-		loaded = true
+		// loaded = true
 	}
 	return theme
 }
@@ -186,7 +186,7 @@ theme_window_bar :: proc() -> UI_Theme
 		style := UI_Style {
 			bg_color     = app_color.window_bar_bg,
 			border_color = Color_Transparent,
-			corner_radii = {},
+			corner_radii = {0, 0, 0, 0 },
 			blur_size    = 0,
 			font         = get_state().default_font,
 			text_color   = app_color.text_default,
@@ -238,7 +238,7 @@ theme_window_bar_title :: proc() -> UI_Theme
 		style := UI_Style {
 			bg_color     = Color_Transparent,
 			border_color = Color_Transparent,
-			corner_radii = {},
+			corner_radii = {0, 0, 0, 0},
 			blur_size    = 0,
 			font         = get_state().default_font,
 			text_color   = app_color.text_default,
@@ -335,7 +335,7 @@ theme_window_panel :: proc() -> UI_Theme
 		style := UI_Style {
 			bg_color     = app_color.window_panel_bg,
 			border_color = app_color.window_panel_border,
-			corner_radii = {},
+			corner_radii = { 0, 0, 0, 0 },
 			blur_size    = 0,
 			font         = get_state().default_font,
 			text_color   = app_color.text_default,
@@ -421,7 +421,7 @@ theme_text :: proc() -> UI_Theme
 			anchor         = range2({},{}),
 			alignment      = {0, 0},
 			text_alignment = {0.0, 0.5},
-			font_size      = 14,
+			font_size      = 12,
 			margins        = {0, 0, 0, 0},
 			padding        = {0, 0, 0, 0},
 			border_width   = 0,

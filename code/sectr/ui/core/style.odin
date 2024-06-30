@@ -1,5 +1,9 @@
 package sectr
 
+BoxCorners :: struct {
+	top_left, top_right, bottom_right, bottom_left : f32,
+}
+
 // TODO(Ed): We problably can embedd this info into the UI_Layout with the regular text_alignment
 UI_TextAlign :: enum u32 {
 	Left,
@@ -20,7 +24,6 @@ UI_Style :: struct {
 	bg_color     : RGBA8,
 	border_color : RGBA8,
 
-	// TODO(Ed): We cannot support individual corners unless we add it to raylib (or finally change the rendering backend)
 	corner_radii : [Corner.Count]f32,
 
 	// TODO(Ed) : Add support for this eventually

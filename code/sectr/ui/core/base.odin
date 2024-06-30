@@ -10,10 +10,10 @@ Corner :: enum i32 {
 	_01,
 	_10,
 	_11,
-	TopLeft     = _00,
-	TopRight    = _01,
-	BottomLeft  = _10,
-	BottomRight = _11,
+	Top_Left     = _00,
+	Top_Right    = _01,
+	Bottom_Left  = _10,
+	Bottom_Right = _11,
 	Count = 4,
 }
 

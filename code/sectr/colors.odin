@@ -189,6 +189,6 @@ App_Thm_Light :: AppColorTheme {
 	window_bar_bg           = RGBA8{ 155, 155, 155, 255},
 	window_btn_close_bg_hot = RGBA8{ 145, 135, 135, 255},
 
-	window_panel_bg     = RGBA8 {135, 135, 135, 50}, // translucent_panel
+	window_panel_bg     = RGBA8 {155, 155, 155, 50}, // translucent_panel
 	window_panel_border = RGBA8{184, 184, 184, 255},
 }

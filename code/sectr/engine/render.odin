@@ -169,36 +169,38 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			screen_corners := screen_get_corners()
 
 			position   := screen_corners.top_left
-			position.x += 2
 			position.y -= debug.draw_debug_text_y
 
 			content := str_fmt( format, ..args )
 			text_size := measure_text_size( content, default_font, 14.0, 0.0 )
-			debug_draw_text( content, position, 14.0 )
-			debug.draw_debug_text_y += text_size.y + 3
+			debug_draw_text( content, position, 10.0 )
+			debug.draw_debug_text_y += text_size.y
 		}
 
 		profile("debug_text_vis")
-		fps_size : f32 = 14.0
-		fps_msg       := str_fmt( "FPS: %0.2f", fps_avg)
-		fps_msg_size  := measure_text_size( fps_msg, default_font, fps_size, 0.0 )
-		fps_msg_pos   := screen_get_corners().top_right - { fps_msg_size.x, fps_msg_size.y }
-		debug_draw_text( fps_msg, fps_msg_pos, fps_size, color = Color_Red )
+		if true {
+			fps_size : f32 = 14.0
+			fps_msg       := str_fmt( "FPS: %0.2f", fps_avg)
+			fps_msg_size  := measure_text_size( fps_msg, default_font, fps_size, 0.0 )
+			fps_msg_pos   := screen_get_corners().top_right - { fps_msg_size.x, fps_msg_size.y }
+			debug_draw_text( fps_msg, fps_msg_pos, fps_size, color = Color_Red )
+		}
 
-		debug_text( "Screen Width : %v", screen_size.x )
-		debug_text( "Screen Height: %v", screen_size.y )
-		debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
-		debug_text( "frametime (work)          : %0.3f ms", frametime_delta_ms )
-		debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
+		if false {
+			debug_text( "Screen Width : %v", screen_size.x )
+			debug_text( "Screen Height: %v", screen_size.y )
+			debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
+			debug_text( "frametime (work)          : %0.3f ms", frametime_delta_ms )
+			debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
+		}
 		if replay.mode == ReplayMode.Record {
 			debug_text( "Recording Input")
 		}
 		if replay.mode == ReplayMode.Playback {
 			debug_text( "Replaying Input")
 		}
-		debug_text("Zoom Target: %v", project.workspace.zoom_target)
 
-		if true
+		if false
 		{
 			using input_events
 
@@ -221,11 +223,12 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			debug_text("Mouse Position (Workspace View): %0.2f", screen_to_ws_view_pos(input.mouse.pos) )
 		}
 
-		if true
+		if false
 		{
 			ui := & project.workspace.ui
 
 			debug_text("Workspace Cam : %v", project.workspace.cam)
+			debug_text("Zoom Target   : %v", project.workspace.zoom_target)
 
 			debug_text("Box Count (Workspace): %v", ui.built_box_count )
 
@@ -240,7 +243,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			}
 		}
 
-		if true
+		if false
 		{
 			ui := & screen_ui
 
@@ -257,7 +260,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			}
 		}
 
-		if true {
+		if false {
 			state.config.font_size_canvas_scalar = 1.5
 			zoom_adjust_size := 16 * state.project.workspace.cam.zoom
 			over_sample      := f32(state.config.font_size_canvas_scalar)
@@ -498,16 +501,23 @@ render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^
 
 		GP_Render:
 		{
+			corner_radii_total : f32 = 0
+			for radius in style.corner_radii do corner_radii_total += radius
+
 			profile("draw_shapes")
 			if style.bg_color.a != 0
 			{
-				draw_rect( bounds, style.bg_color )
+				render_set_color( style.bg_color )
+				if corner_radii_total > 0 do draw_rect_rounded( bounds, style.corner_radii, 16 )
+				else                      do draw_rect( bounds)
 				shape_enqueued = true
 			}
 
 			if style.border_color.a != 0 && border_width > 0 {
 				render_set_color( style.border_color )
-				draw_rect_border( bounds, border_width )
+
+				if corner_radii_total > 0 do draw_rect_rounded_border( bounds, style.corner_radii, border_width, 16 )
+				else                      do draw_rect_border( bounds, border_width )
 				shape_enqueued = true
 			}
 
@@ -517,10 +527,12 @@ render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^
 			{
 				render_set_color( RGBA8_Debug_UI_Padding_Bounds )
 				draw_rect_border( computed.padding, line_thickness )
+				shape_enqueued = true
 			}
 			else if debug.draw_ui_content_bounds {
 				render_set_color( RGBA8_Debug_UI_Content_Bounds )
 				draw_rect_border( computed.content, line_thickness )
+				shape_enqueued = true
 			}
 
 			if debug.draw_ui_box_bounds_points
@@ -578,7 +590,8 @@ render_ui_via_box_list :: proc( render_list : []UI_RenderBoxInfo, screen_extent 
 			// profile("draw_shapes")
 			if style.bg_color.a != 0
 			{
-				draw_rect( bounds, style.bg_color )
+				render_set_color( style.bg_color )
+				draw_rect( bounds )
 				shape_enqueued = true
 			}
 
@@ -643,13 +656,70 @@ draw_filled_circle :: proc(x, y, radius: f32, edges: int)
 	gp.draw_filled_triangles(raw_data(triangles), u32(len(triangles)))
 }
 
-draw_rect :: proc( rect : Range2, color : RGBA8 ) {
+draw_rect :: proc( rect : Range2 ) {
 	using rect
-	render_set_color( color )
-
 	size     := max - min
 	position := min
 	gp.draw_filled_rect( position.x, position.y, size.x, size.y )
+}
+
+// Note(Ed): This is an inefficint solution to rendering rounded rectangles
+// Eventually when sokoL_gp is ported to Odin it would be best to implement these using a custom shader
+// Uses triangulation from the center. (UVs are problably weird but wont matter for my use case)
+draw_rect_rounded :: proc(rect: Range2, radii: [4]f32, segments: u32)
+{
+	segments := i32(segments)
+	width  := rect.max.x - rect.min.x
+	height := rect.max.y - rect.min.y
+
+	using Corner
+
+	max_radius := min(width, height) * 0.5
+	corner_radii := [4]f32{
+		min(radii[ Top_Left    ], max_radius),
+		min(radii[ Top_Right   ], max_radius),
+		min(radii[ Bottom_Right], max_radius),
+		min(radii[ Bottom_Left ], max_radius),
+	}
+	top_left     := corner_radii[ Top_Left     ]
+	top_right    := corner_radii[ Top_Right    ]
+	bottom_left  := corner_radii[ Bottom_Left  ]
+	bottom_right := corner_radii[ Bottom_Right ]
+
+	total_vertices  := (segments + 1) * 4
+	total_triangles := total_vertices
+
+	vertices  := make( []gp.Point,    total_vertices )
+	triangles := make( []gp.Triangle, total_triangles)
+
+	add_corner_vertices :: proc(vertices : []gp.Point, offset : i32, cx, cy, radius : f32, start_angle : f32, segments : i32)
+	{
+		half_pi :: math.PI / 2
+		for segment in i32(0) ..= segments {
+			angle := start_angle + half_pi * (f32(segment) / f32(segments))
+			x     := cx + radius * math.cos(angle)
+			y     := cy + radius * math.sin(angle)
+			vertices[ offset + segment ] = gp.Point{x, y}
+		}
+	}
+
+	half_pi :: math.PI / 2
+
+	// Add vertices for each corner
+	add_corner_vertices( vertices, 0 * (segments + 1), rect.min.x + top_left,     rect.min.y + top_left,     top_left,         math.PI, segments )
+	add_corner_vertices( vertices, 1 * (segments + 1), rect.max.x - top_right,    rect.min.y + top_right,    top_right,    3 * half_pi, segments )
+	add_corner_vertices( vertices, 2 * (segments + 1), rect.max.x - bottom_left,  rect.max.y - bottom_left,  bottom_left,            0, segments )
+	add_corner_vertices( vertices, 3 * (segments + 1), rect.min.x + bottom_right, rect.max.y - bottom_right, bottom_right,     half_pi, segments )
+
+	// Create triangles using fan triangulation
+	center := gp.Point{ (rect.min.x + rect.max.x) * 0.5, (rect.min.y + rect.max.y) * 0.5 }
+	for vertex in 0 ..< total_vertices {
+			next             := (vertex + 1) % total_vertices
+			triangles[vertex] = gp.Triangle { center, vertices[vertex], vertices[next] }
+	}
+
+	// Draw the filled triangles
+	gp.draw_filled_triangles(raw_data(triangles), cast(u32)len(triangles))
 }
 
 draw_rect_border :: proc( rect : Range2, border_width: f32)
@@ -664,6 +734,74 @@ draw_rect_border :: proc( rect : Range2, border_width: f32)
 
 	borders := []gp.Rect{ top, bottom, left, right }
 	gp.draw_filled_rects( raw_data(borders), u32(len(borders)) )
+}
+
+draw_rect_rounded_border :: proc(rect: Range2, radii: [4]f32, border_width: f32, segments: u32)
+{
+	width  := rect.max.x - rect.min.x
+	height := rect.max.y - rect.min.y
+
+	using Corner
+
+	// Ensure radii are not too large
+	max_radius := min(width, height) * 0.5
+	corner_radii := [4]f32{
+		min(radii[0], max_radius),
+		min(radii[1], max_radius),
+		min(radii[2], max_radius),
+		min(radii[3], max_radius),
+	}
+	top_left     := corner_radii[ Top_Left     ]
+	top_right    := corner_radii[ Top_Right    ]
+	bottom_left  := corner_radii[ Bottom_Left  ]
+	bottom_right := corner_radii[ Bottom_Right ]
+
+	// Ensure border width is not too large
+	border_width := min(border_width, max_radius)
+
+	// Calculate the extents of the border rectangles
+	left   := rect.min.x + max(top_left,    bottom_left)
+	right  := rect.max.x - max(top_right,   bottom_right)
+	top    := rect.min.y + max(top_left,    top_right)
+	bottom := rect.max.y - max(bottom_left, bottom_right)
+
+	// Draw border rectangles
+	gp.draw_filled_rect(left,                      rect.min.y,                right - left, border_width)	// Top
+	gp.draw_filled_rect(left,                      rect.max.y - border_width, right - left, border_width)	// Bottom
+	gp.draw_filled_rect(rect.min.x,                top,                       border_width, bottom - top) // Left
+	gp.draw_filled_rect(rect.max.x - border_width, top,                       border_width, bottom - top) // Right
+
+	draw_corner_border :: proc( x, y : f32, outer_radius, inner_radius : f32, start_angle : f32, segments : u32 )
+	{
+		if outer_radius <= inner_radius do return
+		triangles := make( []gp.Triangle, int(segments) * 2 )
+
+		half_pi     :: math.PI / 2
+		segment_quo := 1.0 / f32(segments)
+		for segment in 0 ..< segments
+		{
+				angle1 := start_angle + half_pi * f32(segment)     * segment_quo
+				angle2 := start_angle + half_pi * f32(segment + 1) * segment_quo
+
+				outer1 := gp.Vec2{x + outer_radius * math.cos(angle1), y + outer_radius * math.sin(angle1)}
+				outer2 := gp.Vec2{x + outer_radius * math.cos(angle2), y + outer_radius * math.sin(angle2)}
+				inner1 := gp.Vec2{x + inner_radius * math.cos(angle1), y + inner_radius * math.sin(angle1)}
+				inner2 := gp.Vec2{x + inner_radius * math.cos(angle2), y + inner_radius * math.sin(angle2)}
+
+				triangles[segment * 2    ] = gp.Triangle { outer1, outer2, inner1 }
+				triangles[segment * 2 + 1] = gp.Triangle { inner1, outer2, inner2 }
+		}
+
+		gp.draw_filled_triangles(raw_data(triangles), u32(len(triangles)))
+	}
+
+	half_pi :: math.PI / 2
+
+	// Draw corner borders
+	draw_corner_border(rect.min.x + top_left,     rect.min.y + top_left,     top_left,     max(top_left     - border_width, 0),     math.PI, segments)
+	draw_corner_border(rect.max.x - top_right,    rect.min.y + top_right,    top_right,    max(top_right    - border_width, 0), 3 * half_pi, segments)
+	draw_corner_border(rect.min.x + bottom_left,  rect.max.y - bottom_left,  bottom_left,  max(bottom_left  - border_width, 0),     half_pi, segments)
+	draw_corner_border(rect.max.x - bottom_right, rect.max.y - bottom_right, bottom_right, max(bottom_right - border_width, 0),           0, segments)
 }
 
 // Draw text using a string and normalized render coordinates

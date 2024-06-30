@@ -277,7 +277,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			style := UI_Style {
 				bg_color     = Color_Transparent,
 				border_color = Color_Transparent,
-				corner_radii = {5, 0, 0, 0},
+				corner_radii = {5, 5, 5, 5},
 				blur_size    = 0,
 				font         = get_state().default_font,
 				text_color   = app_color.text_default,

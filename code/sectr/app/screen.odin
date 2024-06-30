@@ -182,7 +182,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					using title
 					layout.anchor.ratio.x = 1.0
 					layout.margins        = { 0, 0, 15, 0}
-					layout.font_size      = 16
+					layout.font_size      = 14
 				}
 
 				scope(theme_window_bar_btn)
@@ -200,6 +200,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					text = str_intern("close")
 					if close_btn.hot     do style.bg_color =  app_color.window_btn_close_bg_hot
 					if close_btn.pressed do settings_menu.is_open = false
+					style.corner_radii = { 0, 0, 0, 0 }
 				}
 			}
 			if frame_bar.active {
@@ -208,13 +209,15 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 			}
 		}
 
-		if ui_drop_down( & cfg_drop_down, "settings_menu.config", str_intern("App Config"), vb_compute_layout = true).is_open
+		app_config := ui_drop_down( & cfg_drop_down, "settings_menu.config", str_intern("App Config"), vb_compute_layout = true)
+		app_config.title.layout.font_size = 12
+		if app_config.is_open
 		{
 			Engien_Refresh_Hz:
 			{
 				scope(theme_table_row(is_even = false))
 				hb := ui_hbox(.Left_To_Right, "settings_menu.engine_refresh_hz.hb"); { using hb
-					layout.size.min = {0, 30}
+					layout.size.min = {0, 25}
 					layout.flags    = {.Fixed_Height}
 					layout.padding  = to_ui_layout_side(4)
 				}
@@ -225,7 +228,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					using title
 					layout.anchor.ratio.x = 1.0
 					layout.margins.left   = 10
-					layout.text_alignment = {0, 0.0}
+					title.layout.font_size = 12
 				}
 
 				input_box := ui_widget("settings_menu.engine_refresh.input_box", {.Mouse_Clickable, .Focusable, .Click_To_Focus}); {
@@ -234,7 +237,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					layout.margins.left   = 5
 					layout.padding.right  = 5
 					layout.size.min.x     = 80
-					style.corner_radii[0] = 0.35
+					style.corner_radii = { 3, 3, 3, 3 }
 
 					if      input_box.active do style.bg_color = app_color.input_box_bg_active
 					else if input_box.hot    do style.bg_color = app_color.input_box_bg_hot
@@ -287,7 +290,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 				scope( theme_table_row(is_even = true))
 				hb := ui_hbox(.Left_To_Right, "settings_menu.cam_min_zoom.hb"); {
 					using hb
-					layout.size.min = {0, 30}
+					layout.size.min = {0, 25}
 					layout.flags    = {.Fixed_Height}
 					layout.padding  = to_ui_layout_side(4)
 				}
@@ -296,6 +299,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					using title
 					layout.anchor.ratio.x = 1.0
 					layout.margins.left   = 10
+					layout.font_size      = 12
 				}
 			}
 
@@ -304,7 +308,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 				scope( theme_table_row(is_even = false))
 				hb := ui_hbox(.Left_To_Right, "settings_menu.cam_max_zoom.hb"); {
 					using hb
-					layout.size.min = {0, 30}
+					layout.size.min = {0, 25}
 					layout.flags    = {.Fixed_Height}
 					layout.padding  = to_ui_layout_side(4)
 				}
@@ -313,6 +317,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					using title
 					layout.anchor.ratio.x = 1.0
 					layout.margins.left   = 10
+					layout.font_size      = 12
 				}
 			}
 		}

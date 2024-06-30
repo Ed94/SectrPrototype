@@ -300,7 +300,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
 		menu_bar.size = {140, 40}
 
-		settings_menu.min_size = {250, 200}
+		settings_menu.min_size = {260, 200}
 	}
 
 	// Demo project setup
