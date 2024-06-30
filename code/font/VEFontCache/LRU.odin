@@ -20,12 +20,12 @@ PoolList :: struct {
 	free_list : [dynamic]PoolListIter,
 	front     : PoolListIter,
 	back      : PoolListIter,
-	size      : u32,
-	capacity  : u32,
+	size      : i32,
+	capacity  : i32,
 	dbg_name  : string,
 }
 
-pool_list_init :: proc( pool : ^PoolList, capacity : u32, dbg_name : string = "" )
+pool_list_init :: proc( pool : ^PoolList, capacity : i32, dbg_name : string = "" )
 {
 	error : AllocatorError
 	pool.items, error = make( [dynamic]PoolListItem, int(capacity) )
@@ -158,13 +158,13 @@ LRU_Link :: struct {
 }
 
 LRU_Cache :: struct {
-	capacity  : u32,
-	num       : u32,
+	capacity  : i32,
+	num       : i32,
 	table     :  map[u64]LRU_Link,
 	key_queue : PoolList,
 }
 
-LRU_init :: proc( cache : ^LRU_Cache, capacity : u32, dbg_name : string = "" ) {
+LRU_init :: proc( cache : ^LRU_Cache, capacity : i32, dbg_name : string = "" ) {
 	error : AllocatorError
 	cache.capacity     = capacity
 	cache.table, error = make( map[u64]LRU_Link, uint(capacity) )

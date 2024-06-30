@@ -39,10 +39,10 @@ FrameBufferPass :: enum u32 {
 
 GlyphDrawBuffer :: struct {
 	over_sample   : Vec2,
-	batch         : u32,
-	width         : u32,
-	height        : u32,
-	draw_padding  : u32,
+	batch         : i32,
+	width         : i32,
+	height        : i32,
+	draw_padding  : i32,
 
 	batch_x         : i32,
 	clear_draw_list : DrawList,
@@ -123,9 +123,10 @@ cache_glyph :: proc(ctx : ^Context, font : FontID, glyph_index : Glyph, entry : 
 			p0 := path[ len(path) - 1].pos
 			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
 			p2 := Vec2{ f32(edge.x), f32(edge.y) }
-			step := 1.0 / f32(quality)
-			for index := u32(1); index <= quality; index += 1 {
-				alpha := f32(index) * step
+
+			step := 1.0 / entry.curve_quality
+			for index : f32 = 1; index <= entry.curve_quality; index += 1 {
+				alpha := index * step
 				append( path, Vertex { pos = eval_point_on_bezier3(p0, p1, p2, alpha) } )
 			}
 
@@ -135,9 +136,10 @@ cache_glyph :: proc(ctx : ^Context, font : FontID, glyph_index : Glyph, entry : 
 			p1 := Vec2{ f32(edge.contour_x0), f32(edge.contour_y0) }
 			p2 := Vec2{ f32(edge.contour_x1), f32(edge.contour_y1) }
 			p3 := Vec2{ f32(edge.x), f32(edge.y) }
-			step := 1.0 / f32(quality)
-			for index := u32(1); index <= quality; index += 1 {
-				alpha := f32(index) * step
+
+			step := 1.0 / entry.curve_quality
+			for index : f32 = 1; index <= entry.curve_quality; index += 1 {
+				alpha := index * step
 				append( path, Vertex { pos = eval_point_on_bezier4(p0, p1, p2, p3, alpha) } )
 			}
 	}
@@ -306,7 +308,7 @@ check_glyph_in_atlas :: #force_inline proc( ctx : ^Context, font : FontID, entry
 
 	if atlas_index == - 1
 	{
-		if region.next_idx > u32( region.state.capacity) {
+		if region.next_idx > region.state.capacity {
 			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
 			next_evict_codepoint := LRU_get_next_evicted( & region.state )
 			seen, success := ctx.temp_codepoint_seen[next_evict_codepoint]
