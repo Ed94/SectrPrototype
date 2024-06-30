@@ -111,7 +111,7 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, 
 				continue
 			}
 			if abs( entry.size ) <= Advance_Snap_Smallfont_Size {
-				position.x = ceil( position.x )
+				position.x = position.x
 			}
 
 			append( & output.glyphs, parser_find_glyph_index( & entry.parser_info, codepoint ))
@@ -129,7 +129,7 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, 
 		output.end_cursor_pos = position
 		max_line_width        = max(max_line_width, position.x)
 
-		output.size.x = max_line_width
+		output.size.x = ceil(max_line_width)
 		output.size.y = f32(line_count) * line_height
 	}
 }
