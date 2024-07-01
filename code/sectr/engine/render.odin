@@ -299,8 +299,6 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 	Range       :: gfx.Range
 	ShaderStage :: gfx.Shader_Stage
 
-	// TODO(Ed): All this functionality for being able to segregate rendering of the drawlist incrementally should be lifted to the library itself (VEFontCache)
-
 	vbuf_layer_slice, ibuf_layer_slice, calls_layer_slice := ve.get_draw_list_layer( ve_ctx )
 
 	vbuf_ve_range := Range{ raw_data(vbuf_layer_slice), cast(u64) len(vbuf_layer_slice) * size_of(ve.Vertex) }
@@ -401,9 +399,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 				})
 
 			// 3. Use the atlas to then render the text.
-			case .None: fallthrough
-			case .Target: fallthrough
-			case .Target_Uncached:
+			case .None, .Target, .Target_Uncached:
 				if num_indices == 0 && ! draw_call.clear_before_draw {
 					continue
 				}
