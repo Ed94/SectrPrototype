@@ -173,7 +173,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 
 			content := str_fmt( format, ..args )
 			text_size := measure_text_size( content, default_font, 14.0, 0.0 )
-			debug_draw_text( content, position, 10.0 )
+			debug_draw_text( content, position, 12.0 )
 			debug.draw_debug_text_y += text_size.y
 		}
 
@@ -186,7 +186,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			debug_draw_text( fps_msg, fps_msg_pos, fps_size, color = Color_Red )
 		}
 
-		if false {
+		if true {
 			debug_text( "Screen Width : %v", screen_size.x )
 			debug_text( "Screen Height: %v", screen_size.y )
 			debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
@@ -200,7 +200,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			debug_text( "Replaying Input")
 		}
 
-		if false
+		if true
 		{
 			using input_events
 

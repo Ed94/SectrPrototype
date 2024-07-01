@@ -243,6 +243,7 @@ update :: proc( delta_time : f64 ) -> b32
 			return clamp(binary_search_closest(levels, zoom), 0, len(levels) - 1)
 		}
 
+		config.cam_zoom_mode = .Digital
 		switch config.cam_zoom_mode
 		{
 			case .Smooth:
@@ -339,8 +340,8 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_hover_n_click()
 		// test_draggable()
 		// test_text_box()
-		test_parenting( & default_layout, & frame_style_default )
-		// test_whitespace_ast( & default_layout, & frame_style_default )
+		// test_parenting( & default_layout, & frame_style_default )
+		test_whitespace_ast( & default_layout, & frame_style_default )
 	}
 	//endregion Workspace Imgui Tick
 

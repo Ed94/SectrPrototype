@@ -118,11 +118,11 @@ shape_text_uncached :: proc( ctx : ^Context, font : FontID, text_utf8 : string, 
 			advance, _ := parser_get_codepoint_horizontal_metrics( & entry.parser_info, codepoint )
 
 			append( & output.positions, Vec2 {
-				ceil(position.x),
+				ctx.snap_shape_pos ? ceil(position.x) : position.x,
 				position.y
 			})
 
-			position.x    += ceil(f32(advance) * entry.size_scale)
+			position.x    += ctx.snap_shape_pos ? ceil(f32(advance) * entry.size_scale) : f32(advance) * entry.size_scale
 			prev_codepoint = codepoint
 		}
 
