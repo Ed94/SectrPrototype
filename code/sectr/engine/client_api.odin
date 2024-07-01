@@ -373,7 +373,7 @@ sectr_shutdown :: proc()
 		file_close( Memory_App.replay.active_file )
 	}
 
-	// font_provider_shutdown()
+	font_provider_shutdown( & state.font_provider_ctx )
 
 	sokol_gp.shutdown()
 	sokol_gfx.shutdown()

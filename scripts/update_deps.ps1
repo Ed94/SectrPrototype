@@ -66,11 +66,5 @@ if ( $binaries_dirty -or $true )
 			$destination = join-path $path_build $dll.Name
 			Copy-Item $dll.FullName -Destination $destination -Force
 	}
-
-	$third_party_dlls = Get-ChildItem -Path $path_raylib_dlls -Filter '*.dll'
-	foreach ($dll in $third_party_dlls) {
-			$destination = join-path $path_build $dll.Name
-			Copy-Item $dll.FullName -Destination $destination -Force
-	}
 }
 pop-location
