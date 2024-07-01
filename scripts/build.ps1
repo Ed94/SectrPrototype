@@ -141,19 +141,16 @@ push-location $path_root
 		$path_font = join-path $path_code 'font'
 
 		$package_grime       = join-path $path_code 'grime'
-		$package_fstash      = join-path $path_font 'fontstash'
 		$package_VEFontCache = join-path $path_font 'VEFontCache'
 		$module_host         = join-path $path_code 'host'
 		$module_sectr        = join-path $path_code 'sectr'
 		if ($force){
-			mark-ModuleDirty $package_fstash
 			mark-ModuleDirty $package_VEFontCache
 			mark-ModuleDirty $package_grime
 			mark-ModuleDirty $module_sectr
 			mark-ModuleDirty $module_host
 		}
 
-		$pkg_fstash_dirty      = check-ModuleForChanges $package_fstash
 		$pkg_VEFontCache_dirty = check-ModuleForChanges $package_VEFontCache
 		$pkg_grime_dirty       = check-ModuleForChanges $package_grime
 
@@ -173,7 +170,7 @@ push-location $path_root
 
 		function build-sectr
 		{
-			$should_build = (check-ModuleForChanges $module_sectr) -or $pkg_grime_dirty -or $pkg_fstash_dirty -or $pkg_VEFontCache_dirty
+			$should_build = (check-ModuleForChanges $module_sectr) -or $pkg_grime_dirty -or $pkg_VEFontCache_dirty
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr build, module up to date'
 				return $module_unchanged
