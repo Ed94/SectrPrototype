@@ -8,7 +8,7 @@ $path_toolchain  = join-path $path_root 'toolchain'
 
 $url_backtrace_repo = 'https://github.com/Ed94/back.git'
 $url_freetype       = 'https://github.com/Ed94/odin-freetype.git'
-$url_harfbuzz       = 'https://github.com/Ed94/odin_harfbuzz.git'
+$url_harfbuzz       = 'https://github.com/Ed94/harfbuzz-odin.git'
 $url_ini_parser     = 'https://github.com/laytan/odin-ini-parser.git'
 $url_odin_repo      = 'https://github.com/Ed94/Odin.git'
 $url_sokol          = 'https://github.com/Ed94/sokol-odin.git'
