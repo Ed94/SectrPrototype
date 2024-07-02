@@ -6,43 +6,38 @@ Its original purpose was for use in game engines, however its rendeirng quality 
 
 See: [docs/Readme.md](docs/Readme.md) for the library's interface
 
+## Building
+
+See [scripts/Readme.md](scripts/Readme.md) for building examples or utilizing the provided backends.
+
+Currently the scripts provided & the library itself where developed & tested on Windows. The library itself should not be limited to that OS platform however, just don't have the configuration setup for alternative platforms (yet).
+
+The library depends on freetype, harfbuzz, & stb_truetype currently to build.  
+Note: freetype and harfbuzz could technically be gutted if the user removes their definitions, however they have not been made into a conditional compilation option (yet).
+
 ## Changes from orignal
 
 * Font Parser & Glyph shaper are abstracted to their own interface
-* Font face parser info encapsulated in parser_info struct.
 * ve_fontcache_loadfile not ported (ust use core:os or os2, then call load_font)
 * Macro defines have been coverted (mostly) to runtime parameters
 * Support for hot_reloading
+* Curve quality step granularity for glyph rendering can be set on a per font basis.
 
 ## TODOs
 
-### Thirdparty support:
-
-* Setup freetype, harfbuzz, depedency management within the library
-
-### Documentation:
-
-* Pureref outline of draw_text exectuion
-* Markdown general documentation
-
-### Content:
-
-* Port over the original demo utilizing sokol libraries instead
-* Provide a sokol_gfx backend package
-
 ### Additional Features:
 
-* Support for freetype
-* Support for harfbuzz
+* Support for freetype (WIP, Currently a mess... and slow)
+* Add ability to conditionally compile dependencies (so that the user may not need to resolve those packages).
 * Ability to set a draw transform, viewport and projection
   * By default the library's position is in unsigned normalized render space
   * Could implement a similar design to sokol_gp's interface
-* Allow curve_quality to be set on a per-font basis
 
 ### Optimization:
 
+* Check if its better to store the generated glyph vertices if they need to be re-cached or directly drawn.
 * Look into setting up multi-threading by giving each thread a context
-  * There is a heavy performance bottleneck in iterating the text/shape/glyphs on the cpu (single-thread) vs the actual rendering
+  * There is a heavy performance bottleneck in iterating the text/shape/glyphs on the cpu (single-thread) vs the actual rendering *(if doing thousands of drawing commands)*
   * draw_text can provide in the context a job list per thread for the user to thenk hookup to their own threading solution to handle.
   * Context would need to be segregated into staged data structures for each thread to utilize
     * Each should have their own?

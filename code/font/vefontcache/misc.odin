@@ -1,4 +1,4 @@
-package VEFontCache
+package vefontcache
 
 import "base:runtime"
 import "core:simd"
@@ -20,23 +20,23 @@ vec2i_from_vec2   :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2
 @(require_results) floor_vec2 :: proc "contextless" ( v : Vec2 ) -> Vec2 { return { floor_f32(v.x), floor_f32(v.y) } }
 
 // This buffer is used below excluisvely to prevent any allocator recusion when verbose logging from allocators.
-// This means a single line is limited to 32k buffer (increase naturally if this SOMEHOW becomes a bottleneck...)
-// Logger_Allocator_Buffer : [32 * Kilobyte]u8
+// This means a single line is limited to 4k buffer
+// Logger_Allocator_Buffer : [4 * Kilobyte]u8
 
 // log :: proc( msg : string, level := core_log.Level.Info, loc := #caller_location ) {
-// 	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
-// 	context.allocator      = arena_allocator(& temp_arena)
-// 	context.temp_allocator = arena_allocator(& temp_arena)
+	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+	// context.allocator      = arena_allocator(& temp_arena)
+	// context.temp_allocator = arena_allocator(& temp_arena)
 
-// 	core_log.log( level, msg, location = loc )
+	// core_log.log( level, msg, location = loc )
 // }
 
 // logf :: proc( fmt : string, args : ..any,  level := core_log.Level.Info, loc := #caller_location  ) {
-// 	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
-// 	context.allocator      = arena_allocator(& temp_arena)
-// 	context.temp_allocator = arena_allocator(& temp_arena)
+	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+	// context.allocator      = arena_allocator(& temp_arena)
+	// context.temp_allocator = arena_allocator(& temp_arena)
 
-// 	core_log.logf( level, fmt, ..args, location = loc )
+	// core_log.logf( level, fmt, ..args, location = loc )
 // }
 
 reload_array :: proc( self : ^[dynamic]$Type, allocator : Allocator ) {
@@ -121,7 +121,7 @@ textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, 
 	}
 }
 
-Use_SIMD_For_Bezier_Ops :: true
+Use_SIMD_For_Bezier_Ops :: false
 
 when ! Use_SIMD_For_Bezier_Ops
 {
@@ -130,10 +130,10 @@ when ! Use_SIMD_For_Bezier_Ops
 	// ve_fontcache_eval_bezier (quadratic)
 	eval_point_on_bezier3 :: #force_inline proc "contextless" ( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
 	{
-		p0    := vec2_64(p0)
-		p1    := vec2_64(p1)
-		p2    := vec2_64(p2)
-		alpha := f64(alpha)
+		// p0    := vec2_64(p0)
+		// p1    := vec2_64(p1)
+		// p2    := vec2_64(p2)
+		// alpha := f64(alpha)
 
 		weight_start   := (1 - alpha) * (1 - alpha)
 		weight_control := 2.0 * (1 - alpha) * alpha
@@ -152,11 +152,11 @@ when ! Use_SIMD_For_Bezier_Ops
 	// ve_fontcache_eval_bezier (cubic)
 	eval_point_on_bezier4 :: #force_inline proc "contextless" ( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
 	{
-		p0    := vec2_64(p0)
-		p1    := vec2_64(p1)
-		p2    := vec2_64(p2)
-		p3    := vec2_64(p3)
-		alpha := f64(alpha)
+		// p0    := vec2_64(p0)
+		// p1    := vec2_64(p1)
+		// p2    := vec2_64(p2)
+		// p3    := vec2_64(p3)
+		// alpha := f64(alpha)
 
 		weight_start := (1 - alpha) * (1 - alpha) * (1 - alpha)
 		weight_c_a   := 3 * (1 - alpha) * (1 - alpha) * alpha
@@ -184,59 +184,6 @@ else
 		return Vec2{ simd.extract(v, 0), simd.extract(v, 1) }
 	}
 
-	vec2_add_simd :: #force_inline proc "contextless" (a, b: Vec2) -> Vec2 {
-		simd_a := vec2_to_simd(a)
-		simd_b := vec2_to_simd(b)
-		result := simd.add(simd_a, simd_b)
-		return simd_to_vec2(result)
-	}
-
-	vec2_sub_simd :: #force_inline proc "contextless" (a, b: Vec2) -> Vec2 {
-		simd_a := vec2_to_simd(a)
-		simd_b := vec2_to_simd(b)
-		result := simd.sub(simd_a, simd_b)
-		return simd_to_vec2(result)
-	}
-
-	vec2_mul_simd :: #force_inline proc "contextless" (a: Vec2, s: f32) -> Vec2 {
-		simd_a := vec2_to_simd(a)
-		simd_s := Vec2_SIMD{s, s, s, s}
-		result := simd.mul(simd_a, simd_s)
-		return simd_to_vec2(result)
-	}
-
-	vec2_div_simd :: #force_inline proc "contextless" (a: Vec2, s: f32) -> Vec2 {
-		simd_a := vec2_to_simd(a)
-		simd_s := Vec2_SIMD{s, s, s, s}
-		result := simd.div(simd_a, simd_s)
-		return simd_to_vec2(result)
-	}
-
-	vec2_dot_simd :: #force_inline proc "contextless" (a, b: Vec2) -> f32 {
-		simd_a := vec2_to_simd(a)
-		simd_b := vec2_to_simd(b)
-		result := simd.mul(simd_a, simd_b)
-		return simd.reduce_add_ordered(result)
-	}
-
-	vec2_length_sqr_simd :: #force_inline proc "contextless" (a: Vec2) -> f32 {
-		return vec2_dot_simd(a, a)
-	}
-
-	vec2_length_simd :: #force_inline proc "contextless" (a: Vec2) -> f32 {
-		return math.sqrt(vec2_length_sqr_simd(a))
-	}
-
-	vec2_normalize_simd :: #force_inline proc "contextless" (a: Vec2) -> Vec2 {
-		len := vec2_length_simd(a)
-		if len > 0 {
-			inv_len := 1.0 / len
-			return vec2_mul_simd(a, inv_len)
-		}
-		return a
-	}
-
-	// SIMD-optimized version of eval_point_on_bezier3
 	eval_point_on_bezier3 :: #force_inline proc "contextless" (p0, p1, p2: Vec2, alpha: f32) -> Vec2
 	{
 		simd_p0 := vec2_to_simd(p0)

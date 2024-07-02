@@ -1,4 +1,4 @@
-package VEFontCache
+package vefontcache
 /*
 Note(Ed): The only reason I didn't directly use harfbuzz is because hamza exists and seems to be under active development as an alternative.
 */
@@ -13,7 +13,6 @@ ShaperKind :: enum {
 
 ShaperContext :: struct {
 	hb_buffer : harfbuzz.Buffer,
-	// infos : HMapChained(ShaperInfo),
 }
 
 ShaperInfo :: struct {
@@ -26,10 +25,6 @@ shaper_init :: proc( ctx : ^ShaperContext )
 {
 	ctx.hb_buffer = harfbuzz.buffer_create()
 	assert( ctx.hb_buffer != nil, "VEFontCache.shaper_init: Failed to create harfbuzz buffer")
-
-	// error : AllocatorError
-	// ctx.infos, error = make( HMapChained(ShaperInfo), 256 )
-	// assert( error == .None, "VEFontCache.shaper_init: Failed to create shaper infos map" )
 }
 
 shaper_shutdown :: proc( ctx : ^ShaperContext )
@@ -37,20 +32,10 @@ shaper_shutdown :: proc( ctx : ^ShaperContext )
 	if ctx.hb_buffer != nil {
 		harfbuzz.buffer_destroy( ctx.hb_buffer )
 	}
-
-	// delete(& ctx.infos)
 }
 
 shaper_load_font :: proc( ctx : ^ShaperContext, label : string, data : []byte, user_data : rawptr ) -> (info : ShaperInfo)
 {
-	// key := font_key_from_label( label )
-	// info = get( ctx.infos, key )
-	// if info != nil do return
-
-	// error : AllocatorError
-	// info, error = set( ctx.infos, key, ShaperInfo {} )
-	// assert( error == .None, "VEFontCache.parser_load_font: Failed to set a new shaper info" )
-
 	using info
 	blob = harfbuzz.blob_create( raw_data(data), cast(c.uint) len(data), harfbuzz.Memory_Mode.READONLY, user_data, nil )
 	face = harfbuzz.face_create( blob, 0 )
@@ -79,10 +64,14 @@ shaper_shape_from_text :: proc( ctx : ^ShaperContext, info : ^ShaperInfo, output
 	descent  := f32(descent)
 	line_gap := f32(line_gap)
 
+	max_line_width := f32(0)
+	line_count     := 1
+	line_height    := (ascent - descent + line_gap) * size_scale
+
 	position, vertical_position : f32
 	shape_run :: proc( buffer : harfbuzz.Buffer, script : harfbuzz.Script, font : harfbuzz.Font, output : ^ShapedText,
-		position, vertical_position : ^f32,
-		ascent, descent, line_gap, size, size_scale : f32 )
+		position, vertical_position, max_line_width: ^f32, line_count: ^int,
+		ascent, descent, line_gap, size, size_scale: f32 )
 	{
 		// Set script and direction. We use the system's default langauge.
 		// script = HB_SCRIPT_LATIN
@@ -91,12 +80,15 @@ shaper_shape_from_text :: proc( ctx : ^ShaperContext, info : ^ShaperInfo, output
 		harfbuzz.buffer_set_language( buffer, harfbuzz.language_get_default() )
 
 		// Perform the actual shaping of this run using HarfBuzz.
+		harfbuzz.buffer_set_content_type( buffer, harfbuzz.Buffer_Content_Type.UNICODE )
 		harfbuzz.shape( font, buffer, nil, 0 )
 
 		// Loop over glyphs and append to output buffer.
 		glyph_count : u32
 		glyph_infos     := harfbuzz.buffer_get_glyph_infos( buffer, & glyph_count )
 		glyph_positions := harfbuzz.buffer_get_glyph_positions( buffer, & glyph_count )
+
+		line_height := (ascent - descent + line_gap) * size_scale
 
 		for index : i32; index < i32(glyph_count); index += 1
 		{
@@ -106,9 +98,11 @@ shaper_shape_from_text :: proc( ctx : ^ShaperContext, info : ^ShaperInfo, output
 
 			if hb_glyph.cluster > 0
 			{
+				(max_line_width^)     = max( max_line_width^, position^ )
 				(position^)           = 0.0
-				(vertical_position^) -= (ascent - descent + line_gap) * size_scale
+				(vertical_position^) -= line_height
 				(vertical_position^)  = cast(f32) i32(vertical_position^ + 0.5)
+				(line_count^)         += 1
 				continue
 			}
 			if abs( size ) <= Advance_Snap_Smallfont_Size
@@ -128,6 +122,7 @@ shaper_shape_from_text :: proc( ctx : ^ShaperContext, info : ^ShaperInfo, output
 
 			(position^)          += f32(hb_gposition.x_advance) * size_scale
 			(vertical_position^) += f32(hb_gposition.y_advance) * size_scale
+			(max_line_width^)     = max(max_line_width^, position^)
 		}
 
 		output.end_cursor_pos.x = position^
@@ -141,25 +136,31 @@ shaper_shape_from_text :: proc( ctx : ^ShaperContext, info : ^ShaperInfo, output
 
 	for codepoint, byte_offset in text_utf8
 	{
-		script := harfbuzz.unicode_script( hb_ucfunc, cast(harfbuzz.Codepoint) codepoint )
+		hb_codepoint := cast(harfbuzz.Codepoint) codepoint
+
+		script := harfbuzz.unicode_script( hb_ucfunc, hb_codepoint )
 
 		// Can we continue the current run?
 		ScriptKind :: harfbuzz.Script
 
 		special_script : b32 = script == ScriptKind.UNKNOWN || script == ScriptKind.INHERITED || script == ScriptKind.COMMON
-		if special_script || script == current_script {
-			harfbuzz.buffer_add( ctx.hb_buffer, cast(harfbuzz.Codepoint) codepoint, codepoint == '\n' ? 1 : 0 )
+		if special_script || script == current_script || byte_offset == 0 {
+			harfbuzz.buffer_add( ctx.hb_buffer, hb_codepoint, codepoint == '\n' ? 1 : 0 )
 			current_script = special_script ? current_script : script
 			continue
 		}
 
 		// End current run since we've encountered a script change.
-		shape_run( ctx.hb_buffer, current_script, info.font, output, & position, & vertical_position, ascent, descent, line_gap, size, size_scale )
-		harfbuzz.buffer_add( ctx.hb_buffer, cast(harfbuzz.Codepoint) codepoint, codepoint == '\n' ? 1 : 0 )
+		shape_run( ctx.hb_buffer, current_script, info.font, output, & position, & vertical_position, & max_line_width, & line_count, ascent, descent, line_gap, size, size_scale )
+		harfbuzz.buffer_add( ctx.hb_buffer, hb_codepoint, codepoint == '\n' ? 1 : 0 )
 		current_script = script
 	}
 
 	// End the last run if needed
-	shape_run( ctx.hb_buffer, current_script, info.font, output, & position, & vertical_position, ascent, descent, line_gap, size, size_scale )
+	shape_run( ctx.hb_buffer, current_script, info.font, output, & position, & vertical_position, & max_line_width, & line_count, ascent, descent, line_gap, size, size_scale )
+
+	// Set the final size
+	output.size.x = max_line_width
+	output.size.y = f32(line_count) * line_height
 	return
 }

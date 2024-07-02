@@ -1,4 +1,4 @@
-package VEFontCache
+package vefontcache
 
 /*
 Notes:
@@ -12,6 +12,7 @@ STB_Truetype has macros for its allocation unfortuantely
 import "base:runtime"
 import "core:c"
 import "core:math"
+import "core:slice"
 import stbtt    "vendor:stb/truetype"
 import freetype "thirdparty:freetype"
 
@@ -52,13 +53,11 @@ ParserGlyphShape :: [dynamic]ParserGlyphVertex
 ParserContext :: struct {
 	kind       : ParserKind,
 	ft_library : freetype.Library,
-
-	// fonts : HMapChained(ParserFontInfo),
 }
 
-parser_init :: proc( ctx : ^ParserContext )
+parser_init :: proc( ctx : ^ParserContext, kind : ParserKind )
 {
-	switch ctx.kind
+	switch kind
 	{
 		case .Freetype:
 			result := freetype.init_free_type( & ctx.ft_library )
@@ -68,9 +67,7 @@ parser_init :: proc( ctx : ^ParserContext )
 			// Do nothing intentional
 	}
 
-	// error : AllocatorError
-	// ctx.fonts, error = make( HMapChained(ParserFontInfo), 256 )
-	// assert( error == .None, "VEFontCache.parser_init: Failed to allocate fonts array" )
+	ctx.kind = kind
 }
 
 parser_shutdown :: proc( ctx : ^ParserContext ) {
@@ -79,13 +76,6 @@ parser_shutdown :: proc( ctx : ^ParserContext ) {
 
 parser_load_font :: proc( ctx : ^ParserContext, label : string, data : []byte ) -> (font : ParserFontInfo)
 {
-	// key  := font_key_from_label(label)
-	// font  = get( ctx.fonts, key )
-	// if font != nil do return
-
-	// error : AllocatorError
-	// font, error = set( ctx.fonts, key, ParserFontInfo {} )
-	// assert( error == .None, "VEFontCache.parser_load_font: Failed to set a new parser font info" )
 	switch ctx.kind
 	{
 		case .Freetype:
@@ -99,6 +89,7 @@ parser_load_font :: proc( ctx : ^ParserContext, label : string, data : []byte ) 
 
 	font.label = label
 	font.data  = data
+	font.kind  = ctx.kind
 	return
 }
 
@@ -190,6 +181,10 @@ parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : ^P
 	switch font.kind
 	{
 		case .Freetype:
+			info    := font.freetype_info
+			ascent   = i32(info.ascender)
+			descent  = i32(info.descender)
+			line_gap = i32(info.height) - (ascent - descent)
 
 		case .STB_TrueType:
 			stbtt.GetFontVMetrics( & font.stbtt_info, & ascent, & descent, & line_gap )
@@ -225,137 +220,8 @@ parser_get_glyph_shape :: proc( font : ^ParserFontInfo, glyph_index : Glyph ) ->
 	switch font.kind
 	{
 		case .Freetype:
-			error := freetype.load_glyph( font.freetype_info, cast(u32) glyph_index, { .No_Bitmap, .No_Hinting, .No_Scale } )
-			if error != .Ok {
-				return
-			}
-
-			glyph := font.freetype_info.glyph
-			if glyph.format != .Outline {
-				return
-			}
-
-			/*
-			convert freetype outline to stb_truetype shape
-
-			freetype docs: https://freetype.org/freetype2/docs/glyphs/glyphs-6.html
-
-			stb_truetype shape info:
-			The shape is a series of contours. Each one starts with
-			a STBTT_moveto, then consists of a series of mixed
-			STBTT_lineto and STBTT_curveto segments. A lineto
-			draws a line from previous endpoint to its x,y; a curveto
-			draws a quadratic bezier from previous endpoint to
-			its x,y, using cx,cy as the bezier control point.
-			*/
-			{
-				FT_CURVE_TAG_CONIC :: 0x00
-				FT_CURVE_TAG_ON    :: 0x01
-				FT_CURVE_TAG_CUBIC :: 0x02
-
-				vertices, error := make( [dynamic]ParserGlyphVertex, 1024 )
-				assert( error == .None )
-
-				// TODO(Ed): This makes freetype second class I guess but VEFontCache doesn't have native support for freetype originally so....
-				outline := & glyph.outline
-
-				contours := transmute( [^]u16) outline.contours
-				points   := transmute( [^]freetype.Vector) outline.points
-				tags     := transmute( [^]u8) outline.tags
-
-				// TODO(Ed): Review this, never tested before and its problably bad.
-				for contour : i32 = 0; contour < i32(outline.n_contours); contour += 1
-				{
-					start := (contour == 0) ? 0 : i32(contours[ contour - 1 ] + 1)
-					end   := i32(contours[ contour ])
-
-					for index := start; index < i32(outline.n_points); index += 1
-					{
-						point := points[ index ]
-						tag   := tags[ index ]
-
-						if (tag & FT_CURVE_TAG_ON) != 0
-						{
-							if len(vertices) > 0 && !(vertices[len(vertices) - 1].type == .Move )
-							{
-								// Close the previous contour if needed
-								append(& vertices, ParserGlyphVertex { type = .Line,
-									x = i16(points[start].x), y = i16(points[start].y),
-									contour_x0 = i16(0), contour_y0 = i16(0),
-									contour_x1 = i16(0), contour_y1 = i16(0),
-									padding = 0,
-								})
-							}
-
-							append(& vertices, ParserGlyphVertex { type = .Move,
-								x = i16(point.x), y = i16(point.y),
-								contour_x0 = i16(0), contour_y0 = i16(0),
-								contour_x1 = i16(0), contour_y1 = i16(0),
-								padding = 0,
-							})
-						}
-						else if (tag & FT_CURVE_TAG_CUBIC) != 0
-						{
-							point1 := points[ index + 1 ]
-							point2 := points[ index + 2 ]
-							append(& vertices, ParserGlyphVertex { type = .Cubic,
-								x = i16(point2.x), y = i16(point2.y),
-								contour_x0 = i16(point.x),  contour_y0 = i16(point.y),
-								contour_x1 = i16(point1.x), contour_y1 = i16(point1.y),
-								padding = 0,
-							})
-							index += 2
-						}
-						else if (tag & FT_CURVE_TAG_CONIC) != 0
-						{
-							// TODO(Ed): This is using a very dead simple algo to convert the conic to a cubic curve
-							// not sure if we need something more sophisticaated
-							point1       := points[ index + 1 ]
-
-							control_conv :: f32(0.5) // Conic to cubic control point distance
-							to_float     := f32(1.0 / 64.0)
-
-							fp  := Vec2 { f32(point.x), f32(point.y)   } * to_float
-							fp1 := Vec2 { f32(point1.x), f32(point1.y) } * to_float
-
-							control1 := freetype.Vector {
-								point.x + freetype.Pos( (fp1.x - fp.x) * control_conv * 64.0 ),
-								point.y + freetype.Pos( (fp1.y - fp.y) * control_conv * 64.0 ),
-							}
-							control2 := freetype.Vector {
-								point1.x + freetype.Pos( (fp.x - fp1.x) * control_conv * 64.0 ),
-								point1.y + freetype.Pos( (fp.y - fp1.y) * control_conv * 64.0 ),
-							}
-							append(& vertices, ParserGlyphVertex { type = .Cubic,
-								x = i16(point1.x), y = i16(point1.y),
-								contour_x0 = i16(control1.x), contour_y0 = i16(control1.y),
-								contour_x1 = i16(control2.x), contour_y1 = i16(control2.y),
-								padding = 0,
-							})
-							index += 1
-						}
-						else
-						{
-							append(& vertices, ParserGlyphVertex { type = .Line,
-								x = i16(point.x), y = i16(point.y),
-								contour_x0 = i16(0), contour_y0 = i16(0),
-								contour_x1 = i16(0), contour_y1 = i16(0),
-								padding = 0,
-							})
-						}
-					}
-
-					// Close contour
-					append(& vertices, ParserGlyphVertex { type = .Line,
-						x = i16(points[start].x), y = i16(points[start].y),
-						contour_x0 = i16(0), contour_y0 = i16(0),
-						contour_x1 = i16(0), contour_y1 = i16(0),
-						padding = 0,
-					})
-				}
-
-				shape = vertices
-			}
+			// TODO(Ed): Don't do this, going a completely different route for handling shapes.
+			// This abstraction fails to be time-saving or performant.
 
 		case .STB_TrueType:
 			stb_shape : [^]stbtt.vertex
@@ -446,49 +312,4 @@ parser_scale_for_mapping_em_to_pixels :: #force_inline proc "contextless" ( font
 			return stbtt.ScaleForMappingEmToPixels( & font.stbtt_info, size )
 	}
 	return 0
-}
-
-when false {
-parser_convert_conic_to_cubic_freetype :: proc( vertices : Array(ParserGlyphVertex), p0, p1, p2 : freetype.Vector, tolerance : f32 )
-{
-	scratch : [Kilobyte * 4]u8
-	scratch_arena : Arena; arena_init(& scratch_arena, scratch[:])
-
-	points, error := make( Array(freetype.Vector), 256, allocator = arena_allocator( &scratch_arena) )
-	assert(error == .None)
-
-	append( & points, p0)
-	append( & points, p1)
-	append( & points, p2)
-
-	to_float : f32 = 1.0 / 64.0
-	control_conv :: f32(2.0 / 3.0) // Conic to cubic control point distance
-
-	for ; points.num > 1; {
-		p0 := points.data[0]
-		p1 := points.data[1]
-		p2 := points.data[2]
-
-		fp0 := Vec2{ f32(p0.x), f32(p0.y) } * to_float
-		fp1 := Vec2{ f32(p1.x), f32(p1.y) } * to_float
-		fp2 := Vec2{ f32(p2.x), f32(p2.y) } * to_float
-
-		delta_x  := fp0.x - 2 * fp1.x + fp2.x;
-		delta_y  := fp0.y - 2 * fp1.y + fp2.y;
-		distance := math.sqrt(delta_x * delta_x + delta_y * delta_y);
-
-		if distance <= tolerance
-		{
-			control1 := {
-
-			}
-		}
-		else
-		{
-			control2 := {
-
-			}
-		}
-	}
-}
 }

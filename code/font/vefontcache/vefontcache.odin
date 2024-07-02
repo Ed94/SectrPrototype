@@ -3,7 +3,7 @@ A port of (https://github.com/hypernewbie/VEFontCache) to Odin.
 
 See: https://github.com/Ed94/VEFontCache-Odin
 */
-package VEFontCache
+package vefontcache
 
 import "base:runtime"
 
@@ -32,7 +32,6 @@ Entry_Default :: Entry {
 Context :: struct {
 	backing : Allocator,
 
-	parser_kind : ParserKind,
 	parser_ctx  : ParserContext,
 	shaper_ctx  : ShaperContext,
 
@@ -44,6 +43,7 @@ Context :: struct {
 
 	snap_width  : f32,
 	snap_height : f32,
+
 
 	colour     : Colour,
 	cursor_pos : Vec2,
@@ -67,7 +67,7 @@ Context :: struct {
 	debug_print_verbose : b32,
 }
 
-#region("lifetime")
+//#region("lifetime")
 
 InitAtlasRegionParams :: struct {
 	width  : u32,
@@ -136,6 +136,7 @@ startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 	atlas_params                := InitAtlasParams_Default,
 	glyph_draw_params           := InitGlyphDrawParams_Default,
 	shape_cache_params          := InitShapeCacheParams_Default,
+	use_advanced_text_shaper    : b32 = true,
 	snap_shape_position         : b32 = true,
 	default_curve_quality       : u32 = 3,
 	entires_reserve             : u32 = 512,
@@ -150,6 +151,7 @@ startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 	context.allocator = ctx.backing
 
 	snap_shape_pos = snap_shape_position
+	text_shape_adv = use_advanced_text_shaper
 
 	if default_curve_quality == 0 {
 		default_curve_quality = 3
@@ -264,7 +266,7 @@ startup :: proc( ctx : ^Context, parser_kind : ParserKind,
 		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for clear_draw_list" )
 	}
 
-	parser_init( & parser_ctx )
+	parser_init( & parser_ctx, parser_kind )
 	shaper_init( & shaper_ctx )
 }
 
@@ -320,9 +322,38 @@ shutdown :: proc( ctx : ^Context )
 		unload_font( ctx, entry.id )
 	}
 
-	shaper_shutdown( & shaper_ctx )
+	delete( entries )
+	delete( temp_path )
+	delete( temp_codepoint_seen )
 
-	// TODO(Ed): Finish implementing, there is quite a few resource not released here.
+	delete( draw_list.vertices )
+	delete( draw_list.indices )
+	delete( draw_list.calls )
+
+	LRU_free( & atlas.region_a.state )
+	LRU_free( & atlas.region_b.state )
+	LRU_free( & atlas.region_c.state )
+	LRU_free( & atlas.region_d.state )
+
+	for idx : i32 = 0; idx < i32(len(shape_cache.storage)); idx += 1 {
+		stroage_entry := & shape_cache.storage[idx]
+		using stroage_entry
+
+		delete( glyphs )
+		delete( positions )
+	}
+	LRU_free( & shape_cache.state )
+
+	delete( glyph_buffer.draw_list.vertices )
+	delete( glyph_buffer.draw_list.indices )
+	delete( glyph_buffer.draw_list.calls )
+
+	delete( glyph_buffer.clear_draw_list.vertices )
+	delete( glyph_buffer.clear_draw_list.indices )
+	delete( glyph_buffer.clear_draw_list.calls )
+
+	shaper_shutdown( & shaper_ctx )
+	parser_shutdown( & parser_ctx )
 }
 
 // ve_fontcache_load
@@ -352,10 +383,7 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32,
 		used = true
 
 		parser_info = parser_load_font( & parser_ctx, label, data )
-		// assert( parser_info != nil, "VEFontCache.load_font: Failed to load font info from parser" )
-
 		shaper_info = shaper_load_font( & shaper_ctx, label, data, transmute(rawptr) id )
-		// assert( shaper_info != nil, "VEFontCache.load_font: Failed to load font from shaper")
 
 		size = size_px
 		size_scale = size_px < 0.0 ?                               \
@@ -391,9 +419,9 @@ unload_font :: proc( ctx : ^Context, font : FontID )
 	shaper_unload_font( & entry.shaper_info )
 }
 
-#endregion("lifetime")
+//#endregion("lifetime")
 
-#region("drawing")
+//#region("drawing")
 
 // ve_fontcache_configure_snap
 configure_snap :: #force_inline proc( ctx : ^Context, snap_width, snap_height : u32 ) {
@@ -407,7 +435,7 @@ set_colour     :: #force_inline proc "contextless" ( ctx : ^Context, colour : Co
 
 draw_text :: proc( ctx : ^Context, font : FontID, text_utf8 : string, position, scale : Vec2 ) -> b32
 {
-	// profile(#procedure)
+	profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
@@ -469,9 +497,9 @@ flush_draw_list_layer :: proc( ctx : ^Context ) {
 	draw_layer.calls_offset    = len(draw_list.calls)
 }
 
-#endregion("drawing")
+//#endregion("drawing")
 
-#region("metrics")
+//#region("metrics")
 
 measure_text_size :: proc( ctx : ^Context, font : FontID, text_utf8 : string ) -> (measured : Vec2)
 {
@@ -498,4 +526,4 @@ get_font_vertical_metrics :: #force_inline proc ( ctx : ^Context, font : FontID 
 	return
 }
 
-#endregion("metrics")
+//#endregion("metrics")
