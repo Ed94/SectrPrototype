@@ -169,7 +169,7 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		glyph_rt_sampler = sokol_gfx.make_sampler( SamplerDescription {
 			min_filter     = Image_Filter,
 			mag_filter     = Image_Filter,
-			mipmap_filter  = Filter.NONE,
+			mipmap_filter  = Filter.NEAREST,
 			wrap_u         = .CLAMP_TO_EDGE,
 			wrap_v         = .CLAMP_TO_EDGE,
 			min_lod        = -1000.0,
@@ -307,7 +307,7 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		atlas_rt_sampler = sokol_gfx.make_sampler( SamplerDescription {
 			min_filter     = Image_Filter,
 			mag_filter     = Image_Filter,
-			mipmap_filter  = Filter.NONE,
+			mipmap_filter  = Filter.NEAREST,
 			wrap_u         = .CLAMP_TO_EDGE,
 			wrap_v         = .CLAMP_TO_EDGE,
 			min_lod        = -1000.0,
