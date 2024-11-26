@@ -223,7 +223,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			debug_text("Mouse Position (Workspace View): %0.2f", screen_to_ws_view_pos(input.mouse.pos) )
 		}
 
-		if false
+		if true
 		{
 			ui := & project.workspace.ui
 
@@ -243,7 +243,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			}
 		}
 
-		if false
+		if true
 		{
 			ui := & screen_ui
 
@@ -260,7 +260,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			}
 		}
 
-		if false {
+		if true {
 			state.config.font_size_canvas_scalar = 1.5
 			zoom_adjust_size := 16 * state.project.workspace.cam.zoom
 			over_sample      := f32(state.config.font_size_canvas_scalar)
@@ -301,8 +301,8 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 
 	vbuf_layer_slice, ibuf_layer_slice, calls_layer_slice := ve.get_draw_list_layer( ve_ctx )
 
-	vbuf_ve_range := Range{ raw_data(vbuf_layer_slice), cast(u64) len(vbuf_layer_slice) * size_of(ve.Vertex) }
-	ibuf_ve_range := Range{ raw_data(ibuf_layer_slice), cast(u64) len(ibuf_layer_slice) * size_of(u32)       }
+	vbuf_ve_range := Range{ raw_data(vbuf_layer_slice), cast(uint) len(vbuf_layer_slice) * size_of(ve.Vertex) }
+	ibuf_ve_range := Range{ raw_data(ibuf_layer_slice), cast(uint) len(ibuf_layer_slice) * size_of(u32)       }
 
 	gfx.append_buffer( draw_list_vbuf, vbuf_ve_range )
 	gfx.append_buffer( draw_list_ibuf, ibuf_ve_range )
@@ -353,7 +353,6 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 					},
 					index_buffer        = draw_list_ibuf,
 					index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
-					fs = {},
 				}
 				gfx.apply_bindings( bindings )
 
@@ -381,7 +380,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 				gfx.apply_pipeline( atlas_pipeline )
 
 				fs_uniform := Ve_Blit_Atlas_Fs_Params { region = cast(i32) draw_call.region }
-				gfx.apply_uniforms( ShaderStage.FS, SLOT_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(Ve_Blit_Atlas_Fs_Params) })
+				gfx.apply_uniforms( UB_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(Ve_Blit_Atlas_Fs_Params) })
 
 				gfx.apply_bindings(Bindings {
 					vertex_buffers = {
@@ -392,10 +391,8 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 					},
 					index_buffer        = draw_list_ibuf,
 					index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
-					fs = {
-						images   = { SLOT_ve_blit_atlas_src_texture = glyph_rt_color, },
-						samplers = { SLOT_ve_blit_atlas_src_sampler = glyph_rt_sampler, },
-					},
+					images   = { IMG_ve_blit_atlas_src_texture = glyph_rt_color, },
+					samplers = { SMP_ve_blit_atlas_src_sampler = glyph_rt_sampler, },
 				})
 
 			// 3. Use the atlas to then render the text.
@@ -428,7 +425,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 					src_rt      = glyph_rt_color
 					src_sampler = glyph_rt_sampler
 				}
-				gfx.apply_uniforms( ShaderStage.FS, SLOT_ve_draw_text_fs_params, Range { & fs_target_uniform, size_of(Ve_Draw_Text_Fs_Params) })
+				gfx.apply_uniforms( UB_ve_draw_text_fs_params, Range { & fs_target_uniform, size_of(Ve_Draw_Text_Fs_Params) })
 
 				gfx.apply_bindings(Bindings {
 					vertex_buffers = {
@@ -439,10 +436,8 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 					},
 					index_buffer        = draw_list_ibuf,
 					index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
-					fs = {
-						images   = { SLOT_ve_draw_text_src_texture = src_rt, },
-						samplers = { SLOT_ve_draw_text_src_sampler = src_sampler, },
-					},
+					images   = { IMG_ve_draw_text_src_texture = src_rt, },
+					samplers = { SMP_ve_draw_text_src_sampler = src_sampler, },
 				})
 		}
 

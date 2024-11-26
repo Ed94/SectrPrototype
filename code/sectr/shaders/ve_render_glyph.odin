@@ -12,14 +12,15 @@ import sg "thirdparty:sokol/gfx"
     =========
     Shader program: 've_render_glyph':
         Get shader desc: ve_render_glyph_shader_desc(sg.query_backend())
-        Vertex shader: ve_render_glyph_vs
-            Attributes:
-                ATTR_ve_render_glyph_vs_v_position => 0
-                ATTR_ve_render_glyph_vs_v_texture => 1
-        Fragment shader: ve_render_glyph_fs
+        Vertex Shader: ve_render_glyph_vs
+        Fragment Shader: ve_render_glyph_fs
+        Attributes:
+            ATTR_ve_render_glyph_v_position => 0
+            ATTR_ve_render_glyph_v_texture => 1
+    Bindings:
 */
-ATTR_ve_render_glyph_vs_v_position :: 0
-ATTR_ve_render_glyph_vs_v_texture :: 1
+ATTR_ve_render_glyph_v_position :: 0
+ATTR_ve_render_glyph_v_texture :: 1
 /*
     static float4 gl_Position;
     static float2 uv;
@@ -55,7 +56,7 @@ ATTR_ve_render_glyph_vs_v_texture :: 1
         return stage_output;
     }
 */
-@(private)
+@(private="file")
 ve_render_glyph_vs_source_hlsl4 := [705]u8 {
     0x73,0x74,0x61,0x74,0x69,0x63,0x20,0x66,0x6c,0x6f,0x61,0x74,0x34,0x20,0x67,0x6c,
     0x5f,0x50,0x6f,0x73,0x69,0x74,0x69,0x6f,0x6e,0x3b,0x0a,0x73,0x74,0x61,0x74,0x69,
@@ -131,7 +132,7 @@ ve_render_glyph_vs_source_hlsl4 := [705]u8 {
         return stage_output;
     }
 */
-@(private)
+@(private="file")
 ve_render_glyph_fs_source_hlsl4 := [427]u8 {
     0x73,0x74,0x61,0x74,0x69,0x63,0x20,0x66,0x6c,0x6f,0x61,0x74,0x34,0x20,0x66,0x72,
     0x61,0x67,0x5f,0x63,0x6f,0x6c,0x6f,0x72,0x3b,0x0a,0x73,0x74,0x61,0x74,0x69,0x63,
@@ -166,16 +167,16 @@ ve_render_glyph_shader_desc :: proc (backend: sg.Backend) -> sg.Shader_Desc {
     desc.label = "ve_render_glyph_shader"
     #partial switch backend {
     case .D3D11:
-        desc.attrs[0].sem_name = "TEXCOORD"
-        desc.attrs[0].sem_index = 0
-        desc.attrs[1].sem_name = "TEXCOORD"
-        desc.attrs[1].sem_index = 1
-        desc.vs.source = transmute(cstring)&ve_render_glyph_vs_source_hlsl4
-        desc.vs.d3d11_target = "vs_4_0"
-        desc.vs.entry = "main"
-        desc.fs.source = transmute(cstring)&ve_render_glyph_fs_source_hlsl4
-        desc.fs.d3d11_target = "ps_4_0"
-        desc.fs.entry = "main"
+        desc.vertex_func.source = transmute(cstring)&ve_render_glyph_vs_source_hlsl4
+        desc.vertex_func.d3d11_target = "vs_4_0"
+        desc.vertex_func.entry = "main"
+        desc.fragment_func.source = transmute(cstring)&ve_render_glyph_fs_source_hlsl4
+        desc.fragment_func.d3d11_target = "ps_4_0"
+        desc.fragment_func.entry = "main"
+        desc.attrs[0].hlsl_sem_name = "TEXCOORD"
+        desc.attrs[0].hlsl_sem_index = 0
+        desc.attrs[1].hlsl_sem_name = "TEXCOORD"
+        desc.attrs[1].hlsl_sem_index = 1
     }
     return desc
 }

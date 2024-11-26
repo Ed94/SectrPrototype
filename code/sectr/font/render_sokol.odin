@@ -87,12 +87,12 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		vs_layout : VertexLayoutState
 		{
 			using vs_layout
-			attrs[ATTR_ve_render_glyph_vs_v_position] = VertexAttributeState {
+			attrs[ATTR_ve_render_glyph_v_position] = VertexAttributeState {
 				format       = VertexFormat.FLOAT2,
 				offset       = 0,
 				buffer_index = 0,
 			}
-			attrs[ATTR_ve_render_glyph_vs_v_texture] = VertexAttributeState {
+			attrs[ATTR_ve_render_glyph_v_texture] = VertexAttributeState {
 				format       = VertexFormat.FLOAT2,
 				offset       = size_of(Vec2),
 				buffer_index = 0,
@@ -226,12 +226,12 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		vs_layout : VertexLayoutState
 		{
 			using vs_layout
-			attrs[ATTR_ve_blit_atlas_vs_v_position] = VertexAttributeState {
+			attrs[ATTR_ve_blit_atlas_v_position] = VertexAttributeState {
 				format       = VertexFormat.FLOAT2,
 				offset       = 0,
 				buffer_index = 0,
 			}
-			attrs[ATTR_ve_blit_atlas_vs_v_texture] = VertexAttributeState {
+			attrs[ATTR_ve_blit_atlas_v_texture] = VertexAttributeState {
 				format       = VertexFormat.FLOAT2,
 				offset       = size_of(Vec2),
 				buffer_index = 0,
@@ -365,12 +365,12 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		vs_layout : VertexLayoutState
 		{
 			using vs_layout
-			attrs[ATTR_ve_draw_text_vs_v_position] = VertexAttributeState {
+			attrs[ATTR_ve_draw_text_v_position] = VertexAttributeState {
 				format       = VertexFormat.FLOAT2,
 				offset       = 0,
 				buffer_index = 0,
 			}
-			attrs[ATTR_ve_draw_text_vs_v_texture] = VertexAttributeState {
+			attrs[ATTR_ve_draw_text_v_texture] = VertexAttributeState {
 				format       = VertexFormat.FLOAT2,
 				offset       = size_of(Vec2),
 				buffer_index = 0,

@@ -52,7 +52,7 @@ sokol_app_cleanup_callback :: proc "c" () {
 	log("sokol_app: Confirmed cleanup")
 }
 
-sokol_app_alloc :: proc "c" ( size : u64, user_data : rawptr ) -> rawptr {
+sokol_app_alloc :: proc "c" ( size : uint, user_data : rawptr ) -> rawptr {
 	context = get_state().sokol_context
 	block, error := alloc( int(size), allocator = persistent_slab_allocator() )
 	ensure(error == AllocatorError.None, "sokol_app allocation failed")
@@ -235,7 +235,7 @@ sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 
 #region("Sokol GFX")
 
-sokol_gfx_alloc :: proc "c" ( size : u64, user_data : rawptr ) -> rawptr {
+sokol_gfx_alloc :: proc "c" ( size : uint, user_data : rawptr ) -> rawptr {
 	context = get_state().sokol_context
 	block, error := alloc( int(size), allocator = persistent_slab_allocator() )
 	ensure(error == AllocatorError.None, "sokol_gfx allocation failed")

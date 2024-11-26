@@ -12,31 +12,29 @@ import sg "thirdparty:sokol/gfx"
     =========
     Shader program: 've_draw_text':
         Get shader desc: ve_draw_text_shader_desc(sg.query_backend())
-        Vertex shader: ve_draw_text_vs
-            Attributes:
-                ATTR_ve_draw_text_vs_v_position => 0
-                ATTR_ve_draw_text_vs_v_texture => 1
-        Fragment shader: ve_draw_text_fs
-            Uniform block 've_draw_text_fs_params':
-                Odin struct: Ve_Draw_Text_Fs_Params
-                Bind slot: SLOT_ve_draw_text_fs_params => 0
-            Image 've_draw_text_src_texture':
-                Image type: ._2D
-                Sample type: .FLOAT
-                Multisampled: false
-                Bind slot: SLOT_ve_draw_text_src_texture => 0
-            Sampler 've_draw_text_src_sampler':
-                Type: .FILTERING
-                Bind slot: SLOT_ve_draw_text_src_sampler => 0
-            Image Sampler Pair 've_draw_text_src_texture_ve_draw_text_src_sampler':
-                Image: ve_draw_text_src_texture
-                Sampler: ve_draw_text_src_sampler
+        Vertex Shader: ve_draw_text_vs
+        Fragment Shader: ve_draw_text_fs
+        Attributes:
+            ATTR_ve_draw_text_v_position => 0
+            ATTR_ve_draw_text_v_texture => 1
+    Bindings:
+        Uniform block 've_draw_text_fs_params':
+            Odin struct: Ve_Draw_Text_Fs_Params
+            Bind slot: UB_ve_draw_text_fs_params => 0
+        Image 've_draw_text_src_texture':
+            Image type: ._2D
+            Sample type: .FLOAT
+            Multisampled: false
+            Bind slot: IMG_ve_draw_text_src_texture => 0
+        Sampler 've_draw_text_src_sampler':
+            Type: .FILTERING
+            Bind slot: SMP_ve_draw_text_src_sampler => 0
 */
-ATTR_ve_draw_text_vs_v_position :: 0
-ATTR_ve_draw_text_vs_v_texture :: 1
-SLOT_ve_draw_text_fs_params :: 0
-SLOT_ve_draw_text_src_texture :: 0
-SLOT_ve_draw_text_src_sampler :: 0
+ATTR_ve_draw_text_v_position :: 0
+ATTR_ve_draw_text_v_texture :: 1
+UB_ve_draw_text_fs_params :: 0
+IMG_ve_draw_text_src_texture :: 0
+SMP_ve_draw_text_src_sampler :: 0
 Ve_Draw_Text_Fs_Params :: struct #align(16) {
     using _: struct #packed {
         down_sample: i32,
@@ -79,7 +77,7 @@ Ve_Draw_Text_Fs_Params :: struct #align(16) {
         return stage_output;
     }
 */
-@(private)
+@(private="file")
 ve_draw_text_vs_source_hlsl4 := [724]u8 {
     0x73,0x74,0x61,0x74,0x69,0x63,0x20,0x66,0x6c,0x6f,0x61,0x74,0x34,0x20,0x67,0x6c,
     0x5f,0x50,0x6f,0x73,0x69,0x74,0x69,0x6f,0x6e,0x3b,0x0a,0x73,0x74,0x61,0x74,0x69,
@@ -170,7 +168,7 @@ ve_draw_text_vs_source_hlsl4 := [724]u8 {
         return stage_output;
     }
 */
-@(private)
+@(private="file")
 ve_draw_text_fs_source_hlsl4 := [1296]u8 {
     0x63,0x62,0x75,0x66,0x66,0x65,0x72,0x20,0x76,0x65,0x5f,0x64,0x72,0x61,0x77,0x5f,
     0x74,0x65,0x78,0x74,0x5f,0x66,0x73,0x5f,0x70,0x61,0x72,0x61,0x6d,0x73,0x20,0x3a,
@@ -260,27 +258,31 @@ ve_draw_text_shader_desc :: proc (backend: sg.Backend) -> sg.Shader_Desc {
     desc.label = "ve_draw_text_shader"
     #partial switch backend {
     case .D3D11:
-        desc.attrs[0].sem_name = "TEXCOORD"
-        desc.attrs[0].sem_index = 0
-        desc.attrs[1].sem_name = "TEXCOORD"
-        desc.attrs[1].sem_index = 1
-        desc.vs.source = transmute(cstring)&ve_draw_text_vs_source_hlsl4
-        desc.vs.d3d11_target = "vs_4_0"
-        desc.vs.entry = "main"
-        desc.fs.source = transmute(cstring)&ve_draw_text_fs_source_hlsl4
-        desc.fs.d3d11_target = "ps_4_0"
-        desc.fs.entry = "main"
-        desc.fs.uniform_blocks[0].size = 32
-        desc.fs.uniform_blocks[0].layout = .STD140
-        desc.fs.images[0].used = true
-        desc.fs.images[0].multisampled = false
-        desc.fs.images[0].image_type = ._2D
-        desc.fs.images[0].sample_type = .FLOAT
-        desc.fs.samplers[0].used = true
-        desc.fs.samplers[0].sampler_type = .FILTERING
-        desc.fs.image_sampler_pairs[0].used = true
-        desc.fs.image_sampler_pairs[0].image_slot = 0
-        desc.fs.image_sampler_pairs[0].sampler_slot = 0
+        desc.vertex_func.source = transmute(cstring)&ve_draw_text_vs_source_hlsl4
+        desc.vertex_func.d3d11_target = "vs_4_0"
+        desc.vertex_func.entry = "main"
+        desc.fragment_func.source = transmute(cstring)&ve_draw_text_fs_source_hlsl4
+        desc.fragment_func.d3d11_target = "ps_4_0"
+        desc.fragment_func.entry = "main"
+        desc.attrs[0].hlsl_sem_name = "TEXCOORD"
+        desc.attrs[0].hlsl_sem_index = 0
+        desc.attrs[1].hlsl_sem_name = "TEXCOORD"
+        desc.attrs[1].hlsl_sem_index = 1
+        desc.uniform_blocks[0].stage = .FRAGMENT
+        desc.uniform_blocks[0].layout = .STD140
+        desc.uniform_blocks[0].size = 32
+        desc.uniform_blocks[0].hlsl_register_b_n = 0
+        desc.images[0].stage = .FRAGMENT
+        desc.images[0].multisampled = false
+        desc.images[0].image_type = ._2D
+        desc.images[0].sample_type = .FLOAT
+        desc.images[0].hlsl_register_t_n = 0
+        desc.samplers[0].stage = .FRAGMENT
+        desc.samplers[0].sampler_type = .FILTERING
+        desc.samplers[0].hlsl_register_s_n = 0
+        desc.image_sampler_pairs[0].stage = .FRAGMENT
+        desc.image_sampler_pairs[0].image_slot = 0
+        desc.image_sampler_pairs[0].sampler_slot = 0
     }
     return desc
 }

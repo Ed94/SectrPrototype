@@ -23,7 +23,7 @@ FontID  :: struct {
 FontDef :: struct {
 	path_file    : string,
 	default_size : i32,
-	size_table   : [Font_Largest_Px_Size / Font_Size_Interval] ve.FontID,
+	size_table   : [Font_Largest_Px_Size / Font_Size_Interval] ve.Font_ID,
 }
 
 FontProviderContext :: struct
@@ -114,7 +114,7 @@ font_load :: proc(path_file : string,
 
 Font_Use_Default_Size :: f32(0.0)
 
-font_provider_resolve_draw_id :: proc( id : FontID, size := Font_Use_Default_Size ) -> (ve_id :ve.FontID, resolved_size : i32)
+font_provider_resolve_draw_id :: proc( id : FontID, size := Font_Use_Default_Size ) -> (ve_id :ve.Font_ID, resolved_size : i32)
 {
 	provider_data := get_state().font_provider_ctx; using provider_data
 
