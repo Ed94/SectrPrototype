@@ -4,7 +4,7 @@ import "base:runtime"
 import "core:simd"
 import "core:math"
 
-// import core_log "core:log"
+import core_log "core:log"
 
 Colour  :: [4]f32
 Vec2    :: [2]f32
@@ -23,21 +23,21 @@ vec2i_from_vec2   :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2
 // This means a single line is limited to 4k buffer
 // Logger_Allocator_Buffer : [4 * Kilobyte]u8
 
-// log :: proc( msg : string, level := core_log.Level.Info, loc := #caller_location ) {
+log :: proc( msg : string, level := core_log.Level.Info, loc := #caller_location ) {
 	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
 	// context.allocator      = arena_allocator(& temp_arena)
 	// context.temp_allocator = arena_allocator(& temp_arena)
 
-	// core_log.log( level, msg, location = loc )
-// }
+	core_log.log( level, msg, location = loc )
+}
 
-// logf :: proc( fmt : string, args : ..any,  level := core_log.Level.Info, loc := #caller_location  ) {
+logf :: proc( fmt : string, args : ..any,  level := core_log.Level.Info, loc := #caller_location  ) {
 	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
 	// context.allocator      = arena_allocator(& temp_arena)
 	// context.temp_allocator = arena_allocator(& temp_arena)
 
-	// core_log.logf( level, fmt, ..args, location = loc )
-// }
+	core_log.logf( level, fmt, ..args, location = loc )
+}
 
 reload_array :: proc( self : ^[dynamic]$Type, allocator : Allocator ) {
 	raw          := transmute( ^runtime.Raw_Dynamic_Array) self
@@ -49,7 +49,7 @@ reload_map :: proc( self : ^map [$KeyType] $EntryType, allocator : Allocator ) {
 	raw.allocator = allocator
 }
 
-font_glyph_lru_code :: #force_inline proc "contextless" ( font : FontID, glyph_index : Glyph ) -> (lru_code : u64) {
+font_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, glyph_index : Glyph ) -> (lru_code : u64) {
 	lru_code = u64(glyph_index) + ( ( 0x100000000 * u64(font) ) & 0xFFFFFFFF00000000 )
 	return
 }
@@ -71,9 +71,11 @@ reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
 	ctx.temp_codepoint_seen_num = 0
 }
 
+USE_F64_PRECISION_ON_X_FORM_OPS :: false
+
 screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, size : Vec2 )
 {
-	if true
+	when USE_F64_PRECISION_ON_X_FORM_OPS
 	{
 		pos_64   := vec2_64_from_vec2(position^)
 		scale_64 := vec2_64_from_vec2(scale^)
@@ -101,7 +103,7 @@ screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2
 
 textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, size : Vec2 )
 {
-	if true
+	when USE_F64_PRECISION_ON_X_FORM_OPS
 	{
 		pos_64   := vec2_64_from_vec2(position^)
 		scale_64 := vec2_64_from_vec2(scale^)
@@ -121,9 +123,9 @@ textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, 
 	}
 }
 
-Use_SIMD_For_Bezier_Ops :: false
+USE_MANUAL_SIMD_FOR_BEZIER_OPS :: false
 
-when ! Use_SIMD_For_Bezier_Ops
+when ! USE_MANUAL_SIMD_FOR_BEZIER_OPS
 {
 	// For a provided alpha value,
 	// allows the function to calculate the position of a point along the curve at any given fraction of its total length

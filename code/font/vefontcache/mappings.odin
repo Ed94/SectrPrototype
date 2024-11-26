@@ -27,16 +27,12 @@ import "core:mem"
 	Kilobyte  :: mem.Kilobyte
 	slice_ptr :: mem.slice_ptr
 
-	Allocator      :: mem.Allocator
-	AllocatorError :: mem.Allocator_Error
+	Allocator       :: mem.Allocator
+	Allocator_Error :: mem.Allocator_Error
 
 	Arena           :: mem.Arena
 	arena_allocator :: mem.arena_allocator
 	arena_init      :: mem.arena_init
-import "codebase:grime"
-	log                :: grime.log
-	logf               :: grime.logf
-	profile            :: grime.profile
 
 //#region("Proc overload mappings")
 
