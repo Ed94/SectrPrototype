@@ -60,6 +60,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// Any persistent allocations are explicitly specified.
 		context.allocator      = transient_allocator()
 		context.temp_allocator = transient_allocator()
+		
 	}
 
 	state := new( State, persistent_allocator() )
@@ -332,9 +333,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
 		}
 
-		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
-		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/ve_fontcache.h", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool

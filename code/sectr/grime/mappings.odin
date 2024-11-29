@@ -120,6 +120,9 @@ import "core:time"
 	duration_seconds :: time.duration_seconds
 	duration_ms      :: time.duration_milliseconds
 	thread_sleep     :: time.sleep
+	time_diff        :: time.diff
+	time_now         :: time.now
+	Time             :: time.Time
 
 import "core:unicode"
 	is_white_space  :: unicode.is_white_space
@@ -173,6 +176,7 @@ import "codebase:grime"
 	array_clear        :: grime.array_clear
 	array_free         :: grime.array_free
 	array_grow_formula :: grime.array_grow_formula
+	array_pop          :: grime.array_pop
 	array_remove_at    :: grime.array_remove_at
 	array_resize       :: grime.array_resize
 
@@ -453,6 +457,7 @@ points_to_pixels :: proc {
 }
 
 pop :: proc {
+	array_pop,
 	stack_pop,
 	stack_allocator_pop,
 }
@@ -558,6 +563,10 @@ to_quat128 :: proc {
 
 to_runes :: proc {
 	string_to_runes,
+}
+
+to_slice :: proc {
+	array_to_slice,
 }
 
 to_string :: proc {

@@ -39,5 +39,7 @@ DebugData :: struct {
 		pipeline    : sokol_gfx.Pipeline,
     bindings    : sokol_gfx.Bindings,
     pass_action : sokol_gfx.Pass_Action,
-	}
+	},
+
+	last_invalid_input_time : Time,
 }

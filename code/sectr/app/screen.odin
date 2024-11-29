@@ -231,6 +231,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					title.layout.font_size = 12
 				}
 
+				iter_next :: next
 				input_box := ui_widget("settings_menu.engine_refresh.input_box", {.Mouse_Clickable, .Focusable, .Click_To_Focus}); {
 					using input_box
 					layout.flags          = {.Fixed_Width}
@@ -242,6 +243,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					if      input_box.active do style.bg_color = app_color.input_box_bg_active
 					else if input_box.hot    do style.bg_color = app_color.input_box_bg_hot
 					else                     do style.bg_color = app_color.input_box_bg
+
+					@static max_value_length : u64 = 4
 
 					@static value_str : Array(rune)
 					if value_str.header == nil {
@@ -255,13 +258,65 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					}
 
 					if input_box.active {
-						append( & value_str, input_events.codes_pressed )
+						if ! input_box.was_active {
+							debug.last_invalid_input_time._nsec = 0
+						}
+
+						iter_obj  := iterator( & input_events.key_events ); iter := & iter_obj
+						for event := iter_next( iter ); event != nil; event = iter_next( iter )
+						{
+							if event.frame_id != state.frame do break
+
+							if event.key == .backspace && event.type == .Key_Pressed {
+								if value_str.num > 0 {
+										pop( value_str)
+										break
+								}
+							}
+
+							if event.key == .enter && event.type == .Key_Pressed {
+								screen_ui.active = 0
+							}
+						}
+
+						// append( & value_str, input_events.codes_pressed )
+						for code in to_slice(input_events.codes_pressed) {
+								if value_str.num == 0 && code == '0' {
+									debug.last_invalid_input_time = time_now()
+									continue
+								}
+
+								if value_str.num >= max_value_length {
+									debug.last_invalid_input_time = time_now()
+									continue
+								}
+
+								// Only accept characters 0-9
+								if '0' <= code && code <= '9' {
+
+									append(&value_str, code)
+								}
+								else {
+									debug.last_invalid_input_time = time_now()
+									continue
+								}
+						}
 						clear( input_events.codes_pressed )
+
+						invalid_color := RGBA8 { 70, 50, 50, 255}
+
+						// Visual feedback - change background color briefly when invalid input occurs
+						feedback_duration :: 0.2 // seconds
+						curr_duration := duration_seconds( time_diff( debug.last_invalid_input_time, time_now() ))
+						if debug.last_invalid_input_time._nsec != 0 && curr_duration < feedback_duration {
+								input_box.style.bg_color = invalid_color // Or a specific error color from your theme
+						}
 					}
 					else if input_box.was_active
 					{
 						value, success := parse_uint(to_string(array_to_slice(value_str)))
 						if success {
+							value = clamp(value, 1, 9999)
 							config.engine_refresh_hz = value
 						}
 					}
