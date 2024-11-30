@@ -456,3 +456,13 @@ theme_text :: proc() -> UI_Theme
 	}
 	return theme
 }
+
+theme_text_input_box :: proc() -> UI_Theme
+{
+	@static theme  : UI_Theme
+	@static loaded : b32 = false
+	if ! loaded
+	{
+	}
+	return theme
+}

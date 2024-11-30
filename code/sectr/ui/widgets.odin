@@ -550,6 +550,173 @@ ui_text_wrap_panel :: proc( parent : ^UI_Widget )
 }
 #endregion("Text")
 
+#region("Text Input")
+UI_TextInput_Policy :: struct {
+	disallow_decimal       : b32,
+	disallow_leading_zeros : b32,
+	digits_only            : b32,
+	digit_min, digit_max   : f32,
+	max_length             : u32,
+}
+
+// Note(Ed): Currently only supports single-line input (may stay that way).
+// This is a precursor to a proper text editor widget
+UI_TextInputBox :: struct {
+	using widget      : UI_Widget,
+	input_str         : Array(rune),
+	editor_cursor_pos : Vec2i,
+	using policy      : UI_TextInput_Policy,
+}
+
+ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string, flags : UI_BoxFlags = {.Mouse_Clickable, .Focusable, .Click_To_Focus}, allocator := context.allocator )
+{
+	state        := get_state()
+	iter_next    :: next
+	input        := state.input
+	input_events := & get_state().input_events
+	ui           := ui_context()
+
+	text_input_box.box    = ui_box_make( flags, label )
+	text_input_box.signal = ui_signal_from_box( text_input_box.box )
+	using text_input_box
+
+	// TODO(Ed): This thing needs to be pulling from the theme stack
+	app_color := app_color_theme()
+	if      active do style.bg_color = app_color.input_box_bg_active
+	else if hot    do style.bg_color = app_color.input_box_bg_hot
+	else           do style.bg_color = app_color.input_box_bg
+
+	if input_str.header == nil {
+		error : AllocatorError
+		input_str, error = make( Array(rune), Kilo, allocator )
+		ensure(error == AllocatorError.None, "Failed to allocate array for input_str of input_box")
+	}
+
+	if active
+	{
+		// TODO(Ed): Can problably be moved to ui_signal
+		if ! was_active {
+			ui.last_invalid_input_time = {}
+		}
+		if pressed {
+			editor_cursor_pos = { i32(input_str.num), 0 }
+		}
+
+		// TODO(Ed): Abstract this to navigation bindings
+		if btn_pressed(input.keyboard.left) {
+			editor_cursor_pos.x = max(0, editor_cursor_pos.x - 1)
+		}
+		if btn_pressed(input.keyboard.right) {
+			editor_cursor_pos.x = min(i32(input_str.num), editor_cursor_pos.x + 1)
+		}
+
+		// TODO(Ed): Confirm btn_pressed is working (if not figure out why)
+		// if btn_pressed(input.keyboard.left) {
+		// 	if input_str.num > 0 {
+		// 		editor_cursor_pos = max(0, editor_cursor_pos - 1)
+		// 		remove_at( value_str, u64(editor_cursor_pos) )
+		// 	}
+		// }
+		// if btn_pressed(input.keyboard.right) {
+		// 	screen_ui.active = 0
+		// }
+
+		iter_obj  := iterator( & input_events.key_events ); iter := & iter_obj
+		for event := iter_next( iter ); event != nil; event = iter_next( iter )
+		{
+			if event.frame_id != state.frame do break
+
+			if event.key == .backspace && event.type == .Key_Pressed {
+				if input_str.num > 0 {
+						editor_cursor_pos.x = max(0, editor_cursor_pos.x - 1)
+						remove_at( input_str, u64(editor_cursor_pos.x) )
+						break
+				}
+			}
+			if event.key == .enter && event.type == .Key_Pressed {
+				ui.active = 0
+				break
+			}
+		}
+
+		decimal_detected := false
+		for code in to_slice(input_events.codes_pressed)
+		{
+			accept_digits  := ! digits_only || '0' <= code && code <= '9'
+			accept_decimal := ! disallow_decimal || ! decimal_detected && code =='.'
+
+			if disallow_leading_zeros && input_str.num == 0 && code == '0' {
+				ui.last_invalid_input_time = time_now()
+				continue
+			}
+			if max_length > 0 && input_str.num >= u64(max_length) {
+				ui.last_invalid_input_time = time_now()
+				continue
+			}
+
+			if accept_digits || accept_decimal {
+				append_at( & input_str, code, u64(editor_cursor_pos.x))
+				editor_cursor_pos.x = min(editor_cursor_pos.x + 1, i32(input_str.num))
+			}
+			else {
+				ui.last_invalid_input_time = time_now()
+				continue
+			}
+		}
+		clear( input_events.codes_pressed )
+
+		invalid_color := RGBA8 { 70, 40, 40, 255}
+
+		// Visual feedback - change background color briefly when invalid input occurs
+		feedback_duration :: 0.2 // seconds
+		curr_duration := duration_seconds( time_diff( ui.last_invalid_input_time, time_now() ))
+		if ui.last_invalid_input_time._nsec != 0 && curr_duration < feedback_duration {
+			style.bg_color = invalid_color
+		}
+	}
+
+	ui_parent(text_input_box)
+	name :: proc( label : string ) -> string {
+		parent_label := (transmute(^string) context.user_ptr) ^
+		return str_intern(str_fmt("%v: %v", parent_label, label )).str
+	}
+	context.user_ptr = & parent.label
+
+	// TODO(Ed): Allow for left and center alignment of text
+	value_txt : UI_Widget; {
+		scope(theme_text)
+		value_txt = ui_text(name("input_str"), to_str_runes_pair(array_to_slice(input_str)))
+		using value_txt
+		layout.alignment      = {0.0, 0.0}
+		layout.text_alignment = {1.0, 0.5}
+		layout.anchor.left    = 0.0
+		layout.size.min       = cast(Vec2) measure_text_size( text.str, style.font, layout.font_size, 0 )
+
+		if active {
+			ui_parent(value_txt)
+
+			ascent, descent, line_gap := get_font_vertical_metrics(style.font, layout.font_size)
+			cursor_height             := ascent - descent
+
+			text_before_cursor := to_string(array_to_slice(input_str)[ :editor_cursor_pos.x ])
+			cursor_x_offset    := measure_text_size(text_before_cursor, style.font, layout.font_size, 0).x
+			text_size          := measure_text_size(to_string(array_to_slice(input_str)), style.font, layout.font_size, 0).x
+
+			ui_layout( UI_Layout {
+				flags     = { .Fixed_Width },
+				size      = range2({1, 0}, {}),
+				anchor    = range2({1.0, 0},{0.0, 0.0}),
+				alignment = { 0.0, 0 },
+				pos       = { cursor_x_offset - text_size, 0 }
+			})
+			cursor_widget := ui_widget(name("cursor"), {})
+			cursor_widget.style.bg_color = RGBA8{255, 255, 255, 255}
+			cursor_widget.layout.anchor.right = 0.0
+		}
+	}
+}
+#endregion("Text Input")
+
 #region("Vertical Box")
 /*
 Vertical Boxes automatically manage a collection of widgets and

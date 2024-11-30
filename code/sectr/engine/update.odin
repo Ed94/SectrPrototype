@@ -270,7 +270,16 @@ update :: proc( delta_time : f64 ) -> b32
 						}
 
 						if target_index != current_index {
-								workspace.zoom_target = Digial_Zoom_Snap_Levels[target_index]
+								proposed_target := Digial_Zoom_Snap_Levels[target_index]
+								if proposed_target < config.cam_min_zoom {
+									workspace.zoom_target = Digial_Zoom_Snap_Levels[find_closest_zoom_index(config.cam_min_zoom, Digial_Zoom_Snap_Levels)]
+								}
+								else if proposed_target > config.cam_max_zoom {
+									workspace.zoom_target = Digial_Zoom_Snap_Levels[find_closest_zoom_index(config.cam_max_zoom, Digial_Zoom_Snap_Levels)]
+								}
+								else {
+									workspace.zoom_target = proposed_target
+								}
 						}
 				}
 
@@ -341,7 +350,7 @@ update :: proc( delta_time : f64 ) -> b32
 		// test_draggable()
 		// test_text_box()
 		// test_parenting( & default_layout, & frame_style_default )
-		// test_whitespace_ast( & default_layout, & frame_style_default )
+		test_whitespace_ast( & default_layout, & frame_style_default )
 	}
 	//endregion Workspace Imgui Tick
 

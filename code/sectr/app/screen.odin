@@ -21,11 +21,21 @@ UI_ScreenState :: struct
 	settings_menu : struct
 	{
 		container           : UI_Widget,
+		min_zoom_inputbox   : UI_TextInputBox,
+		max_zoom_inputbox   : UI_TextInputBox,
 		cfg_drop_down       : UI_DropDown,
 		pos, size, min_size : Vec2,
 		is_open             : b32,
 		is_maximized        : b32,
 	},
+}
+
+ui_screen_reload :: proc() {
+	using state := get_state()
+	using screen_ui.settings_menu
+
+	min_zoom_inputbox.input_str.backing = persistent_slab_allocator()
+	max_zoom_inputbox.input_str.backing = persistent_slab_allocator()
 }
 
 ui_screen_tick :: proc() {
@@ -263,6 +273,10 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					@static last_invalid_input_time : Time
 					if input_box.active
 					{
+						if ! input_box.was_active {
+							last_invalid_input_time._nsec = 0
+						}
+
 						if input_box.pressed {
 							editor_cursor_pos = i32(value_str.num)
 						}
@@ -273,10 +287,6 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 						}
 						if btn_pressed(input.keyboard.right) {
 								editor_cursor_pos = min(i32(value_str.num), editor_cursor_pos + 1)
-						}
-
-						if ! input_box.was_active {
-							last_invalid_input_time._nsec = 0
 						}
 
 						iter_obj  := iterator( & input_events.key_events ); iter := & iter_obj
@@ -297,14 +307,12 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 							}
 						}
 
-						// append( & value_str, input_events.codes_pressed )
 						for code in to_slice(input_events.codes_pressed)
 						{
 							if value_str.num == 0 && code == '0' {
 								last_invalid_input_time = time_now()
 								continue
 							}
-
 							if value_str.num >= max_value_length {
 								last_invalid_input_time = time_now()
 								continue
@@ -397,6 +405,39 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					layout.margins.left   = 10
 					layout.font_size      = 12
 				}
+
+				min_zoom_config: {
+					using min_zoom_inputbox
+					digits_only            = true
+					disallow_leading_zeros = false
+					disallow_decimal       = false
+					digit_min              = 0.01
+					digit_max              = 9999
+					max_length             = 5
+				}
+				ui_text_input_box( & min_zoom_inputbox, "settings_menu.cam_min_zoom.input_box", allocator = persistent_slab_allocator() )
+				{
+					using min_zoom_inputbox
+					layout.flags          = {.Fixed_Width}
+					layout.margins.left   = 5
+					layout.padding.right  = 5
+					layout.size.min.x     = 80
+					style.corner_radii    = { 3, 3, 3, 3 }
+
+					if was_active
+					{
+						value, success := parse_f32(to_string(array_to_slice(input_str)))
+						if success {
+							value = clamp(value, 0.001, 9999.0)
+							config.cam_min_zoom = value
+						}
+					}
+					else
+					{
+						clear( input_str )
+						append( & input_str, to_runes(str_fmt("%v", config.cam_min_zoom)))
+					}
+				}
 			}
 
 			Max_Zoom:
@@ -414,6 +455,39 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					layout.anchor.ratio.x = 1.0
 					layout.margins.left   = 10
 					layout.font_size      = 12
+				}
+
+				max_zoom_config: {
+					using max_zoom_inputbox
+					digits_only            = true
+					disallow_leading_zeros = false
+					disallow_decimal       = false
+					digit_min              = 0.01
+					digit_max              = 9999
+					max_length             = 5
+					ui_text_input_box( & max_zoom_inputbox, "settings_menu.cam_max_zoom.input_box", allocator = persistent_slab_allocator() )
+					{
+						using max_zoom_inputbox
+						layout.flags          = {.Fixed_Width}
+						layout.margins.left   = 5
+						layout.padding.right  = 5
+						layout.size.min.x     = 80
+						style.corner_radii    = { 3, 3, 3, 3 }
+
+						if was_active
+						{
+							value, success := parse_f32(to_string(array_to_slice(input_str)))
+							if success {
+								value = clamp(value, 0.001, 9999.0)
+								config.cam_max_zoom = value
+							}
+						}
+						else
+						{
+							clear( input_str )
+							append( & input_str, to_runes(str_fmt("%v", config.cam_max_zoom)))
+						}
+					}
 				}
 			}
 		}

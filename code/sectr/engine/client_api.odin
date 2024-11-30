@@ -153,7 +153,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		color_theme = App_Thm_Dusk
 
-		font_size_canvas_scalar = 2.0
+		font_size_canvas_scalar = 1.0
 	}
 
 	Desired_OS_Scheduler_MS :: 1
