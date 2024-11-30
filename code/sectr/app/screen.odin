@@ -398,44 +398,36 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					layout.font_size      = 12
 				}
 
-				mode_selector := ui_drop_down( & zoom_mode_drop_down, "settings_menu.cam_zoom_mode.drop_down", str_intern_fmt("%v selected", config.cam_zoom_mode),
-					vb_compute_layout = true,
-					// vb_parent = app_config.vbox
-				)
-				mode_selector.btn.layout.anchor.ratio.x = 0.5
+				// TODO(Ed): This is technically a manual drop-down as the vbox within ui_dropdown is unusuable for attaching the buttons
+				// This can be alleviated if we add an option for the drop-down to support a floating vbox (fixed position computed, following drop_down btn)
+				// For now its buttons are attached to app_config vbox
+				mode_selector := ui_drop_down( & zoom_mode_drop_down, "settings_menu.cam_zoom_mode.drop_down", str_intern_fmt("%s", config.cam_zoom_mode), vb_compute_layout = true )
+				mode_selector.btn.layout.size.min = { 80, mode_selector.btn.layout.size.min.y }
 				if mode_selector.is_open
 				{
 					idx := 1
 					for entry in CameraZoomMode
 					{
 						ui_parent(app_config.vbox)
-						// scope( theme_table_row(is_even = idx % 2 == 0))
-						idx += 1
-
-						scope( theme_button)
-						btn := ui_button( str_intern_fmt("settings_menu.cam_zoom_mode.%v : option btn", entry).str )
-						btn.layout.size.min  = {0, 25}
-						// btn.layout.alignment = {0, 0}
-						// btn.layout.anchor    = {}
-						btn.layout.flags     = {.Fixed_Height}
-						btn.layout.padding  = to_ui_layout_side(4)
-
-						// ui_parent_push(btn)
-						ui_parent(btn)
-						push(theme_text)
-						// title := ui_text( str_intern_fmt("settings_menu.cam_zoom_mode.%v : option btn title").str, str_intern_fmt("%v", entry) )
+						scope(theme_button)
+						btn := ui_button(str_intern_fmt("settings_menu.cam_zoom_mode.%s.btn", entry).str)
 						{
-							using title
-							layout.anchor.ratio.x = 1.0
-							layout.margins.left   = 10
-							layout.font_size      = 12
+								using btn
+								layout.size.min    = {100, 25}
+								layout.alignment   = {1.0, 0}
+								layout.anchor.left = 1.0
+								layout.flags       = {.Fixed_Height}
+								layout.padding     = to_ui_layout_side(4)
+
+								ui_parent(btn)
+								scope(theme_text)
+								text_widget := ui_text(str_intern_fmt("settings_menu.cam_zoom_mode.%s.text", entry).str, str_intern_fmt("%s", entry))
 						}
-						// ui_parent_pop()
 
 						if btn.pressed {
 							mode_selector.should_close = true
-							config.cam_zoom_mode = entry
-							screen_ui.active = 0
+							config.cam_zoom_mode       = entry
+							screen_ui.active           = 0
 						}
 					}
 				}

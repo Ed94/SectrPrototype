@@ -79,8 +79,10 @@ ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text
 		title = ui_text( str_intern_fmt("%s.btn.title", label).str, title_text)
 	}
 
-	is_open     |= b32(btn.pressed)
-	is_open     &= ! should_close
+	if btn.pressed {
+		is_open = ! is_open
+	}
+	is_open &= ! should_close
 	should_close = false
 
 	if is_open == false do return

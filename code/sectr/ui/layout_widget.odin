@@ -69,8 +69,8 @@ ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_Lay
 			for child := container.first; child != nil; child = child.next {
 				using child.layout
 				child_width := allocate_space(child, total_stretch_ratio, avail_flex_space, container_height)
-				anchor       = range2({0, 0}, {0, 0})
-				alignment    = {0, 0}
+				anchor       = range2({0, anchor.bottom}, {0, anchor.top})
+				alignment    = {0, alignment.y}
 				pos.x        = space_used
 				space_used  += child_width + child.layout.margins.left + child.layout.margins.right
 			}
@@ -78,8 +78,8 @@ ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_Lay
 			for child := container.first; child != nil; child = child.next {
 				using child.layout
 				child_width := allocate_space(child, total_stretch_ratio, avail_flex_space, container_height)
-				anchor       = range2({1, 0}, {0, 0})
-				alignment    = {1, 0}
+				anchor       = range2({1, anchor.bottom}, {0, anchor.top})
+				alignment    = {1, alignment.y}
 				pos.x        = space_used
 				space_used  -= child_width + child.layout.margins.left + child.layout.margins.right
 			}
@@ -148,8 +148,8 @@ ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_Layou
 			for child := container.first; child != nil; child = child.next {
 				using child.layout
 				child_height := allocate_space(child, total_stretch_ratio, avail_flex_space, container_width)
-				anchor      = range2({0, 1}, {0, 0})
-				alignment   = {0, 1}
+				anchor      = range2({anchor.left, 1}, {anchor.right, 0})
+				alignment   = {alignment.x, 1}
 				pos.y       = space_used
 				space_used -= child_height - child.layout.margins.top - child.layout.margins.bottom
 			}
@@ -157,8 +157,8 @@ ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_Layou
 			for child := container.first; child != nil; child = child.next {
 				using child.layout
 				child_height := allocate_space(child, total_stretch_ratio, avail_flex_space, container_width)
-				anchor        = range2({0,0}, {0, 0})
-				alignment     = {0, 0}
+				anchor        = range2({anchor.left,0}, {anchor.right, 0})
+				alignment     = {alignment.x, 0}
 				pos.y         = space_used
 				space_used   += child_height - child.layout.margins.top - child.layout.margins.bottom
 			}
