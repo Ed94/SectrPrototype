@@ -33,12 +33,14 @@ void main()
 	if ( down_sample == 1 )
 	{
 		// TODO(Ed): The original author made these consts, I want to instead expose as uniforms...
-		const vec2 texture_size = 1.0f / vec2( 2048.0f, 512.0f ); // VEFontCache.Context.buffer_width/buffer_height
+		const vec2  texture_size      = 1.0f / vec2( 2048.0f, 512.0f ); // VEFontCache.Context.buffer_width/buffer_height
+		const float down_sample_scale = 1.0f / 4.0f;
+
 		alpha =
-			(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2( -0.5f, -0.5f) * texture_size ).x * 0.25f)
-		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2( -0.5f,  0.5f) * texture_size ).x * 0.25f)
-		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5f, -0.5f) * texture_size ).x * 0.25f)
-		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5f,  0.5f) * texture_size ).x * 0.25f);
+			(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2( -0.5f, -0.5f) * texture_size ).x * down_sample_scale)
+		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2( -0.5f,  0.5f) * texture_size ).x * down_sample_scale)
+		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5f, -0.5f) * texture_size ).x * down_sample_scale)
+		+	(texture(sampler2D( ve_draw_text_src_texture, ve_draw_text_src_sampler), uv + vec2(  0.5f,  0.5f) * texture_size ).x * down_sample_scale);
 	}
 	frag_color = vec4( colour.xyz, colour.a * alpha );
 }

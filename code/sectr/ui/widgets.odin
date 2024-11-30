@@ -581,7 +581,11 @@ UI_TextInputBox :: struct {
 	using policy      : UI_TextInput_Policy,
 }
 
-ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string, flags : UI_BoxFlags = {.Mouse_Clickable, .Focusable, .Click_To_Focus}, allocator := context.allocator )
+ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
+	flags     : UI_BoxFlags = {.Mouse_Clickable, .Focusable, .Click_To_Focus},
+	allocator := context.allocator,
+	policy    : UI_TextInput_Policy = {}
+)
 {
 	state        := get_state()
 	iter_next    :: next

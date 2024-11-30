@@ -455,7 +455,7 @@ ui_hash_part_from_key_string :: proc ( content : string ) -> string {
 ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_Key
 {
 	// profile(#procedure)
-	USE_RAD_DEBUGGERS_METHOD :: false
+	USE_RAD_DEBUGGERS_METHOD :: true
 
 	key : UI_Key
 

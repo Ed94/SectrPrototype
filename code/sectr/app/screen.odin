@@ -20,12 +20,17 @@ UI_ScreenState :: struct
 	},
 	settings_menu : struct
 	{
-		container               : UI_Widget,
-		engine_refresh_inputbox : UI_TextInputBox,
-		min_zoom_inputbox       : UI_TextInputBox,
-		max_zoom_inputbox       : UI_TextInputBox,
-		cfg_drop_down           : UI_DropDown,
-		zoom_mode_drop_down     : UI_DropDown,
+		container                      : UI_Widget,
+		engine_refresh_inputbox        : UI_TextInputBox,
+		min_zoom_inputbox              : UI_TextInputBox,
+		max_zoom_inputbox              : UI_TextInputBox,
+		zoom_smooth_snappiness_input   : UI_TextInputBox,
+		zoom_smooth_sensitivity_input  : UI_TextInputBox,
+		zoom_digital_sensitivity_input : UI_TextInputBox,
+		zoom_scroll_delta_scale_input  : UI_TextInputBox,
+		font_size_canvas_scalar_input  : UI_TextInputBox,
+		cfg_drop_down                 : UI_DropDown,
+		zoom_mode_drop_down           : UI_DropDown,
 		pos, size, min_size     : Vec2,
 		is_open                 : b32,
 		is_maximized            : b32,
@@ -221,10 +226,42 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 			}
 		}
 
+		// TODO(Ed): This will eventually be most likely generalized/compressed. For now its the main scope for implementing new widgets.
 		app_config := ui_drop_down( & cfg_drop_down, "settings_menu.config", str_intern("App Config"), vb_compute_layout = true)
 		app_config.title.layout.font_size = 12
 		if app_config.is_open
 		{
+			ui_settings_entry_inputbox :: proc( input_box : ^UI_TextInputBox, is_even : bool, label : string, setting_title : StrRunesPair, input_policy : UI_TextInput_Policy )
+			{
+				scope( theme_table_row(is_even))
+				hb := ui_hbox(.Left_To_Right, str_intern_fmt("%v.hb", label).str); {
+					using hb
+
+					layout.size.min = {0, 25}
+					layout.flags    = {.Fixed_Height}
+					layout.padding  = to_ui_layout_side(4)
+				}
+
+				scope(theme_text)
+				title := ui_text(str_intern_fmt("%v.title", label).str, setting_title); {
+					using title
+					layout.anchor.ratio.x = 1.0
+					layout.margins.left   = 10
+					layout.font_size      = 12
+				}
+
+				ui_text_input_box( input_box, str_intern_fmt("%v.input_box", label).str, allocator = persistent_slab_allocator(), policy = input_policy )
+				{
+					using input_box
+					layout.flags          = {.Fixed_Width}
+					layout.margins.left   = 5
+					layout.padding.right  = 5
+					layout.size.min.x     = 80
+					style.corner_radii    = { 3, 3, 3, 3 }
+				}
+			}
+
+
 			Engine_Refresh_Hz:
 			{
 				scope(theme_table_row(is_even = false))
@@ -430,6 +467,151 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 							screen_ui.active           = 0
 						}
 					}
+				}
+			}
+
+			Cam_Zoom_Smooth_Snappiness:
+			{
+				ui_settings_entry_inputbox( & zoom_smooth_snappiness_input, false, "settings_menu.cam_zoom_smooth_snappiness", str_intern("Camera: Zoom Smooth Snappiness"),
+					UI_TextInput_Policy {
+						digits_only            = true,
+						disallow_leading_zeros = false,
+						disallow_decimal       = false,
+						digit_min              = 0.01,
+						digit_max              = 9999,
+						max_length             = 5,
+					}
+				)
+				using zoom_smooth_snappiness_input
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0.001, 9999.0)
+						config.cam_zoom_smooth_snappiness = value
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes(str_fmt("%v", config.cam_zoom_smooth_snappiness)))
+				}
+			}
+
+			Cam_Zoom_Sensitivity_Smooth:
+			{
+				ui_settings_entry_inputbox( & zoom_smooth_sensitivity_input, true, "settings_menu.cam_zoom_sensitivity_smooth", str_intern("Camera: Zoom Smooth Sensitivity"),
+					UI_TextInput_Policy {
+						digits_only            = true,
+						disallow_leading_zeros = false,
+						disallow_decimal       = false,
+						digit_min              = 0.01,
+						digit_max              = 9999,
+						max_length             = 5,
+					}
+				)
+				using zoom_smooth_sensitivity_input
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0.001, 9999.0)
+						config.cam_zoom_sensitivity_smooth = value
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes(str_fmt("%v", config.cam_zoom_sensitivity_smooth)))
+				}
+			}
+
+			Cam_Zoom_Sensitivity_Digital:
+			{
+				ui_settings_entry_inputbox( & zoom_digital_sensitivity_input, false, "settings_menu.cam_zoom_sensitivity_digital", str_intern("Camera: Zoom Digital Sensitivity"),
+					UI_TextInput_Policy {
+						digits_only            = true,
+						disallow_leading_zeros = false,
+						disallow_decimal       = false,
+						digit_min              = 0.01,
+						digit_max              = 9999,
+						max_length             = 5,
+					}
+				)
+				using zoom_digital_sensitivity_input
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0.001, 9999.0)
+						config.cam_zoom_sensitivity_digital = value
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes(str_fmt("%v", config.cam_zoom_sensitivity_digital)))
+				}
+			}
+
+			Cam_Zoom_Scroll_Delta_Scale:
+			{
+				ui_settings_entry_inputbox( & zoom_scroll_delta_scale_input, false, "settings_menu.cam_zoom_scroll_delta_scale", str_intern("Camera: Zoom Scroll Delta Scale"),
+					UI_TextInput_Policy {
+						digits_only            = true,
+						disallow_leading_zeros = false,
+						disallow_decimal       = false,
+						digit_min              = 0.01,
+						digit_max              = 9999,
+						max_length             = 5,
+					}
+				)
+				using zoom_scroll_delta_scale_input
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0.001, 9999.0)
+						config.cam_zoom_scroll_delta_scale = value
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes(str_fmt("%v", config.cam_zoom_scroll_delta_scale)))
+				}
+			}
+
+			Font_Size_Canvas_Scalar:
+			{
+				ui_settings_entry_inputbox( & font_size_canvas_scalar_input, false, "settings_menu.font_size_canvas_scalar", str_intern("Font: Size Canvas Scalar"),
+					UI_TextInput_Policy {
+						digits_only            = true,
+						disallow_leading_zeros = false,
+						disallow_decimal       = false,
+						digit_min              = 0.01,
+						digit_max              = 9999,
+						max_length             = 5,
+					}
+				)
+				using font_size_canvas_scalar_input
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0.001, 9999.0)
+						config.font_size_canvas_scalar = value
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes(str_fmt("%v", config.font_size_canvas_scalar)))
 				}
 			}
 		}

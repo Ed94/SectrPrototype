@@ -115,7 +115,7 @@ Init_Glyph_Draw_Params :: struct {
 }
 
 Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
-	over_sample   = { 4, 4 },
+	over_sample   = { 16, 16 },
 	buffer_batch  = 4,
 	draw_padding  = Init_Atlas_Params_Default.glyph_padding,
 }

@@ -31,8 +31,8 @@ import sg "thirdparty:sokol/gfx"
             Bind slot: SMP_ve_blit_atlas_src_sampler => 0
 */
 ATTR_ve_blit_atlas_v_position :: 0
-ATTR_ve_blit_atlas_v_texture  :: 1
-UB_ve_blit_atlas_fs_params    :: 0
+ATTR_ve_blit_atlas_v_texture :: 1
+UB_ve_blit_atlas_fs_params :: 0
 IMG_ve_blit_atlas_src_texture :: 0
 SMP_ve_blit_atlas_src_sampler :: 0
 Ve_Blit_Atlas_Fs_Params :: struct #align(16) {
