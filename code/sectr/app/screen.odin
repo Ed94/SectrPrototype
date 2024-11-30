@@ -46,7 +46,7 @@ ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 = f
 
 	theme_app_menu_bar :: proc() -> UI_Theme
 	{
-		@static theme : UI_Theme
+		@static theme  : UI_Theme
 		@static loaded : b32 = false
 		if ! loaded || true
 		{
@@ -255,9 +255,34 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 
 					if input_box.pressed {
 						array_clear( value_str )
+						append(& value_str, to_runes(str_fmt("%v", config.engine_refresh_hz) ))
 					}
 
-					if input_box.active {
+					@static editor_cursor_pos : i32 = 0
+					if input_box.active
+					{
+						get_cursor_position_from_click :: proc(text : Array(rune), mouse_pos : Vec2) -> i32 {
+							// Need implementation that:
+							// 1. Gets text widget's bounds
+							// 2. Calculates which character position the mouse is closest to
+							// 3. Returns that position
+
+							// Basic implementation for now:
+							return i32(text.num)
+						}
+
+						if input_box.pressed {
+							editor_cursor_pos = get_cursor_position_from_click(value_str, input.mouse.pos)
+						}
+
+						// Handle arrow keys
+						if btn_pressed(input.keyboard.left) {
+								editor_cursor_pos = max(0, editor_cursor_pos - 1)
+						}
+						if btn_pressed(input.keyboard.right) {
+								editor_cursor_pos = min(i32(value_str.num), editor_cursor_pos + 1)
+						}
+
 						if ! input_box.was_active {
 							debug.last_invalid_input_time._nsec = 0
 						}
@@ -269,41 +294,43 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 
 							if event.key == .backspace && event.type == .Key_Pressed {
 								if value_str.num > 0 {
-										pop( value_str)
+										editor_cursor_pos = max(0, editor_cursor_pos - 1)
+										remove_at( value_str, u64(editor_cursor_pos) )
 										break
 								}
 							}
-
 							if event.key == .enter && event.type == .Key_Pressed {
 								screen_ui.active = 0
+								break
 							}
 						}
 
 						// append( & value_str, input_events.codes_pressed )
-						for code in to_slice(input_events.codes_pressed) {
-								if value_str.num == 0 && code == '0' {
-									debug.last_invalid_input_time = time_now()
-									continue
-								}
+						for code in to_slice(input_events.codes_pressed)
+						{
+							if value_str.num == 0 && code == '0' {
+								debug.last_invalid_input_time = time_now()
+								continue
+							}
 
-								if value_str.num >= max_value_length {
-									debug.last_invalid_input_time = time_now()
-									continue
-								}
+							if value_str.num >= max_value_length {
+								debug.last_invalid_input_time = time_now()
+								continue
+							}
 
-								// Only accept characters 0-9
-								if '0' <= code && code <= '9' {
-
-									append(&value_str, code)
-								}
-								else {
-									debug.last_invalid_input_time = time_now()
-									continue
-								}
+							// Only accept characters 0-9
+							if '0' <= code && code <= '9' {
+								append_at( & value_str, code, u64(editor_cursor_pos))
+								editor_cursor_pos = min(editor_cursor_pos + 1, i32(value_str.num))
+							}
+							else {
+								debug.last_invalid_input_time = time_now()
+								continue
+							}
 						}
 						clear( input_events.codes_pressed )
 
-						invalid_color := RGBA8 { 70, 50, 50, 255}
+						invalid_color := RGBA8 { 70, 40, 40, 255}
 
 						// Visual feedback - change background color briefly when invalid input occurs
 						feedback_duration :: 0.2 // seconds
@@ -336,6 +363,28 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 						layout.anchor.left    = 0.0
 						// layout.flags          = {.Fixed_Width}
 						layout.size.min       = cast(Vec2) measure_text_size( value_txt.text.str, value_txt.style.font, value_txt.layout.font_size, 0 )
+
+						if input_box.active {
+							ui_parent(value_txt)
+
+							ascent, descent, line_gap := get_font_vertical_metrics(style.font, layout.font_size)
+							cursor_height             := ascent - descent
+
+							text_before_cursor := to_string(array_to_slice(value_str)[ :editor_cursor_pos ])
+							cursor_x_offset    := measure_text_size(text_before_cursor, style.font, layout.font_size, 0).x
+							text_size          := measure_text_size(to_string(array_to_slice(value_str)), style.font, layout.font_size, 0).x
+
+							ui_layout( UI_Layout {
+								flags     = { .Fixed_Width },
+								size      = range2({1, 0}, {}),
+								anchor    = range2({1.0, 0},{0.0, 0.0}),
+								alignment = { 0.0, 0 },
+								pos       = { cursor_x_offset - text_size, 0 }
+							})
+							cursor_widget := ui_widget("settings_menu.engine_refresh.cursor", {})
+							cursor_widget.style.bg_color = RGBA8{255, 255, 255, 255}
+							cursor_widget.layout.anchor.right = 0.0
+						}
 					}
 				}
 			}

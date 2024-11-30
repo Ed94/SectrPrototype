@@ -127,7 +127,7 @@ array_append_at_value :: proc( using self : ^Array( $ Type ), item : Type, id : 
 {
 	id := id
 	if id >= num {
-		id = num - 1
+		id = num
 	}
 	if id < 0 {
 		id = 0

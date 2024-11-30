@@ -115,7 +115,7 @@ Init_Glyph_Draw_Params :: struct {
 }
 
 Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
-	over_sample   = { 8, 8 },
+	over_sample   = { 4, 4 },
 	buffer_batch  = 4,
 	draw_padding  = Init_Atlas_Params_Default.glyph_padding,
 }
@@ -138,7 +138,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
 	use_advanced_text_shaper    : b32 = true,
 	snap_shape_position         : b32 = true,
-	default_curve_quality       : u32 = 3,
+	default_curve_quality       : u32 = 6,
 	entires_reserve             : u32 = 512,
 	temp_path_reserve           : u32 = 1024,
 	temp_codepoint_seen_reserve : u32 = 2048,

@@ -336,6 +336,11 @@ append :: proc {
 	grime.array_append_value,
 }
 
+append_at :: proc {
+	grime.array_append_at_value,
+	grime.array_append_at_slice,
+}
+
 bivec3 :: proc {
 	bivec3_via_f32s,
 	vec3_to_bivec3,
@@ -516,6 +521,10 @@ reload :: proc {
 	grime.reload_array,
 	grime.reload_queue,
 	grime.reload_map,
+}
+
+remove_at :: proc {
+	grime.array_remove_at,
 }
 
 scope :: proc {
