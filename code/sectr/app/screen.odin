@@ -20,13 +20,14 @@ UI_ScreenState :: struct
 	},
 	settings_menu : struct
 	{
-		container           : UI_Widget,
-		min_zoom_inputbox   : UI_TextInputBox,
-		max_zoom_inputbox   : UI_TextInputBox,
-		cfg_drop_down       : UI_DropDown,
-		pos, size, min_size : Vec2,
-		is_open             : b32,
-		is_maximized        : b32,
+		container               : UI_Widget,
+		engine_refresh_inputbox : UI_TextInputBox,
+		min_zoom_inputbox       : UI_TextInputBox,
+		max_zoom_inputbox       : UI_TextInputBox,
+		cfg_drop_down           : UI_DropDown,
+		pos, size, min_size     : Vec2,
+		is_open                 : b32,
+		is_maximized            : b32,
 	},
 }
 
@@ -223,7 +224,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 		app_config.title.layout.font_size = 12
 		if app_config.is_open
 		{
-			Engien_Refresh_Hz:
+			Engine_Refresh_Hz:
 			{
 				scope(theme_table_row(is_even = false))
 				hb := ui_hbox(.Left_To_Right, "settings_menu.engine_refresh_hz.hb"); { using hb
@@ -241,107 +242,27 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					title.layout.font_size = 12
 				}
 
-				iter_next :: next
-				input_box := ui_widget("settings_menu.engine_refresh.input_box", {.Mouse_Clickable, .Focusable, .Click_To_Focus});
+				engine_refresh_config: {
+					using min_zoom_inputbox
+					digits_only            = true
+					disallow_leading_zeros = true
+					disallow_decimal       = true
+					digit_min              = 1
+					digit_max              = 9999
+					max_length             = 4
+				}
+				ui_text_input_box( & engine_refresh_inputbox, "settings_menu.engine_refresh_hz.inputbox", allocator = persistent_slab_allocator() )
 				{
-					using input_box
+					using engine_refresh_inputbox
 					layout.flags          = {.Fixed_Width}
 					layout.margins.left   = 5
 					layout.padding.right  = 5
 					layout.size.min.x     = 80
-					style.corner_radii = { 3, 3, 3, 3 }
+					style.corner_radii    = { 3, 3, 3, 3 }
 
-					if      input_box.active do style.bg_color = app_color.input_box_bg_active
-					else if input_box.hot    do style.bg_color = app_color.input_box_bg_hot
-					else                     do style.bg_color = app_color.input_box_bg
-
-					@static max_value_length : u64 = 4
-
-					@static value_str : Array(rune)
-					if value_str.header == nil {
-						error : AllocatorError
-						value_str, error = make( Array(rune), Kilo, persistent_slab_allocator())
-						ensure(error == AllocatorError.None, "Failed to allocate array for value_str of input_box")
-					}
-
-					if input_box.pressed {
-						array_clear( value_str )
-						append(& value_str, to_runes(str_fmt("%v", config.engine_refresh_hz) ))
-					}
-
-					@static editor_cursor_pos       : i32 = 0
-					@static last_invalid_input_time : Time
-					if input_box.active
+					if was_active
 					{
-						if ! input_box.was_active {
-							last_invalid_input_time._nsec = 0
-						}
-
-						if input_box.pressed {
-							editor_cursor_pos = i32(value_str.num)
-						}
-
-						// Handle arrow keys
-						if btn_pressed(input.keyboard.left) {
-								editor_cursor_pos = max(0, editor_cursor_pos - 1)
-						}
-						if btn_pressed(input.keyboard.right) {
-								editor_cursor_pos = min(i32(value_str.num), editor_cursor_pos + 1)
-						}
-
-						iter_obj  := iterator( & input_events.key_events ); iter := & iter_obj
-						for event := iter_next( iter ); event != nil; event = iter_next( iter )
-						{
-							if event.frame_id != state.frame do break
-
-							if event.key == .backspace && event.type == .Key_Pressed {
-								if value_str.num > 0 {
-										editor_cursor_pos = max(0, editor_cursor_pos - 1)
-										remove_at( value_str, u64(editor_cursor_pos) )
-										break
-								}
-							}
-							if event.key == .enter && event.type == .Key_Pressed {
-								screen_ui.active = 0
-								break
-							}
-						}
-
-						for code in to_slice(input_events.codes_pressed)
-						{
-							if value_str.num == 0 && code == '0' {
-								last_invalid_input_time = time_now()
-								continue
-							}
-							if value_str.num >= max_value_length {
-								last_invalid_input_time = time_now()
-								continue
-							}
-
-							// Only accept characters 0-9
-							if '0' <= code && code <= '9' {
-								append_at( & value_str, code, u64(editor_cursor_pos))
-								editor_cursor_pos = min(editor_cursor_pos + 1, i32(value_str.num))
-							}
-							else {
-								last_invalid_input_time = time_now()
-								continue
-							}
-						}
-						clear( input_events.codes_pressed )
-
-						invalid_color := RGBA8 { 70, 40, 40, 255}
-
-						// Visual feedback - change background color briefly when invalid input occurs
-						feedback_duration :: 0.2 // seconds
-						curr_duration := duration_seconds( time_diff( last_invalid_input_time, time_now() ))
-						if last_invalid_input_time._nsec != 0 && curr_duration < feedback_duration {
-							input_box.style.bg_color = invalid_color // Or a specific error color from your theme
-						}
-					}
-					else if input_box.was_active
-					{
-						value, success := parse_uint(to_string(array_to_slice(value_str)))
+						value, success := parse_uint(to_string(array_to_slice(input_str)))
 						if success {
 							value = clamp(value, 1, 9999)
 							config.engine_refresh_hz = value
@@ -349,42 +270,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					}
 					else
 					{
-						clear( value_str)
-						append( & value_str, to_runes(str_fmt("%v", config.engine_refresh_hz)))
-					}
-					ui_parent(input_box)
-
-					value_txt : UI_Widget; {
-						scope(theme_text)
-						value_txt = ui_text("settings_menu.engine_refresh.input_box.value", to_str_runes_pair(array_to_slice(value_str)))
-						using value_txt
-						layout.alignment      = {0.0, 0.0}
-						layout.text_alignment = {1.0, 0.5}
-						layout.anchor.left    = 0.0
-						// layout.flags          = {.Fixed_Width}
-						layout.size.min       = cast(Vec2) measure_text_size( value_txt.text.str, value_txt.style.font, value_txt.layout.font_size, 0 )
-
-						if input_box.active {
-							ui_parent(value_txt)
-
-							ascent, descent, line_gap := get_font_vertical_metrics(style.font, layout.font_size)
-							cursor_height             := ascent - descent
-
-							text_before_cursor := to_string(array_to_slice(value_str)[ :editor_cursor_pos ])
-							cursor_x_offset    := measure_text_size(text_before_cursor, style.font, layout.font_size, 0).x
-							text_size          := measure_text_size(to_string(array_to_slice(value_str)), style.font, layout.font_size, 0).x
-
-							ui_layout( UI_Layout {
-								flags     = { .Fixed_Width },
-								size      = range2({1, 0}, {}),
-								anchor    = range2({1.0, 0},{0.0, 0.0}),
-								alignment = { 0.0, 0 },
-								pos       = { cursor_x_offset - text_size, 0 }
-							})
-							cursor_widget := ui_widget("settings_menu.engine_refresh.cursor", {})
-							cursor_widget.style.bg_color = RGBA8{255, 255, 255, 255}
-							cursor_widget.layout.anchor.right = 0.0
-						}
+						clear( input_str )
+						append( & input_str, to_runes(str_fmt("%v", config.engine_refresh_hz)))
 					}
 				}
 			}
