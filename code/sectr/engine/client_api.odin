@@ -60,7 +60,6 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// Any persistent allocations are explicitly specified.
 		context.allocator      = transient_allocator()
 		context.temp_allocator = transient_allocator()
-		
 	}
 
 	state := new( State, persistent_allocator() )

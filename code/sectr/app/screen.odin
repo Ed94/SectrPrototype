@@ -232,7 +232,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 				}
 
 				iter_next :: next
-				input_box := ui_widget("settings_menu.engine_refresh.input_box", {.Mouse_Clickable, .Focusable, .Click_To_Focus}); {
+				input_box := ui_widget("settings_menu.engine_refresh.input_box", {.Mouse_Clickable, .Focusable, .Click_To_Focus});
+				{
 					using input_box
 					layout.flags          = {.Fixed_Width}
 					layout.margins.left   = 5
@@ -258,21 +259,12 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 						append(& value_str, to_runes(str_fmt("%v", config.engine_refresh_hz) ))
 					}
 
-					@static editor_cursor_pos : i32 = 0
+					@static editor_cursor_pos       : i32 = 0
+					@static last_invalid_input_time : Time
 					if input_box.active
 					{
-						get_cursor_position_from_click :: proc(text : Array(rune), mouse_pos : Vec2) -> i32 {
-							// Need implementation that:
-							// 1. Gets text widget's bounds
-							// 2. Calculates which character position the mouse is closest to
-							// 3. Returns that position
-
-							// Basic implementation for now:
-							return i32(text.num)
-						}
-
 						if input_box.pressed {
-							editor_cursor_pos = get_cursor_position_from_click(value_str, input.mouse.pos)
+							editor_cursor_pos = i32(value_str.num)
 						}
 
 						// Handle arrow keys
@@ -284,7 +276,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 						}
 
 						if ! input_box.was_active {
-							debug.last_invalid_input_time._nsec = 0
+							last_invalid_input_time._nsec = 0
 						}
 
 						iter_obj  := iterator( & input_events.key_events ); iter := & iter_obj
@@ -309,12 +301,12 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 						for code in to_slice(input_events.codes_pressed)
 						{
 							if value_str.num == 0 && code == '0' {
-								debug.last_invalid_input_time = time_now()
+								last_invalid_input_time = time_now()
 								continue
 							}
 
 							if value_str.num >= max_value_length {
-								debug.last_invalid_input_time = time_now()
+								last_invalid_input_time = time_now()
 								continue
 							}
 
@@ -324,7 +316,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 								editor_cursor_pos = min(editor_cursor_pos + 1, i32(value_str.num))
 							}
 							else {
-								debug.last_invalid_input_time = time_now()
+								last_invalid_input_time = time_now()
 								continue
 							}
 						}
@@ -334,9 +326,9 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 
 						// Visual feedback - change background color briefly when invalid input occurs
 						feedback_duration :: 0.2 // seconds
-						curr_duration := duration_seconds( time_diff( debug.last_invalid_input_time, time_now() ))
-						if debug.last_invalid_input_time._nsec != 0 && curr_duration < feedback_duration {
-								input_box.style.bg_color = invalid_color // Or a specific error color from your theme
+						curr_duration := duration_seconds( time_diff( last_invalid_input_time, time_now() ))
+						if last_invalid_input_time._nsec != 0 && curr_duration < feedback_duration {
+							input_box.style.bg_color = invalid_color // Or a specific error color from your theme
 						}
 					}
 					else if input_box.was_active

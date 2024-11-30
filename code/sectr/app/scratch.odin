@@ -40,6 +40,4 @@ DebugData :: struct {
     bindings    : sokol_gfx.Bindings,
     pass_action : sokol_gfx.Pass_Action,
 	},
-
-	last_invalid_input_time : Time,
 }
