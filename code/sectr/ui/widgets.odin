@@ -28,10 +28,11 @@ ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widge
 
 #region("Drop Down")
 UI_DropDown :: struct {
-	btn     : UI_Widget,
-	title   : UI_Widget,
-	vbox    : UI_VBox,
-	is_open : bool,
+	btn          : UI_Widget,
+	title        : UI_Widget,
+	vbox         : UI_VBox,
+	is_open      : b32,
+	should_close : b32,
 }
 
 @(deferred_out = ui_drop_down_end_auto)
@@ -41,11 +42,12 @@ ui_drop_down :: proc( drop_down : ^UI_DropDown, label : string, title_text : Str
 	vb_flags          := UI_BoxFlags{},
 	vb_compute_layout := true,
 	btn_theme   : ^UI_Theme = nil,
-	title_theme : ^UI_Theme = nil
+	title_theme : ^UI_Theme = nil,
+	vb_parent   : ^UI_Box   = nil,
 ) -> (deferred : ^UI_DropDown)
 {
 	deferred = drop_down
-	ui_drop_down_begin(drop_down, label, title_text, direction, btn_flags, vb_flags, btn_theme, title_theme)
+	ui_drop_down_begin(drop_down, label, title_text, direction, btn_flags, vb_flags, btn_theme, title_theme, vb_parent, vb_compute_layout)
 	if ! drop_down.is_open do return
 	ui_parent_push(drop_down.vbox)
 	return
@@ -58,6 +60,7 @@ ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text
 	vb_flags  := UI_BoxFlags{},
 	btn_theme   : ^UI_Theme = nil,
 	title_theme : ^UI_Theme = nil,
+	vb_parent   : ^UI_Box   = nil,
 	vb_compute_layout := true )
 {
 	using drop_down
@@ -76,14 +79,22 @@ ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text
 		title = ui_text( str_intern_fmt("%s.btn.title", label).str, title_text)
 	}
 
-	if btn.pressed {
-		is_open = !is_open
-	}
+	is_open     |= b32(btn.pressed)
+	is_open     &= ! should_close
+	should_close = false
+
 	if is_open == false do return
 
 	scope(theme_transparent)
+	if vb_parent != nil {
+		ui_parent_push(vb_parent)
+	}
 	vbox = ui_vbox_begin( direction, str_intern_fmt("%v : vbox", label).str, compute_layout = vb_compute_layout )
 	vbox.layout.anchor.ratio.y = 1.0
+
+	if vb_parent != nil {
+		ui_parent_pop()
+	}
 }
 
 ui_drop_down_end :: proc( drop_down : ^UI_DropDown ) {

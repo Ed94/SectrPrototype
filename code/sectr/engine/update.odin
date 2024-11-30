@@ -243,7 +243,6 @@ update :: proc( delta_time : f64 ) -> b32
 			return clamp(binary_search_closest(levels, zoom), 0, len(levels) - 1)
 		}
 
-		config.cam_zoom_mode = .Digital
 		switch config.cam_zoom_mode
 		{
 			case .Smooth:

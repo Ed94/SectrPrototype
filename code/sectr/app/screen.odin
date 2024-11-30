@@ -25,6 +25,7 @@ UI_ScreenState :: struct
 		min_zoom_inputbox       : UI_TextInputBox,
 		max_zoom_inputbox       : UI_TextInputBox,
 		cfg_drop_down           : UI_DropDown,
+		zoom_mode_drop_down     : UI_DropDown,
 		pos, size, min_size     : Vec2,
 		is_open                 : b32,
 		is_maximized            : b32,
@@ -373,6 +374,68 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 						{
 							clear( input_str )
 							append( & input_str, to_runes(str_fmt("%v", config.cam_max_zoom)))
+						}
+					}
+				}
+			}
+
+			Zoom_Mode:
+			{
+				scope( theme_table_row(is_even = true))
+				hb := ui_hbox(.Left_To_Right, "settings_menu.cam_zoom_mode.hb"); {
+					using hb
+
+					layout.size.min = {0, 35}
+					layout.flags    = {.Fixed_Height}
+					layout.padding  = to_ui_layout_side(4)
+				}
+
+				scope(theme_text)
+				title := ui_text("settings_menu.cam_zoom_mode.title", str_intern("Camera: Zoom Mode")); {
+					using title
+					layout.anchor.ratio.x = 1.0
+					layout.margins.left   = 10
+					layout.font_size      = 12
+				}
+
+				mode_selector := ui_drop_down( & zoom_mode_drop_down, "settings_menu.cam_zoom_mode.drop_down", str_intern_fmt("%v selected", config.cam_zoom_mode),
+					vb_compute_layout = true,
+					// vb_parent = app_config.vbox
+				)
+				mode_selector.btn.layout.anchor.ratio.x = 0.5
+				if mode_selector.is_open
+				{
+					idx := 1
+					for entry in CameraZoomMode
+					{
+						ui_parent(app_config.vbox)
+						// scope( theme_table_row(is_even = idx % 2 == 0))
+						idx += 1
+
+						scope( theme_button)
+						btn := ui_button( str_intern_fmt("settings_menu.cam_zoom_mode.%v : option btn", entry).str )
+						btn.layout.size.min  = {0, 25}
+						// btn.layout.alignment = {0, 0}
+						// btn.layout.anchor    = {}
+						btn.layout.flags     = {.Fixed_Height}
+						btn.layout.padding  = to_ui_layout_side(4)
+
+						// ui_parent_push(btn)
+						ui_parent(btn)
+						push(theme_text)
+						// title := ui_text( str_intern_fmt("settings_menu.cam_zoom_mode.%v : option btn title").str, str_intern_fmt("%v", entry) )
+						{
+							using title
+							layout.anchor.ratio.x = 1.0
+							layout.margins.left   = 10
+							layout.font_size      = 12
+						}
+						// ui_parent_pop()
+
+						if btn.pressed {
+							mode_selector.should_close = true
+							config.cam_zoom_mode = entry
+							screen_ui.active = 0
 						}
 					}
 				}
