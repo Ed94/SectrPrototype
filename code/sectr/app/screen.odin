@@ -18,6 +18,7 @@ UI_ScreenState :: struct
 			using widget : UI_Widget,
 		}
 	},
+
 	settings_menu : struct
 	{
 		container                      : UI_Widget,
@@ -29,11 +30,12 @@ UI_ScreenState :: struct
 		zoom_digital_sensitivity_input : UI_TextInputBox,
 		zoom_scroll_delta_scale_input  : UI_TextInputBox,
 		font_size_canvas_scalar_input  : UI_TextInputBox,
-		cfg_drop_down                 : UI_DropDown,
-		zoom_mode_drop_down           : UI_DropDown,
-		pos, size, min_size     : Vec2,
-		is_open                 : b32,
-		is_maximized            : b32,
+		font_size_screen_scalar_input  : UI_TextInputBox,
+		cfg_drop_down                  : UI_DropDown,
+		zoom_mode_drop_down            : UI_DropDown,
+		pos, size, min_size            : Vec2,
+		is_open                        : b32,
+		is_maximized                   : b32,
 	},
 }
 
@@ -166,23 +168,39 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 	Construct_Container:
 	{
 		scope(theme_window_panel)
-		container = ui_widget("Settings Menu", {}); 	{
+		container = ui_widget("Settings Menu", {}); 
+		if ! settings_menu.is_maximized {
 			using container
-			layout.flags = { .Fixed_Width, .Fixed_Height, .Fixed_Position_X, .Fixed_Position_Y, .Origin_At_Anchor_Center }
+			layout.flags = {
+				// .Size_To_Content,
+				.Fixed_Width, .Fixed_Height, 
+				.Fixed_Position_X, .Fixed_Position_Y, 
+				.Origin_At_Anchor_Center 
+			}
 			layout.pos   = pos
 			layout.size  = range2( size, {})
 		}
-		if settings_menu.is_maximized {
+		else {
 			using container
 			layout.flags = {.Origin_At_Anchor_Center }
 			layout.pos   = {}
 		}
 
+		old_vbox := ui_box_from_key(prev_cache, ui_key_from_string("Settings Menu: VBox"))
+		if old_vbox != nil {
+			vbox_size        := size_range2(old_vbox.computed.bounds)
+			larger_than_size := vbox_size.x > size.x || vbox_size.y > size.y
+			if ! settings_menu.is_maximized && larger_than_size
+			{
+				size                  = vbox_size
+				container.layout.size = range2(size, {})
+			}
+		}
 		should_raise |= ui_resizable_handles( & container, & pos, & size)
 	}
-	ui_parent(container)
+	ui_parent_push(container)
 
-	vbox := ui_vbox_begin( .Top_To_Bottom, "Settings Menu: VBox", {.Mouse_Clickable}, compute_layout = true)
+	vbox := ui_vbox_begin( .Top_To_Bottom, "Settings Menu: VBox", {.Mouse_Clickable}, compute_layout = true )
 	{
 		should_raise |= b32(vbox.active)
 		ui_parent(vbox)
@@ -260,7 +278,6 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					style.corner_radii    = { 3, 3, 3, 3 }
 				}
 			}
-
 
 			Engine_Refresh_Hz:
 			{
@@ -559,7 +576,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 
 			Cam_Zoom_Scroll_Delta_Scale:
 			{
-				ui_settings_entry_inputbox( & zoom_scroll_delta_scale_input, false, "settings_menu.cam_zoom_scroll_delta_scale", str_intern("Camera: Zoom Scroll Delta Scale"),
+				ui_settings_entry_inputbox( & zoom_scroll_delta_scale_input, true, "settings_menu.cam_zoom_scroll_delta_scale", str_intern("Camera: Zoom Scroll Delta Scale"),
 					UI_TextInput_Policy {
 						digits_only            = true,
 						disallow_leading_zeros = false,
@@ -583,6 +600,35 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 				{
 					clear( input_str )
 					append( & input_str, to_runes(str_fmt("%v", config.cam_zoom_scroll_delta_scale)))
+				}
+			}
+
+			Font_Size_Screen_Scalar:
+			{
+				ui_settings_entry_inputbox( & font_size_screen_scalar_input, false, "settings_menu.font_size_screen_scalar", str_intern("Font: Size Screen Scalar"),
+					UI_TextInput_Policy {
+						digits_only            = true,
+						disallow_leading_zeros = false,
+						disallow_decimal       = false,
+						digit_min              = 0.01,
+						digit_max              = 9999,
+						max_length             = 5,
+					}
+				)
+				using font_size_screen_scalar_input
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0.001, 9999.0)
+						config.font_size_screen_scalar = value
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes(str_fmt("%v", config.font_size_screen_scalar)))
 				}
 			}
 
@@ -617,5 +663,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 		}
 	}
 	ui_vbox_end(vbox, compute_layout = false )
+
+	ui_parent_pop() // container
 	return
 }

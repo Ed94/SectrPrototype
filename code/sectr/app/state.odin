@@ -161,6 +161,7 @@ AppConfig :: struct {
 
 	color_theme : AppColorTheme,
 
+	font_size_screen_scalar : f32,
 	font_size_canvas_scalar : f32,
 }
 
@@ -202,7 +203,7 @@ State :: struct {
 	default_slab_policy     : SlabPolicy,
 	persistent_slab         : Slab,
 	frame_slab              : Slab,
-	transient_slab          : Slab, // TODO(Ed): This needs to be recreated per transient wipe
+	transient_slab          : Slab,
 	transinet_clear_lock    : b32,  // Pravents auto-free of transient at designated intervals
 	transient_clear_time    : f32,  // Time in seconds for the usual period to clear transient
 	transient_clear_elapsed : f32,  // Time since last clear
@@ -249,8 +250,12 @@ State :: struct {
 
 	font_arial_unicode_ms        : FontID,
 	font_firacode                : FontID,
+	font_fira_cousine            : FontID,
 	font_noto_sans               : FontID,
 	font_open_sans               : FontID,
+	font_neodgm_code             : FontID,
+	font_rec_mono_linear         : FontID,
+	font_roboto_regular          : FontID,
 	font_squidgy_slimes          : FontID,
 	font_rec_mono_semicasual_reg : FontID,
 	default_font                 : FontID,

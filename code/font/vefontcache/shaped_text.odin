@@ -76,7 +76,7 @@ shape_text_uncached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string,
 
 	if ctx.text_shape_adv
 	{
-		shaper_shape_from_text( & ctx.shaper_ctx, & entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
+		shaper_shape_from_text( & ctx.shaper_ctx, ctx.snap_shape_pos, & entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
 		return
 	}
 	else
@@ -107,21 +107,18 @@ shape_text_uncached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string,
 				continue
 			}
 			if abs( entry.size ) <= ADVANCE_SNAP_SMALLFONT_SIZE {
-				position.x = position.x
+				position.x = ceil(position.x)
 			}
 
 			append( & output.glyphs, parser_find_glyph_index( & entry.parser_info, codepoint ))
 			advance, _ := parser_get_codepoint_horizontal_metrics( & entry.parser_info, codepoint )
 
-			if ctx.snap_shape_pos do position.x = ceil(position.x)
-
 			append( & output.positions, Vec2 {
-				position.x,
-				position.y
+				floor(position.x),
+				floor(position.y)
 			})
 
 			position.x += f32(advance) * entry.size_scale
-			if ctx.snap_shape_pos do position.x = ceil(position.x)
 			prev_codepoint = codepoint
 		}
 

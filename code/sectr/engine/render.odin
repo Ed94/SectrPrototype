@@ -57,8 +57,8 @@ render_mode_2d_workspace :: proc( screen_extent : Vec2, cam : Camera, input : In
 	screen_size    := screen_extent * 2
 
 	// TODO(Ed): Eventually will be the viewport extents
-	// ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
-	ve.configure_snap( ve_ctx, 0, 0 )
+	ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
+	// ve.configure_snap( ve_ctx, 0, 0 )
 
 	Render_Debug:
 	{
@@ -801,11 +801,13 @@ draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, po
 	width  := app_window.extent.x * 2
 	height := app_window.extent.y * 2
 
-	ve_id, resolved_size := font_provider_resolve_draw_id( id, size )
+	// TODO(Ed): Review doing double scaling on the text...
+
+	ve_id, resolved_size := font_provider_resolve_draw_id( id, size * config.font_size_screen_scalar )
 	color_norm           := normalize_rgba8(color)
 
 	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
-	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, content, pos, Vec2{1 / width, 1 / height} * scale )
+	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, content, pos, Vec2{1 / width, 1 / height} * scale * (1/config.font_size_screen_scalar) )
 	return
 }
 

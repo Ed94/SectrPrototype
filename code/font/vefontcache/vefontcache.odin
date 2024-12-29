@@ -7,7 +7,7 @@ package vefontcache
 
 import "base:runtime"
 
-ADVANCE_SNAP_SMALLFONT_SIZE :: 0
+ADVANCE_SNAP_SMALLFONT_SIZE :: 10
 
 Font_ID :: distinct i64
 Glyph   :: distinct i32
@@ -44,7 +44,6 @@ Context :: struct {
 	snap_width  : f32,
 	snap_height : f32,
 
-
 	colour     : Colour,
 	cursor_pos : Vec2,
 
@@ -75,9 +74,10 @@ Init_Atlas_Region_Params :: struct {
 }
 
 Init_Atlas_Params :: struct {
-	width         : u32,
-	height        : u32,
-	glyph_padding : u32,
+	width             : u32,
+	height            : u32,
+	glyph_padding     : u32, // Padding to add to bounds_<width/height>_scaled for choosing which atlas region.
+	glyph_over_scalar : f32, // Scalar to apply to bounds_<width/height>_scaled for choosing which atlas region.
 
 	region_a : Init_Atlas_Region_Params,
 	region_b : Init_Atlas_Region_Params,
@@ -86,9 +86,10 @@ Init_Atlas_Params :: struct {
 }
 
 Init_Atlas_Params_Default :: Init_Atlas_Params {
-	width         = 4096,
-	height        = 2048,
-	glyph_padding = 4,
+	width             = 4096,
+	height            = 2048,
+	glyph_padding     = 1,
+	glyph_over_scalar = 1,
 
 	region_a = {
 		width  = 32,
@@ -115,7 +116,7 @@ Init_Glyph_Draw_Params :: struct {
 }
 
 Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
-	over_sample   = { 16, 16 },
+	over_sample   = { 4, 4 },
 	buffer_batch  = 4,
 	draw_padding  = Init_Atlas_Params_Default.glyph_padding,
 }
@@ -138,7 +139,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
 	use_advanced_text_shaper    : b32 = true,
 	snap_shape_position         : b32 = true,
-	default_curve_quality       : u32 = 6,
+	default_curve_quality       : u32 = 3,
 	entires_reserve             : u32 = 512,
 	temp_path_reserve           : u32 = 1024,
 	temp_codepoint_seen_reserve : u32 = 2048,
@@ -202,9 +203,10 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c, { 4, 1}, 512 )
 	init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d, { 2, 1}, 256 )
 
-	atlas.width         = i32(atlas_params.width)
-	atlas.height        = i32(atlas_params.height)
-	atlas.glyph_padding = i32(atlas_params.glyph_padding)
+	atlas.width             = i32(atlas_params.width)
+	atlas.height            = i32(atlas_params.height)
+	atlas.glyph_padding     = i32(atlas_params.glyph_padding)
+	atlas.glyph_over_scalar = atlas_params.glyph_over_scalar
 
 	atlas.region_a.offset   = {0, 0}
 	atlas.region_b.offset.x = 0
@@ -385,10 +387,8 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32,
 		parser_info = parser_load_font( & parser_ctx, label, data )
 		shaper_info = shaper_load_font( & shaper_ctx, label, data, transmute(rawptr) id )
 
-		size = size_px
-		size_scale = size_px < 0.0 ?                                 \
-			parser_scale_for_pixel_height( & parser_info, -size_px ) \
-		:	parser_scale_for_mapping_em_to_pixels( & parser_info, size_px )
+		size       = size_px
+		size_scale = parser_scale( & parser_info, size )
 
 		if glyph_curve_quality == 0 {
 			curve_quality = f32(ctx.default_curve_quality)

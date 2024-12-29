@@ -88,9 +88,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		push( policy_ptr, SlabSizeClass {   16 * Megabyte,  16 * Megabyte, alignment })
 		push( policy_ptr, SlabSizeClass {   32 * Megabyte,  32 * Megabyte, alignment })
 		push( policy_ptr, SlabSizeClass {   64 * Megabyte,  64 * Megabyte, alignment })
-		push( policy_ptr, SlabSizeClass { 128 * Megabyte, 128 * Megabyte, alignment })
-		push( policy_ptr, SlabSizeClass { 256 * Megabyte, 256 * Megabyte, alignment })
-		push( policy_ptr, SlabSizeClass { 512 * Megabyte, 512 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 128 * Megabyte,  128 * Megabyte, alignment })
+		// Anything above 128 meg needs to have its own setup looked into.
 
 		alloc_error : AllocatorError
 		persistent_slab, alloc_error = slab_init( policy_ptr, allocator = persistent_allocator(), dbg_name = Persistent_Slab_DBG_Name, enable_mem_tracking = false )
@@ -153,6 +152,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		color_theme = App_Thm_Dusk
 
+		font_size_screen_scalar = 1.0
 		font_size_canvas_scalar = 1.0
 	}
 
@@ -271,8 +271,11 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 32.0, "Squidgy_Slime" )
 
-		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
-		font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
+		// path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
+		// font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
+
+		path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
+		font_fira_cousine  = font_load( path_fira_cousine, 16.0, "Fira Cousine" )
 
 		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
 		// font_open_sans  = font_load( path_open_sans, 16.0, "OpenSans" )
@@ -280,10 +283,22 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
 		// font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
 
+		// path_neodgm_code := strings.concatenate( { Path_Assets, "neodgm_code.ttf"} )
+		// font_neodgm_code  = font_load( path_neodgm_code, 32.0, "NeoDunggeunmo Code" )
+
+		// path_rec_mono_linear := strings.concatenate( { Path_Assets, "RecMonoLinear-Regular-1.084.ttf" })
+		// font_rec_mono_linear  = font_load( path_rec_mono_linear, 16.0, "RecMonoLinear Regular" )
+
+		// path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
+		// font_roboto_regular  = font_load( path_roboto_regular, 32.0, "Roboto Regular" )
+
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
-		default_font = font_firacode
+		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
+		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
+
+		default_font = font_fira_cousine
 		log( "Default font loaded" )
 	}
 
@@ -545,8 +560,6 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 
 	// profile("Client tick timing processing")
 
-	// config.engine_refresh_hz = uint(monitor_refresh_hz)
-	// config.engine_refresh_hz = 10
 	frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 	sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
 

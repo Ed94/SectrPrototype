@@ -778,8 +778,8 @@ ui_vbox_end_pop_parent :: proc( vbox : UI_VBox ) {
 }
 
 @(deferred_out = ui_vbox_end_pop_parent)
-ui_vbox :: #force_inline proc( direction : UI_LayoutDirectionY, label : string, flags : UI_BoxFlags = {} ) -> (vbox : UI_VBox) {
-	vbox = ui_vbox_begin(direction, label, flags)
+ui_vbox :: #force_inline proc( direction : UI_LayoutDirectionY, label : string, flags : UI_BoxFlags = {}, compute_layout := false ) -> (vbox : UI_VBox) {
+	vbox = ui_vbox_begin(direction, label, flags, compute_layout )
 	ui_parent_push(vbox.widget)
 	return
 }

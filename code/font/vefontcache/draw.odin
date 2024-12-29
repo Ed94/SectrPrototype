@@ -174,9 +174,9 @@ cache_glyph_freetype :: proc(ctx: ^Context, font: Font_ID, glyph_index: Glyph, e
 	start_index: int = 0
 	for contour_index in 0 ..< int(outline.n_contours)
 	{
-		end_index := int(contours[contour_index]) + 1
-		prev_point: Vec2
-		first_point: Vec2
+		end_index   := int(contours[contour_index]) + 1
+		prev_point  : Vec2
+		first_point : Vec2
 
 		for idx := start_index; idx < end_index; idx += 1
 		{
@@ -766,7 +766,8 @@ merge_draw_list :: proc( dst, src : ^Draw_List )
 	}
 }
 
-optimize_draw_list :: proc(draw_list: ^Draw_List, call_offset: int) {
+optimize_draw_list :: proc(draw_list: ^Draw_List, call_offset: int)
+{
 	// profile(#procedure)
 	assert(draw_list != nil)
 
