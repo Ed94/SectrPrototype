@@ -163,8 +163,9 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 	text_layout.flags = {
 		// .Origin_At_Anchor_Center,
 		.Fixed_Position_X, .Fixed_Position_Y,
-		.Fixed_Width,      .Fixed_Height,
+		// .Fixed_Width,      .Fixed_Height,
 	}
+	// text_layout.font_size = 16
 	text_layout.text_alignment = { 0.0, 0.5 }
 	text_layout.alignment      = { 0.0, 1.0 }
 	text_layout.size.min       = { 1600, 14 }

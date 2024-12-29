@@ -14,8 +14,8 @@ Shaper_Kind :: enum {
 Shaper_Context :: struct {
 	hb_buffer : harfbuzz.Buffer,
 
-	snap_glyph_pos                : b32,
-	adv_snap_small_font_threshold : u32,
+	snap_glyph_position           : b32,
+	adv_snap_small_font_threshold : f32,
 }
 
 Shaper_Info :: struct {
@@ -54,7 +54,7 @@ shaper_unload_font :: proc( ctx : ^Shaper_Info )
 	if blob != nil do harfbuzz.blob_destroy( blob )
 }
 
-shaper_shape_from_text :: proc( ctx : ^Shaper_Context, snap_shape_pos : b32, info : ^Shaper_Info, output :^Shaped_Text, text_utf8 : string,
+shaper_shape_from_text :: proc( ctx : ^Shaper_Context, info : ^Shaper_Info, output :^Shaped_Text, text_utf8 : string,
 	ascent, descent, line_gap : i32, size, size_scale : f32 )
 {
 	// profile(#procedure)
@@ -69,13 +69,13 @@ shaper_shape_from_text :: proc( ctx : ^Shaper_Context, snap_shape_pos : b32, inf
 
 	max_line_width := f32(0)
 	line_count     := 1
-	line_height    := (ascent - descent + line_gap) * size_scale
+	line_height    := ((ascent - descent + line_gap) * size_scale)
 
 	position, vertical_position : f32
 	shape_run :: proc( buffer : harfbuzz.Buffer, script : harfbuzz.Script, font : harfbuzz.Font, output : ^Shaped_Text,
 		position, vertical_position, max_line_width: ^f32, line_count: ^int,
 		ascent, descent, line_gap, size, size_scale: f32,
-		snap_shape_pos : b32 )
+		snap_shape_pos : b32, adv_snap_small_font_threshold : f32 )
 	{
 		// Set script and direction. We use the system's default langauge.
 		// script = HB_SCRIPT_LATIN
@@ -105,11 +105,11 @@ shaper_shape_from_text :: proc( ctx : ^Shaper_Context, snap_shape_pos : b32, inf
 				(max_line_width^)     = max( max_line_width^, position^ )
 				(position^)           = 0.0
 				(vertical_position^) -= line_height
-				(vertical_position^)  = vertical_position^
+				(vertical_position^)  = floor(vertical_position^)
 				(line_count^)         += 1
 				continue
 			}
-			if abs( size ) <= ADVANCE_SNAP_SMALLFONT_SIZE
+			if abs( size ) <= adv_snap_small_font_threshold
 			{
 				(position^) = ceil( position^ )
 			}
@@ -124,8 +124,8 @@ shaper_shape_from_text :: proc( ctx : ^Shaper_Context, snap_shape_pos : b32, inf
 			v_pos += offset_y
 
 			if snap_shape_pos {
-				pos   = floor(pos)
-				v_pos = floor(v_pos)
+				pos   = ceil(pos)
+				v_pos = ceil(v_pos)
 			}
 			append( & output.positions, Vec2 {pos, v_pos})
 
@@ -160,13 +160,23 @@ shaper_shape_from_text :: proc( ctx : ^Shaper_Context, snap_shape_pos : b32, inf
 		}
 
 		// End current run since we've encountered a script change.
-		shape_run( ctx.hb_buffer, current_script, info.font, output, & position, & vertical_position, & max_line_width, & line_count, ascent, descent, line_gap, size, size_scale, snap_shape_pos )
+		shape_run( 
+			ctx.hb_buffer, current_script, info.font, output, 
+			& position, & vertical_position, & max_line_width, & line_count, 
+			ascent, descent, line_gap, size, size_scale, 
+			ctx.snap_glyph_position, ctx.adv_snap_small_font_threshold
+		)
 		harfbuzz.buffer_add( ctx.hb_buffer, hb_codepoint, codepoint == '\n' ? 1 : 0 )
 		current_script = script
 	}
 
 	// End the last run if needed
-	shape_run( ctx.hb_buffer, current_script, info.font, output, & position, & vertical_position, & max_line_width, & line_count, ascent, descent, line_gap, size, size_scale, snap_shape_pos )
+	shape_run( 
+		ctx.hb_buffer, current_script, info.font, output, 
+		& position, & vertical_position, & max_line_width, & line_count, 
+		ascent, descent, line_gap, size, size_scale, 
+		ctx.snap_glyph_position, ctx.adv_snap_small_font_threshold
+	)
 
 	// Set the final size
 	output.size.x = max_line_width

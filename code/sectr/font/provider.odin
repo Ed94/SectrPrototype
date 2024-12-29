@@ -43,7 +43,8 @@ font_provider_startup :: proc( ctx : ^FontProviderContext )
 	font_cache, error = make( HMapChained(FontDef), hmap_closest_prime(1 * Kilo), persistent_allocator(), dbg_name = "font_cache" )
 	verify( error == AllocatorError.None, "Failed to allocate font_cache" )
 
-	ve.startup( & ve_ctx, .STB_TrueType, allocator = persistent_slab_allocator(), use_advanced_text_shaper = true )
+	ve.startup( & ve_ctx, .STB_TrueType, allocator = persistent_slab_allocator() )
+	ve_ctx.glyph_buffer.over_sample = { 4,4 }
 	log("VEFontCached initialized")
 	// provider_data.ve_ctx.debug_print = true
 	// provider_data.ve_ctx.debug_print_verbose = true
@@ -52,8 +53,11 @@ font_provider_startup :: proc( ctx : ^FontProviderContext )
 
 font_provider_reload :: proc( ctx : ^FontProviderContext )
 {
+	ctx.ve_ctx.glyph_buffer.over_sample = { 4,4 } * 1.0
 	hmap_chained_reload( ctx.font_cache, persistent_allocator())
 	ve.hot_reload( & ctx.ve_ctx, persistent_slab_allocator() )
+	ve.clear_atlas_region_caches(& ctx.ve_ctx)
+	ve.clear_shape_cache(& ctx.ve_ctx)
 }
 
 font_provider_shutdown :: proc(  ctx : ^FontProviderContext )

@@ -807,7 +807,7 @@ draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, po
 	color_norm           := normalize_rgba8(color)
 
 	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
-	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, content, pos, Vec2{1 / width, 1 / height} * scale * (1/config.font_size_screen_scalar) )
+	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, content, pos, Vec2{1 / width, 1 / height} * scale * (1 / config.font_size_screen_scalar) )
 	return
 }
 
@@ -853,7 +853,7 @@ draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size 
 	{
 		f32_resolved_size := f32(resolved_size)
 		diff_scalar       := 1 + (zoom_adjust_size - f32_resolved_size) / f32_resolved_size
-		text_scale         =  diff_scalar * screen_scale
+		text_scale         = diff_scalar * screen_scale
 		text_scale.x       = clamp( text_scale.x, 0, screen_size.x )
 		text_scale.y       = clamp( text_scale.y, 0, screen_size.y )
 	}

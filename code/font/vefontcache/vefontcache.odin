@@ -7,8 +7,6 @@ package vefontcache
 
 import "base:runtime"
 
-ADVANCE_SNAP_SMALLFONT_SIZE :: 10
-
 Font_ID :: distinct i64
 Glyph   :: distinct i32
 
@@ -59,14 +57,12 @@ Context :: struct {
 	shape_cache  : Shaped_Text_Cache,
 
 	default_curve_quality : i32,
-	text_shape_adv        : b32,
-	snap_shape_pos        : b32,
+	use_advanced_shaper   : b32,
 
 	debug_print         : b32,
 	debug_print_verbose : b32,
 }
 
-//#region("lifetime")
 
 Init_Atlas_Region_Params :: struct {
 	width  : u32,
@@ -110,15 +106,27 @@ Init_Atlas_Params_Default :: Init_Atlas_Params {
 }
 
 Init_Glyph_Draw_Params :: struct {
-	over_sample  : Vec2i,
+	over_sample  : Vec2,
 	buffer_batch : u32,
 	draw_padding : u32,
 }
 
 Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
-	over_sample   = { 4, 4 },
+	over_sample   = Vec2 { 4, 4 },
 	buffer_batch  = 4,
 	draw_padding  = Init_Atlas_Params_Default.glyph_padding,
+}
+
+Init_Shaper_Params :: struct {
+	use_advanced_text_shaper      : b32,
+	snap_glyph_position           : b32,
+	adv_snap_small_font_threshold : u32,
+}
+
+Init_Shaper_Params_Default :: Init_Shaper_Params {
+	use_advanced_text_shaper      = true,
+	snap_glyph_position           = true,
+	adv_snap_small_font_threshold = 0,
 }
 
 Init_Shape_Cache_Params :: struct {
@@ -131,14 +139,15 @@ Init_Shape_Cache_Params_Default :: Init_Shape_Cache_Params {
 	reserve_length = 256,
 }
 
+//#region("lifetime")
+
 // ve_fontcache_init
 startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	allocator                   := context.allocator,
 	atlas_params                := Init_Atlas_Params_Default,
 	glyph_draw_params           := Init_Glyph_Draw_Params_Default,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
-	use_advanced_text_shaper    : b32 = true,
-	snap_shape_position         : b32 = true,
+	shaper_params               := Init_Shaper_Params_Default,
 	default_curve_quality       : u32 = 3,
 	entires_reserve             : u32 = 512,
 	temp_path_reserve           : u32 = 1024,
@@ -151,8 +160,9 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	ctx.backing       = allocator
 	context.allocator = ctx.backing
 
-	snap_shape_pos = snap_shape_position
-	text_shape_adv = use_advanced_text_shaper
+	use_advanced_shaper                      = shaper_params.use_advanced_text_shaper
+	shaper_ctx.adv_snap_small_font_threshold = f32(shaper_params.adv_snap_small_font_threshold)
+	shaper_ctx.snap_glyph_position           = shaper_params.snap_glyph_position
 
 	if default_curve_quality == 0 {
 		default_curve_quality = 3
@@ -243,7 +253,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	// Note(From original author): We can actually go over VE_FONTCACHE_GLYPHDRAW_BUFFER_BATCH batches due to smart packing!
 	{
 		using glyph_buffer
-		over_sample   = vec2(glyph_draw_params.over_sample)
+		over_sample   = glyph_draw_params.over_sample
 		batch         = cast(i32) glyph_draw_params.buffer_batch
 		width         = atlas.region_d.width  * i32(over_sample.x) * batch
 		height        = atlas.region_d.height * i32(over_sample.y)
@@ -310,7 +320,6 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	reload_array( & glyph_buffer.clear_draw_list.vertices, allocator )
 
 	reload_array( & shape_cache.storage, allocator )
-	lru_reload( & shape_cache.state, allocator )
 }
 
 // ve_foncache_shutdown
@@ -442,8 +451,8 @@ draw_text :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, position,
 	ctx.cursor_pos = {}
 
 	position := position
-	if ctx.snap_width  > 0 do position.x = cast(f32) cast(u32) (position.x * ctx.snap_width  + 0.5) / ctx.snap_width
-	if ctx.snap_height > 0 do position.y = cast(f32) cast(u32) (position.y * ctx.snap_height + 0.5) / ctx.snap_height
+	if ctx.snap_width  > 0 do position.x = ceil(position.x * ctx.snap_width ) / ctx.snap_width
+	if ctx.snap_height > 0 do position.y = ceil(position.y * ctx.snap_height) / ctx.snap_height
 
 	entry := & ctx.entries[ font ]
 
@@ -520,10 +529,55 @@ get_font_vertical_metrics :: #force_inline proc ( ctx : ^Context, font : Font_ID
 	entry  := & ctx.entries[ font ]
 	ascent_i32, descent_i32, line_gap_i32 := parser_get_font_vertical_metrics( & entry.parser_info )
 
-	ascent   = ceil(f32(ascent_i32)   * entry.size_scale)
-	descent  = ceil(f32(descent_i32)  * entry.size_scale)
-	line_gap = ceil(f32(line_gap_i32) * entry.size_scale)
+	ascent   = (f32(ascent_i32)   * entry.size_scale)
+	descent  = (f32(descent_i32)  * entry.size_scale)
+	line_gap = (f32(line_gap_i32) * entry.size_scale)
 	return
 }
 
 //#endregion("metrics")
+
+// Can be used with hot-reload
+clear_atlas_region_caches :: proc(ctx : ^Context)
+{
+	lru_clear(& ctx.atlas.region_a.state)
+	lru_clear(& ctx.atlas.region_b.state)
+	lru_clear(& ctx.atlas.region_c.state)
+	lru_clear(& ctx.atlas.region_d.state)
+
+	ctx.atlas.region_a.next_idx = 0
+	ctx.atlas.region_b.next_idx = 0
+	ctx.atlas.region_c.next_idx = 0
+	ctx.atlas.region_d.next_idx = 0
+}
+
+// Can be used with hot-reload
+clear_shape_cache :: proc (ctx : ^Context)
+{
+	lru_clear(& ctx.shape_cache.state)
+
+	using ctx
+	for idx : i32 = 0; idx < cast(i32) cap(shape_cache.storage); idx += 1 {
+		stroage_entry := & shape_cache.storage[idx]
+		using stroage_entry
+
+		end_cursor_pos = {}
+		size           = {}
+
+		clear(& glyphs)
+		// fill(glyphs[:], 0)
+
+		clear(& positions)
+		// fill(positions[:], 0)
+
+		clear(& draw_list.calls)
+		// fill(draw_list.calls[:], Draw_Call{})
+
+		clear(& draw_list.indices)
+		// fill(draw_list.indices[:], 0)
+
+		clear(& draw_list.vertices)
+		// fill(draw_list.vertices[:], Vertex{})
+	}
+	ctx.shape_cache.next_cache_id = 0
+}

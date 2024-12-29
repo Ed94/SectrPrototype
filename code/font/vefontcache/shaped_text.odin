@@ -74,9 +74,9 @@ shape_text_uncached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string,
 	line_gap    := f32(line_gap_i32)
 	line_height := (ascent - descent + line_gap) * entry.size_scale
 
-	if ctx.text_shape_adv
+	if ctx.use_advanced_shaper
 	{
-		shaper_shape_from_text( & ctx.shaper_ctx, ctx.snap_shape_pos, & entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
+		shaper_shape_from_text( & ctx.shaper_ctx, & entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
 		return
 	}
 	else
@@ -106,7 +106,7 @@ shape_text_uncached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string,
 				prev_codepoint = rune(0)
 				continue
 			}
-			if abs( entry.size ) <= ADVANCE_SNAP_SMALLFONT_SIZE {
+			if abs( entry.size ) <= ctx.shaper_ctx.adv_snap_small_font_threshold {
 				position.x = ceil(position.x)
 			}
 

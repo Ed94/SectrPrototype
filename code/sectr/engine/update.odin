@@ -325,7 +325,7 @@ update :: proc( delta_time : f64 ) -> b32
 			flags          = frame_style_flags,
 			anchor         = {},
 			// alignment      = { 0.5, 0.5 },
-			font_size      = 12,
+			font_size      = 14,
 			text_alignment = { 0.0, 0.0 },
 			// corner_radii   = { 0.2, 0.2, 0.2, 0.2 },
 			pos            = { 0, 0 },
@@ -334,7 +334,8 @@ update :: proc( delta_time : f64 ) -> b32
 		}
 		scope( default_layout )
 		frame_style_default := UI_Style {
-			bg_color   = Color_BG_TextBox,
+			// bg_color   = Color_BG_TextBox,
+			bg_color   = Color_Transparent,
 			font       = default_font,
 			text_color = Color_White,
 		}
