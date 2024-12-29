@@ -554,30 +554,19 @@ clear_atlas_region_caches :: proc(ctx : ^Context)
 // Can be used with hot-reload
 clear_shape_cache :: proc (ctx : ^Context)
 {
-	lru_clear(& ctx.shape_cache.state)
-
 	using ctx
-	for idx : i32 = 0; idx < cast(i32) cap(shape_cache.storage); idx += 1 {
+	lru_clear(& shape_cache.state)
+	for idx : i32 = 0; idx < cast(i32) cap(shape_cache.storage); idx += 1
+	{
 		stroage_entry := & shape_cache.storage[idx]
 		using stroage_entry
-
 		end_cursor_pos = {}
 		size           = {}
-
 		clear(& glyphs)
-		// fill(glyphs[:], 0)
-
 		clear(& positions)
-		// fill(positions[:], 0)
-
 		clear(& draw_list.calls)
-		// fill(draw_list.calls[:], Draw_Call{})
-
 		clear(& draw_list.indices)
-		// fill(draw_list.indices[:], 0)
-
 		clear(& draw_list.vertices)
-		// fill(draw_list.vertices[:], Vertex{})
 	}
 	ctx.shape_cache.next_cache_id = 0
 }

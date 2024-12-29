@@ -207,9 +207,6 @@ lru_reload :: #force_inline proc( cache : ^LRU_Cache, allocator : Allocator ) {
 }
 
 lru_clear :: proc ( cache : ^LRU_Cache ) {
-	for key, value in cache.table {
-		cache.table[key] = {}
-	}
 	pool_list_clear( & cache.key_queue )
 	clear(& cache.table)
 	cache.num = 0

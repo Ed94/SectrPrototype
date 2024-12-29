@@ -391,14 +391,10 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	// Draw oversized glyph to glyph render target (FBO)
 	glyph_draw_scale       := over_sample * entry.size_scale
 	glyph_draw_translate   := -1 * vbounds_0 * glyph_draw_scale + vec2( glyph_padding )
-	// glyph_draw_translate.x  = cast(f32) (i32(glyph_draw_translate.x + 0.9999999))
-	// glyph_draw_translate.y  = cast(f32) (i32(glyph_draw_translate.y + 0.9999999))
-	// glyph_draw_translate = floor(glyph_draw_translate)
-	// glyph_draw_translate = ceil(glyph_draw_translate)
 
 	// Allocate a glyph glyph render target region (FBO)
 	gwidth_scaled_px := bounds_size.x * glyph_draw_scale.x + over_sample.x * glyph_padding + 1.0
-  if i32(f32(glyph_buffer.batch_x) + gwidth_scaled_px) >= i32(glyph_buffer.width) {
+	if i32(f32(glyph_buffer.batch_x) + gwidth_scaled_px) >= i32(glyph_buffer.width) {
 		flush_glyph_buffer_to_atlas( ctx )
 	}
 
@@ -406,7 +402,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	slot_position, slot_size := atlas_bbox( atlas, region_kind, atlas_index )
 
 	dst_glyph_position := slot_position
-	dst_glyph_size     := ceil(bounds_size * entry.size_scale + glyph_padding)
+	dst_glyph_size     := (bounds_size * entry.size_scale + glyph_padding)
 	dst_size           := (slot_size)
 	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, atlas_size )
 	screenspace_x_form( & slot_position,      & dst_size,       atlas_size )
@@ -530,7 +526,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context,
 	glyph_size     += bounds_scaled * over_sample
 
 	// Figure out the destination rect.
-	bounds_0_scaled := floor(bounds_0 * entry.size_scale - 0.5)
+	bounds_0_scaled := (bounds_0 * entry.size_scale)
 	dst             := position + scale * bounds_0_scaled - glyph_padding * scale
 	dst_size        := glyph_dst_size * scale
 	textspace_x_form( & glyph_position, & glyph_size, glyph_buffer_size )
