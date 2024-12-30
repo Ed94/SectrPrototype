@@ -587,10 +587,9 @@ ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 	policy    : UI_TextInput_Policy = {}
 )
 {
-	state        := get_state()
+	// state        := get_state()
 	iter_next    :: next
-	input        := state.input
-	input_events := & get_state().input_events
+	input        := get_input_state()
 	ui           := ui_context()
 
 	text_input_box.box    = ui_box_make( flags, label )
@@ -621,7 +620,7 @@ ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 
 		// TODO(Ed): Abstract this to navigation bindings
 		if btn_pressed(input.keyboard.left) {
-			editor_cursor_pos.x = max(0, editor_cursor_pos.x - 1)
+			editor_cursor_pos.x = max(editor_cursor_pos.x - 1, 0)
 		}
 		if btn_pressed(input.keyboard.right) {
 			editor_cursor_pos.x = min(i32(input_str.num), editor_cursor_pos.x + 1)
@@ -638,14 +637,14 @@ ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 		// 	screen_ui.active = 0
 		// }
 
-		iter_obj  := iterator( & input_events.key_events ); iter := & iter_obj
+		iter_obj  := input_key_event_iter(); iter := & iter_obj
 		for event := iter_next( iter ); event != nil; event = iter_next( iter )
 		{
-			if event.frame_id != state.frame do break
+			if event.frame_id != get_frametime().current_frame do break
 
 			if event.key == .backspace && event.type == .Key_Pressed {
 				if input_str.num > 0 {
-						editor_cursor_pos.x = max(0, editor_cursor_pos.x - 1)
+						editor_cursor_pos.x = max(editor_cursor_pos.x - 1, 0)
 						remove_at( input_str, u64(editor_cursor_pos.x) )
 						break
 				}
@@ -657,7 +656,7 @@ ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 		}
 
 		decimal_detected := false
-		for code in to_slice(input_events.codes_pressed)
+		for code in input_codes_pressed_slice()
 		{
 			accept_digits  := ! digits_only || '0' <= code && code <= '9'
 			accept_decimal := ! disallow_decimal || ! decimal_detected && code =='.'
@@ -680,7 +679,7 @@ ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 				continue
 			}
 		}
-		clear( input_events.codes_pressed )
+		clear( get_state().input_events.codes_pressed )
 
 		invalid_color := RGBA8 { 70, 40, 40, 255}
 

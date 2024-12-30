@@ -22,7 +22,7 @@ RenderState :: struct {
 render :: proc()
 {
 	profile(#procedure)
-	state := get_state(); using state // TODO(Ed): Prefer passing static context to through the callstack
+	state := get_state(); using state // TODO(Ed): Remove mutable access to to entire state.
 
 	screen_extent := app_window.extent
 	screen_size   := app_window.extent * 2
@@ -152,7 +152,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 
 		debug_draw_text :: proc( content : string, pos : Vec2, size : f32, color := Color_White, font : FontID = Font_Default )
 		{
-			state := get_state(); using state
+			state := get_state(); using state // TODO(Ed): Remove this state getter. Get default font properly.
 			if len( content ) == 0 do return
 
 			font := font
@@ -187,11 +187,12 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 		}
 
 		if true {
+			frametime := get_frametime()
 			debug_text( "Screen Width : %v", screen_size.x )
 			debug_text( "Screen Height: %v", screen_size.y )
-			debug_text( "frametime_target_ms       : %f ms", frametime_target_ms )
-			debug_text( "frametime (work)          : %0.3f ms", frametime_delta_ms )
-			debug_text( "frametime_last_elapsed_ms : %f ms", frametime_elapsed_ms )
+			debug_text( "frametime_target_ms       : %f ms",    frametime.target_ms )
+			debug_text( "frametime (work)          : %0.3f ms", frametime.delta_ms )
+			debug_text( "frametime_last_elapsed_ms : %f ms",    frametime.elapsed_ms )
 		}
 		if replay.mode == ReplayMode.Record {
 			debug_text( "Recording Input")
@@ -450,6 +451,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 
 render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
 {
+	// TODO(Ed): Make a debug getter.
 	debug        := get_state().debug
 	default_font := get_state().default_font
 
@@ -801,8 +803,6 @@ draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, po
 	width  := app_window.extent.x * 2
 	height := app_window.extent.y * 2
 
-	// TODO(Ed): Review doing double scaling on the text...
-
 	ve_id, resolved_size := font_provider_resolve_draw_id( id, size * config.font_size_screen_scalar )
 	color_norm           := normalize_rgba8(color)
 
@@ -825,7 +825,7 @@ draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, 
 draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size : f32, pos : Vec2, cam : Camera, color := Color_White )
 {
 	profile(#procedure)
-	state := get_state(); using state
+	state := get_state(); using state // TODO(Ed): Remove usage of direct access to entire mutable state.
 
 	cam_offset := Vec2 {
 		cam.position.x,
@@ -871,6 +871,7 @@ draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size 
 render_flush_gp :: #force_inline proc()
 {
 	profile(#procedure)
+	// TODO(Ed): Perfer a non-mutable get to the pass.
 	gfx.begin_pass( gfx.Pass { action = get_state().render_data.pass_actions.empty_action, swapchain = sokol_glue.swapchain() })
 	gp.flush()
 	gfx.end_pass()

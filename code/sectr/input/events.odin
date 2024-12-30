@@ -285,3 +285,19 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 
 	prev_frame = last_frame
 }
+
+input_event_iter :: #force_inline proc () -> RingBufferFixedIterator(InputEvent) {
+	return iterator_ringbuf_fixed( & get_state().input_events.events )
+}
+
+input_key_event_iter :: #force_inline proc() -> RingBufferFixedIterator(InputKeyEvent) {
+	return iterator_ringbuf_fixed( & get_state().input_events.key_events )
+}
+
+input_mouse_event_iter :: #force_inline proc() -> RingBufferFixedIterator(InputMouseEvent) {
+	return iterator_ringbuf_fixed( & get_state().input_events.mouse_events )
+}
+
+input_codes_pressed_slice :: #force_inline proc() -> []rune {
+	return to_slice( get_state().input_events.codes_pressed )
+}

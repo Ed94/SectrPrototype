@@ -17,8 +17,8 @@ sokol_app_init_callback :: proc "c" () {
 // So this will only get called during window pan or resize events (on Win32 at least)
 sokol_app_frame_callback :: proc "c" ()
 {
-	context = get_state().sokol_context
 	profile(#procedure)
+	context = get_state().sokol_context
 
 	state  := get_state()
 	should_close : b32
@@ -99,14 +99,13 @@ sokol_app_log_callback :: proc "c" (
 // TODO(Ed): Does this need to be queued to a separate thread?
 sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 {
-	state := get_state(); using state
-	context = sokol_context
+	context = get_state().sokol_context
 
 	event : InputEvent
 	using event
 
 	_sokol_frame_id = sokol_event.frame_count
-	frame_id        = frame
+	frame_id        = get_frametime().current_frame
 
 	mouse.pos   = { sokol_event.mouse_x,  sokol_event.mouse_y }
 	mouse.delta = { sokol_event.mouse_dx, sokol_event.mouse_dy }

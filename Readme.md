@@ -23,7 +23,11 @@ The dependencies are:
   * I added support for 'monlithic packages' or 'uniform-across-subdirectories packages'. It allows me to organize the main package with sub-directories.
 * Odin repo's base, core, and vendor(raylib) libaries
 * An ini parser
-* backtrace
+* backtrace (not used yet)
+* freetype (not used yet)
+* harfbuzz
+* sokol
+* sokol-tools
 * Powershell (if you want to use my build scripts)
 
 Major 'codebase modules':

@@ -271,11 +271,11 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 32.0, "Squidgy_Slime" )
 
-		// path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
-		// font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
-
-		path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
-		font_fira_cousine  = font_load( path_fira_cousine, 16.0, "Fira Cousine" )
+		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
+		font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
+		
+		// path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
+		// font_fira_cousine  = font_load( path_fira_cousine, 16.0, "Fira Cousine" )
 
 		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
 		// font_open_sans  = font_load( path_open_sans, 16.0, "OpenSans" )
@@ -298,7 +298,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
-		default_font = font_fira_cousine
+		default_font = font_firacode
 		log( "Default font loaded" )
 	}
 
@@ -319,7 +319,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	}
 
 	// Demo project setup
-	// TODO(Ed): This will eventually have to occur when the user either creates or loads a workspace. I don't know 
+	// TODO(Ed): This will eventually have to occur when the user either creates or loads a workspace.
 	if true
 	{
 		profile("project setup")
@@ -499,21 +499,17 @@ tick :: proc( host_delta_time_ms : f64, host_delta_ns : Duration ) -> b32
 // Lifted out of tick so that sokol_app_frame_callback can do it as well.
 tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 {
-	context.logger = to_odin_logger( & Memory_App.logger )
-	state := get_state(); using state
 	profile("Work frame")
-
+	context.logger = to_odin_logger( & Memory_App.logger )
 	should_close : b32
 
 	// Setup Frame Slab
-	{
-		alloc_error : AllocatorError
-		frame_slab, alloc_error = slab_init( & default_slab_policy, bucket_reserve_num = 0,
-			allocator           = frame_allocator(),
-			dbg_name            = Frame_Slab_DBG_Name,
-			should_zero_buckets = true )
-		verify( alloc_error == .None, "Failed to allocate frame slab" )
-	}
+	alloc_error : AllocatorError
+	get_state().frame_slab, alloc_error = slab_init( & get_state().default_slab_policy, bucket_reserve_num = 0,
+		allocator           = frame_allocator(),
+		dbg_name            = Frame_Slab_DBG_Name,
+		should_zero_buckets = true )
+	verify( alloc_error == .None, "Failed to allocate frame slab" )
 
 	// The policy for the work tick is that the default allocator is the frame's slab.
 	// Transient's is the temp allocator.
@@ -521,6 +517,9 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	context.temp_allocator = transient_allocator()
 
 	// rl.PollInputEvents()
+
+	config := app_config()
+	debug  := & get_state().debug
 
 	debug.draw_ui_box_bounds_points = false
 	debug.draw_ui_padding_bounds    = false
@@ -535,7 +534,7 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	sokol_width  := sokol_app.widthf()
 	sokol_height := sokol_app.heightf()
 
-	window := & state.app_window
+	window := & get_state().app_window
 	// if	int(window.extent.x) != int(sokol_width) || int(window.extent.y) != int(sokol_height) {
 		window.resized = true
 		window.extent.x = sokol_width  * 0.5
@@ -554,23 +553,24 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_ms : f64, host_delta_ns : Duration, can_sleep := true )
 {
 	profile(#procedure)
-	state := get_state(); using state
+	config    := app_config()
+	frametime := & get_state().frametime
 	context.allocator      = frame_slab_allocator()
 	context.temp_allocator = transient_allocator()
 
 	// profile("Client tick timing processing")
 
-	frametime_target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
-	sub_ms_granularity_required := frametime_target_ms <= Frametime_High_Perf_Threshold_MS
+	frametime.target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
+	sub_ms_granularity_required := frametime.target_ms <= Frametime_High_Perf_Threshold_MS
 
-	frametime_delta_ns      = time.tick_lap_time( client_tick )
-	frametime_delta_ms      = duration_ms( frametime_delta_ns )
-	frametime_delta_seconds = duration_seconds( host_delta_ns )
-	frametime_elapsed_ms    = frametime_delta_ms + host_delta_time_ms
+	frametime.delta_ns      = time.tick_lap_time( client_tick )
+	frametime.delta_ms      = duration_ms( frametime.delta_ns )
+	frametime.delta_seconds = duration_seconds( host_delta_ns )
+	frametime.elapsed_ms    = frametime.delta_ms + host_delta_time_ms
 
-	if frametime_elapsed_ms < frametime_target_ms
+	if frametime.elapsed_ms < frametime.target_ms
 	{
-		sleep_ms       := frametime_target_ms - frametime_elapsed_ms
+		sleep_ms       := frametime.target_ms - frametime.elapsed_ms
 		pre_sleep_tick := time.tick_now()
 
 		if can_sleep && sleep_ms > 0 {
@@ -585,24 +585,24 @@ tick_frametime :: #force_inline proc( client_tick : ^time.Tick, host_delta_time_
 			// log( str_fmt_tmp("frametime sleep was off by: %v ms", sleep_delta_ms - sleep_ms ))
 		}
 
-		frametime_elapsed_ms += sleep_delta_ms
-		for ; frametime_elapsed_ms < frametime_target_ms; {
+		frametime.elapsed_ms += sleep_delta_ms
+		for ; frametime.elapsed_ms < frametime.target_ms; {
 			sleep_delta_ns = time.tick_lap_time( & pre_sleep_tick)
 			sleep_delta_ms = duration_ms( sleep_delta_ns )
 
-			frametime_elapsed_ms += sleep_delta_ms
+			frametime.elapsed_ms += sleep_delta_ms
 		}
 	}
 
 	config.timing_fps_moving_avg_alpha = 0.99
-	frametime_avg_ms = mov_avg_exp( f64(config.timing_fps_moving_avg_alpha), frametime_elapsed_ms, frametime_avg_ms )
-	fps_avg          = 1 / (frametime_avg_ms * MS_To_S)
+	frametime.avg_ms  = mov_avg_exp( f64(config.timing_fps_moving_avg_alpha), frametime.elapsed_ms, frametime.avg_ms )
+	frametime.fps_avg = 1 / (frametime.avg_ms * MS_To_S)
 
-	if frametime_elapsed_ms > 60.0 {
-		log( str_fmt("Big tick! %v ms", frametime_elapsed_ms), LogLevel.Warning )
+	if frametime.elapsed_ms > 60.0 {
+		log( str_fmt("Big tick! %v ms", frametime.elapsed_ms), LogLevel.Warning )
 	}
 
-	frame += 1
+	frametime.current_frame += 1
 }
 
 @export

@@ -428,9 +428,17 @@ make :: proc {
 	make_multi_pointer,
 }
 
-// measure_text_size :: proc {
-// 	measure_text_size_raylib,
-// }
+max :: proc {
+	linalg.max_single,
+	linalg.max_double,
+	linalg.max_triple,
+}
+
+min :: proc {
+	linalg.min_single,
+	linalg.min_double,
+	linalg.min_triple,
+}
 
 mov_avg_exp :: proc {
 	mov_avg_exp_f32,

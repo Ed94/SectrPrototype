@@ -56,14 +56,11 @@ poll_debug_actions :: proc( actions : ^ DebugActions, input : ^ InputState )
 	cam_mouse_pan = mouse.right.ended_down && ! pressed(mouse.right)
 }
 
-frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
-	return cast(f32) get_state().frametime_avg_ms
-}
-
 //TODO(Ed): Just use avg delta not this.
 update :: proc( delta_time : f64 ) -> b32
 {
 	profile(#procedure)
+	// TODO(Ed): Remove usage of mutable reference to state here.
 	state  := get_state(); using state
 	replay := & Memory_App.replay
 	workspace := & project.workspace
@@ -259,7 +256,7 @@ update :: proc( delta_time : f64 ) -> b32
 
 				if zoom_delta != 0 {
 						current_index := find_closest_zoom_index(cam.zoom, Digial_Zoom_Snap_Levels)
-						scroll_speed := max(1, abs(zoom_delta) * config.cam_zoom_scroll_delta_scale)  // Adjust this factor to control sensitivity
+						scroll_speed := max( cast(f32) 1, abs(zoom_delta) * config.cam_zoom_scroll_delta_scale)  // Adjust this factor to control sensitivity
 						target_index := current_index
 
 						if zoom_delta > 0 {
