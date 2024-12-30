@@ -274,18 +274,21 @@ get_state :: #force_inline proc "contextless" () -> ^ State {
 	return cast( ^ State ) Memory_App.persistent.reserve_start
 }
 
-
-get_input_state :: #force_inline proc "contextless" () -> InputState {
-	return (get_state().input ^)
-}
-
 frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
 	return cast(f32) get_state().frametime.delta_ms
 }
 
-app_config      :: #force_inline proc "contextless" () -> AppConfig     { return get_state().config }
-app_color_theme :: #force_inline proc "contextless" () -> AppColorTheme { return get_state().config.color_theme }
-debug_data      :: #force_inline proc "contextless" () -> DebugData     { return get_state().debug }
-get_frametime   :: #force_inline proc "contextless" () -> FrameTime     { return get_state().frametime }
+app_config       :: #force_inline proc "contextless" () -> AppConfig     { return get_state().config }
+app_color_theme  :: #force_inline proc "contextless" () -> AppColorTheme { return get_state().config.color_theme }
+debug_data       :: #force_inline proc "contextless" () -> DebugData     { return get_state().debug }
+get_frametime    :: #force_inline proc "contextless" () -> FrameTime     { return get_state().frametime }
+get_default_font :: #force_inline proc "contextless" () -> FontID        { return get_state().default_font }
+get_input_state  :: #force_inline proc "contextless" () -> InputState { return (get_state().input ^) }
+
+get_ui_context_mut :: #force_inline proc "contextless" () -> ^UI_State { return get_state().ui_context }
+
+set_ui_context :: #force_inline proc "contextless" ( ui : ^UI_State ) {
+	get_state().ui_context = ui
+}
 
 #endregion("State")

@@ -19,12 +19,10 @@ UI_SettingsMenu :: struct
 	is_maximized                   : b32,
 }
 
-ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b32 = false)
+ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : b32 = false)
 {
 	profile("Settings Menu")
-	state  := get_state()
-	using state
-	using screen_ui
+	settings_menu := cast(^UI_SettingsMenu) captures
 
 	if ! settings_menu.is_open do return
 	app_color := app_color_theme()
@@ -59,7 +57,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 		dragged      := ui_resizable_handles( & container, & pos, & size)
 		should_raise |= dragged
 	
-		old_vbox := ui_box_from_key(prev_cache, ui_key_from_string("Settings Menu: VBox"))
+		old_vbox := ui_box_from_key(get_ui_context_mut().prev_cache, ui_key_from_string("Settings Menu: VBox"))
 		if old_vbox != nil
 		{
 			vbox_children_bounds := ui_compute_children_overall_bounds(old_vbox)
@@ -116,17 +114,17 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 				}
 			}
 			if frame_bar.active {
-				pos += input.mouse.delta
+				pos += get_input_state().mouse.delta
 				should_raise = true
 			}
 		}
 
 		// TODO(Ed): This will eventually be most likely generalized/compressed. For now its the main scope for implementing new widgets.
-		app_config := ui_drop_down( & cfg_drop_down, "settings_menu.config", str_intern("App Config"), vb_compute_layout = true);
+		dd_app_config := ui_drop_down( & cfg_drop_down, "settings_menu.config", str_intern("App Config"), vb_compute_layout = true);
 		app_config_closed:
 		{
-			app_config.title.layout.font_size = 12
-			if ! app_config.is_open do break app_config_closed
+			dd_app_config.title.layout.font_size = 12
+			if ! dd_app_config.is_open do break app_config_closed
 
 			ui_settings_entry_inputbox :: proc( input_box : ^UI_TextInputBox, is_even : bool, label : string, setting_title : StrRunesPair, input_policy : UI_TextInput_Policy )
 			{
@@ -157,6 +155,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					style.corner_radii    = { 3, 3, 3, 3 }
 				}
 			}
+
+			config := app_config()
 
 			Engine_Refresh_Hz:
 			{
@@ -344,7 +344,7 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 					idx := 1
 					for entry in CameraZoomMode
 					{
-						ui_parent(app_config.vbox)
+						ui_parent(dd_app_config.vbox)
 						scope(theme_button)
 						btn := ui_button(str_intern_fmt("settings_menu.cam_zoom_mode.%s.btn", entry).str)
 						{
@@ -361,9 +361,9 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 						}
 
 						if btn.pressed {
-							mode_selector.should_close = true
-							config.cam_zoom_mode       = entry
-							screen_ui.active           = 0
+							mode_selector.should_close  = true
+							config.cam_zoom_mode        = entry
+							get_ui_context_mut().active = 0
 						}
 					}
 				}
@@ -548,4 +548,8 @@ ui_screen_settings_menu :: proc( captures : rawptr = nil ) -> ( should_raise : b
 
 	ui_parent_pop() // container
 	return
+}
+
+ui_settings_menu_open :: #force_inline proc "contextless" () {
+	get_state().screen_ui.settings_menu.is_open = true
 }

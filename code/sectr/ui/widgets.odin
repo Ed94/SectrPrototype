@@ -581,6 +581,10 @@ UI_TextInputBox :: struct {
 	using policy      : UI_TextInput_Policy,
 }
 
+ui_text_input_box_reload :: #force_inline proc ( text_box : ^UI_TextInputBox, allocator : Allocator ) {
+	text_box.input_str.backing = allocator
+}
+
 ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 	flags     : UI_BoxFlags = {.Mouse_Clickable, .Focusable, .Click_To_Focus},
 	allocator := context.allocator,

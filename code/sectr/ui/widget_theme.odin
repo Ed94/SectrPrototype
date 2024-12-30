@@ -34,7 +34,7 @@ theme_button :: proc() -> UI_Theme
 			border_color = app_color.border_default,
 			corner_radii = {},
 			blur_size    = 0,
-			font         = get_state().default_font,
+			font         = get_default_font(),
 			text_color   = app_color.text_default,
 			cursor       = {},
 		}
@@ -83,7 +83,7 @@ theme_drop_down_btn :: proc() -> UI_Theme
 			border_color = app_color.border_default,
 			corner_radii = {},
 			blur_size    = 0,
-			font         = get_state().default_font,
+			font         = get_default_font(),
 			text_color   = app_color.text_default,
 			cursor       = {},
 		}
@@ -140,7 +140,7 @@ theme_table_row :: proc( is_even : bool ) -> UI_Theme
 			border_color = Color_Transparent,
 			corner_radii = {},
 			blur_size    = 0,
-			font         = get_state().default_font,
+			font         = get_default_font(),
 			text_color   = app_color_theme().text_default,
 			cursor       = {},
 		}
@@ -188,7 +188,7 @@ theme_window_bar :: proc() -> UI_Theme
 			border_color = Color_Transparent,
 			corner_radii = {0, 0, 0, 0 },
 			blur_size    = 0,
-			font         = get_state().default_font,
+			font         = get_default_font(),
 			text_color   = app_color.text_default,
 			cursor       = {},
 		}
@@ -240,7 +240,7 @@ theme_window_bar_title :: proc() -> UI_Theme
 			border_color = Color_Transparent,
 			corner_radii = {0, 0, 0, 0},
 			blur_size    = 0,
-			font         = get_state().default_font,
+			font         = get_default_font(),
 			text_color   = app_color.text_default,
 			cursor       = {},
 		}
@@ -288,7 +288,7 @@ theme_window_bar_btn :: proc() -> UI_Theme
 			border_color = app_color.border_default,
 			corner_radii = {},
 			blur_size    = 0,
-			font         = get_state().default_font,
+			font         = get_default_font(),
 			text_color   = app_color.text_default,
 			cursor       = {},
 		}
@@ -337,7 +337,7 @@ theme_window_panel :: proc() -> UI_Theme
 			border_color = app_color.window_panel_border,
 			corner_radii = { 0, 0, 0, 0 },
 			blur_size    = 0,
-			font         = get_state().default_font,
+			font         = get_default_font(),
 			text_color   = app_color.text_default,
 			cursor       = {},
 		}
@@ -385,7 +385,7 @@ theme_transparent :: proc() -> UI_Theme
 			border_color = Color_Transparent,
 			corner_radii = {},
 			blur_size    = 0,
-			font         = get_state().default_font,
+			font         = get_default_font(),
 			text_color   = app_color.text_default,
 			cursor       = {},
 		}
@@ -433,7 +433,7 @@ theme_text :: proc() -> UI_Theme
 			border_color = Color_Transparent,
 			corner_radii = {},
 			blur_size    = 0,
-			font         = get_state().default_font,
+			font         = get_default_font(),
 			text_color   = app_color.text_default,
 			cursor       = {},
 		}

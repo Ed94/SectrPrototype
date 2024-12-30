@@ -1,5 +1,14 @@
 package sectr
 
+UI_ScreenMenuBar :: struct {
+	pos, size    : Vec2,
+	container    : UI_HBox,
+	settings_btn : struct
+	{
+		using widget : UI_Widget,
+	}
+}
+
 UI_ScreenState :: struct
 {
 	using base : UI_State,
@@ -9,42 +18,34 @@ UI_ScreenState :: struct
 	// TODO(Ed): The docked should be the base, floating is should be nested within as a 'veiwport' to a 'desktop' or 'canvas'
 	// docked : UI_Docking,
 
-	menu_bar : struct
-	{
-		pos, size    : Vec2,
-		container    : UI_HBox,
-		settings_btn : struct
-		{
-			using widget : UI_Widget,
-		}
-	},
-
+	menu_bar      : UI_ScreenMenuBar,
 	settings_menu : UI_SettingsMenu
 }
 
-ui_screen_reload :: proc() {
-	using state := get_state()
-	using screen_ui.settings_menu
+ui_screen_reload :: proc( screen_ui : ^UI_ScreenState ) {
 
-	min_zoom_inputbox.input_str.backing = persistent_slab_allocator()
-	max_zoom_inputbox.input_str.backing = persistent_slab_allocator()
+	{
+		using screen_ui.settings_menu
+		ui_text_input_box_reload( & min_zoom_inputbox, persistent_slab_allocator() )
+		ui_text_input_box_reload( & max_zoom_inputbox, persistent_slab_allocator() )
+	}
 }
 
-ui_screen_tick :: proc() {
+ui_screen_tick :: proc( screen_ui : ^UI_ScreenState ) {
 	profile("Screenspace Imgui")
 
-	using state := get_state()
-	ui_graph_build( & screen_ui )
-	ui := ui_context
-
+	ui_graph_build( screen_ui )
 	ui_floating_manager( & screen_ui.floating )
-	ui_floating("Menu Bar",      ui_screen_menu_bar)
-	ui_floating("Settings Menu", ui_screen_settings_menu)
+	ui_floating("Menu Bar",      & screen_ui.menu_bar,      ui_screen_menu_bar_builder)
+	ui_floating("Settings Menu", & screen_ui.settings_menu, ui_settings_menu_builder)
 }
 
-ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 = false )
+ui_screen_menu_bar_builder :: proc( captures : rawptr = nil ) -> (should_raise : b32 = false )
 {
 	profile("App Menu Bar")
+
+	menu_bar := cast(^UI_ScreenMenuBar) captures
+	using menu_bar
 
 	theme_app_menu_bar :: proc() -> UI_Theme
 	{
@@ -70,7 +71,7 @@ ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 = f
 				border_color = app_color.border_default,
 				corner_radii = {},
 				blur_size    = 0,
-				font         = get_state().default_font,
+				font         = get_default_font(),
 				text_color   = app_color.text_default,
 				cursor       = {},
 			}
@@ -94,10 +95,6 @@ ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 = f
 		return theme
 	}
 
-	using state := get_state()
-	using screen_ui
-	using screen_ui.menu_bar
-
 	scope(theme_app_menu_bar)
 	container = ui_hbox( .Left_To_Right, "Menu Bar" ); {
 		using container
@@ -114,7 +111,7 @@ ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 = f
 		using move_box
 		layout.size.min.x = 20
 		if active {
-			pos         += input.mouse.delta
+			pos         += get_input_state().mouse.delta
 			should_raise = true
 		}
 	}
@@ -130,7 +127,7 @@ ui_screen_menu_bar :: proc( captures : rawptr = nil ) -> (should_raise : b32 = f
 		text                = str_intern("Settings")
 		layout.flags        = { .Scale_Width_By_Height_Ratio }
 		layout.size.ratio.x = 2.0
-		if pressed do screen_ui.settings_menu.is_open = true
+		if pressed do ui_settings_menu_open()
 	}
 	return
 }
