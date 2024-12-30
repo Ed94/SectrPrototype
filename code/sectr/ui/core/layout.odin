@@ -113,6 +113,11 @@ UI_LayoutFlag :: enum u32 {
 	// For this to work, the children must have a minimum size set & their size overall must be greater than the parent's minimum size
 	Size_To_Content,
 
+	// Will set minimum size to the child with the furthest bounds on X
+	Min_Size_To_Content_X,
+	// Will set minimum size to the child with the furthest bounds on Y
+	Min_Size_To_Content_Y,
+
 	// Will size the box to its text.
 	Size_To_Text,
 

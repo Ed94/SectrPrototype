@@ -135,8 +135,15 @@ equal_range2 :: #force_inline proc "contextless" ( a, b : Range2 ) -> b32 {
 	return b32(result)
 }
 
+// Will resolve the largest range possible given a & b.
+join_range2 :: proc "contextless" ( a, b : Range2 ) -> (joined : Range2) {
+	joined.min = min( a.min, b.min )
+	joined.max = max( a.max, b.max )
+	return
+}
+
 size_range2 :: #force_inline proc "contextless" ( value : Range2 ) -> Vec2 {
-	return { value.p1.x - value.p0.x, value.p0.y - value.p1.y }
+	return { abs( value.p1.x - value.p0.x ), abs( value.p0.y - value.p1.y ) }
 }
 
 #endregion("Range2")

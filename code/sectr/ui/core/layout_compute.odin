@@ -99,12 +99,36 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		adjusted_size.y = layout.size.min.y
 	}
 
+	border_offset := Vec2	{ layout.border_width, layout.border_width }
+
+	// TODO(Ed): These are still WIP
 	if .Size_To_Content in layout.flags {
 		// Preemtively traverse the children of this parent and have them compute their layout.
 		// This parent will just set its size to the max bounding area of those children.
 		// This will recursively occur if child also depends on their content size from their children, etc.
-		ui_box_compute_layout_children(box)
-		//ui_compute_children_bounding_area(box)
+		// ui_box_compute_layout_children(box)
+		children_bounds := ui_compute_children_overall_bounds(box)
+		resolved_bounds := range2(
+			children_bounds.min - { layout.padding.left,  layout.padding.bottom } - border_offset,
+			children_bounds.max + { layout.padding.right, layout.padding.top }    + border_offset,
+		)
+		adjusted_size = size_range2( resolved_bounds )
+	}
+	if .Min_Size_To_Content_X in layout.flags {
+		children_bounds := ui_compute_children_overall_bounds(box)
+		resolved_bounds := range2(
+			children_bounds.min - { layout.padding.left,  layout.padding.bottom } - border_offset,
+			children_bounds.max + { layout.padding.right, layout.padding.top }    + border_offset,
+		)
+		adjusted_size.x = size_range2( resolved_bounds ).x
+	}
+	if .Min_Size_To_Content_Y in layout.flags {
+		children_bounds := ui_compute_children_overall_bounds(box)
+		resolved_bounds := range2(
+			children_bounds.min - { layout.padding.left,  layout.padding.bottom } - border_offset,
+			children_bounds.max + { layout.padding.right, layout.padding.top }    + border_offset,
+		)
+		adjusted_size.y = size_range2(resolved_bounds).y
 	}
 
 	// 5. Determine relative position
@@ -146,8 +170,6 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 
 	// 7. Padding & Content
 	// Determine Padding's outer bounds
-	border_offset := Vec2	{ layout.border_width, layout.border_width }
-
 	padding_bounds := range2(
 		bounds.min + border_offset,
 		bounds.min - border_offset,
@@ -183,9 +205,19 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	computed.fresh = true && !dont_mark_fresh
 }
 
-ui_compute_children_bounding_area :: proc ( box : ^UI_Box )
+ui_compute_children_overall_bounds :: proc ( box : ^UI_Box ) -> ( children_bounds : Range2 )
 {
-	// TODO(Ed): Implement this so we can have the .Size_To_Content flag supported.
+	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next_depth_first( current )
+	{
+		if current == box do return
+		if ! current.computed.fresh do  ui_box_compute_layout( current )
+		if current == box.first {
+			children_bounds = current.computed.bounds
+			continue
+		}
+		children_bounds = join_range2( current.computed.bounds, children_bounds )
+	}
+	return
 }
 
 ui_box_compute_layout_children :: proc( box : ^UI_Box )

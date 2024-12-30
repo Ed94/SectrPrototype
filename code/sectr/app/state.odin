@@ -188,6 +188,7 @@ FontData :: struct {
 FrameTime :: struct {
 	sleep_is_granular : b32,
 
+	current_frame : u64,
 	delta_seconds : f64,
 	delta_ms      : f64,
 	delta_ns      : Duration,
@@ -233,17 +234,7 @@ State :: struct {
 	monitor_id         : i32,
 	monitor_refresh_hz : i32,
 
-	// using frametime : FrameTime,
-	sleep_is_granular : b32,
-
-	frame                   : u64,
-	frametime_delta_seconds : f64,
-	frametime_delta_ms      : f64,
-	frametime_delta_ns      : Duration,
-	frametime_target_ms     : f64,
-	frametime_elapsed_ms    : f64,
-	frametime_avg_ms        : f64,
-	fps_avg                 : f64,
+	using frametime : FrameTime,
 
 	// fonts : FontData,
 	font_provider_ctx : FontProviderContext,
@@ -278,15 +269,23 @@ State :: struct {
 	sokol_context     : runtime.Context,
 }
 
+// NOTE: Avoid getting a mutable reference to state
 get_state :: #force_inline proc "contextless" () -> ^ State {
 	return cast( ^ State ) Memory_App.persistent.reserve_start
 }
 
-// get_frametime :: #force_inline proc "contextless" () -> FrameTime {
-// 	return get_state().frametime
-// }
+
+get_input_state :: #force_inline proc "contextless" () -> InputState {
+	return (get_state().input ^)
+}
+
+frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
+	return cast(f32) get_state().frametime.delta_ms
+}
 
 app_config      :: #force_inline proc "contextless" () -> AppConfig     { return get_state().config }
 app_color_theme :: #force_inline proc "contextless" () -> AppColorTheme { return get_state().config.color_theme }
+debug_data      :: #force_inline proc "contextless" () -> DebugData     { return get_state().debug }
+get_frametime   :: #force_inline proc "contextless" () -> FrameTime     { return get_state().frametime }
 
 #endregion("State")
