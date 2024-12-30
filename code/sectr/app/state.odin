@@ -285,10 +285,7 @@ get_frametime    :: #force_inline proc "contextless" () -> FrameTime     { retur
 get_default_font :: #force_inline proc "contextless" () -> FontID        { return get_state().default_font }
 get_input_state  :: #force_inline proc "contextless" () -> InputState { return (get_state().input ^) }
 
-get_ui_context_mut :: #force_inline proc "contextless" () -> ^UI_State { return get_state().ui_context }
-
-set_ui_context :: #force_inline proc "contextless" ( ui : ^UI_State ) {
-	get_state().ui_context = ui
-}
+get_ui_context_mut :: #force_inline proc "contextless" ()  -> ^UI_State   { return get_state().ui_context }
+set_ui_context     :: #force_inline proc "contextless" ( ui : ^UI_State ) { get_state().ui_context = ui }
 
 #endregion("State")

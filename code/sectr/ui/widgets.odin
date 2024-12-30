@@ -320,7 +320,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 
 	name :: proc( label : string ) -> string {
 		parent_label := (transmute(^string) context.user_ptr) ^
-		return str_intern(str_fmt("%v: %v", parent_label, label )).str
+		return str_intern(str_fmt("%v.%v", parent_label, label )).str
 	}
 	context.user_ptr = & parent.label
 
@@ -345,7 +345,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			handle_top.layout.alignment     = { 0, 0 }
 		}
 		if bottom {
-			handle_bottom = ui_widget("resize_handle_bottom", flags)
+			handle_bottom = ui_widget(name("resize_handle_bottom"), flags)
 			handle_bottom.layout.anchor.top  = 1
 			handle_bottom.layout.alignment   = { 0, 1 }
 		}
@@ -361,12 +361,12 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 			handle_corner_tr.layout.alignment = { 0, 0 }
 		}
 		if corner_bl {
-			handle_corner_bl = ui_widget("corner_bottom_left", flags)
+			handle_corner_bl = ui_widget(name("corner_bottom_left"), flags)
 			handle_corner_bl.layout.anchor    = range2({}, {0, 1})
 			handle_corner_bl.layout.alignment = { 1, 1 }
 		}
 		if corner_br {
-			handle_corner_br = ui_widget("corner_bottom_right", flags)
+			handle_corner_br = ui_widget(name("corner_bottom_right"), flags)
 			handle_corner_br.layout.anchor    = range2({1, 0}, {0, 1})
 			handle_corner_br.layout.alignment = { 0, 1 }
 		}

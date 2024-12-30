@@ -1,12 +1,10 @@
 package sectr
 
 UI_ScreenMenuBar :: struct {
-	pos, size    : Vec2,
-	container    : UI_HBox,
-	settings_btn : struct
-	{
-		using widget : UI_Widget,
-	}
+	pos, size        : Vec2,
+	container        : UI_HBox,
+	logger_scope_btn : UI_Widget,
+	settings_btn     : UI_Widget
 }
 
 UI_ScreenState :: struct
@@ -19,6 +17,7 @@ UI_ScreenState :: struct
 	// docked : UI_Docking,
 
 	menu_bar      : UI_ScreenMenuBar,
+	logger_scope  : UI_LoggerScope,
 	settings_menu : UI_SettingsMenu
 }
 
@@ -37,6 +36,7 @@ ui_screen_tick :: proc( screen_ui : ^UI_ScreenState ) {
 	ui_graph_build( screen_ui )
 	ui_floating_manager( & screen_ui.floating )
 	ui_floating("Menu Bar",      & screen_ui.menu_bar,      ui_screen_menu_bar_builder)
+	ui_floating("Logger Scope",  & screen_ui.logger_scope,  ui_logger_scope_builder)
 	ui_floating("Settings Menu", & screen_ui.settings_menu, ui_settings_menu_builder)
 }
 
@@ -98,7 +98,12 @@ ui_screen_menu_bar_builder :: proc( captures : rawptr = nil ) -> (should_raise :
 	scope(theme_app_menu_bar)
 	container = ui_hbox( .Left_To_Right, "Menu Bar" ); {
 		using container
-		layout.flags = {.Fixed_Position_X, .Fixed_Position_Y, .Fixed_Width, .Fixed_Height, .Origin_At_Anchor_Center}
+		layout.flags = {
+			.Fixed_Position_X, .Fixed_Position_Y, 
+			// .Min_Size_To_Content_X,
+			.Fixed_Width, .Fixed_Height, 
+			.Origin_At_Anchor_Center
+		}
 		layout.pos   = pos
 		layout.size  = range2( size, {})
 		text         = str_intern("menu_bar")
@@ -120,10 +125,19 @@ ui_screen_menu_bar_builder :: proc( captures : rawptr = nil ) -> (should_raise :
 	spacer.layout.flags |= {.Fixed_Width}
 	spacer.layout.size.min.x = 30
 
+	scope(theme_button)
+	Build_Logger_Scope_Btn: {
+		using logger_scope_btn
+		logger_scope_btn    = ui_button("Menu Bar: Logger Scope Btn")
+		text                = str_intern("Log Scope")
+		layout.flags        = { .Scale_Width_By_Height_Ratio }
+		layout.size.ratio.x = 2.0
+		if pressed do ui_logger_scope_open()
+	}
+
 	Build_Settings_Btn: {
-		scope(theme_button)
 		using settings_btn
-		widget              = ui_button("Menu Bar: Settings Btn")
+		settings_btn        = ui_button("Menu Bar: Settings Btn")
 		text                = str_intern("Settings")
 		layout.flags        = { .Scale_Width_By_Height_Ratio }
 		layout.size.ratio.x = 2.0

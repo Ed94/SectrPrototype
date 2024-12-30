@@ -313,8 +313,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		using screen_ui
 		menu_bar.pos  = { -260, -200 }
 		// menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
-		menu_bar.size = {140, 40}
+		menu_bar.size = {240, 40}
 
+		logger_scope.min_size  = {360, 200}
 		settings_menu.min_size = {360, 200}
 	}
 

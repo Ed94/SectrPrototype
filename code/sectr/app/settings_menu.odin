@@ -23,8 +23,8 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 {
 	profile("Settings Menu")
 	settings_menu := cast(^UI_SettingsMenu) captures
-
 	if ! settings_menu.is_open do return
+
 	app_color := app_color_theme()
 
 	using settings_menu
@@ -32,7 +32,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 	if size.y < min_size.y do size.y = min_size.y
 
 	scope(theme_window_panel)
-	container = ui_widget("Settings Menu", {});
+	container = ui_widget("Settings Menu: Window", {});
 	setup_container:
 	{
 		using container
@@ -57,6 +57,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 		dragged      := ui_resizable_handles( & container, & pos, & size)
 		should_raise |= dragged
 	
+		// TODO(Ed): This demonstrated a minimum viable-size window to content, however we still need to support a scroll box and switch this window to that.
 		old_vbox := ui_box_from_key(get_ui_context_mut().prev_cache, ui_key_from_string("Settings Menu: VBox"))
 		if old_vbox != nil
 		{
@@ -77,7 +78,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 
 	vbox := ui_vbox_begin( .Top_To_Bottom, "Settings Menu: VBox", {.Mouse_Clickable}, compute_layout = true )
 	{
-		// should_raise |= b32(vbox.active)
+		should_raise |= b32(vbox.active)
 		ui_parent(vbox)
 
 		Frame_Bar:
@@ -124,6 +125,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 		app_config_closed:
 		{
 			dd_app_config.title.layout.font_size = 12
+			should_raise |= cast(b32) dd_app_config.btn.active
 			if ! dd_app_config.is_open do break app_config_closed
 
 			ui_settings_entry_inputbox :: proc( input_box : ^UI_TextInputBox, is_even : bool, label : string, setting_title : StrRunesPair, input_policy : UI_TextInput_Policy )
