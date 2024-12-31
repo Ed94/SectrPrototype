@@ -402,7 +402,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	slot_position, slot_size := atlas_bbox( atlas, region_kind, atlas_index )
 
 	dst_glyph_position := slot_position
-	dst_glyph_size     := (bounds_size * entry.size_scale + glyph_padding)
+	dst_glyph_size     := ceil(bounds_size * entry.size_scale + glyph_padding)
 	dst_size           := (slot_size)
 	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, atlas_size )
 	screenspace_x_form( & slot_position,      & dst_size,       atlas_size )

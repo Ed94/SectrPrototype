@@ -70,7 +70,9 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 			joined_size          := size_range2( vbox_children_bounds )
 			if ! dragged 
 			{
-				min_size.y = joined_size.y
+				// TODO(Ed): Figure out what this value is
+				extra_padding :: 3
+				min_size.y = joined_size.y + layout.border_width + extra_padding
 				if min_size.y > size.y {
 					pos.y            += (layout.size.min.y - min_size.y) * 0.5
 					layout.pos        = pos
@@ -87,7 +89,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 		ui_parent(vbox)
 
 		Frame_Bar:
-		{
+		{	
 			scope(theme_window_bar)
 			frame_bar := ui_hbox(.Left_To_Right, "Settings Menu: Frame Bar", { .Mouse_Clickable })
 			{

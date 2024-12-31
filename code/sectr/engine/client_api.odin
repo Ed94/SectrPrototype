@@ -522,9 +522,9 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	config := & get_state().config
 	debug  := & get_state().debug
 
-	debug.draw_ui_box_bounds_points = true
+	debug.draw_ui_box_bounds_points = false
 	debug.draw_ui_padding_bounds    = false
-	debug.draw_ui_content_bounds    = true
+	debug.draw_ui_content_bounds    = false
 
 	// config.engine_refresh_hz = 165
 

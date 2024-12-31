@@ -170,6 +170,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 	text_layout.alignment      = { 0.0, 1.0 }
 	text_layout.size.min       = { 1600, 14 }
 	text_style := frame_style_default ^
+	// text_style.text_color = Color_Black
 	text_style_combo := to_ui_style_combo(text_style)
 	text_style_combo.default.bg_color  = Color_Transparent
 	text_style_combo.disabled.bg_color = Color_Transparent
