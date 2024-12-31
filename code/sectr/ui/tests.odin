@@ -288,12 +288,12 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 		if len(line_hbox.text.str) > 0 {
 			array_append( widgets_ptr, line_hbox )
 			text_layout.pos.x  = text_layout.pos.x
-			text_layout.pos.y += size_range2(line_hbox.computed.bounds).y
+			text_layout.pos.y -= size_range2(line_hbox.computed.bounds).y
 		}
 		else {
 			widget := & widgets.data[ widgets.num - 1 ]
 			if widget.box != nil {
-				text_layout.pos.y += size_range2( widget.computed.bounds ).y
+				text_layout.pos.y -= size_range2( widget.computed.bounds ).y
 			}
 		}
 

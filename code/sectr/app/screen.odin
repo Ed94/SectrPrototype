@@ -10,7 +10,7 @@ UI_ScreenState :: struct
 	// docked : UI_Docking,
 
 	menu_bar      : UI_ScreenMenuBar,
-	logger_scope  : UI_LoggerScope,
+	log_scope     : UI_LoggerScope,
 	settings_menu : UI_SettingsMenu
 }
 
@@ -29,7 +29,7 @@ ui_screen_tick :: proc( screen_ui : ^UI_ScreenState ) {
 	ui_graph_build( screen_ui )
 	ui_floating_manager( & screen_ui.floating )
 	ui_floating("Menu Bar",      & screen_ui.menu_bar,      ui_screen_menu_bar_builder)
-	ui_floating("Logger Scope",  & screen_ui.logger_scope,  ui_logger_scope_builder)
+	ui_floating("Logger Scope",  & screen_ui.log_scope,     ui_log_scope_builder)
 	ui_floating("Settings Menu", & screen_ui.settings_menu, ui_settings_menu_builder)
 }
 
@@ -132,7 +132,7 @@ ui_screen_menu_bar_builder :: proc( captures : rawptr = nil ) -> (should_raise :
 		text                = str_intern("Log Scope")
 		layout.flags        = { .Scale_Width_By_Height_Ratio }
 		layout.size.ratio.x = 2.0
-		if pressed do ui_logger_scope_open()
+		if pressed do ui_log_scope_open()
 	}
 
 	Build_Settings_Btn: {

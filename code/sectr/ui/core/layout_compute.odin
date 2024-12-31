@@ -204,7 +204,6 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	}
 	computed.fresh = true && !dont_mark_fresh
 
-	content_size := size_range2(computed.bounds)
 	if .Order_Children_Left_To_Right in layout.flags {
 		ui_layout_children_horizontally( box, .Left_To_Right )
 	}
@@ -236,7 +235,8 @@ ui_compute_children_overall_bounds :: proc ( box : ^UI_Box ) -> ( children_bound
 
 ui_box_compute_layout_children :: proc( box : ^UI_Box )
 {
-	for current := box.first; current != nil && current.prev != box; current = ui_box_traverse_next_breadth_first( current, )
+	// for current := box.first; current != nil && current.prev != box; current = ui_box_traverse_next_breadth_first( current, )
+	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next_depth_first( current, parent_limit = box )
 	{
 		if current == box do return
 		if current.computed.fresh do continue

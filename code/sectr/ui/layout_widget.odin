@@ -5,6 +5,8 @@ import lalg "core:math/linalg"
 
 /*
 Widget Layout Ops
+
+TODO(Ed): Review this file, these are can now be done with ui_box_compute_layout
 */
 
 ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_LayoutDirection_X, width_ref : ^f32 = nil )

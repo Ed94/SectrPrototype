@@ -40,7 +40,7 @@ ui_drop_down :: proc( drop_down : ^UI_DropDown, label : string, title_text : Str
 	direction         := UI_LayoutDirection_Y.Top_To_Bottom,
 	btn_flags         := UI_BoxFlags{},
 	vb_flags          := UI_BoxFlags{},
-	vb_compute_layout := true,
+	vb_compute_layout := false,
 	btn_theme   : ^UI_Theme = nil,
 	title_theme : ^UI_Theme = nil,
 	vb_parent   : ^UI_Box   = nil,
@@ -125,6 +125,8 @@ fixed size or "scale by ratio" flags are not used for the width.
 The hbox will use the anchor's (range2) ratio.x value to determine the "stretch ratio".
 
 Keep in mind the stretch ratio is only respected if no size.min.x value is violated for each of the widgets.
+
+TODO(Ed): We may no longer need to manually handle early compute_layout or direct calls to ui_layout_children_horizontally
 */
 
 UI_HBox :: struct {
@@ -151,7 +153,7 @@ ui_hbox_begin :: proc( direction : UI_LayoutDirection_X, label : string, flags :
 ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil, compute_layout := false )
 {
 	// profile(#procedure)
-	// if compute_layout do ui_box_compute_layout(hbox.box, dont_mark_fresh = true)
+	if compute_layout do ui_box_compute_layout(hbox.box, dont_mark_fresh = true)
 	// ui_layout_children_horizontally( hbox.box, hbox.direction, width_ref )
 }
 
@@ -757,6 +759,8 @@ fixed size or "scale by ratio" flags are not used for the width.
 The hbox will use the anchor's (range2) ratio.y value to determine the "stretch ratio".
 
 Keep in mind the stretch ratio is only respected if no size.min.y value is violated for each of the widgets.
+
+TODO(Ed): We may no longer need to manually handle early compute_layout or direct calls to ui_layout_children_horizontally
 */
 
 UI_VBox :: struct {
@@ -769,7 +773,7 @@ ui_vbox_begin :: proc( direction : UI_LayoutDirection_Y, label : string, flags :
 	vbox.direction = direction
 	vbox.box       = ui_box_make( flags, label )
 	vbox.signal    = ui_signal_from_box( vbox.box )
-	// if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
+	if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
 	switch direction {
 		case .Top_To_Bottom:
 			vbox.layout.flags |= { .Order_Children_Top_To_Bottom }
@@ -782,7 +786,7 @@ ui_vbox_begin :: proc( direction : UI_LayoutDirection_Y, label : string, flags :
 // Auto-layout children
 ui_vbox_end :: proc( vbox : UI_VBox, height_ref : ^f32 = nil, compute_layout := false ) {
 	// profile(#procedure)
-	// if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
+	if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
 	// ui_layout_children_vertically( vbox.box, vbox.direction, height_ref )
 }
 

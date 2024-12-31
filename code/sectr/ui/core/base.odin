@@ -228,9 +228,9 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 		render_queue := array_to_slice(ui.render_queue)
 		for current := root.first; current != nil; current = ui_box_tranverse_next_depth_first( current )
 		{
-			// if ! current.computed.fresh {
+			if ! current.computed.fresh {
 				ui_box_compute_layout( current )
-			// }
+			}
 
 			when UI_Render_Method == .Layers
 			{

@@ -83,6 +83,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 	}
 	ui_parent(container)
 
+	scope(theme_transparent)
 	vbox := ui_vbox_begin( .Top_To_Bottom, "Settings Menu: VBox", {.Mouse_Clickable}, compute_layout = false )
 	{
 		should_raise |= b32(vbox.active)

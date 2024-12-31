@@ -280,8 +280,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
 		// font_open_sans  = font_load( path_open_sans, 16.0, "OpenSans" )
 
-		// path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
-		// font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
+		path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
+		font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
 
 		// path_neodgm_code := strings.concatenate( { Path_Assets, "neodgm_code.ttf"} )
 		// font_neodgm_code  = font_load( path_neodgm_code, 32.0, "NeoDunggeunmo Code" )
@@ -289,8 +289,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_rec_mono_linear := strings.concatenate( { Path_Assets, "RecMonoLinear-Regular-1.084.ttf" })
 		// font_rec_mono_linear  = font_load( path_rec_mono_linear, 16.0, "RecMonoLinear Regular" )
 
-		path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
-		font_roboto_regular  = font_load( path_roboto_regular, 32.0, "Roboto Regular" )
+		// path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
+		// font_roboto_regular  = font_load( path_roboto_regular, 32.0, "Roboto Regular" )
 
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
@@ -298,7 +298,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
-		default_font = font_roboto_regular
+		default_font = font_noto_sans
 		log( "Default font loaded" )
 	}
 
@@ -315,7 +315,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// menu_bar.pos  = Vec2(app_window.extent) * { -1, 1 }
 		menu_bar.size = {240, 40}
 
-		logger_scope.min_size  = {360, 200}
+		log_scope.min_size     = {360, 200}
 		settings_menu.min_size = {360, 200}
 	}
 

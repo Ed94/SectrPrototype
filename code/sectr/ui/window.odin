@@ -3,12 +3,9 @@ package sectr
 UI_Window :: struct
 {
 	frame        : UI_Widget,
+	vb           : UI_VBox,
 	bar          : UI_HBox,
-	children_box : struct #raw_union { 
-		box   : UI_Widget,
-		hbox  : UI_HBox,
-		vbox  : UI_VBox,
-	},
+	children_box : UI_Widget,
 	tile_text    : UI_Widget,
 	maximize_btn : UI_Widget,
 	close_btn    : UI_Widget,
@@ -58,47 +55,52 @@ ui_window_begin :: proc( window : ^UI_Window, label : string,
 	if size.x < min_size.x do size.x = min_size.x
 	if size.y < min_size.y do size.y = min_size.y
 
+	scope(theme_window_panel)
 	frame = ui_widget(label, {})
-	using frame
+	ui_parent(frame)
 
 	if ! is_maximized 
 	{
-		layout.flags = {
-			.Fixed_Width, .Fixed_Height, 
+		frame.layout.flags = {
+			.Fixed_Width, .Fixed_Height,
 			.Fixed_Position_X, .Fixed_Position_Y, 
-			.Origin_At_Anchor_Center 
+			.Origin_At_Anchor_Center,
+			// .Order_Children_Top_To_Bottom,
 		}
-		layout.pos   = position
-		layout.size  = range2( size, {})
+		frame.layout.pos   = position
+		frame.layout.size  = range2( size, {})
 	}
 	else
 	{
-		layout.flags = {.Origin_At_Anchor_Center }
-		layout.pos   = {}
+		frame.layout.flags = {.Origin_At_Anchor_Center }
+		frame.layout.pos   = {}
 	}
 
 	if resizable {
 		resized = ui_resizable_handles( & frame, & position, & size)
 	}
 
+	scope(theme_transparent)
+	vb = ui_vbox(.Top_To_Bottom, str_fmt_tmp("%s.vb", label))
+
 	if len(title.str) > 0 || closable || maximizable || draggable {
 		dragged, maximized, closed = ui_window_bar(window, title, closable, maximizable, draggable)
 	}
 
-	// child_bounds = bar.computed.bounds = 
-	// child_position
-
+	children_box = ui_widget(str_fmt_tmp("%v.children_box", label), {})
 	switch child_layout
 	{
-		case .None:
-
-
 		case .Left_To_Right:
+			children_box.layout.flags |= {.Order_Children_Left_To_Right}
 		case .Right_to_Left:
+			children_box.layout.flags |= {.Order_Children_Right_To_Left}
 		case .Top_To_Bottom:
+			children_box.layout.flags |= {.Order_Children_Top_To_Bottom}
 		case .Bottom_To_Top:
+			children_box.layout.flags |= {.Order_Children_Bottom_To_Top}
+		case .None: 
+			// Do nothing
 	}
-
 	return
 }
 
@@ -130,13 +132,13 @@ ui_window_bar :: proc( window : ^UI_Window,
 	draggable_flag : UI_BoxFlags = draggable ? {.Mouse_Clickable} : {}
 
 	scope(theme_window_bar)
-	bar = ui_hbox(.Left_To_Right, str_intern_fmt("%v.bar", frame.label). str, draggable_flag);
+	bar = ui_hbox(.Left_To_Right, str_fmt_tmp("%s.bar", frame.label.str), draggable_flag);
 	ui_parent(bar)
 
 	if len(title.str) > 0
 	{
 		scope(theme_text)
-		tile_text = ui_text( str_intern_fmt("%v.title_text", bar.label).str, title, {.Disabled}); {
+		tile_text = ui_text( str_fmt_tmp("%s.title_text", bar.label.str), title, {.Disabled}); {
 			using tile_text
 			layout.anchor.ratio.x = 1.0
 			layout.margins        = { 0, 0, 15, 0}
@@ -147,7 +149,7 @@ ui_window_bar :: proc( window : ^UI_Window,
 	scope(theme_window_bar_btn)
 	if maximizable 
 	{
-		maximize_btn = ui_button( str_intern_fmt("%v.maximize_btn", bar.label).str ); {
+		maximize_btn = ui_button( str_fmt_tmp("%v.maximize_btn", bar.label.str) ); {
 			using maximize_btn
 			if maximize_btn.pressed {
 				is_maximized = ~is_maximized
@@ -159,7 +161,7 @@ ui_window_bar :: proc( window : ^UI_Window,
 	}
 	if closable
 	{
-		close_btn = ui_button( str_intern_fmt("%v.close_btn", bar.label).str ); {
+		close_btn = ui_button( str_fmt_tmp("%v.close_btn", bar.label) ); {
 			using close_btn
 			text = str_intern("close")
 			if close_btn.hot     do style.bg_color = app_color_theme().window_btn_close_bg_hot
