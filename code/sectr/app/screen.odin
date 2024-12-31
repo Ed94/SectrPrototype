@@ -98,7 +98,7 @@ ui_screen_menu_bar_builder :: proc( captures : rawptr = nil ) -> (should_raise :
 	scope(theme_app_menu_bar)
 	container = ui_hbox( .Left_To_Right, "Menu Bar" ); {
 		using container
-		layout.flags = {
+		layout.flags |= {
 			.Fixed_Position_X, .Fixed_Position_Y, 
 			// .Min_Size_To_Content_X,
 			.Fixed_Width, .Fixed_Height, 

@@ -85,7 +85,20 @@ ui_window_begin :: proc( window : ^UI_Window, label : string,
 		dragged, maximized, closed = ui_window_bar(window, title, closable, maximizable, draggable)
 	}
 
-	
+	// child_bounds = bar.computed.bounds = 
+	// child_position
+
+	switch child_layout
+	{
+		case .None:
+
+
+		case .Left_To_Right:
+		case .Right_to_Left:
+		case .Top_To_Bottom:
+		case .Bottom_To_Top:
+	}
+
 	return
 }
 
@@ -128,7 +141,6 @@ ui_window_bar :: proc( window : ^UI_Window,
 			layout.anchor.ratio.x = 1.0
 			layout.margins        = { 0, 0, 15, 0}
 			layout.font_size      = 14
-		
 		}
 	}
 

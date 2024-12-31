@@ -102,7 +102,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	border_offset := Vec2	{ layout.border_width, layout.border_width }
 
 	// TODO(Ed): These are still WIP
-	if .Size_To_Content in layout.flags {
+	if .Size_To_Content_XY in layout.flags {
 		// Preemtively traverse the children of this parent and have them compute their layout.
 		// This parent will just set its size to the max bounding area of those children.
 		// This will recursively occur if child also depends on their content size from their children, etc.
@@ -114,7 +114,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		)
 		adjusted_size = size_range2( resolved_bounds )
 	}
-	if .Min_Size_To_Content_X in layout.flags {
+	if .Size_To_Content_X in layout.flags {
 		children_bounds := ui_compute_children_overall_bounds(box)
 		resolved_bounds := range2(
 			children_bounds.min - { layout.padding.left,  layout.padding.bottom } - border_offset,
@@ -122,7 +122,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		)
 		adjusted_size.x = size_range2( resolved_bounds ).x
 	}
-	if .Min_Size_To_Content_Y in layout.flags {
+	if .Size_To_Content_Y in layout.flags {
 		children_bounds := ui_compute_children_overall_bounds(box)
 		// resolved_bounds := range2(
 		// 	children_bounds.min - { layout.padding.left,  layout.padding.bottom } - border_offset,
@@ -203,6 +203,20 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 		computed.text_pos  = text_pos
 	}
 	computed.fresh = true && !dont_mark_fresh
+
+	content_size := size_range2(computed.bounds)
+	if .Order_Children_Left_To_Right in layout.flags {
+		ui_layout_children_horizontally( box, .Left_To_Right )
+	}
+	else if .Order_Children_Right_To_Left in layout.flags {
+		ui_layout_children_horizontally( box, .Right_To_Left )
+	}
+	else if .Order_Children_Top_To_Bottom in layout.flags {
+		ui_layout_children_vertically( box, .Top_To_Bottom )
+	}
+	else if .Order_Children_Bottom_To_Top in layout.flags {
+		ui_layout_children_vertically( box, .Bottom_To_Top )
+	}
 }
 
 ui_compute_children_overall_bounds :: proc ( box : ^UI_Box ) -> ( children_bounds : Range2 )
@@ -222,7 +236,7 @@ ui_compute_children_overall_bounds :: proc ( box : ^UI_Box ) -> ( children_bound
 
 ui_box_compute_layout_children :: proc( box : ^UI_Box )
 {
-	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next_depth_first( current, parent_limit = box )
+	for current := box.first; current != nil && current.prev != box; current = ui_box_traverse_next_breadth_first( current, )
 	{
 		if current == box do return
 		if current.computed.fresh do continue

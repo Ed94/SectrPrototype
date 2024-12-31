@@ -85,11 +85,11 @@ UI_LayoutSide :: struct {
 	// }
 }
 
+// Auto-Layout Flags (used by ui_box_compute_layout)
 UI_LayoutFlag :: enum u32 {
-
-	// Will NOT perform scissor pass on children to their parent's bounds
-	// (Specified in the parent)
-	Dont_Clip_Children_To_bounds,
+	// Will perform scissor pass on children to their parent's bounds (Specified in the parent)
+	// Most boxes don't need a scissor pass so its opt-in.
+	Clip_Children_To_bounds,
 
 	// Enforces the box will always remain in a specific position relative to the parent.
 	// Overriding the anchors and margins.
@@ -105,6 +105,17 @@ UI_LayoutFlag :: enum u32 {
 	Fixed_Width,
 	Fixed_Height,
 
+	// If using any of the order children flags, choose only one (it doesn't make sense to use more than one)
+
+	// Will apply horizontal layout to children ordered left to right
+	Order_Children_Left_To_Right,
+	// Will apply horizontal layout to children ordered right to left
+	Order_Children_Right_To_Left,
+	// Will apply vertical layout to children ordered top to bottom
+	Order_Children_Top_To_Bottom,
+	// Will apply vertical layout to children ordered bottom to top
+	Order_Children_Bottom_To_Top,
+
 	// Enforces the widget will have a width specified as a ratio of its height (use the size.min/max.x to specify the scalar)
 	// If you wish for the width to stay fixed couple with the Fixed_Width flag
 	Scale_Width_By_Height_Ratio,
@@ -116,14 +127,13 @@ UI_LayoutFlag :: enum u32 {
 	// By Default, the origin is at the top left of the anchor's bounds (traditional)
 	Origin_At_Anchor_Center,
 
-	// TODO(Ed): Implement this!
-	// For this to work, the children must have a minimum size set & their size overall must be greater than the parent's minimum size
-	Size_To_Content,
-
+	// TODO(Ed): auto-layout for size to content not functioning yet for at least hbox and vbox. (use ui_size_to_content_ procs for now)
+	// Will set minimum size to the child with the furthest bounds on X and Y
+	Size_To_Content_XY,
 	// Will set minimum size to the child with the furthest bounds on X
-	Min_Size_To_Content_X,
+	Size_To_Content_X,
 	// Will set minimum size to the child with the furthest bounds on Y
-	Min_Size_To_Content_Y,
+	Size_To_Content_Y,
 
 	// Will size the box to its text.
 	Size_To_Text,

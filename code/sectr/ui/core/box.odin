@@ -155,7 +155,7 @@ ui_box_tranverse_next_depth_first :: #force_inline proc "contextless" (box : ^UI
 	return nil
 }
 
-// Traveral pritorizes traversing a "anestry layer"
+// Traveral pritorizes traversing a "ancestry layer"
 ui_box_traverse_next_breadth_first :: proc "contextless" ( box : ^UI_Box, bypass_intersection_test := false, ctx : ^UI_State = nil ) -> (^UI_Box)
 {
 	ctx := ctx

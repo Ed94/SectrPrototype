@@ -61,7 +61,7 @@ ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text
 	btn_theme   : ^UI_Theme = nil,
 	title_theme : ^UI_Theme = nil,
 	vb_parent   : ^UI_Box   = nil,
-	vb_compute_layout := true )
+	vb_compute_layout := false )
 {
 	using drop_down
 
@@ -106,7 +106,7 @@ ui_drop_down_end :: proc( drop_down : ^UI_DropDown ) {
 
 ui_drop_down_end_auto :: proc( drop_down : ^UI_DropDown) {
 	if ! drop_down.is_open do return
-	ui_vbox_end(drop_down.vbox, compute_layout = true)
+	ui_vbox_end(drop_down.vbox, compute_layout = false)
 	ui_parent_pop()
 }
 #endregion("Drop Down")
@@ -138,27 +138,33 @@ ui_hbox_begin :: proc( direction : UI_LayoutDirection_X, label : string, flags :
 	hbox.box       = ui_box_make( flags, label )
 	hbox.signal    = ui_signal_from_box(hbox.box)
 	// ui_box_compute_layout(hbox)
+	switch direction {
+		case .Left_To_Right:
+			hbox.layout.flags |= { .Order_Children_Left_To_Right }
+		case .Right_To_Left:
+			hbox.layout.flags |= { .Order_Children_Right_To_Left }
+	}
 	return
 }
 
 // Auto-layout children
-ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil, compute_layout := true )
+ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil, compute_layout := false )
 {
 	// profile(#procedure)
-	if compute_layout do ui_box_compute_layout(hbox.box, dont_mark_fresh = true)
-	ui_layout_children_horizontally( hbox.box, hbox.direction, width_ref )
+	// if compute_layout do ui_box_compute_layout(hbox.box, dont_mark_fresh = true)
+	// ui_layout_children_horizontally( hbox.box, hbox.direction, width_ref )
 }
 
-@(deferred_out = ui_hbox_end_auto)
-ui_hbox :: #force_inline proc( direction : UI_LayoutDirection_X, label : string, flags : UI_BoxFlags = {} ) -> (hbox : UI_HBox) {
+@(deferred_in_out= ui_hbox_end_auto)
+ui_hbox :: #force_inline proc( direction : UI_LayoutDirection_X, label : string, flags : UI_BoxFlags = {}, width_ref : ^f32 = nil ) -> (hbox : UI_HBox) {
 	hbox = ui_hbox_begin(direction, label, flags)
 	ui_parent_push(hbox.box)
 	return
 }
 
 // Auto-layout children and pop parent from parent stack
-ui_hbox_end_auto :: proc( hbox : UI_HBox ) {
-	ui_hbox_end(hbox)
+ui_hbox_end_auto :: #force_inline proc( direction : UI_LayoutDirection_X, label : string, flags : UI_BoxFlags = {}, width_ref : ^f32 = nil, hbox : UI_HBox ) {
+	ui_hbox_end(hbox, width_ref)
 	ui_parent_pop()
 }
 #endregion("Horizontal Box")
@@ -191,7 +197,7 @@ ui_resizable_begin :: proc( label : string, flags : UI_BoxFlags = {},
 	corner_tl := true,
 	corner_br := true,
 	corner_bl := true,
-	compute_layout := true ) -> (resizable : UI_Resizable)
+	compute_layout := false ) -> (resizable : UI_Resizable)
 {
 	resizable.box    = ui_box_make(flags, label)
 	resizable.signal = ui_signal_from_box(resizable.box)
@@ -238,7 +244,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	corner_tl := true,
 	corner_br := true,
 	corner_bl := true,
-	compute_layout := true) -> (drag_signal : b32)
+	compute_layout := false) -> (drag_signal : b32)
 {
 	profile(#procedure)
 	handle_left      : UI_Widget
@@ -758,31 +764,37 @@ UI_VBox :: struct {
 	direction    : UI_LayoutDirection_Y,
 }
 
-ui_vbox_begin :: proc( direction : UI_LayoutDirection_Y, label : string, flags : UI_BoxFlags = {}, compute_layout := false ) -> (vbox : UI_VBox) {
+ui_vbox_begin :: proc( direction : UI_LayoutDirection_Y, label : string, flags : UI_BoxFlags = {}, height_ref : ^f32 = nil, compute_layout := false ) -> (vbox : UI_VBox) {
 	// profile(#procedure)
 	vbox.direction = direction
 	vbox.box       = ui_box_make( flags, label )
 	vbox.signal    = ui_signal_from_box( vbox.box )
-	if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
+	// if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
+	switch direction {
+		case .Top_To_Bottom:
+			vbox.layout.flags |= { .Order_Children_Top_To_Bottom }
+		case .Bottom_To_Top:
+			vbox.layout.flags |= { .Order_Children_Bottom_To_Top }
+	}
 	return
 }
 
 // Auto-layout children
-ui_vbox_end :: proc( vbox : UI_VBox, height_ref : ^f32 = nil, compute_layout := true ) {
+ui_vbox_end :: proc( vbox : UI_VBox, height_ref : ^f32 = nil, compute_layout := false ) {
 	// profile(#procedure)
-	if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
-	ui_layout_children_vertically( vbox.box, vbox.direction, height_ref )
+	// if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
+	// ui_layout_children_vertically( vbox.box, vbox.direction, height_ref )
 }
 
 // Auto-layout children and pop parent from parent stack
-ui_vbox_end_pop_parent :: proc( vbox : UI_VBox ) {
+ui_vbox_end_pop_parent :: proc( direction : UI_LayoutDirection_Y, label : string, flags : UI_BoxFlags = {}, height_ref : ^f32 = nil, compute_layout := false, vbox : UI_VBox) {
 	ui_parent_pop()
 	ui_vbox_end(vbox)
 }
 
-@(deferred_out = ui_vbox_end_pop_parent)
-ui_vbox :: #force_inline proc( direction : UI_LayoutDirection_Y, label : string, flags : UI_BoxFlags = {}, compute_layout := false ) -> (vbox : UI_VBox) {
-	vbox = ui_vbox_begin(direction, label, flags, compute_layout )
+@(deferred_in_out = ui_vbox_end_pop_parent)
+ui_vbox :: #force_inline proc( direction : UI_LayoutDirection_Y, label : string, flags : UI_BoxFlags = {}, height_ref : ^f32 = nil, compute_layout := false ) -> (vbox : UI_VBox) {
+	vbox = ui_vbox_begin(direction, label, flags, height_ref, compute_layout )
 	ui_parent_push(vbox.widget)
 	return
 }

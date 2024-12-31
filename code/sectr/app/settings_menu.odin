@@ -83,7 +83,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 	}
 	ui_parent(container)
 
-	vbox := ui_vbox_begin( .Top_To_Bottom, "Settings Menu: VBox", {.Mouse_Clickable}, compute_layout = true )
+	vbox := ui_vbox_begin( .Top_To_Bottom, "Settings Menu: VBox", {.Mouse_Clickable}, compute_layout = false )
 	{
 		should_raise |= b32(vbox.active)
 		ui_parent(vbox)
@@ -128,7 +128,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 		}
 
 		// TODO(Ed): This will eventually be most likely generalized/compressed. For now its the main scope for implementing new widgets.
-		dd_app_config := ui_drop_down( & cfg_drop_down, "settings_menu.dd_app_config", str_intern("App Config"), vb_compute_layout = true);
+		dd_app_config := ui_drop_down( & cfg_drop_down, "settings_menu.dd_app_config", str_intern("App Config"), vb_compute_layout = false);
 		app_config_closed:
 		{
 			dd_app_config.title.layout.font_size = 12
@@ -142,9 +142,9 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				hb := ui_hbox(.Left_To_Right, str_intern_fmt("%v.hb", label).str); {
 					using hb
 
-					layout.size.min = {0, 25}
-					layout.flags    = {.Fixed_Height}
-					layout.padding  = to_ui_layout_side(4)
+					layout.size.min  = {0, 25}
+					layout.flags    |= {.Fixed_Height}
+					layout.padding   = to_ui_layout_side(4)
 				}
 
 				scope(theme_text)
@@ -158,11 +158,11 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				ui_text_input_box( input_box, str_intern_fmt("%v.input_box", label).str, allocator = persistent_slab_allocator(), policy = input_policy )
 				{
 					using input_box
-					layout.flags          = {.Fixed_Width}
-					layout.margins.left   = 5
-					layout.padding.right  = 5
-					layout.size.min.x     = 80
-					style.corner_radii    = { 3, 3, 3, 3 }
+					layout.flags          |= {.Fixed_Width}
+					layout.margins.left    = 5
+					layout.padding.right   = 5
+					layout.size.min.x      = 80
+					style.corner_radii     = { 3, 3, 3, 3 }
 				}
 			}
 
@@ -172,9 +172,9 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 			{
 				scope(theme_table_row(is_even = false))
 				hb := ui_hbox(.Left_To_Right, "settings_menu.engine_refresh_hz.hb"); { using hb
-					layout.size.min = {0, 25}
-					layout.flags    = {.Fixed_Height}
-					layout.padding  = to_ui_layout_side(4)
+					layout.size.min  = {0, 25}
+					layout.flags    |= {.Fixed_Height}
+					layout.padding   = to_ui_layout_side(4)
 				}
 
 				title : UI_Widget; {
@@ -225,9 +225,9 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				scope( theme_table_row(is_even = true))
 				hb := ui_hbox(.Left_To_Right, "settings_menu.cam_min_zoom.hb"); {
 					using hb
-					layout.size.min = {0, 25}
-					layout.flags    = {.Fixed_Height}
-					layout.padding  = to_ui_layout_side(4)
+					layout.size.min  = {0, 25}
+					layout.flags    |= {.Fixed_Height}
+					layout.padding   = to_ui_layout_side(4)
 				}
 				scope(theme_text)
 				title := ui_text("settings_menu.cam_min_zoom.title", str_intern("Camera: Min Zoom")); {
@@ -276,9 +276,9 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				scope( theme_table_row(is_even = false))
 				hb := ui_hbox(.Left_To_Right, "settings_menu.cam_max_zoom.hb"); {
 					using hb
-					layout.size.min = {0, 25}
-					layout.flags    = {.Fixed_Height}
-					layout.padding  = to_ui_layout_side(4)
+					layout.size.min  = {0, 25}
+					layout.flags    |= {.Fixed_Height}
+					layout.padding   = to_ui_layout_side(4)
 				}
 				scope(theme_text)
 				title := ui_text("settings_menu.cam_max_zoom.title", str_intern("Camera: Max Zoom")); {
@@ -299,11 +299,11 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 					ui_text_input_box( & max_zoom_inputbox, "settings_menu.cam_max_zoom.input_box", allocator = persistent_slab_allocator() )
 					{
 						using max_zoom_inputbox
-						layout.flags          = {.Fixed_Width}
-						layout.margins.left   = 5
-						layout.padding.right  = 5
-						layout.size.min.x     = 80
-						style.corner_radii    = { 3, 3, 3, 3 }
+						layout.flags          |= {.Fixed_Width}
+						layout.margins.left    = 5
+						layout.padding.right   = 5
+						layout.size.min.x      = 80
+						style.corner_radii     = { 3, 3, 3, 3 }
 
 						if was_active
 						{
@@ -328,9 +328,9 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				hb := ui_hbox(.Left_To_Right, "settings_menu.cam_zoom_mode.hb"); {
 					using hb
 
-					layout.size.min = {0, 35}
-					layout.flags    = {.Fixed_Height}
-					layout.padding  = to_ui_layout_side(4)
+					layout.size.min  = {0, 35}
+					layout.flags    |= {.Fixed_Height}
+					layout.padding   = to_ui_layout_side(4)
 				}
 
 				scope(theme_text)
@@ -344,7 +344,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				// TODO(Ed): This is technically a manual drop-down as the vbox within ui_dropdown is unusuable for attaching the buttons
 				// This can be alleviated if we add an option for the drop-down to support a floating vbox (fixed position computed, following drop_down btn)
 				// For now its buttons are attached to app_config vbox
-				mode_selector := ui_drop_down( & zoom_mode_drop_down, "settings_menu.cam_zoom_mode.drop_down", str_intern_fmt("%s", config.cam_zoom_mode), vb_compute_layout = true );
+				mode_selector := ui_drop_down( & zoom_mode_drop_down, "settings_menu.cam_zoom_mode.drop_down", str_intern_fmt("%s", config.cam_zoom_mode), vb_compute_layout = false );
 				mode_selector_closed:
 				{
 					using mode_selector
@@ -359,11 +359,11 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 						btn := ui_button(str_intern_fmt("settings_menu.cam_zoom_mode.%s.btn", entry).str)
 						{
 								using btn
-								layout.size.min    = {100, 25}
-								layout.alignment   = {1.0, 0}
-								layout.anchor.left = 1.0
-								layout.flags       = {.Fixed_Height}
-								layout.padding     = to_ui_layout_side(4)
+								layout.size.min     = {100, 25}
+								layout.alignment    = {1.0, 0}
+								layout.anchor.left  = 1.0
+								layout.flags       |= {.Fixed_Height}
+								layout.padding      = to_ui_layout_side(4)
 
 								ui_parent(btn)
 								scope(theme_text)

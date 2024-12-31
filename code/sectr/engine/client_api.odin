@@ -271,8 +271,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 32.0, "Squidgy_Slime" )
 
-		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
-		font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
+		// path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
+		// font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
 		
 		// path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
 		// font_fira_cousine  = font_load( path_fira_cousine, 16.0, "Fira Cousine" )
@@ -289,8 +289,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_rec_mono_linear := strings.concatenate( { Path_Assets, "RecMonoLinear-Regular-1.084.ttf" })
 		// font_rec_mono_linear  = font_load( path_rec_mono_linear, 16.0, "RecMonoLinear Regular" )
 
-		// path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
-		// font_roboto_regular  = font_load( path_roboto_regular, 32.0, "Roboto Regular" )
+		path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
+		font_roboto_regular  = font_load( path_roboto_regular, 32.0, "Roboto Regular" )
 
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
@@ -298,7 +298,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
-		default_font = font_firacode
+		default_font = font_roboto_regular
 		log( "Default font loaded" )
 	}
 
