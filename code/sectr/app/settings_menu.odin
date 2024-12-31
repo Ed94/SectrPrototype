@@ -2,7 +2,7 @@ package sectr
 
 UI_SettingsMenu :: struct
 {
-	container                      : UI_Widget,
+	// using window : UI_Window,
 	engine_refresh_inputbox        : UI_TextInputBox,
 	min_zoom_inputbox              : UI_TextInputBox,
 	max_zoom_inputbox              : UI_TextInputBox,
@@ -14,6 +14,9 @@ UI_SettingsMenu :: struct
 	font_size_screen_scalar_input  : UI_TextInputBox,
 	cfg_drop_down                  : UI_DropDown,
 	zoom_mode_drop_down            : UI_DropDown,
+
+	// Window
+	container                      : UI_Widget,
 	pos, size, min_size            : Vec2,
 	is_open                        : b32,
 	is_maximized                   : b32,
@@ -28,11 +31,13 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 	app_color := app_color_theme()
 
 	using settings_menu
-	if size.x < min_size.x do size.x = min_size.x
-	if size.y < min_size.y do size.y = min_size.y
+	if size.x < settings_menu.min_size.x do size.x = settings_menu.min_size.x
+	if size.y < settings_menu.min_size.y do size.y = settings_menu.min_size.y
 
 	scope(theme_window_panel)
+	// ui_window(& window, "settings_menu.window",  )
 	container = ui_widget("Settings Menu: Window", {});
+	// when false
 	setup_container:
 	{
 		using container
@@ -74,7 +79,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 			}
 		}
 	}
-	ui_parent_push(container)
+	ui_parent(container)
 
 	vbox := ui_vbox_begin( .Top_To_Bottom, "Settings Menu: VBox", {.Mouse_Clickable}, compute_layout = true )
 	{
@@ -121,12 +126,13 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 		}
 
 		// TODO(Ed): This will eventually be most likely generalized/compressed. For now its the main scope for implementing new widgets.
-		dd_app_config := ui_drop_down( & cfg_drop_down, "settings_menu.config", str_intern("App Config"), vb_compute_layout = true);
+		dd_app_config := ui_drop_down( & cfg_drop_down, "settings_menu.dd_app_config", str_intern("App Config"), vb_compute_layout = true);
 		app_config_closed:
 		{
 			dd_app_config.title.layout.font_size = 12
 			should_raise |= cast(b32) dd_app_config.btn.active
 			if ! dd_app_config.is_open do break app_config_closed
+			ui_size_to_content_y( dd_app_config.vbox)
 
 			ui_settings_entry_inputbox :: proc( input_box : ^UI_TextInputBox, is_even : bool, label : string, setting_title : StrRunesPair, input_policy : UI_TextInput_Policy )
 			{
@@ -158,7 +164,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				}
 			}
 
-			config := app_config()
+			config := & get_state().config
 
 			Engine_Refresh_Hz:
 			{
@@ -547,8 +553,6 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 		}
 	}
 	ui_vbox_end(vbox, compute_layout = false )
-
-	ui_parent_pop() // container
 	return
 }
 

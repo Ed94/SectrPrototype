@@ -75,6 +75,8 @@ vec3i_to_vec3 :: #force_inline proc "contextless" (v : Vec3i) -> Vec3 {return tr
 
 #region("Range2")
 
+// TODO(Ed): I rather keep the different usages as different types, then type coerece their procedure mappings
+// to support the base p0, p1 range
 Range2 :: struct #raw_union {
 	using min_max : struct {
 		min, max : Vec2,

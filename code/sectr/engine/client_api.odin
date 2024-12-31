@@ -152,8 +152,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		color_theme = App_Thm_Dusk
 
-		font_size_screen_scalar = 1.0
-		font_size_canvas_scalar = 1.0
+		font_size_screen_scalar = 2.0
+		font_size_canvas_scalar = 2.0
 	}
 
 	Desired_OS_Scheduler_MS :: 1
@@ -519,12 +519,12 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 
 	// rl.PollInputEvents()
 
-	config := app_config()
+	config := & get_state().config
 	debug  := & get_state().debug
 
-	debug.draw_ui_box_bounds_points = false
+	debug.draw_ui_box_bounds_points = true
 	debug.draw_ui_padding_bounds    = false
-	debug.draw_ui_content_bounds    = false
+	debug.draw_ui_content_bounds    = true
 
 	// config.engine_refresh_hz = 165
 

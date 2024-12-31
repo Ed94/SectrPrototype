@@ -13,7 +13,7 @@ ui_logger_scope_builder :: proc( captures : rawptr = nil ) -> ( should_raise : b
 	using logger_scope
 
 	scope(theme_window_panel)
-	dragged, resized, maximized := ui_window_begin( & window, "Logger Scope: Window")
+	dragged, resized, maximized, closed := ui_window( & window, "Logger Scope: Window", str_intern("Log Scope"), child_layout = .Top_To_Bottom )
 
 	should_raise |= dragged | resized | maximized
 	return

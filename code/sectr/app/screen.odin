@@ -1,12 +1,5 @@
 package sectr
 
-UI_ScreenMenuBar :: struct {
-	pos, size        : Vec2,
-	container        : UI_HBox,
-	logger_scope_btn : UI_Widget,
-	settings_btn     : UI_Widget
-}
-
 UI_ScreenState :: struct
 {
 	using base : UI_State,
@@ -38,6 +31,13 @@ ui_screen_tick :: proc( screen_ui : ^UI_ScreenState ) {
 	ui_floating("Menu Bar",      & screen_ui.menu_bar,      ui_screen_menu_bar_builder)
 	ui_floating("Logger Scope",  & screen_ui.logger_scope,  ui_logger_scope_builder)
 	ui_floating("Settings Menu", & screen_ui.settings_menu, ui_settings_menu_builder)
+}
+
+UI_ScreenMenuBar :: struct {
+	pos, size        : Vec2,
+	container        : UI_HBox,
+	logger_scope_btn : UI_Widget,
+	settings_btn     : UI_Widget
 }
 
 ui_screen_menu_bar_builder :: proc( captures : rawptr = nil ) -> (should_raise : b32 = false )
