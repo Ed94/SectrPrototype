@@ -223,7 +223,7 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 		return & surface_slot.value, error
 	}
 
-	if ! surface_slot.occupied
+	if ! surface_slot.occupied || surface_slot.key == key
 	{
 		surface_slot.key      = key
 		surface_slot.value    = value
@@ -257,7 +257,7 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 			}
 		}
 
-		if ! slot.next.occupied
+		if ! slot.next.occupied || surface_slot.key == key
 		{
 			slot.next.key      = key
 			slot.next.value    = value
