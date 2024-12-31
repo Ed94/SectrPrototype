@@ -50,7 +50,6 @@ logger_init :: proc( logger : ^ Logger,  id : string, file_path : string, file :
 	LOGGER_VARENA_BASE_ADDRESS : uintptr = 2 * Terabyte
 	@static vmem_init_counter  : uintptr = 0
 
-	when true {
 	alloc_error : AllocatorError
 	// logger.varena, alloc_error = varena_init(
 	// 	LOGGER_VARENA_BASE_ADDRESS + vmem_init_counter * 250 * Megabyte,
@@ -64,9 +63,8 @@ logger_init :: proc( logger : ^ Logger,  id : string, file_path : string, file :
 	vmem_init_counter += 1
 
 	// TODO(Ed): Figure out another solution here...
-	// logger.entries, alloc_error = array_init(Array(LoggerEntry), 8192, runtime.heap_allocator())
-	// verify( alloc_error == .None, "Failed to allocate logger's entries array")
-	}
+	logger.entries, alloc_error = array_init(Array(LoggerEntry), 8192, runtime.heap_allocator())
+	verify( alloc_error == .None, "Failed to allocate logger's entries array")
 
 	context.logger = { logger_interface, logger, core_log.Level.Debug, core_log.Default_File_Logger_Opts }
 	log("Initialized Logger")

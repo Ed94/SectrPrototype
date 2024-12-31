@@ -235,7 +235,7 @@ ui_resizable_end :: proc( resizable : ^UI_Resizable, pos, size : ^Vec2 ) {
 }
 
 // Adds resizable handles to a widget
-ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
+ui_resizable_handles :: #force_no_inline proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 	handle_width : f32  = 15,
 	theme        : ^UI_Theme = nil,
 	left      := true,
@@ -380,7 +380,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 		}
 	}
 
-	process_handle_drag :: proc ( handle : ^UI_Widget,
+	process_handle_drag :: #force_no_inline proc ( handle : ^UI_Widget,
 		direction                :  Vec2,
 		target_alignment         :  Vec2,
 		target_center_aligned    :  Vec2,
@@ -497,7 +497,7 @@ ui_resizable_handles :: proc( parent : ^UI_Widget, pos : ^Vec2, size : ^Vec2,
 		if corner_bl do drag_signal |= process_handle_drag( & handle_corner_bl, { -1, -1 }, {1,  0}, { 0.5, -0.5}, pos, size, alignment )
 	}
 
-	if drag_signal && compute_layout do ui_box_compute_layout(parent)
+	// if drag_signal && compute_layout do ui_box_compute_layout(parent)
 	return
 }
 #endregion("Resizable")

@@ -338,7 +338,7 @@ pool_validate :: proc( pool : Pool )
 
 pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32
 {
-	profile(#procedure)
+	// profile(#procedure)
 	within_bucket := b32(false)
 
 	// Compiler Bug : Same as pool_reset

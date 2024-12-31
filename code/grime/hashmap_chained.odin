@@ -248,6 +248,7 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 			block          = slice_ptr(transmute([^]byte) raw_mem, slot_size)
 			// block, error = pool_grab(pool, false)
 			next        := transmute( ^HMapChainedSlot(Type)) raw_data(block)
+			next^ = {}
 
 			slot.next      = next
 			slot.next^     = {}
@@ -257,7 +258,7 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 			}
 		}
 
-		if ! slot.next.occupied || surface_slot.key == key
+		if ! slot.next.occupied || slot.next.key == key
 		{
 			slot.next.key      = key
 			slot.next.value    = value

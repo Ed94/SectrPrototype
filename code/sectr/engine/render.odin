@@ -107,7 +107,7 @@ render_mode_2d_workspace :: proc( screen_extent : Vec2, cam : Camera, input : In
 	cam := cam
 	when UI_Render_Method == .Layers {
 		render_list := array_to_slice( ui.render_list )
-		render_ui_via_box_list( render_list, & cam )
+		render_ui_via_box_list( render_list, screen_extent, ve_ctx, ve_render, & cam )
 	}
 	when UI_Render_Method == .Depth_First
 	{
@@ -282,7 +282,7 @@ render_screen_ui :: proc( screen_extent : Extents2, ui : ^UI_State, ve_ctx : ^ve
 
 	when UI_Render_Method == .Layers {
 		render_list := array_to_slice( ui.render_list )
-		render_ui_via_box_list( render_list )
+		render_ui_via_box_list( render_list, screen_extent, ve_ctx, ve_render )
 	}
 	when UI_Render_Method == .Depth_First
 	{
@@ -489,14 +489,14 @@ render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^
 
 		using computed
 
-		profile("enqueue box")
+		// profile("enqueue box")
 
 		GP_Render:
 		{
 			corner_radii_total : f32 = 0
 			for radius in style.corner_radii do corner_radii_total += radius
 
-			profile("draw_shapes")
+			// profile("draw_shapes")
 			if style.bg_color.a != 0
 			{
 				render_set_color( style.bg_color )
@@ -824,7 +824,7 @@ draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, 
 
 draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size : f32, pos : Vec2, cam : Camera, color := Color_White )
 {
-	profile(#procedure)
+	// profile(#procedure)
 	state := get_state(); using state // TODO(Ed): Remove usage of direct access to entire mutable state.
 
 	cam_offset := Vec2 {

@@ -247,6 +247,7 @@ State :: struct {
 	font_neodgm_code             : FontID,
 	font_rec_mono_linear         : FontID,
 	font_roboto_regular          : FontID,
+	font_roboto_mono_regular     : FontID,
 	font_squidgy_slimes          : FontID,
 	font_rec_mono_semicasual_reg : FontID,
 	default_font                 : FontID,

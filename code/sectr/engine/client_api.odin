@@ -283,8 +283,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
 		// font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
 
-		path_neodgm_code := strings.concatenate( { Path_Assets, "neodgm_code.ttf"} )
-		font_neodgm_code  = font_load( path_neodgm_code, 32.0, "NeoDunggeunmo Code" )
+		// path_neodgm_code := strings.concatenate( { Path_Assets, "neodgm_code.ttf"} )
+		// font_neodgm_code  = font_load( path_neodgm_code, 32.0, "NeoDunggeunmo Code" )
 
 		// path_rec_mono_linear := strings.concatenate( { Path_Assets, "RecMonoLinear-Regular-1.084.ttf" })
 		// font_rec_mono_linear  = font_load( path_rec_mono_linear, 16.0, "RecMonoLinear Regular" )
@@ -292,13 +292,16 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
 		// font_roboto_regular  = font_load( path_roboto_regular, 32.0, "Roboto Regular" )
 
-		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
-		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
+		path_roboto_mono_regular := strings.concatenate( { Path_Assets, "RobotoMono-Regular.ttf"} )
+		font_roboto_mono_regular  = font_load( path_roboto_mono_regular, 32.0, "Roboto Mono Regular" )
 
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
-		default_font = font_neodgm_code
+		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
+		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
+
+		default_font = font_roboto_mono_regular
 		log( "Default font loaded" )
 	}
 
