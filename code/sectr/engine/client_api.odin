@@ -354,10 +354,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/ve_fontcache.h", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
-		// debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
+		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
 
-		// debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) 	debug.lorem_content, persistent_slab_allocator() )
-		// verify( alloc_error == .None, "Faield to parse due to allocation failure" )
+		debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) 	debug.lorem_content, persistent_slab_allocator() )
+		verify( alloc_error == .None, "Faield to parse due to allocation failure" )
 
 		// Render texture test
 		// debug.viewport_rt = rl.LoadRenderTexture( 1280, 720 )

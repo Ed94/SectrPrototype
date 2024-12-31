@@ -63,7 +63,8 @@ UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
 UI_Parent_Stack_Size      :: 512
 // UI_Built_Boxes_Array_Size :: 8
-UI_Built_Boxes_Array_Size :: 128 * Kilobyte
+UI_Built_Boxes_Array_Size :: 56 * Kilobyte
+UI_BoxCache_TableSize :: 4 * Kilobyte
 
 UI_RenderEntry :: struct {
 	info        : UI_RenderBoxInfo,
@@ -72,7 +73,7 @@ UI_RenderEntry :: struct {
 	layer_id    : i32,
 }
 
-UI_RenderLayer :: DLL_NodeFL(UI_RenderEntry)\
+UI_RenderLayer :: DLL_NodeFL(UI_RenderEntry)
 
 UI_RenderBoxInfo :: struct {
 	using computed : UI_Computed,
@@ -99,9 +100,9 @@ UI_State :: struct {
 
 	built_box_count : i32,
 
-	caches     : [2] HMapZPL( UI_Box ),
-	prev_cache : ^HMapZPL( UI_Box ),
-	curr_cache : ^HMapZPL( UI_Box ),
+	caches     : [2] HMapChained( UI_Box ),
+	prev_cache : ^HMapChained( UI_Box ),
+	curr_cache : ^HMapChained( UI_Box ),
 
 	// For rendering via a set of layers organized into a single command list
 	// render_queue_builder : SubArena,
@@ -143,7 +144,7 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 	ui^ = {}
 
 	for & cache in ui.caches {
-		box_cache, allocation_error := make( HMapZPL(UI_Box), UI_Built_Boxes_Array_Size, cache_allocator )
+		box_cache, allocation_error := make( HMapChained(UI_Box), UI_BoxCache_TableSize, cache_allocator )
 		verify( allocation_error == AllocatorError.None, "Failed to allocate box cache" )
 		cache = box_cache
 	}
@@ -165,7 +166,7 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 {
 	// We need to repopulate Allocator references
 	for & cache in ui.caches {
-		hmap_zpl_reload( & cache, cache_allocator)
+		hmap_chained_reload( cache, cache_allocator)
 	}
 	ui.render_queue.backing = cache_allocator
 	ui.render_list.backing  = cache_allocator
@@ -454,7 +455,7 @@ ui_hash_part_from_key_string :: proc ( content : string ) -> string {
 ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_Key
 {
 	// profile(#procedure)
-	USE_RAD_DEBUGGERS_METHOD :: true
+	USE_RAD_DEBUGGERS_METHOD :: false
 
 	key : UI_Key
 
