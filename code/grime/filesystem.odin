@@ -12,7 +12,7 @@ file_copy_sync :: proc( path_src, path_dst: string, allocator := context.allocat
 	{
 		path_info, result := file_status( path_src, allocator )
 		if result != os.ERROR_NONE {
-			logf("Could not get file info: %v", result, LogLevel.Error )
+			log_fmt("Could not get file info: %v", result, LogLevel.Error )
 			return false
 		}
 		file_size = path_info.size
@@ -20,14 +20,14 @@ file_copy_sync :: proc( path_src, path_dst: string, allocator := context.allocat
 
 	src_content, result := os.read_entire_file( path_src, allocator )
 	if ! result {
-		logf( "Failed to read file to copy: %v", path_src, LogLevel.Error )
+		log_fmt( "Failed to read file to copy: %v", path_src, LogLevel.Error )
 		runtime.debug_trap()
 		return false
 	}
 
 	result = os.write_entire_file( path_dst, src_content, false )
 	if ! result {
-		logf( "Failed to copy file: %v", path_dst, LogLevel.Error )
+		log_fmt( "Failed to copy file: %v", path_dst, LogLevel.Error )
 		runtime.debug_trap()
 		return false
 	}

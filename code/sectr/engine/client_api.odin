@@ -231,14 +231,14 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		backend := sokol_gfx.query_backend()
 		switch backend
 		{
-			case .D3D11:          logf("sokol_gfx: using D3D11 backend")
-			case .GLCORE, .GLES3: logf("sokol_gfx: using GL backend")
+			case .D3D11:          log_fmt("sokol_gfx: using D3D11 backend")
+			case .GLCORE, .GLES3: log_fmt("sokol_gfx: using GL backend")
 
 			case .METAL_MACOS, .METAL_IOS, .METAL_SIMULATOR:
-				logf("sokol_gfx: using Metal backend")
+				log_fmt("sokol_gfx: using Metal backend")
 
-			case .WGPU:  logf("sokol_gfx: using WebGPU backend")
-			case .DUMMY: logf("sokol_gfx: using dummy backend")
+			case .WGPU:  log_fmt("sokol_gfx: using WebGPU backend")
+			case .DUMMY: log_fmt("sokol_gfx: using dummy backend")
 		}
 
 		render_data.pass_actions.bg_clear_black.colors[0] = sokol_gfx.Color_Attachment_Action {
@@ -280,11 +280,11 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
 		// font_open_sans  = font_load( path_open_sans, 16.0, "OpenSans" )
 
-		path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
-		font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
+		// path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
+		// font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
 
-		// path_neodgm_code := strings.concatenate( { Path_Assets, "neodgm_code.ttf"} )
-		// font_neodgm_code  = font_load( path_neodgm_code, 32.0, "NeoDunggeunmo Code" )
+		path_neodgm_code := strings.concatenate( { Path_Assets, "neodgm_code.ttf"} )
+		font_neodgm_code  = font_load( path_neodgm_code, 32.0, "NeoDunggeunmo Code" )
 
 		// path_rec_mono_linear := strings.concatenate( { Path_Assets, "RecMonoLinear-Regular-1.084.ttf" })
 		// font_rec_mono_linear  = font_load( path_rec_mono_linear, 16.0, "RecMonoLinear Regular" )
@@ -298,7 +298,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
-		default_font = font_noto_sans
+		default_font = font_neodgm_code
 		log( "Default font loaded" )
 	}
 
@@ -354,10 +354,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/ve_fontcache.h", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
-		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
+		// debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
 
-		debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) 	debug.lorem_content, persistent_slab_allocator() )
-		verify( alloc_error == .None, "Faield to parse due to allocation failure" )
+		// debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) 	debug.lorem_content, persistent_slab_allocator() )
+		// verify( alloc_error == .None, "Faield to parse due to allocation failure" )
 
 		// Render texture test
 		// debug.viewport_rt = rl.LoadRenderTexture( 1280, 720 )

@@ -25,7 +25,7 @@ memtracker_clear :: proc ( tracker : MemoryTracker ) {
 		return
 	}
 
-	logf("Clearing tracker: %v", tracker.name)
+	log_fmt("Clearing tracker: %v", tracker.name)
 	memtracker_dump_entries(tracker);
 	array_clear(tracker.entries)
 }
@@ -75,12 +75,12 @@ memtracker_register :: proc( tracker : ^MemoryTracker, new_entry : MemoryTracker
 			memtracker_dump_entries(tracker ^)
 		}
 		array_append_at( & tracker.entries, new_entry, idx )
-		logf("Registered: %v -> %v | %v", new_entry.start, new_entry.end, tracker.name)
+		log_fmt("Registered: %v -> %v | %v", new_entry.start, new_entry.end, tracker.name)
 		return
 	}
 
 	array_append( & tracker.entries, new_entry )
-	logf("Registered: %v -> %v | %v", new_entry.start, new_entry.end, tracker.name )
+	log_fmt("Registered: %v -> %v | %v", new_entry.start, new_entry.end, tracker.name )
 }
 
 memtracker_register_auto_name :: proc( tracker : ^MemoryTracker, start, end : rawptr )
@@ -118,7 +118,7 @@ memtracker_unregister :: proc( tracker : MemoryTracker, to_remove : MemoryTracke
 		entry := & entries[idx]
 		if entry.start == to_remove.start {
 			if (entry.end == to_remove.end || to_remove.end == nil) {
-				logf("Unregistered: %v -> %v | %v", to_remove.start, to_remove.end, tracker.name );
+				log_fmt("Unregistered: %v -> %v | %v", to_remove.start, to_remove.end, tracker.name );
 				array_remove_at(tracker.entries, idx)
 				return
 			}
@@ -166,6 +166,6 @@ memtracker_dump_entries :: proc( tracker : MemoryTracker )
 	log( "Dumping Memory Tracker:")
 	for idx in 0 ..< tracker.entries.num {
 		entry := & tracker.entries.data[idx]
-		logf("%v -> %v", entry.start, entry.end)
+		log_fmt("%v -> %v", entry.start, entry.end)
 	}
 }

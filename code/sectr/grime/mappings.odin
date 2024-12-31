@@ -262,7 +262,7 @@ import "codebase:grime"
 	to_odin_logger :: grime.to_odin_logger
 	logger_init    :: grime.logger_init
 	log            :: grime.log
-	logf           :: grime.logf
+	log_fmt        :: grime.log_fmt
 
 	// memory
 	MemoryTracker      :: grime.MemoryTracker
@@ -396,6 +396,10 @@ from_bytes :: proc {
 
 get_bounds :: proc {
 	view_get_bounds,
+}
+
+join :: proc {
+	join_range2,
 }
 
 inverse_mag :: proc {
@@ -534,6 +538,10 @@ reload :: proc {
 remove_at :: proc {
 	grime.array_remove_at,
 }
+
+// size :: proc {
+// 	size_range2,
+// }
 
 scope :: proc {
 	ui_layout_scope_via_layout,

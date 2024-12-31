@@ -93,7 +93,7 @@ sokol_app_log_callback :: proc "c" (
 	}
 
 	cloned_tag := str.clone_from_cstring(tag, context.temp_allocator)
-	logf( "%-80s %s::%v", cloned_msg, cloned_tag, line_nr, level = odin_level )
+	log_fmt( "%-80s %s::%v", cloned_msg, cloned_tag, line_nr, level = odin_level )
 }
 
 // TODO(Ed): Does this need to be queued to a separate thread?
@@ -113,8 +113,8 @@ sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 	switch sokol_event.type
 	{
 		case .INVALID:
-			logf("sokol_app - event: INVALID?")
-			logf("%v", sokol_event)
+			log_fmt("sokol_app - event: INVALID?")
+			log_fmt("%v", sokol_event)
 
 		case .KEY_DOWN:
 			if sokol_event.key_repeat do return
@@ -223,8 +223,8 @@ sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 			sokol_app.consume_event()
 
 		case .DISPLAY_CHANGED:
-			logf("sokol_app - event: Display changed")
-			logf("refresh rate: %v", sokol_app.refresh_rate())
+			log_fmt("sokol_app - event: Display changed")
+			log_fmt("refresh rate: %v", sokol_app.refresh_rate())
 			monitor_refresh_hz := sokol_app.refresh_rate()
 			sokol_app.consume_event()
 	}
@@ -274,7 +274,7 @@ sokol_gfx_log_callback :: proc "c" (
 	}
 
 	cloned_tag := str.clone_from_cstring(tag, context.temp_allocator)
-	logf( "%-80s %s::%v", cloned_msg, cloned_tag, line_nr, level = odin_level )
+	log_fmt( "%-80s %s::%v", cloned_msg, cloned_tag, line_nr, level = odin_level )
 }
 
 #endregion("Sokol GFX")

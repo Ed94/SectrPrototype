@@ -141,7 +141,7 @@ hmap_chained_get :: proc( using self : HMapChained($Type), key : u64) -> ^Type
 	{
 		if slot.occupied && slot.key == key {
 			if self.dbg_name != "" && self.tracker.entries.header != nil {
-				logf( "%v: Retrieved %v in lookup[%v] which shows key as %v", self.dbg_name, key, hash_index, slot.key )
+				log_fmt( "%v: Retrieved %v in lookup[%v] which shows key as %v", self.dbg_name, key, hash_index, slot.key )
 			}
 			return & slot.value
 		}
@@ -229,7 +229,7 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 		surface_slot.value    = value
 		surface_slot.occupied = true
 		if dbg_name != "" && tracker.entries.header != nil {
-			logf( "%v: Set     %v in lookup[%v]", self.dbg_name, key, hash_index )
+			log_fmt( "%v: Set     %v in lookup[%v]", self.dbg_name, key, hash_index )
 		}
 
 		return & surface_slot.value, .None
@@ -263,7 +263,7 @@ hmap_chained_set :: proc( self : HMapChained($Type), key : u64, value : Type ) -
 			slot.next.value    = value
 			slot.next.occupied = true
 			if dbg_name != "" && tracker.entries.header != nil {
-				logf( "%v: Set     %v in lookup[%v] nest_id: %v", self.dbg_name, key, hash_index, nest_id )
+				log_fmt( "%v: Set     %v in lookup[%v] nest_id: %v", self.dbg_name, key, hash_index, nest_id )
 			}
 			return & slot.next.value, .None
 		}

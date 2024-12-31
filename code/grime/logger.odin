@@ -8,14 +8,24 @@ import str "core:strings"
 import "core:time"
 import core_log "core:log"
 
-Max_Logger_Message_Width :: 180
+Max_Logger_Message_Width :: 160
 
 LogLevel :: core_log.Level
+
+LoggerEntry :: struct {
+	text      : string,
+	timestamp : string,
+	level     : string,
+	location  : string,
+}
 
 Logger :: struct {
 	file_path : string,
 	file      : os.Handle,
 	id        : string,
+
+	varena  : VArena,
+	entries : Array(LoggerEntry),
 }
 
 to_odin_logger :: proc( logger : ^ Logger ) -> core_log.Logger {
@@ -36,6 +46,27 @@ logger_init :: proc( logger : ^ Logger,  id : string, file_path : string, file :
 	}
 	logger.file_path = file_path
 	logger.id        = id
+
+	LOGGER_VARENA_BASE_ADDRESS : uintptr = 2 * Terabyte
+	@static vmem_init_counter  : uintptr = 0
+
+	when true {
+	alloc_error : AllocatorError
+	// logger.varena, alloc_error = varena_init(
+	// 	LOGGER_VARENA_BASE_ADDRESS + vmem_init_counter * 250 * Megabyte,
+	// 	1   * Megabyte,
+	// 	128 * Kilobyte,
+	// 	growth_policy       = nil,
+	// 	allow_any_resize    = true,
+	// 	dbg_name            = "logger varena",
+	// 	enable_mem_tracking = false )
+	// verify( alloc_error == .None, "Failed to allocate logger's virtual arena")
+	vmem_init_counter += 1
+
+	// TODO(Ed): Figure out another solution here...
+	// logger.entries, alloc_error = array_init(Array(LoggerEntry), 8192, runtime.heap_allocator())
+	// verify( alloc_error == .None, "Failed to allocate logger's entries array")
+	}
 
 	context.logger = { logger_interface, logger, core_log.Level.Debug, core_log.Default_File_Logger_Opts }
 	log("Initialized Logger")
@@ -60,8 +91,10 @@ logger_interface :: proc(
 
 	first_line_length := len(text) > Max_Logger_Message_Width ? Max_Logger_Message_Width : len(text)
 	first_line        := transmute(string) text[ 0 : first_line_length ]
-	// str_fmt_builder( & builder, "%-s ", Max_Logger_Message_Width, first_line )
-	str_fmt_builder( & builder, "%-180s ", first_line )
+
+	str_fmt_builder( & builder, "%s ", first_line )
+
+	// str_fmt_builder( & builder, "%-s ", first_line )
 
 	// Signature
 	{
@@ -84,6 +117,7 @@ logger_interface :: proc(
 				str_fmt_builder( & builder, "] ")
 			}
 		}
+
 		core_log.do_level_header( options, & builder, level )
 
 		if logger.id != "" {
@@ -125,7 +159,7 @@ log :: proc( msg : string, level := LogLevel.Info, loc := #caller_location ) {
 	core_log.log( level, msg, location = loc )
 }
 
-logf :: proc( fmt : string, args : ..any,  level := LogLevel.Info, loc := #caller_location  ) {
+log_fmt :: proc( fmt : string, args : ..any,  level := LogLevel.Info, loc := #caller_location  ) {
 	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
 	context.allocator      = arena_allocator(& temp_arena)
 	context.temp_allocator = arena_allocator(& temp_arena)
