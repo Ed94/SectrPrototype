@@ -61,12 +61,19 @@ UI_Computed :: struct {
 	fresh      : b32,    // If the auto-layout has been computed for the current frame
 }
 
-UI_LayoutDirectionX :: enum(i32) {
+UI_LayoutDirection_XY :: enum(i32) {
+	Left_To_Right,
+	Right_to_Left,
+	Top_To_Bottom,
+	Bottom_To_Top,
+}
+
+UI_LayoutDirection_X :: enum(i32) {
 	Left_To_Right,
 	Right_To_Left,
 }
 
-UI_LayoutDirectionY :: enum(i32) {
+UI_LayoutDirection_Y :: enum(i32) {
 	Top_To_Bottom,
 	Bottom_To_Top,
 }
@@ -190,3 +197,24 @@ ui_layout_pop         :: #force_inline proc()                         { pop(  & 
 @(deferred_none = ui_layout_pop) ui_layout_scope_via_combo  :: #force_inline proc( combo  : UI_LayoutCombo ) { ui_layout_push( combo) }
 
 ui_set_layout :: #force_inline proc( layout : UI_Layout, preset : UI_StylePreset ) { stack_peek_ref( & get_state().ui_context.layout_combo_stack).array[preset] = layout }
+
+ui_size_to_content_xy :: proc ( box : ^UI_Box) {
+	using box
+	children_bounds := ui_compute_children_overall_bounds(box)
+	layout.size.min  = size_range2(children_bounds)
+	layout.flags    |= { .Fixed_Width, .Fixed_Height }
+}
+
+ui_size_to_content_x :: proc ( box : ^UI_Box) {
+	using box
+	children_bounds   := ui_compute_children_overall_bounds(box)
+	layout.size.min.x  = size_range2(children_bounds).x
+	layout.flags      |= { .Fixed_Width }
+}
+
+ui_size_to_content_y :: proc ( box : ^UI_Box) {
+	using box
+	children_bounds   := ui_compute_children_overall_bounds(box)
+	layout.size.min.y  = size_range2(children_bounds).y
+	layout.flags      |= { .Fixed_Height }
+}

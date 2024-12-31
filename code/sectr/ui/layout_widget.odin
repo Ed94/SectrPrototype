@@ -7,7 +7,7 @@ import lalg "core:math/linalg"
 Widget Layout Ops
 */
 
-ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_LayoutDirectionX, width_ref : ^f32 )
+ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_LayoutDirection_X, width_ref : ^f32 )
 {
 	container_width : f32
 	if width_ref != nil {
@@ -86,7 +86,7 @@ ui_layout_children_horizontally :: proc( container : ^UI_Box, direction : UI_Lay
 	}
 }
 
-ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_LayoutDirectionY, height_ref : ^f32 )
+ui_layout_children_vertically :: proc( container : ^UI_Box, direction : UI_LayoutDirection_Y, height_ref : ^f32 )
 {
 	container_height : f32
 	if height_ref != nil {

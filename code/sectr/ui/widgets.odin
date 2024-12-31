@@ -37,7 +37,7 @@ UI_DropDown :: struct {
 
 @(deferred_out = ui_drop_down_end_auto)
 ui_drop_down :: proc( drop_down : ^UI_DropDown, label : string, title_text : StrRunesPair,
-	direction         := UI_LayoutDirectionY.Top_To_Bottom,
+	direction         := UI_LayoutDirection_Y.Top_To_Bottom,
 	btn_flags         := UI_BoxFlags{},
 	vb_flags          := UI_BoxFlags{},
 	vb_compute_layout := true,
@@ -55,7 +55,7 @@ ui_drop_down :: proc( drop_down : ^UI_DropDown, label : string, title_text : Str
 
 // Its assumed that the drop down has a vertical box parent already pushed
 ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text : StrRunesPair,
-	direction := UI_LayoutDirectionY.Top_To_Bottom,
+	direction := UI_LayoutDirection_Y.Top_To_Bottom,
 	btn_flags := UI_BoxFlags{},
 	vb_flags  := UI_BoxFlags{},
 	btn_theme   : ^UI_Theme = nil,
@@ -91,7 +91,7 @@ ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text
 	if vb_parent != nil {
 		ui_parent_push(vb_parent)
 	}
-	vbox = ui_vbox_begin( direction, str_intern_fmt("%v : vbox", label).str, compute_layout = vb_compute_layout )
+	vbox = ui_vbox_begin( direction, str_intern_fmt("%v.vbox", label).str, flags = {.Mouse_Clickable}, compute_layout = vb_compute_layout )
 	vbox.layout.anchor.ratio.y = 1.0
 
 	if vb_parent != nil {
@@ -129,10 +129,10 @@ Keep in mind the stretch ratio is only respected if no size.min.x value is viola
 
 UI_HBox :: struct {
 	using widget : UI_Widget,
-	direction    : UI_LayoutDirectionX,
+	direction    : UI_LayoutDirection_X,
 }
 
-ui_hbox_begin :: proc( direction : UI_LayoutDirectionX, label : string, flags : UI_BoxFlags = {} ) -> (hbox : UI_HBox) {
+ui_hbox_begin :: proc( direction : UI_LayoutDirection_X, label : string, flags : UI_BoxFlags = {} ) -> (hbox : UI_HBox) {
 	// profile(#procedure)
 	hbox.direction = direction
 	hbox.box       = ui_box_make( flags, label )
@@ -150,7 +150,7 @@ ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil, compute_layout := t
 }
 
 @(deferred_out = ui_hbox_end_auto)
-ui_hbox :: #force_inline proc( direction : UI_LayoutDirectionX, label : string, flags : UI_BoxFlags = {} ) -> (hbox : UI_HBox) {
+ui_hbox :: #force_inline proc( direction : UI_LayoutDirection_X, label : string, flags : UI_BoxFlags = {} ) -> (hbox : UI_HBox) {
 	hbox = ui_hbox_begin(direction, label, flags)
 	ui_parent_push(hbox.box)
 	return
@@ -755,10 +755,10 @@ Keep in mind the stretch ratio is only respected if no size.min.y value is viola
 
 UI_VBox :: struct {
 	using widget : UI_Widget,
-	direction    : UI_LayoutDirectionY,
+	direction    : UI_LayoutDirection_Y,
 }
 
-ui_vbox_begin :: proc( direction : UI_LayoutDirectionY, label : string, flags : UI_BoxFlags = {}, compute_layout := false ) -> (vbox : UI_VBox) {
+ui_vbox_begin :: proc( direction : UI_LayoutDirection_Y, label : string, flags : UI_BoxFlags = {}, compute_layout := false ) -> (vbox : UI_VBox) {
 	// profile(#procedure)
 	vbox.direction = direction
 	vbox.box       = ui_box_make( flags, label )
@@ -781,7 +781,7 @@ ui_vbox_end_pop_parent :: proc( vbox : UI_VBox ) {
 }
 
 @(deferred_out = ui_vbox_end_pop_parent)
-ui_vbox :: #force_inline proc( direction : UI_LayoutDirectionY, label : string, flags : UI_BoxFlags = {}, compute_layout := false ) -> (vbox : UI_VBox) {
+ui_vbox :: #force_inline proc( direction : UI_LayoutDirection_Y, label : string, flags : UI_BoxFlags = {}, compute_layout := false ) -> (vbox : UI_VBox) {
 	vbox = ui_vbox_begin(direction, label, flags, compute_layout )
 	ui_parent_push(vbox.widget)
 	return

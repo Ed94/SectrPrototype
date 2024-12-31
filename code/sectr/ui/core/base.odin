@@ -224,7 +224,6 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			computed.content    = computed.bounds
 		}
 
-
 		// Auto-layout and initial render_queue generation
 		render_queue := array_to_slice(ui.render_queue)
 		for current := root.first; current != nil; current = ui_box_tranverse_next_depth_first( current )

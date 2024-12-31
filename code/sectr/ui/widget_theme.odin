@@ -173,8 +173,8 @@ theme_window_bar :: proc() -> UI_Theme
 		app_color := app_color_theme()
 		layout := UI_Layout {
 			flags          = {.Fixed_Height},
-			anchor         = range2({},{}),
-			alignment      = {0, 0},
+			anchor         = range2({0, 1},{0, 0}),
+			alignment      = {0, 1},
 			text_alignment = {0.0, 0.0},
 			font_size      = 16,
 			margins        = {0, 0, 0, 0},
