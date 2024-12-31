@@ -118,7 +118,8 @@ ui_prev_cached_box :: #force_inline proc( box : ^UI_Box ) -> ^UI_Box { return hm
 
 // TODO(Ed): Rename to ui_box_tranverse_view_next
 // Traveral pritorizes immeidate children
-ui_box_tranverse_next_depth_first :: #force_inline proc "contextless" (box: ^UI_Box, bypass_intersection_test := false, ctx: ^UI_State = nil) -> ^UI_Box {
+ui_box_tranverse_next_depth_first :: #force_inline proc "contextless" (box : ^UI_Box, parent_limit : ^UI_Box = nil, bypass_intersection_test := false, ctx: ^UI_State = nil) -> ^UI_Box
+{
 	state := get_state(); using state
 	ctx := ctx if ctx != nil else ui_context
 
@@ -136,11 +137,18 @@ ui_box_tranverse_next_depth_first :: #force_inline proc "contextless" (box: ^UI_
 
 	// No more siblings, traverse up the tree
 	parent := box.parent
-	for parent != nil {
-			if parent.next != nil {
-					return parent.next
-			}
-			parent = parent.parent
+	for parent != nil
+	{
+		if parent_limit != nil && parent_limit == parent {
+			// We've reached the end of the parent_limit's tree.
+			return nil
+		}
+
+		if parent.next != nil {
+				return parent.next
+		}
+	
+		parent = parent.parent
 	}
 
 	// We've reached the end of the tree

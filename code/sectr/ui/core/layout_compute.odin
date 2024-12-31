@@ -124,11 +124,11 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	}
 	if .Min_Size_To_Content_Y in layout.flags {
 		children_bounds := ui_compute_children_overall_bounds(box)
-		resolved_bounds := range2(
-			children_bounds.min - { layout.padding.left,  layout.padding.bottom } - border_offset,
-			children_bounds.max + { layout.padding.right, layout.padding.top }    + border_offset,
-		)
-		adjusted_size.y = size_range2(resolved_bounds).y
+		// resolved_bounds := range2(
+		// 	children_bounds.min - { layout.padding.left,  layout.padding.bottom } - border_offset,
+		// 	children_bounds.max + { layout.padding.right, layout.padding.top }    + border_offset,
+		// )
+		adjusted_size.y = size_range2(children_bounds).y
 	}
 
 	// 5. Determine relative position
@@ -207,7 +207,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 
 ui_compute_children_overall_bounds :: proc ( box : ^UI_Box ) -> ( children_bounds : Range2 )
 {
-	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next_depth_first( current )
+	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next_depth_first( current, parent_limit = box )
 	{
 		if current == box do return
 		if ! current.computed.fresh do  ui_box_compute_layout( current )
@@ -222,7 +222,7 @@ ui_compute_children_overall_bounds :: proc ( box : ^UI_Box ) -> ( children_bound
 
 ui_box_compute_layout_children :: proc( box : ^UI_Box )
 {
-	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next_depth_first( current )
+	for current := box.first; current != nil && current.prev != box; current = ui_box_tranverse_next_depth_first( current, parent_limit = box )
 	{
 		if current == box do return
 		if current.computed.fresh do continue
