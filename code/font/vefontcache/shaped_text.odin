@@ -1,10 +1,10 @@
 package vefontcache
 
 Shaped_Text :: struct {
-	glyphs         : [dynamic]Glyph,
-	positions      : [dynamic]Vec2,
-	end_cursor_pos : Vec2,
-	size           : Vec2,
+	glyphs             : [dynamic]Glyph,
+	positions          : [dynamic]Vec2,
+	end_cursor_pos     : Vec2,
+	size               : Vec2,
 }
 
 Shaped_Text_Cache :: struct {
@@ -19,9 +19,11 @@ shape_lru_hash :: #force_inline proc "contextless" ( hash : ^u64, bytes : []byte
 	}
 }
 
-shape_text_cached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry ) -> ^Shaped_Text
+ShapedTextUncachedProc :: #type proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, output : ^Shaped_Text )
+
+shape_text_cached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, shape_text_uncached : ShapedTextUncachedProc ) -> ^Shaped_Text #no_bounds_check
 {
-	// profile(#procedure)
+	profile(#procedure)
 	font        := font
 	font_bytes  := slice_ptr( transmute(^byte) & font,  size_of(Font_ID) )
 	text_bytes  := transmute( []byte) text_utf8
@@ -59,9 +61,9 @@ shape_text_cached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, e
 	return & shape_cache.storage[ shape_cache_idx ]
 }
 
-shape_text_uncached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, output : ^Shaped_Text )
+shape_text_uncached_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, output : ^Shaped_Text )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
@@ -74,58 +76,68 @@ shape_text_uncached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string,
 	line_gap    := f32(line_gap_i32)
 	line_height := (ascent - descent + line_gap) * entry.size_scale
 
-	if ctx.use_advanced_shaper
-	{
-		shaper_shape_from_text( & ctx.shaper_ctx, & entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
-		return
-	}
-	else
-	{
-		// Note(Original Author):
-		// We use our own fallback dumbass text shaping.
-		// WARNING: PLEASE USE HARFBUZZ. GOOD TEXT SHAPING IS IMPORTANT FOR INTERNATIONALISATION.
+	shaper_shape_from_text( & ctx.shaper_ctx, & entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
+}
 
-		line_count     : int = 1
-		max_line_width : f32 = 0
-		position       : Vec2
+shape_text_uncached_latin :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, output : ^Shaped_Text )
+{	
+	profile(#procedure)
+	assert( ctx != nil )
+	assert( font >= 0 && int(font) < len(ctx.entries) )
 
-		prev_codepoint : rune
-		for codepoint in text_utf8
+	clear( & output.glyphs )
+	clear( & output.positions )
+
+	ascent_i32, descent_i32, line_gap_i32 := parser_get_font_vertical_metrics( & entry.parser_info )
+	ascent      := f32(ascent_i32)
+	descent     := f32(descent_i32)
+	line_gap    := f32(line_gap_i32)
+	line_height := (ascent - descent + line_gap) * entry.size_scale
+
+	line_count     : int = 1
+	max_line_width : f32 = 0
+	position       : Vec2
+
+	prev_codepoint : rune
+	for codepoint, index in text_utf8
+	{
+		if prev_codepoint > 0 {
+			kern       := parser_get_codepoint_kern_advance( & entry.parser_info, prev_codepoint, codepoint )
+			position.x += f32(kern) * entry.size_scale
+		}
+		if codepoint == '\n'
 		{
-			if prev_codepoint > 0 {
-				kern       := parser_get_codepoint_kern_advance( & entry.parser_info, prev_codepoint, codepoint )
-				position.x += f32(kern) * entry.size_scale
-			}
-			if codepoint == '\n'
-			{
-				line_count    += 1
-				max_line_width = max(max_line_width, position.x)
-				position.x     = 0.0
-				position.y    -= line_height
-				position.y     = position.y
-				prev_codepoint = rune(0)
-				continue
-			}
-			if abs( entry.size ) <= ctx.shaper_ctx.adv_snap_small_font_threshold {
-				position.x = ceil(position.x)
-			}
+			line_count    += 1
+			max_line_width = max(max_line_width, position.x)
+			position.x     = 0.0
+			position.y    -= line_height
+			position.y     = position.y
+			prev_codepoint = rune(0)
+			continue
+		}
+		if abs( entry.size ) <= ctx.shaper_ctx.adv_snap_small_font_threshold {
+			position.x = ceil(position.x)
+		}
 
-			append( & output.glyphs, parser_find_glyph_index( & entry.parser_info, codepoint ))
-			advance, _ := parser_get_codepoint_horizontal_metrics( & entry.parser_info, codepoint )
-
+		glyph_index := parser_find_glyph_index( & entry.parser_info, codepoint )
+		is_empty    := parser_is_glyph_empty( & entry.parser_info,glyph_index )
+		if ! is_empty
+		{
+			append( & output.glyphs, glyph_index)
 			append( & output.positions, Vec2 {
 				floor(position.x),
 				floor(position.y)
 			})
-
-			position.x += f32(advance) * entry.size_scale
-			prev_codepoint = codepoint
 		}
 
-		output.end_cursor_pos = position
-		max_line_width        = max(max_line_width, position.x)
-
-		output.size.x = max_line_width
-		output.size.y = f32(line_count) * line_height
+		advance, _ := parser_get_codepoint_horizontal_metrics( & entry.parser_info, codepoint )
+		position.x += f32(advance) * entry.size_scale
+		prev_codepoint = codepoint
 	}
+
+	output.end_cursor_pos = position
+	max_line_width        = max(max_line_width, position.x)
+
+	output.size.x = max_line_width
+	output.size.y = f32(line_count) * line_height
 }

@@ -46,8 +46,6 @@ font_provider_startup :: proc( ctx : ^FontProviderContext )
 	ve.startup( & ve_ctx, .STB_TrueType, allocator = persistent_slab_allocator() )
 	ve_ctx.glyph_buffer.over_sample = { 4,4 }
 	log("VEFontCached initialized")
-	// provider_data.ve_ctx.debug_print = true
-	// provider_data.ve_ctx.debug_print_verbose = true
 	font_provider_setup_sokol_gfx_objects( & render, ve_ctx )
 }
 

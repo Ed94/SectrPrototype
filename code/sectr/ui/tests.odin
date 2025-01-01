@@ -202,6 +202,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 			line_id += 1
 			continue
 		}
+		profile("line")
 
 		ui_layout( text_layout )
 		line_hbox := ui_widget(str_fmt( "line %v", line_id ), {.Mouse_Clickable})

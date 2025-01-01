@@ -53,9 +53,9 @@ Glyph_Draw_Buffer :: struct {
 	draw_list       : Draw_List,
 }
 
-blit_quad :: proc( draw_list : ^Draw_List, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}, uv0 : Vec2 = {0, 0}, uv1 : Vec2 = {1, 1} )
+blit_quad :: #force_inline proc ( draw_list : ^Draw_List, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}, uv0 : Vec2 = {0, 0}, uv1 : Vec2 = {1, 1} )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	// logf("Blitting: xy0: %0.2f, %0.2f xy1: %0.2f, %0.2f uv0: %0.2f, %0.2f uv1: %0.2f, %0.2f",
 		// p0.x, p0.y, p1.x, p1.y, uv0.x, uv0.y, uv1.x, uv1.y);
 	v_offset := cast(u32) len(draw_list.vertices)
@@ -89,173 +89,175 @@ blit_quad :: proc( draw_list : ^Draw_List, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1
 }
 
 // TODO(Ed): glyph caching cannot be handled in a 'font parser' abstraction. Just going to have explicit procedures to grab info neatly...
-cache_glyph_freetype :: proc(ctx: ^Context, font: Font_ID, glyph_index: Glyph, entry: ^Entry, bounds_0, bounds_1: Vec2, scale, translate: Vec2) -> b32
-{
-	draw_filled_path_freetype :: proc( draw_list : ^Draw_List, outside_point : Vec2, path : []Vertex,
-		scale     := Vec2 { 1, 1 },
-		translate := Vec2 { 0, 0 },
-		debug_print_verbose : b32 = false
-	)
-	{
-		if debug_print_verbose {
-			log("outline_path:")
-			for point in path {
-				vec := point.pos * scale + translate
-				logf(" %0.2f %0.2f", vec.x, vec.y )
-			}
-		}
+// cache_glyph_freetype :: proc(ctx: ^Context, font: Font_ID, glyph_index: Glyph, entry: ^Entry, bounds_0, bounds_1: Vec2, scale, translate: Vec2) -> b32
+// {
+// 	draw_filled_path_freetype :: proc( draw_list : ^Draw_List, outside_point : Vec2, path : []Vertex,
+// 		scale     := Vec2 { 1, 1 },
+// 		translate := Vec2 { 0, 0 },
+// 		debug_print_verbose : b32 = false
+// 	)
+// 	{
+// 		if debug_print_verbose {
+// 			log("outline_path:")
+// 			for point in path {
+// 				vec := point.pos * scale + translate
+// 				logf(" %0.2f %0.2f", vec.x, vec.y )
+// 			}
+// 		}
 
-		v_offset := cast(u32) len(draw_list.vertices)
-		for point in path
-		{
-			transformed_point := Vertex {
-				pos = point.pos * scale + translate,
-				u = 0,
-				v = 0
-			}
-			append( & draw_list.vertices, transformed_point )
-		}
+// 		v_offset := cast(u32) len(draw_list.vertices)
+// 		for point in path
+// 		{
+// 			transformed_point := Vertex {
+// 				pos = point.pos * scale + translate,
+// 				u = 0,
+// 				v = 0
+// 			}
+// 			append( & draw_list.vertices, transformed_point )
+// 		}
 
-		if len(path) > 2
-		{
-			indices := & draw_list.indices
-			for index : u32 = 1; index < cast(u32) len(path) - 1; index += 1 {
-				to_add := [3]u32 {
-					v_offset,
-					v_offset + index,
-					v_offset + index + 1
-				}
-				append( indices, ..to_add[:] )
-			}
+// 		if len(path) > 2
+// 		{
+// 			indices := & draw_list.indices
+// 			for index : u32 = 1; index < cast(u32) len(path) - 1; index += 1 {
+// 				to_add := [3]u32 {
+// 					v_offset,
+// 					v_offset + index,
+// 					v_offset + index + 1
+// 				}
+// 				append( indices, ..to_add[:] )
+// 			}
 
-			// Close the path by connecting the last vertex to the first two
-			to_add := [3]u32 {
-				v_offset,
-				v_offset + cast(u32)(len(path) - 1),
-				v_offset + 1
-			}
-			append( indices, ..to_add[:] )
-		}
-	}
+// 			// Close the path by connecting the last vertex to the first two
+// 			to_add := [3]u32 {
+// 				v_offset,
+// 				v_offset + cast(u32)(len(path) - 1),
+// 				v_offset + 1
+// 			}
+// 			append( indices, ..to_add[:] )
+// 		}
+// 	}
 
-	if glyph_index == Glyph(0) {
-		return false
-	}
+// 	if glyph_index == Glyph(0) {
+// 		return false
+// 	}
 
-	face := entry.parser_info.freetype_info
-	error := freetype.load_glyph(face, u32(glyph_index), {.No_Bitmap, .No_Scale})
-	if error != .Ok {
-		return false
-	}
+// 	face := entry.parser_info.freetype_info
+// 	error := freetype.load_glyph(face, u32(glyph_index), {.No_Bitmap, .No_Scale})
+// 	if error != .Ok {
+// 		return false
+// 	}
 
-	glyph := face.glyph
-	if glyph.format != .Outline {
-		return false
-	}
+// 	glyph := face.glyph
+// 	if glyph.format != .Outline {
+// 		return false
+// 	}
 
-	outline := &glyph.outline
-	if outline.n_points == 0 {
-		return false
-	}
+// 	outline := &glyph.outline
+// 	if outline.n_points == 0 {
+// 		return false
+// 	}
 
-	draw            := Draw_Call_Default
-	draw.pass        = Frame_Buffer_Pass.Glyph
-	draw.start_index = cast(u32) len(ctx.draw_list.indices)
+// 	draw            := Draw_Call_Default
+// 	draw.pass        = Frame_Buffer_Pass.Glyph
+// 	draw.start_index = cast(u32) len(ctx.draw_list.indices)
 
-	contours := slice.from_ptr(cast( [^]i16)             outline.contours, int(outline.n_contours))
-	points   := slice.from_ptr(cast( [^]freetype.Vector) outline.points,   int(outline.n_points))
-	tags     := slice.from_ptr(cast( [^]u8)              outline.tags,     int(outline.n_points))
+// 	contours := slice.from_ptr(cast( [^]i16)             outline.contours, int(outline.n_contours))
+// 	points   := slice.from_ptr(cast( [^]freetype.Vector) outline.points,   int(outline.n_points))
+// 	tags     := slice.from_ptr(cast( [^]u8)              outline.tags,     int(outline.n_points))
 
-	path := &ctx.temp_path
-	clear(path)
+// 	path := &ctx.temp_path
+// 	clear(path)
 
-	outside := Vec2{ bounds_0.x - 21, bounds_0.y - 33 }
+// 	outside := Vec2{ bounds_0.x - 21, bounds_0.y - 33 }
 
-	start_index: int = 0
-	for contour_index in 0 ..< int(outline.n_contours)
-	{
-		end_index   := int(contours[contour_index]) + 1
-		prev_point  : Vec2
-		first_point : Vec2
+// 	start_index: int = 0
+// 	for contour_index in 0 ..< int(outline.n_contours)
+// 	{
+// 		end_index   := int(contours[contour_index]) + 1
+// 		prev_point  : Vec2
+// 		first_point : Vec2
 
-		for idx := start_index; idx < end_index; idx += 1
-		{
-			current_pos := Vec2 { f32( points[idx].x ), f32( points[idx].y ) }
-			if ( tags[idx] & 1 ) == 0
-			{
-				// If current point is off-curve
-				if (idx == start_index || (tags[ idx - 1 ] & 1) != 0)
-				{
-					// current is the first or following an on-curve point
-					prev_point = current_pos
-				}
-				else
-				{
-					// current and previous are off-curve, calculate midpoint
-					midpoint := (prev_point + current_pos) * 0.5
-					append( path, Vertex { pos = midpoint } )  // Add midpoint as on-curve point
-					if idx < end_index - 1
-					{
-						// perform interp from prev_point to current_pos via midpoint
-						step := 1.0 / entry.curve_quality
-						for alpha : f32 = 0.0; alpha <= 1.0; alpha += step
-						{
-							bezier_point := eval_point_on_bezier3( prev_point, midpoint, current_pos, alpha )
-							append( path, Vertex{ pos = bezier_point } )
-						}
-					}
+// 		for idx := start_index; idx < end_index; idx += 1
+// 		{
+// 			current_pos := Vec2 { f32( points[idx].x ), f32( points[idx].y ) }
+// 			if ( tags[idx] & 1 ) == 0
+// 			{
+// 				// If current point is off-curve
+// 				if (idx == start_index || (tags[ idx - 1 ] & 1) != 0)
+// 				{
+// 					// current is the first or following an on-curve point
+// 					prev_point = current_pos
+// 				}
+// 				else
+// 				{
+// 					// current and previous are off-curve, calculate midpoint
+// 					midpoint := (prev_point + current_pos) * 0.5
+// 					append( path, Vertex { pos = midpoint } )  // Add midpoint as on-curve point
+// 					if idx < end_index - 1
+// 					{
+// 						// perform interp from prev_point to current_pos via midpoint
+// 						step := 1.0 / entry.curve_quality
+// 						for alpha : f32 = 0.0; alpha <= 1.0; alpha += step
+// 						{
+// 							bezier_point := eval_point_on_bezier3( prev_point, midpoint, current_pos, alpha )
+// 							append( path, Vertex{ pos = bezier_point } )
+// 						}
+// 					}
 
-					prev_point = current_pos
-				}
-			}
-			else
-			{
-				if idx == start_index {
-					first_point = current_pos
-				}
-				if prev_point != (Vec2{}) {
-					// there was an off-curve point before this
-					append(path, Vertex{ pos = prev_point}) // Ensure previous off-curve is handled
-				}
-				append(path, Vertex{ pos = current_pos})
-				prev_point = {}
-			}
-		}
+// 					prev_point = current_pos
+// 				}
+// 			}
+// 			else
+// 			{
+// 				if idx == start_index {
+// 					first_point = current_pos
+// 				}
+// 				if prev_point != (Vec2{}) {
+// 					// there was an off-curve point before this
+// 					append(path, Vertex{ pos = prev_point}) // Ensure previous off-curve is handled
+// 				}
+// 				append(path, Vertex{ pos = current_pos})
+// 				prev_point = {}
+// 			}
+// 		}
 
-		// ensure the contour is closed
-		if path[0].pos != path[ len(path) - 1 ].pos {
-			append(path, Vertex{pos = path[0].pos})
-		}
-		draw_filled_path(&ctx.draw_list, bounds_0, path[:], scale, translate, ctx.debug_print_verbose)
-		clear(path)
-		start_index = end_index
-	}
+// 		// ensure the contour is closed
+// 		if path[0].pos != path[ len(path) - 1 ].pos {
+// 			append(path, Vertex{pos = path[0].pos})
+// 		}
+// 		draw_filled_path(&ctx.draw_list, bounds_0, path[:], scale, translate)
+// 		// draw_filled_path(&ctx.draw_list, bounds_0, path[:], scale, translate, ctx.debug_print_verbose)
+// 		clear(path)
+// 		start_index = end_index
+// 	}
 
-	if len(path) > 0 {
-		draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose)
-	}
+// 	if len(path) > 0 {
+// 		// draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose)
+// 		draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate)
+// 	}
 
-	draw.end_index = cast(u32) len(ctx.draw_list.indices)
-	if draw.end_index > draw.start_index {
-		append( & ctx.draw_list.calls, draw)
-	}
+// 	draw.end_index = cast(u32) len(ctx.draw_list.indices)
+// 	if draw.end_index > draw.start_index {
+// 		append( & ctx.draw_list.calls, draw)
+// 	}
 
-	return true
-}
+// 	return true
+// }
 
 // TODO(Ed): Is it better to cache the glyph vertices for when it must be re-drawn (directly or two atlas)?
 cache_glyph :: proc(ctx : ^Context, font : Font_ID, glyph_index : Glyph, entry : ^Entry, bounds_0, bounds_1 : Vec2, scale, translate : Vec2) -> b32
 {
-	// profile(#procedure)
+	profile(#procedure)
 	if glyph_index == Glyph(0) {
 		return false
 	}
 
 	// Glyph shape handling are not abstractable between freetype and stb_truetype
-	if entry.parser_info.kind == .Freetype {
-		result := cache_glyph_freetype( ctx, font, glyph_index, entry, bounds_0, bounds_1, scale, translate )
-		return result
-	}
+	// if entry.parser_info.kind == .Freetype {
+	// 	result := cache_glyph_freetype( ctx, font, glyph_index, entry, bounds_0, bounds_1, scale, translate )
+	// 	return result
+	// }
 
 	shape, error := parser_get_glyph_shape(&entry.parser_info, glyph_index)
 	assert(error == .None)
@@ -277,7 +279,8 @@ cache_glyph :: proc(ctx : ^Context, font : Font_ID, glyph_index : Glyph, entry :
 	{
 		case .Move:
 			if len(path) > 0 {
-				draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose)
+				// draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose)
+				draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate)
 				clear(path)
 			}
 			fallthrough
@@ -310,7 +313,8 @@ cache_glyph :: proc(ctx : ^Context, font : Font_ID, glyph_index : Glyph, entry :
 	}
 
 	if len(path) > 0 {
-		draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose)
+		// draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate, ctx.debug_print_verbose)
+		draw_filled_path(&ctx.draw_list, outside, path[:], scale, translate)
 	}
 
 	draw.end_index = u32(len(ctx.draw_list.indices))
@@ -337,7 +341,7 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	region      : ^Atlas_Region,
 	over_sample : Vec2 )
 {
-	// profile(#procedure)
+	profile(#procedure)
 
 	// Get hb_font text metrics. These are unscaled!
 	bounds_0, bounds_1 := parser_get_glyph_box( & entry.parser_info, glyph_index )
@@ -354,8 +358,8 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	{
 		if region.next_idx < region.state.capacity
 		{
-			evicted         := lru_put( & region.state, lru_code, i32(region.next_idx) )
-			atlas_index      = i32(region.next_idx)
+			evicted         := lru_put( & region.state, lru_code, region.next_idx )
+			atlas_index      = region.next_idx
 			region.next_idx += 1
 			assert( evicted == lru_code )
 		}
@@ -460,20 +464,19 @@ check_glyph_in_atlas :: #force_inline proc( ctx : ^Context, font : Font_ID, entr
 	over_sample : Vec2
 ) -> b32
 {
-	// profile(#procedure)
+	profile(#procedure)
 	assert( glyph_index != -1 )
 
 	// E region can't batch
-	if region_kind == .E || region_kind == .None do return false
-	if ctx.temp_codepoint_seen_num > 1024        do return false
-	// TODO(Ed): Why 1024?
+	if region_kind == .E || region_kind == .None                       do return false
+	if ctx.temp_codepoint_seen_num > i32(cap(ctx.temp_codepoint_seen)) do return false
 
 	if atlas_index == - 1
 	{
 		if region.next_idx > region.state.capacity {
 			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
 			next_evict_codepoint := lru_get_next_evicted( & region.state )
-			seen, success := ctx.temp_codepoint_seen[next_evict_codepoint]
+			seen, success  := ctx.temp_codepoint_seen[next_evict_codepoint]
 			assert(success != false)
 
 			if (seen) {
@@ -503,7 +506,7 @@ directly_draw_massive_glyph :: proc( ctx : ^Context,
 	bounds_size                  : Vec2,
 	over_sample, position, scale : Vec2 )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	flush_glyph_buffer_to_atlas( ctx )
 
 	glyph_padding     := f32(ctx.atlas.glyph_padding)
@@ -567,22 +570,23 @@ directly_draw_massive_glyph :: proc( ctx : ^Context,
 // ve_fontcache_draw_filled_path
 draw_filled_path :: proc( draw_list : ^Draw_List, outside_point : Vec2, path : []Vertex,
 	scale     := Vec2 { 1, 1 },
-	translate := Vec2 { 0, 0 },
-	debug_print_verbose : b32 = false
-)
+	translate := Vec2 { 0, 0 }
+	// debug_print_verbose : b32 = false
+) #no_bounds_check
 {
-	if debug_print_verbose
-	{
-		log("outline_path:")
-		for point in path {
-			vec := point.pos * scale + translate
-			logf(" %0.2f %0.2f", vec.x, vec.y )
-		}
-	}
+	profile(#procedure)
+	// if debug_print_verbose
+	// {
+	// 	log("outline_path:")
+	// 	for point in path {
+	// 		vec := point.pos * scale + translate
+	// 		logf(" %0.2f %0.2f", vec.x, vec.y )
+	// 	}
+	// }
 
 	v_offset := cast(u32) len(draw_list.vertices)
 	for point in path {
-		point := point
+		point    := point
 		point.pos = point.pos * scale + translate
 		append( & draw_list.vertices, point )
 	}
@@ -613,14 +617,16 @@ draw_text_batch :: proc(ctx: ^Context, entry: ^Entry, shaped: ^Shaped_Text,
 	position, scale                : Vec2,
 	snap_width, snap_height        : f32 )
 {
+	profile(#procedure)
 	flush_glyph_buffer_to_atlas(ctx)
 
 	atlas         := & ctx.atlas
 	atlas_size    := Vec2{ f32(atlas.width), f32(atlas.height) }
-	glyph_padding := f32(atlas.glyph_padding)
+	glyph_padding := atlas.glyph_padding
 
 	for index := batch_start_idx; index < batch_end_idx; index += 1
 	{
+		profile("glyph")
 		glyph_index := shaped.glyphs[index]
 
 		if glyph_index == 0 || parser_is_glyph_empty( & entry.parser_info, glyph_index) do continue
@@ -645,39 +651,40 @@ draw_text_batch :: proc(ctx: ^Context, entry: ^Entry, shaped: ^Shaped_Text,
 		}
 		else if atlas_index != -1
 		{
+			profile("derive manual")
+			call             := Draw_Call_Default
+			call.pass         = .Target
+			call.colour       = ctx.colour
+			call.start_index  = u32(len(ctx.draw_list.indices))
+
 			// Draw cached glyph
 			slot_position, _ := atlas_bbox( atlas, region_kind, atlas_index )
 			glyph_scale      := bounds_size * entry.size_scale + glyph_padding
 			bounds_0_scaled  := ceil(vbounds_0 * entry.size_scale - 0.5 )
 			dst              := glyph_translate + bounds_0_scaled * scale
 			dst_scale        := glyph_scale * scale
+
 			textspace_x_form( & slot_position, & glyph_scale, atlas_size )
-
-			call             := Draw_Call_Default
-			call.pass         = .Target
-			call.colour       = ctx.colour
-			call.start_index  = u32(len(ctx.draw_list.indices))
-
 			blit_quad(&ctx.draw_list,
 				dst,           dst           + dst_scale,
 				slot_position, slot_position + glyph_scale )
-
 			call.end_index = u32(len(ctx.draw_list.indices))
+
 			append(&ctx.draw_list.calls, call)
 		}
 	}
 }
 
 // Helper for draw_text, all raw text content should be confirmed to be either formatting or visible shapes before getting cached.
-draw_text_shape :: proc( ctx : ^Context,
+draw_text_shape :: #force_inline proc( ctx : ^Context,
 	font                    : Font_ID,
 	entry                   : ^Entry,
 	shaped                  : ^Shaped_Text,
 	position,   scale       : Vec2,
 	snap_width, snap_height : f32
-) -> (cursor_pos : Vec2)
+) -> (cursor_pos : Vec2) #no_bounds_check
 {
-	// profile(#procedure)
+	profile(#procedure)
 	batch_start_idx : i32 = 0
 	for index : i32 = 0; index < cast(i32) len(shaped.glyphs); index += 1
 	{
@@ -710,9 +717,51 @@ draw_text_shape :: proc( ctx : ^Context,
 	return
 }
 
-flush_glyph_buffer_to_atlas :: proc( ctx : ^Context )
+// Helper for draw_text_latin_mono
+draw_text_mono_latin_batch :: #force_inline proc( ctx : ^Context,
+	font                    : Font_ID,
+	entry                   : ^Entry,
+	shaped                  : ^Shaped_Text,
+	position,   scale       : Vec2,
+	snap_width, snap_height : f32
+) -> (cursor_pos : Vec2) #no_bounds_check
 {
-	// profile(#procedure)
+	profile(#procedure)
+	batch_start_idx : i32 = 0
+	for index : i32 = 0; index < cast(i32) len(shaped.glyphs); index += 1
+	{
+		glyph_index := shaped.glyphs[ index ]
+		if is_empty( ctx, entry, glyph_index ) do continue
+
+		region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
+		lru_code                         := font_glyph_lru_code(entry.id, glyph_index)
+		atlas_index                      := cast(i32) -1
+
+		if region_kind != .E do atlas_index = lru_get( & region.state, lru_code )
+		if check_glyph_in_atlas( ctx, font, entry, glyph_index, lru_code, atlas_index, region_kind, region, over_sample ) do continue
+
+		// We can no longer directly append the shape as it has missing glyphs in the atlas
+
+		// First batch the other cached glyphs
+		// flush_glyph_buffer_to_atlas(ctx)
+		draw_text_batch( ctx, entry, shaped, batch_start_idx, index, position, scale, snap_width, snap_height )
+		reset_batch_codepoint_state( ctx )
+
+		cache_glyph_to_atlas( ctx, font, glyph_index, lru_code, atlas_index, entry, region_kind, region, over_sample )
+		mark_batch_codepoint_seen( ctx, lru_code)
+		batch_start_idx = index
+	}
+
+	draw_text_batch( ctx, entry, shaped, batch_start_idx, cast(i32) len(shaped.glyphs), position, scale, snap_width , snap_height )
+	reset_batch_codepoint_state( ctx )
+
+	cursor_pos = position + shaped.end_cursor_pos * scale
+	return
+}
+
+flush_glyph_buffer_to_atlas :: #force_inline proc( ctx : ^Context )
+{
+	profile(#procedure)
 	// Flush Draw_Calls to draw list
 	merge_draw_list( & ctx.draw_list, & ctx.glyph_buffer.clear_draw_list )
 	merge_draw_list( & ctx.draw_list, & ctx.glyph_buffer.draw_list)
@@ -733,9 +782,9 @@ flush_glyph_buffer_to_atlas :: proc( ctx : ^Context )
 }
 
 // ve_fontcache_merge_Draw_List
-merge_draw_list :: proc( dst, src : ^Draw_List )
+merge_draw_list :: #force_inline proc ( #no_alias dst, src : ^Draw_List )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	error : Allocator_Error
 
 	v_offset := cast(u32) len( dst.vertices )
@@ -744,13 +793,13 @@ merge_draw_list :: proc( dst, src : ^Draw_List )
 	assert( error == .None )
 
 	i_offset := cast(u32) len(dst.indices)
-	for index : int = 0; index < len(src.indices); index += 1 {
+	for index : i32 = 0; index < cast(i32) len(src.indices); index += 1 {
 		ignored : int
 		ignored, error = append( & dst.indices, src.indices[index] + v_offset )
 		assert( error == .None )
 	}
 
-	for index : int = 0; index < len(src.calls); index += 1 {
+	for index : i32 = 0; index < cast(i32) len(src.calls); index += 1 {
 		src_call             := src.calls[ index ]
 		src_call.start_index += i_offset
 		src_call.end_index   += i_offset
@@ -759,9 +808,9 @@ merge_draw_list :: proc( dst, src : ^Draw_List )
 	}
 }
 
-optimize_draw_list :: proc(draw_list: ^Draw_List, call_offset: int)
+optimize_draw_list :: proc (draw_list: ^Draw_List, call_offset: int)
 {
-	// profile(#procedure)
+	profile(#procedure)
 	assert(draw_list != nil)
 
 	can_merge_draw_calls :: #force_inline proc "contextless" ( a, b : ^Draw_Call ) -> bool {

@@ -113,6 +113,7 @@ parser_unload_font :: proc( font : ^Parser_Font_Info )
 
 parser_find_glyph_index :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, codepoint : rune ) -> (glyph_index : Glyph)
 {
+	profile(#procedure)
 	switch font.kind
 	{
 		case .Freetype:
@@ -131,7 +132,7 @@ parser_find_glyph_index :: #force_inline proc "contextless" ( font : ^Parser_Fon
 	return Glyph(-1)
 }
 
-parser_free_shape :: proc( font : ^Parser_Font_Info, shape : Parser_Glyph_Shape )
+parser_free_shape :: #force_inline proc( font : ^Parser_Font_Info, shape : Parser_Glyph_Shape )
 {
 	switch font.kind
 	{
@@ -219,10 +220,12 @@ parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : ^P
 	return
 }
 
-parser_get_glyph_box :: #force_inline proc ( font : ^Parser_Font_Info, glyph_index : Glyph ) -> (bounds_0, bounds_1 : Vec2i)
+parser_get_glyph_box :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, glyph_index : Glyph ) -> (bounds_0, bounds_1 : Vec2i)
 {
+	profile(#procedure)
 	switch font.kind
 	{
+		
 		case .Freetype:
 			freetype.load_glyph( font.freetype_info, c.uint(glyph_index), { .No_Bitmap, .No_Hinting, .No_Scale } )
 
@@ -234,15 +237,15 @@ parser_get_glyph_box :: #force_inline proc ( font : ^Parser_Font_Info, glyph_ind
 		case .STB_TrueType:
 			x0, y0, x1, y1 : i32
 			success := cast(bool) stbtt.GetGlyphBox( & font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
-			assert( success )
+			// assert( success )
 
-			bounds_0 = { i32(x0), i32(y0) }
-			bounds_1 = { i32(x1), i32(y1) }
+			bounds_0 = { x0, y0 }
+			bounds_1 = { x1, y1 }
 	}
 	return
 }
 
-parser_get_glyph_shape :: proc( font : ^Parser_Font_Info, glyph_index : Glyph ) -> (shape : Parser_Glyph_Shape, error : Allocator_Error)
+parser_get_glyph_shape :: #force_inline proc ( font : ^Parser_Font_Info, glyph_index : Glyph ) -> (shape : Parser_Glyph_Shape, error : Allocator_Error)
 {
 	switch font.kind
 	{

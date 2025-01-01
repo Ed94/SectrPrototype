@@ -153,7 +153,7 @@ ui_hbox_begin :: proc( direction : UI_LayoutDirection_X, label : string, flags :
 ui_hbox_end :: proc( hbox : UI_HBox, width_ref : ^f32 = nil, compute_layout := false )
 {
 	// profile(#procedure)
-	if compute_layout do ui_box_compute_layout(hbox.box, dont_mark_fresh = true)
+	// if compute_layout do ui_box_compute_layout(hbox.box, dont_mark_fresh = true)
 	// ui_layout_children_horizontally( hbox.box, hbox.direction, width_ref )
 }
 
@@ -773,7 +773,7 @@ ui_vbox_begin :: proc( direction : UI_LayoutDirection_Y, label : string, flags :
 	vbox.direction = direction
 	vbox.box       = ui_box_make( flags, label )
 	vbox.signal    = ui_signal_from_box( vbox.box )
-	if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
+	// if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
 	switch direction {
 		case .Top_To_Bottom:
 			vbox.layout.flags |= { .Order_Children_Top_To_Bottom }
@@ -786,7 +786,7 @@ ui_vbox_begin :: proc( direction : UI_LayoutDirection_Y, label : string, flags :
 // Auto-layout children
 ui_vbox_end :: proc( vbox : UI_VBox, height_ref : ^f32 = nil, compute_layout := false ) {
 	// profile(#procedure)
-	if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
+	// if compute_layout do ui_box_compute_layout(vbox, dont_mark_fresh = true)
 	// ui_layout_children_vertically( vbox.box, vbox.direction, height_ref )
 }
 

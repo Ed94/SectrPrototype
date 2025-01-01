@@ -21,20 +21,20 @@ vec2i_from_vec2   :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2
 
 // This buffer is used below excluisvely to prevent any allocator recusion when verbose logging from allocators.
 // This means a single line is limited to 4k buffer
-// Logger_Allocator_Buffer : [4 * Kilobyte]u8
+Logger_Allocator_Buffer : [4 * Kilobyte]u8
 
 log :: proc( msg : string, level := core_log.Level.Info, loc := #caller_location ) {
-	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
-	// context.allocator      = arena_allocator(& temp_arena)
-	// context.temp_allocator = arena_allocator(& temp_arena)
+	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+	context.allocator      = arena_allocator(& temp_arena)
+	context.temp_allocator = arena_allocator(& temp_arena)
 
 	core_log.log( level, msg, location = loc )
 }
 
 logf :: proc( fmt : string, args : ..any,  level := core_log.Level.Info, loc := #caller_location  ) {
-	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
-	// context.allocator      = arena_allocator(& temp_arena)
-	// context.temp_allocator = arena_allocator(& temp_arena)
+	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+	context.allocator      = arena_allocator(& temp_arena)
+	context.temp_allocator = arena_allocator(& temp_arena)
 
 	core_log.logf( level, fmt, ..args, location = loc )
 }
@@ -73,7 +73,7 @@ reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
 
 USE_F64_PRECISION_ON_X_FORM_OPS :: false
 
-screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, size : Vec2 )
+screenspace_x_form :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
 {
 	when USE_F64_PRECISION_ON_X_FORM_OPS
 	{
@@ -101,7 +101,7 @@ screenspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2
 	}
 }
 
-textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, size : Vec2 )
+textspace_x_form :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
 {
 	when USE_F64_PRECISION_ON_X_FORM_OPS
 	{
@@ -123,7 +123,7 @@ textspace_x_form :: #force_inline proc "contextless" ( position, scale : ^Vec2, 
 	}
 }
 
-USE_MANUAL_SIMD_FOR_BEZIER_OPS :: false
+USE_MANUAL_SIMD_FOR_BEZIER_OPS :: true
 
 when ! USE_MANUAL_SIMD_FOR_BEZIER_OPS
 {

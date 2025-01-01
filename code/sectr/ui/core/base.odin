@@ -64,7 +64,7 @@ UI_Style_Stack_Size       :: 512
 UI_Parent_Stack_Size      :: 512
 // UI_Built_Boxes_Array_Size :: 8
 UI_Built_Boxes_Array_Size :: 56 * Kilobyte
-UI_BoxCache_TableSize :: 8 * Kilobyte
+UI_BoxCache_TableSize     :: 8 * Kilobyte
 
 UI_RenderEntry :: struct {
 	info        : UI_RenderBoxInfo,
@@ -75,14 +75,32 @@ UI_RenderEntry :: struct {
 
 UI_RenderLayer :: DLL_NodeFL(UI_RenderEntry)
 
+// UI_RenderBoxInfo :: struct {
+// 	using computed : UI_Computed,
+// 	using style    : UI_Style,
+// 	text           : StrRunesPair,
+// 	font_size      : UI_Scalar,
+// 	border_width   : UI_Scalar,
+// 	label          : StrRunesPair,
+// 	layer_signal   : b32,
+// }
+
 UI_RenderBoxInfo :: struct {
-	using computed : UI_Computed,
-	using style    : UI_Style,
-	text           : StrRunesPair,
-	font_size      : UI_Scalar,
-	border_width   : UI_Scalar,
-	label          : StrRunesPair,
-	layer_signal   : b32,
+	bounds       : Range2,
+	corner_radii : [Corner.Count]f32,
+	bg_color     : RGBA8,
+	border_color : RGBA8,
+	border_width : UI_Scalar,
+	layer_signal : b8,
+}
+
+UI_RenderTextInfo :: struct {
+	text         : string,
+	position     : Vec2,
+	color        : RGBA8,
+	font         : FontID,
+	font_size    : f32,
+	layer_signal : b8
 }
 
 UI_RenderMethod :: enum u32 {
@@ -90,7 +108,7 @@ UI_RenderMethod :: enum u32 {
 	Layers,
 }
 
-UI_Render_Method :: UI_RenderMethod.Depth_First
+UI_Render_Method :: UI_RenderMethod.Layers
 
 // TODO(Ed): Rename to UI_Context
 UI_State :: struct {
@@ -104,10 +122,15 @@ UI_State :: struct {
 	prev_cache : ^HMapChained( UI_Box ),
 	curr_cache : ^HMapChained( UI_Box ),
 
+	// TODO(Ed): DO WE ACTUALLY NEED THIS?
+	spacial_indexing_method : UI_SpacialIndexingMethod,
+
 	// For rendering via a set of layers organized into a single command list
 	// render_queue_builder : SubArena,
-	render_queue         : Array(UI_RenderLayer),
-	render_list          : Array(UI_RenderBoxInfo),
+	// render_queue         : Array(UI_RenderLayer),
+	// render_list          : Array(UI_RenderBoxInfo),
+	render_list_box      : Array(UI_RenderBoxInfo),
+	render_list_text     : Array(UI_RenderTextInfo),
 
 	null_box : ^UI_Box, // This was used with the Linked list interface...
 	root     : ^UI_Box,
@@ -138,13 +161,13 @@ UI_State :: struct {
 
 #region("Lifetime")
 
-ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_reserve_size : u64 */ )
+ui_startup :: proc( ui : ^ UI_State, spacial_indexing_method : UI_SpacialIndexingMethod = .QuadTree, cache_allocator : Allocator, cache_table_size : uint )
 {
 	ui := ui
 	ui^ = {}
 
 	for & cache in ui.caches {
-		box_cache, allocation_error := make( HMapChained(UI_Box), UI_BoxCache_TableSize, cache_allocator )
+		box_cache, allocation_error := make( HMapChained(UI_Box), cache_table_size, cache_allocator )
 		verify( allocation_error == AllocatorError.None, "Failed to allocate box cache" )
 		cache = box_cache
 	}
@@ -153,11 +176,17 @@ ui_startup :: proc( ui : ^ UI_State, cache_allocator : Allocator /* , cache_rese
 
 	allocation_error : AllocatorError
 
-	ui.render_queue, allocation_error = make( Array(UI_RenderLayer), 32, cache_allocator )
-	verify( allocation_error == AllocatorError.None, "Failed to allcate render_queue")
+	// ui.render_queue, allocation_error = make( Array(UI_RenderLayer), 32, cache_allocator )
+	// verify( allocation_error == AllocatorError.None, "Failed to allcate render_queue")
 
-	ui.render_list, allocation_error = make( Array(UI_RenderBoxInfo), UI_Built_Boxes_Array_Size, cache_allocator, fixed_cap = true )
-	verify( allocation_error == AllocatorError.None, "Failed to allocate rener_list" )
+	// ui.render_list, allocation_error = make( Array(UI_RenderBoxInfo), UI_Built_Boxes_Array_Size, cache_allocator, fixed_cap = true )
+	// verify( allocation_error == AllocatorError.None, "Failed to allocate rener_list" )
+
+	ui.render_list_box, allocation_error = make( Array(UI_RenderBoxInfo), UI_Built_Boxes_Array_Size, cache_allocator, fixed_cap = true )
+	verify( allocation_error == AllocatorError.None, "Failed to allocate rener_list_box" )
+
+	ui.render_list_text, allocation_error = make( Array(UI_RenderTextInfo), UI_Built_Boxes_Array_Size, cache_allocator, fixed_cap = true )
+	verify( allocation_error == AllocatorError.None, "Failed to allocate rener_list_box" )
 
 	log("ui_startup completed")
 }
@@ -168,8 +197,10 @@ ui_reload :: proc( ui : ^ UI_State, cache_allocator : Allocator )
 	for & cache in ui.caches {
 		hmap_chained_reload( cache, cache_allocator)
 	}
-	ui.render_queue.backing = cache_allocator
-	ui.render_list.backing  = cache_allocator
+	// ui.render_queue.backing = cache_allocator
+	// ui.render_list.backing  = cache_allocator
+	ui.render_list_box.backing  = cache_allocator
+	ui.render_list_text.backing = cache_allocator
 }
 
 // TODO(Ed) : Is this even needed?
@@ -186,8 +217,10 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 
 	stack_clear( & layout_combo_stack )
 	stack_clear( & style_combo_stack )
-	array_clear( render_queue )
-	array_clear( render_list )
+	// array_clear( render_queue )
+	// array_clear( render_list )
+	array_clear( render_list_box )
+	array_clear( render_list_text )
 
 	curr_cache, prev_cache = swap( curr_cache, prev_cache )
 
@@ -210,6 +243,7 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 	state := get_state()
 
 	ui_parent_pop() // Should be ui_context.root
+	assert(stack_peek(& ui.parent_stack) == nil)
 
 	Post_Build_Graph_Traversal:
 	{
@@ -225,196 +259,68 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			computed.content    = computed.bounds
 		}
 
+		previous_layer : i32 = 1
+
 		// Auto-layout and initial render_queue generation
 		profile_begin("Auto-layout and render_queue generation")
-		render_queue := array_to_slice(ui.render_queue)
-		for current := root.first; current != nil; current = ui_box_traverse_next_breadth_first( current, bypass_intersection_test = true )
+		// render_queue := array_to_slice(ui.render_queue)
+		for current := ui.root.first; current != nil; 
+				current  = ui_box_tranverse_next_depth_first( current, bypass_intersection_test = true, ctx = ui )
 		{
 			if ! current.computed.fresh {
 				ui_box_compute_layout( current )
 			}
 
-			when UI_Render_Method == .Layers
-			{
+			if ! intersects_range2(ui_view_bounds(ui), current.computed.bounds) {
+				continue
+			}
 
-				// TODO(Ed): Eventually put this into a sub-arena
-				entry, error := new(UI_RenderEntry)
-				(entry^) = UI_RenderEntry {
-					info = {
-						current.computed,
-						current.style,
-						current.text,
-						current.layout.font_size,
-						current.layout.border_width,
-						current.label,
-						false,
-					},
-					layer_id = current.ancestors -1,
-				}
+			when true {
+			// entry : UI_RenderBoxInfo = {
+			// 	current.computed,
+			// 	current.style,
+			// 	current.text,
+			// 	current.layout.font_size,
+			// 	current.layout.border_width,
+			// 	current.label,
+			// 	false,
+			// }
+			entry_box := UI_RenderBoxInfo {
+				bounds        = current.computed.bounds,
+				corner_radii  = current.style.corner_radii,
+				bg_color      = current.style.bg_color,
+				border_color  = current.style.border_color,
+				border_width  = current.layout.border_width,
+			}
+			entry_text := UI_RenderTextInfo {
+				text      = current.text.str,
+				position  = current.computed.text_pos,
+				color     = current.style.text_color,
+				font      = current.style.font,
+				font_size = current.layout.font_size,
+			}
 
-				if entry.layer_id >= i32(ui.render_queue.num) {
-					append( & ui.render_queue, UI_RenderLayer {})
-					render_queue = array_to_slice(ui.render_queue)
-				}
+			if current.ancestors != previous_layer {
+				entry_box .layer_signal = true
+				entry_text.layer_signal = true
+			}
 
-				// else if layer.last == nil {
-				// 	layer.first.next = entry
-				// 	entry.prev       = layer.first
-				// 	layer.last       = entry
-				// }
-
-				// push_back to next layer
-				layer := & render_queue[entry.layer_id]
-				if layer.first == nil {
-					layer.first = entry
-					layer.last  = entry
-				}
-				else {
-					layer.last.next = entry
-					entry.prev      = layer.last
-					layer.last      = entry
-				}
-				// dll_full_push_back( layer, entry, nil )
-
-				// If there is a parent entry, give it a reference to the child entry
-				parent_entry  : ^UI_RenderEntry
-				if entry.layer_id > 0 {
-					parent_layer := & render_queue[entry.layer_id - 1]
-					parent_entry  = parent_layer.last
-					entry.parent  = parent_entry
-
-					if parent_entry.first == nil {
-						parent_entry.first = entry
-						parent_entry.last  = entry
-					}
-					else {
-						parent_entry.last = entry
-					}
-					// dll_fl_append( parent_entry, entry )
-				}
+			array_append(& ui.render_list_box,  entry_box)
+			array_append(& ui.render_list_text, entry_text)
+			previous_layer = current.ancestors
 			}
 		}
 		profile_end()
 
-		profile("render_list generation")
-		when UI_Render_Method == .Layers
-		{
-			// render_queue overlap corrections & render_list generation
-			render_queue = array_to_slice(ui.render_queue)
-			for layer_id : i32 = 0; layer_id < i32(ui.render_queue.num); layer_id += 1
-			{
-				layer := & ui.render_queue.data[ layer_id ]
-				append( & ui.render_list, UI_RenderBoxInfo { layer_signal = true })
-
-				to_increment, error := make( Array(^UI_RenderEntry), 4 * Kilo )
-				verify( error == .None, "Faied to make to_increment array.")
-
-				to_inc_last_iterated : i32 = 0
-				for entry := layer.first; entry != nil; entry = entry.next
-				{
-					for neighbor := entry.next; neighbor != nil; neighbor = neighbor.next
-					{
-						if ! overlap_range2( entry.info.computed.bounds, neighbor.info.computed.bounds) do continue
-						append( & to_increment, neighbor )
-					} // for neighbor := entry.next; neighbor != nil; neighbor = neighbor.next
-
-					if entry == to_increment.data[ to_inc_last_iterated ] {
-						to_inc_last_iterated += 1
-					}
-					else {
-						// This entry stayed in this layer, we can append the value
-						array_append_value( & ui.render_list, entry.info )
-					}
-				} // for entry := layer.first; entry != nil; entry = entry.next
-
-				// Move overlaping entries & their children's by 1 layer
-				to_inc_slice := array_to_slice(to_increment)
-				for entry in to_inc_slice
-				{
-					pop_layer      := render_queue[entry.layer_id]
-					entry.layer_id += 1
-					if entry.layer_id >= i32(ui.render_queue.num) {
-						append( & ui.render_queue, UI_RenderLayer {} )
-						render_queue = array_to_slice(ui.render_queue)
-					}
-					push_layer := render_queue[entry.layer_id]
-
-					// pop entry from layer
-					prev      := entry.prev
-					prev.next  = entry.next
-					if entry == pop_layer.last {
-						pop_layer.last = prev
-					}
-
-					// push entry to next layer
-					if push_layer.first == nil {
-						push_layer.first = entry
-						push_layer.last  = entry
-					}
-					else {
-						push_layer.last.next = entry
-						entry.prev           = push_layer.last
-						push_layer.last      = entry
-						entry.next           = nil
-					}
-					// else if push_layer.last == nil {
-					// 	push_layer.last       = entry
-					// 	entry.prev            = push_layer.first
-					// 	push_layer.first.next = entry
-					// 	entry.next            = nil
-					// }
-
-					// increment children's layers
-					if entry.first != nil
-					{
-						for child := entry.first; child != nil; child = ui_render_entry_tranverse( child )
-						{
-							pop_layer      := render_queue[child.layer_id]
-							child.layer_id += 1
-
-							if child.layer_id >= i32(ui.render_queue.num) {
-								append( & ui.render_queue, UI_RenderLayer {})
-								render_queue = array_to_slice(ui.render_queue)
-							}
-							push_layer := render_queue[child.layer_id]
-
-							// pop from current layer
-							if child == pop_layer.first {
-								pop_layer.first = nil
-							}
-							if child == pop_layer.last {
-								pop_layer.last = child.prev
-							}
-
-							// push_back to next layer
-							if push_layer.first == nil {
-								push_layer.first = child
-								push_layer.last  = child
-							}
-							else {
-								push_layer.last.next = child
-								child.prev           = push_layer.last
-								push_layer.last      = child
-							}
-
-							// else if push_layer.last == nil {
-							// 	push_layer.first.next = child
-							// 	child.prev            = push_layer.first
-							// 	push_layer.last       = child
-							// }
-
-						} // for child := neighbor.first; child != nil; child = ui_render_entry_traverse_depth( child )
-					} // 	if entry.first != nil
-				} // for entry in to_inc_slice
-			} // for & layer in render_queue
-		}
-
-		render_list  := array_to_slice(ui.render_list)
+		// render_list  := array_to_slice(ui.render_list)
+		render_list_box   := array_to_slice(ui.render_list_box)
+		render_list_text  := array_to_slice(ui.render_list_text)
 	}
 
 	get_state().ui_context = nil
 }
 
+// TODO(Ed): Review usage if at all.
 ui_render_entry_tranverse :: proc( entry : ^UI_RenderEntry ) -> ^UI_RenderEntry
 {
 	// using state := get_state()

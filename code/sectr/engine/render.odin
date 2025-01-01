@@ -106,8 +106,9 @@ render_mode_2d_workspace :: proc( screen_extent : Vec2, cam : Camera, input : In
 
 	cam := cam
 	when UI_Render_Method == .Layers {
-		render_list := array_to_slice( ui.render_list )
-		render_ui_via_box_list( render_list, screen_extent, ve_ctx, ve_render, & cam )
+		render_list_box  := array_to_slice( ui.render_list_box )
+		render_list_text := array_to_slice( ui.render_list_text )
+		render_ui_via_box_list( render_list_box, render_list_text, screen_extent, ve_ctx, ve_render, & cam )
 	}
 	when UI_Render_Method == .Depth_First
 	{
@@ -281,8 +282,10 @@ render_screen_ui :: proc( screen_extent : Extents2, ui : ^UI_State, ve_ctx : ^ve
 	render_set_view_space(screen_extent)
 
 	when UI_Render_Method == .Layers {
-		render_list := array_to_slice( ui.render_list )
-		render_ui_via_box_list( render_list, screen_extent, ve_ctx, ve_render )
+		render_list_box  := array_to_slice( ui.render_list_box )
+		render_list_text := array_to_slice( ui.render_list_text )
+		render_ui_via_box_list( render_list_box, render_list_text, screen_extent, ve_ctx, ve_render )
+		// render_ui_via_box_list( render_list, screen_extent, ve_ctx, ve_render )
 	}
 	when UI_Render_Method == .Depth_First
 	{
@@ -468,7 +471,8 @@ render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^
 	}
 
 	previous_layer : i32 = 0
-	for box := ui.root.first; box != nil; box = ui_box_tranverse_next_depth_first( box, bypass_intersection_test = false, ctx = ui )
+	for box := ui_box_tranverse_next_depth_first( ui.root, bypass_intersection_test = true, ctx = ui ); box != nil; 
+	    box  = ui_box_tranverse_next_depth_first( box,     bypass_intersection_test = true, ctx = ui )
 	{
 		if box.ancestors != previous_layer {
 			if shape_enqueued do render_flush_gp()
@@ -555,68 +559,102 @@ render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^
 	if text_enqueued  do render_text_layer( screen_extent, ve_ctx, ve_render )
 }
 
-render_ui_via_box_list :: proc( render_list : []UI_RenderBoxInfo, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
+render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_RenderTextInfo, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
 {
+	profile(#procedure)
 	debug        := get_state().debug
 	default_font := get_state().default_font
 
-	text_enqueued  : b32 = false
-	shape_enqueued : b32 = false
+	cam_zoom_ratio := cam != nil ? 1.0 / cam.zoom     : 1.0
+	circle_radius  := cam != nil ? cam_zoom_ratio * 3 : 3
 
-	for entry, id in render_list
+	box_id  : i32 = 0
+	text_id : i32 = 0
+
+	layer_left : b32 = true
+	for layer_left
 	{
-		already_passed_signal := id > 0 && render_list[ id - 1 ].layer_signal
-		if !already_passed_signal && entry.layer_signal
+		profile("layer")
+		shape_enqueued : b32 = false
+		box_layer_done : b32 = false
+		for box_id < cast(i32) len(box_list) && ! box_layer_done
 		{
-			// profile("render ui layer")
-			render_flush_gp()
-			if text_enqueued do render_text_layer( screen_extent, ve_ctx, ve_render )
-			continue
-		}
-		using entry
+			profile("GP_Render")
+			box_layer_done = b32(box_id > 0) && box_list[ box_id - 1 ].layer_signal
 
-		// profile("enqueue box")
+			entry := box_list[box_id]
 
-		GP_Render:
-		{
-			// profile("draw_shapes")
-			if style.bg_color.a != 0
+			corner_radii_total : f32 = 0
+			for radius in entry.corner_radii do corner_radii_total += radius
+
+			if entry.bg_color.a != 0
 			{
-				render_set_color( style.bg_color )
-				draw_rect( bounds )
+				render_set_color( entry.bg_color )
+				if corner_radii_total > 0 do draw_rect_rounded( entry.bounds, entry.corner_radii, 16 )
+				else                      do draw_rect( entry.bounds)
 				shape_enqueued = true
 			}
 
-			if style.border_color.a != 0 && border_width > 0 {
-				render_set_color( style.border_color )
-				draw_rect_border( bounds, border_width )
+			if entry.border_color.a != 0 && entry.border_width > 0
+			{
+				render_set_color( entry.border_color )
+
+				if corner_radii_total > 0 do draw_rect_rounded_border( entry.bounds, entry.corner_radii, entry.border_width, 16 )
+				else                      do draw_rect_border( entry.bounds, entry.border_width )
 				shape_enqueued = true
 			}
 
 			if debug.draw_ui_box_bounds_points
 			{
 				render_set_color(Color_Red)
-				draw_filled_circle(bounds.min.x, bounds.min.y, 3, 24)
+				draw_filled_circle(entry.bounds.min.x, entry.bounds.min.y, circle_radius, 24)
 
 				render_set_color(Color_Blue)
-				draw_filled_circle(bounds.max.x, bounds.max.y, 3, 24)
+				draw_filled_circle(entry.bounds.max.x, entry.bounds.max.y, circle_radius, 24)
 				shape_enqueued = true
 			}
+
+			box_id += 1
 		}
 
-		if len(text.str) > 0 && style.font.key != 0 {
-			if cam != nil {
-				draw_text_string_pos_extent_zoomed( text.str, default_font, font_size, computed.text_pos, cam^, style.text_color )
-			}
-			else {
-				draw_text_string_pos_extent( text.str, default_font, font_size, computed.text_pos, style.text_color )
-			}
-			text_enqueued = true
+		if shape_enqueued {
+			profile("render ui box_layer")
+			render_flush_gp()
+			shape_enqueued = false
 		}
+	
+		text_enqueued   : b32 = false
+		text_layer_done : b32 = false
+		for text_id < cast(i32) len(text_list) && ! text_layer_done
+		{
+			profile("Text_Render")
+			text_layer_done = b32(text_id > 0) && text_list[ text_id - 1 ].layer_signal
+
+			entry := text_list[text_id]
+
+			font := entry.font.key != 0 ? entry.font : default_font
+			if len(entry.text) > 0
+			{
+				if cam != nil {
+					draw_text_string_pos_extent_zoomed( entry.text, font, entry.font_size, entry.position, cam^, entry.color )
+				}
+				else {
+					draw_text_string_pos_extent( entry.text, font, entry.font_size, entry.position, entry.color )
+				}
+				text_enqueued = true
+			}
+
+			text_id += 1
+		}
+
+		if text_enqueued {
+			profile("render ui text layer")
+			if text_enqueued do render_text_layer( screen_extent, ve_ctx, ve_render )
+			text_enqueued  = false
+		}
+
+		layer_left = box_id < cast(i32) len(box_list) && text_id < cast(i32) len(text_list)
 	}
-
-	if shape_enqueued do render_flush_gp()
-	if text_enqueued  do render_text_layer( screen_extent, ve_ctx, ve_render )
 }
 
 #region("Helpers")

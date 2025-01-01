@@ -139,7 +139,7 @@ pool_list_erase :: proc( pool : ^Pool_List, iter : Pool_ListIter )
 	}
 }
 
-pool_list_move_to_front :: #force_inline proc( pool : ^Pool_List, iter : Pool_ListIter )
+pool_list_move_to_front :: #force_inline proc "contextless" ( pool : ^Pool_List, iter : Pool_ListIter )
 {
 	using pool
 
@@ -156,7 +156,7 @@ pool_list_move_to_front :: #force_inline proc( pool : ^Pool_List, iter : Pool_Li
 	front               = iter
 }
 
-pool_list_peek_back :: #force_inline proc ( pool : ^Pool_List ) -> Pool_ListValue {
+pool_list_peek_back :: #force_inline proc ( pool : ^Pool_List ) -> Pool_ListValue #no_bounds_check {
 	assert( pool.back != - 1 )
 	value := pool.items[ pool.back ].value
 	return value
@@ -217,7 +217,7 @@ lru_find :: #force_inline proc "contextless" ( cache : ^LRU_Cache, key : u64, mu
 	return link, success
 }
 
-lru_get :: #force_inline proc( cache: ^LRU_Cache, key : u64 ) -> i32 {
+lru_get :: #force_inline proc ( cache: ^LRU_Cache, key : u64 ) -> i32 #no_bounds_check {
 	if link, ok := &cache.table[ key ]; ok {
 			pool_list_move_to_front(&cache.key_queue, link.ptr)
 			return link.value
@@ -233,7 +233,7 @@ lru_get_next_evicted :: #force_inline proc ( cache : ^LRU_Cache ) -> u64 {
 	return 0xFFFFFFFFFFFFFFFF
 }
 
-lru_peek :: #force_inline proc ( cache : ^LRU_Cache, key : u64, must_find := false ) -> i32 {
+lru_peek :: #force_inline proc "contextless" ( cache : ^LRU_Cache, key : u64, must_find := false ) -> i32 {
 	iter, success := lru_find( cache, key, must_find )
 	if success == false {
 		return -1
@@ -243,6 +243,7 @@ lru_peek :: #force_inline proc ( cache : ^LRU_Cache, key : u64, must_find := fal
 
 lru_put :: #force_inline proc( cache : ^LRU_Cache, key : u64, value : i32 ) -> u64
 {
+	profile(#procedure)
 	if link, ok := & cache.table[ key ]; ok {
 		pool_list_move_to_front( & cache.key_queue, link.ptr )
 		link.value = value

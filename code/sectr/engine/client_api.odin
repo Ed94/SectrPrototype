@@ -310,7 +310,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	{
 		profile("screen ui")
 
-		ui_startup( & screen_ui.base, cache_allocator = persistent_slab_allocator() )
+		ui_startup( & screen_ui.base, cache_table_size = 2 * Kilo, cache_allocator = persistent_slab_allocator() )
 		ui_floating_startup( & screen_ui.floating, 1 * Kilobyte, 1 * Kilobyte, persistent_slab_allocator(), "screen ui floating manager" )
 
 		using screen_ui
@@ -348,7 +348,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			// }
 
 			// Setup workspace UI state
-			ui_startup( & workspace.ui, cache_allocator =  persistent_slab_allocator() )
+			ui_startup( & workspace.ui, cache_table_size = 8 * Kilo, cache_allocator =  persistent_slab_allocator() )
 		}
 
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
