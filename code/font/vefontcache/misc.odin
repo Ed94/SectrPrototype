@@ -54,7 +54,7 @@ font_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, glyph_
 	return
 }
 
-is_empty :: #force_inline proc ( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
+is_glyph_empty :: #force_inline proc ( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
 {
 	if glyph_index == 0 do return true
 	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true

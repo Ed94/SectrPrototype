@@ -36,7 +36,7 @@ Context :: struct {
 	entries : [dynamic]Entry,
 
 	temp_path               : [dynamic]Vertex,
-	temp_codepoint_seen     : map[u64]bool,
+	temp_codepoint_seen     : map[u64]b8,
 	temp_codepoint_seen_num : i32,
 
 	snap_width  : f32,
@@ -147,10 +147,10 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	glyph_draw_params           := Init_Glyph_Draw_Params_Default,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
 	shaper_params               := Init_Shaper_Params_Default,
-	default_curve_quality       : u32 = 2,
-	entires_reserve             : u32 = 256,
-	temp_path_reserve           : u32 = 1024,
-	temp_codepoint_seen_reserve : u32 = 1024,
+	default_curve_quality       : u32 = 8 * 2,
+	entires_reserve             : u32 = 8 * 256,
+	temp_path_reserve           : u32 = 8 * 1024,
+	temp_codepoint_seen_reserve : u32 = 8 * 1024,
 )
 {
 	assert( ctx != nil, "Must provide a valid context" )
@@ -175,16 +175,16 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	temp_path, error = make( [dynamic]Vertex, len = 0, cap = temp_path_reserve )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
-	temp_codepoint_seen, error = make( map[u64]bool, uint(temp_codepoint_seen_reserve) )
+	temp_codepoint_seen, error = make( map[u64]b8, uint(temp_codepoint_seen_reserve) )
 	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
-	draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = 1 * Kilobyte )
+	draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = 8 * Kilobyte )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.vertices")
 
-	draw_list.indices, error = make( [dynamic]u32, len = 0, cap = 2 * Kilobyte )
+	draw_list.indices, error = make( [dynamic]u32, len = 0, cap = 16 * Kilobyte )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.indices")
 
-	draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = 128 )
+	draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = 1024 )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.calls")
 
 	init_atlas_region :: proc( region : ^Atlas_Region, params : Init_Atlas_Params, region_params : Init_Atlas_Region_Params, factor : Vec2i, expected_cap : i32 )

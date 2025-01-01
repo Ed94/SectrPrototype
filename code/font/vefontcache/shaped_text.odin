@@ -76,7 +76,7 @@ shape_text_uncached_advanced :: #force_inline proc( ctx : ^Context, font : Font_
 	line_gap    := f32(line_gap_i32)
 	line_height := (ascent - descent + line_gap) * entry.size_scale
 
-	shaper_shape_from_text( & ctx.shaper_ctx, & entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
+	shaper_shape_from_text( & ctx.shaper_ctx, & entry.parser_info, & entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
 }
 
 shape_text_uncached_latin :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, output : ^Shaped_Text )
@@ -120,8 +120,8 @@ shape_text_uncached_latin :: proc( ctx : ^Context, font : Font_ID, text_utf8 : s
 		}
 
 		glyph_index := parser_find_glyph_index( & entry.parser_info, codepoint )
-		is_empty    := parser_is_glyph_empty( & entry.parser_info,glyph_index )
-		if ! is_empty
+		is_glyph_empty    := parser_is_glyph_empty( & entry.parser_info,glyph_index )
+		if ! is_glyph_empty
 		{
 			append( & output.glyphs, glyph_index)
 			append( & output.positions, Vec2 {

@@ -35,6 +35,8 @@ import "core:mem"
 	arena_init      :: mem.arena_init
 import "core:slice"
 
+
+
 //#region("Proc overload mappings")
 
 append :: proc {
@@ -86,6 +88,10 @@ make :: proc {
 	make_dynamic_array_len_cap,
 	make_map,
 	make_map_cap,
+}
+
+make_soa :: proc {
+	make_soa_slice,
 }
 
 resize :: proc {

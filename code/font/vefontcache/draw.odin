@@ -352,31 +352,9 @@ cache_glyph_to_atlas :: proc( ctx : ^Context,
 	// E region is special case and not cached to atlas.
 	if region_kind == .None || region_kind == .E do return
 
-	// Grab an atlas LRU cache slot.
 	atlas_index := atlas_index
-	if atlas_index == -1
-	{
-		if region.next_idx < region.state.capacity
-		{
-			evicted         := lru_put( & region.state, lru_code, region.next_idx )
-			atlas_index      = region.next_idx
-			region.next_idx += 1
-			assert( evicted == lru_code )
-		}
-		else
-		{
-			next_evict_codepoint := lru_get_next_evicted( & region.state )
-			assert( next_evict_codepoint != 0xFFFFFFFFFFFFFFFF )
-
-			atlas_index = lru_peek( & region.state, next_evict_codepoint, must_find = true )
-			assert( atlas_index != -1 )
-
-			evicted := lru_put( & region.state, lru_code, atlas_index )
-			assert( evicted == next_evict_codepoint )
-		}
-
-		assert( lru_get( & region.state, lru_code ) != - 1 )
-	}
+	// TODO(Ed): Try to make sure this is resolve always
+	if atlas_index == -1 do atlas_index = atlas_reserve_slot( region, lru_code )
 
 	atlas             := & ctx.atlas
 	glyph_buffer      := & ctx.glyph_buffer
@@ -462,34 +440,39 @@ check_glyph_in_atlas :: #force_inline proc( ctx : ^Context, font : Font_ID, entr
 	region_kind : Atlas_Region_Kind,
 	region      : ^Atlas_Region,
 	over_sample : Vec2
-) -> b32
+) -> (seen, should_cache : b8)
 {
 	profile(#procedure)
 	assert( glyph_index != -1 )
 
 	// E region can't batch
-	if region_kind == .E || region_kind == .None                       do return false
-	if ctx.temp_codepoint_seen_num > i32(cap(ctx.temp_codepoint_seen)) do return false
+	if region_kind == .E || region_kind == .None                       do return
+	if ctx.temp_codepoint_seen_num > i32(cap(ctx.temp_codepoint_seen)) do return
 
 	if atlas_index == - 1
 	{
-		if region.next_idx > region.state.capacity {
+		// Check to see if we reached capacity for the atlas
+		if region.next_idx > region.state.capacity 
+		{
 			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
 			next_evict_codepoint := lru_get_next_evicted( & region.state )
-			seen, success  := ctx.temp_codepoint_seen[next_evict_codepoint]
+			success : bool
+			seen, success   = ctx.temp_codepoint_seen[next_evict_codepoint]
 			assert(success != false)
 
 			if (seen) {
-				return false
+				return
 			}
 		}
 
+		should_cache = true
 		cache_glyph_to_atlas( ctx, font, glyph_index, lru_code, atlas_index, entry, region_kind, region, over_sample )
 	}
 
 	assert( lru_get( & region.state, lru_code ) != -1 )
 	mark_batch_codepoint_seen( ctx, lru_code)
-	return true
+	seen = true
+	return
 }
 
 // ve_fontcache_clear_Draw_List
@@ -675,6 +658,18 @@ draw_text_batch :: proc(ctx: ^Context, entry: ^Entry, shaped: ^Shaped_Text,
 	}
 }
 
+GlyphPackEntry :: struct {
+	lru_code     : u64,
+	region       : ^Atlas_Region,
+	over_sample  : Vec2,
+	atlas_index  : i32,
+	index        : Glyph,
+	shape_id     : i32,
+	region_kind  : Atlas_Region_Kind, 
+	in_atlas     : b8,
+	should_cache : b8,
+}
+
 // Helper for draw_text, all raw text content should be confirmed to be either formatting or visible shapes before getting cached.
 draw_text_shape :: #force_inline proc( ctx : ^Context,
 	font                    : Font_ID,
@@ -685,29 +680,83 @@ draw_text_shape :: #force_inline proc( ctx : ^Context,
 ) -> (cursor_pos : Vec2) #no_bounds_check
 {
 	profile(#procedure)
-	batch_start_idx : i32 = 0
-	for index : i32 = 0; index < cast(i32) len(shaped.glyphs); index += 1
+
+	glyph_pack, pack_alloc_eror := make_soa(#soa[]GlyphPackEntry, len(shaped.glyphs), allocator = context.temp_allocator)
+
+	profile_begin("SOA glyph pack processing")
+	for & glyph, index in glyph_pack
 	{
-		glyph_index := shaped.glyphs[ index ]
-		if is_empty( ctx, entry, glyph_index ) do continue
+		glyph.shape_id = cast(i32) index
+		glyph.index    = shaped.glyphs[ index ]
+	}
+	// for & glyph, index in glyph_pack
+	// {
+	// 	glyph.region_kind, 
+	// 	glyph.region, 
+	// 	glyph.over_sample = decide_codepoint_region( ctx, entry, glyph.index )
+	// }
+	// for & glyph, index in glyph_pack
+	// {
+	// 	glyph.lru_code = font_glyph_lru_code(entry.id, glyph.index)
+	// }
+	// for & glyph, index in glyph_pack
+	// {
+	// 	glyph.atlas_index = -1
+	// 	if glyph.region_kind != .E do glyph.atlas_index = lru_get( & glyph.region.state, glyph.lru_code )
+	// }
+	// for & glyph, index in glyph_pack
+	// {
+	// 	glyph.in_atlas, glyph.should_cache = check_glyph_in_atlas( ctx, font, entry, glyph.index, glyph.lru_code, glyph.atlas_index, glyph.region_kind, glyph.region, glyph.over_sample )
+	// }
+	// for & glyph, index in glyph_pack
+	// {
+	// 	if ! glyph.should_cache do continue 
+	// 		cache_glyph_to_atlas(ctx, font, glyph.index, glyph.lru_code, glyph.atlas_index, entry, glyph.region_kind, glyph.region, glyph.over_sample)
+	// }
+	// for & glyph, index in glyph_pack
+	// {
+	// 	if ! glyph.in_atlas do continue
 
-		region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
-		lru_code                         := font_glyph_lru_code(entry.id, glyph_index)
-		atlas_index                      := cast(i32) -1
+	// 	assert( lru_get( & glyph.region.state, glyph.lru_code ) != -1 )
+	// 	mark_batch_codepoint_seen( ctx, glyph.lru_code)
+	// }
+	profile_end()
 
-		if region_kind != .E do atlas_index = lru_get( & region.state, lru_code )
-		if check_glyph_in_atlas( ctx, font, entry, glyph_index, lru_code, atlas_index, region_kind, region, over_sample ) do continue
+	// Prepare uncached glyphs for caching
+	batch_start_idx : i32 = 0
+	for & glyph, index in glyph_pack
+	{
+		// if is_glyph_empty( ctx, entry, glyph.index ) do continue
+
+		glyph.region_kind, glyph.region, glyph.over_sample = decide_codepoint_region( ctx, entry, glyph.index )
+
+		glyph.lru_code = font_glyph_lru_code(entry.id, glyph.index)
+
+		glyph.atlas_index = -1
+		if glyph.region_kind != .E do glyph.atlas_index = lru_get( & glyph.region.state, glyph.lru_code )
+
+		glyph.in_atlas, glyph.should_cache = check_glyph_in_atlas( ctx, font, entry, glyph.index, glyph.lru_code, glyph.atlas_index, glyph.region_kind, glyph.region, glyph.over_sample )
+		// if glyph.should_cache {
+			// cache_glyph_to_atlas(ctx, font, glyph.index, glyph.lru_code, glyph.atlas_index, entry, glyph.region_kind, glyph.region, glyph.over_sample)
+			// glyph.atlas_index = atlas_reserve_slot(glyph.region, glyph.lru_code)
+		// }
+		if glyph.in_atlas {
+			// assert( lru_get( & glyph.region.state, glyph.lru_code ) != -1 )
+			// mark_batch_codepoint_seen( ctx, glyph.lru_code)
+			continue
+		}
 
 		// We can no longer directly append the shape as it has missing glyphs in the atlas
 
 		// First batch the other cached glyphs
 		// flush_glyph_buffer_to_atlas(ctx)
-		draw_text_batch( ctx, entry, shaped, batch_start_idx, index, position, scale, snap_width, snap_height )
+		draw_text_batch( ctx, entry, shaped, batch_start_idx, glyph.shape_id, position, scale, snap_width, snap_height )
 		reset_batch_codepoint_state( ctx )
 
-		cache_glyph_to_atlas( ctx, font, glyph_index, lru_code, atlas_index, entry, region_kind, region, over_sample )
-		mark_batch_codepoint_seen( ctx, lru_code)
-		batch_start_idx = index
+		cache_glyph_to_atlas( ctx, font, glyph.index, glyph.lru_code, glyph.atlas_index, entry, glyph.region_kind, glyph.region, glyph.over_sample )
+		mark_batch_codepoint_seen( ctx, glyph.lru_code)
+	
+		batch_start_idx = 1
 	}
 
 	draw_text_batch( ctx, entry, shaped, batch_start_idx, cast(i32) len(shaped.glyphs), position, scale, snap_width , snap_height )
@@ -731,14 +780,17 @@ draw_text_mono_latin_batch :: #force_inline proc( ctx : ^Context,
 	for index : i32 = 0; index < cast(i32) len(shaped.glyphs); index += 1
 	{
 		glyph_index := shaped.glyphs[ index ]
-		if is_empty( ctx, entry, glyph_index ) do continue
+		if is_glyph_empty( ctx, entry, glyph_index ) do continue
 
 		region_kind, region, over_sample := decide_codepoint_region( ctx, entry, glyph_index )
 		lru_code                         := font_glyph_lru_code(entry.id, glyph_index)
 		atlas_index                      := cast(i32) -1
 
 		if region_kind != .E do atlas_index = lru_get( & region.state, lru_code )
-		if check_glyph_in_atlas( ctx, font, entry, glyph_index, lru_code, atlas_index, region_kind, region, over_sample ) do continue
+
+		in_atlas, should_cache := check_glyph_in_atlas( ctx, font, entry, glyph_index, lru_code, atlas_index, region_kind, region, over_sample )
+		if in_atlas            do continue
+		if should_cache        do cache_glyph_to_atlas(ctx, font, glyph_index, lru_code, atlas_index, entry, region_kind, region, over_sample )
 
 		// We can no longer directly append the shape as it has missing glyphs in the atlas
 

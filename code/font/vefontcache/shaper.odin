@@ -54,7 +54,7 @@ shaper_unload_font :: proc( ctx : ^Shaper_Info )
 	if blob != nil do harfbuzz.blob_destroy( blob )
 }
 
-shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, info : ^Shaper_Info, output :^Shaped_Text, text_utf8 : string,
+shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, parser_info : ^Parser_Font_Info, info : ^Shaper_Info, output :^Shaped_Text, text_utf8 : string,
 	ascent, descent, line_gap : i32, size, size_scale : f32 )
 {
 	profile(#procedure)
@@ -72,7 +72,7 @@ shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, info : ^Sha
 	line_height    := ((ascent - descent + line_gap) * size_scale)
 
 	position : Vec2
-	shape_run :: #force_inline proc( buffer : harfbuzz.Buffer, script : harfbuzz.Script, font : harfbuzz.Font, output : ^Shaped_Text,
+	shape_run :: #force_inline proc( parser_info : ^Parser_Font_Info, buffer : harfbuzz.Buffer, script : harfbuzz.Script, font : harfbuzz.Font, output : ^Shaped_Text,
 		position : ^Vec2, max_line_width: ^f32, line_count: ^int,
 		ascent, descent, line_gap, size, size_scale: f32,
 		snap_shape_pos : b32, adv_snap_small_font_threshold : f32 )
@@ -115,8 +115,6 @@ shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, info : ^Sha
 				(position^) = ceil( position^ )
 			}
 
-			append( & output.glyphs, glyph_id )
-
 			glyph_pos := position^
 			offset    := Vec2 { f32(hb_gposition.x_offset), f32(hb_gposition.y_offset) } * size_scale
 			glyph_pos += offset
@@ -124,7 +122,6 @@ shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, info : ^Sha
 			if snap_shape_pos {
 				glyph_pos = ceil(glyph_pos)
 			}
-			append( & output.positions, glyph_pos)
 
 			advance := Vec2 { 
 				f32(hb_gposition.x_advance) * size_scale, 
@@ -132,6 +129,12 @@ shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, info : ^Sha
 			}
 			(position^)          += advance
 			(max_line_width^)     = max(max_line_width^, position.x)
+
+			is_empty := parser_is_glyph_empty(parser_info, glyph_id)
+			if ! is_empty {
+				append( & output.glyphs, glyph_id )
+				append( & output.positions, glyph_pos)
+			}
 		}
 
 		output.end_cursor_pos = position^
@@ -159,7 +162,7 @@ shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, info : ^Sha
 		}
 
 		// End current run since we've encountered a script change.
-		shape_run( 
+		shape_run( parser_info,
 			ctx.hb_buffer, current_script, info.font, output, 
 			& position, & max_line_width, & line_count, 
 			ascent, descent, line_gap, size, size_scale, 
@@ -170,7 +173,7 @@ shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, info : ^Sha
 	}
 
 	// End the last run if needed
-	shape_run( 
+	shape_run( parser_info,
 		ctx.hb_buffer, current_script, info.font, output, 
 		& position, & max_line_width, & line_count, 
 		ascent, descent, line_gap, size, size_scale, 
