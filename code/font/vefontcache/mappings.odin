@@ -1,5 +1,6 @@
 package vefontcache
 
+import "base:runtime"
 import "core:hash"
 	fnv64a :: hash.fnv64a
 import "core:math"
@@ -43,6 +44,10 @@ append :: proc {
 	append_elem,
 	append_elems,
 	append_elem_string,
+}
+
+append_soa :: proc {
+	append_soa_elem
 }
 
 ceil :: proc {
@@ -91,6 +96,7 @@ make :: proc {
 }
 
 make_soa :: proc {
+	make_soa_dynamic_array_len_cap,
 	make_soa_slice,
 }
 
@@ -112,6 +118,7 @@ vec2_64 :: proc {
 }
 
 import "../../grime"
+
 
 DISABLE_PROFILING :: false
 

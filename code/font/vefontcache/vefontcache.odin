@@ -225,6 +225,13 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	atlas.region_d.offset.x = atlas.width / 2
 	atlas.region_d.offset.y = 0
 
+	atlas.regions = {
+		& atlas.region_a,
+		& atlas.region_b,
+		& atlas.region_c,
+		& atlas.region_d,
+	}
+
 	lru_init( & shape_cache.state, i32(shape_cache_params.capacity) )
 
 	shape_cache.storage, error = make( [dynamic]Shaped_Text, shape_cache_params.capacity )
@@ -466,36 +473,6 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : str
 	text_chunk = transmute(string) text_utf8_bytes[ : ]
 	if len(text_chunk) > 0 {
 		shaped        := shape_text_cached( ctx, font, text_chunk, entry, shape_text_uncached_advanced )
-		ctx.cursor_pos = draw_text_shape( ctx, font, entry, shaped, position, scale, ctx.snap_width, ctx.snap_height )
-	}
-	return true
-}
-
-draw_text_mono_latin :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, position, scale : Vec2 ) -> b32
-{
-	profile(#procedure)
-	assert( ctx != nil )
-	assert( font >= 0 && int(font) < len(ctx.entries) )
-
-	ctx.cursor_pos = {}
-
-	position := position
-	if ctx.snap_width  > 0 do position.x = ceil(position.x * ctx.snap_width ) / ctx.snap_width
-	if ctx.snap_height > 0 do position.y = ceil(position.y * ctx.snap_height) / ctx.snap_height
-
-	entry := & ctx.entries[ font ]
-
-	ChunkType   :: enum u32 { Visible, Formatting }
-	chunk_kind  : ChunkType
-	chunk_start : int = 0
-	chunk_end   : int = 0
-
-	text_utf8_bytes := transmute([]u8) text_utf8
-	text_chunk      : string
-
-	text_chunk = transmute(string) text_utf8_bytes[ : ]
-	if len(text_chunk) > 0 {
-		shaped        := shape_text_cached( ctx, font, text_chunk, entry, shape_text_uncached_latin )
 		ctx.cursor_pos = draw_text_shape( ctx, font, entry, shaped, position, scale, ctx.snap_width, ctx.snap_height )
 	}
 	return true

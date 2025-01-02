@@ -31,3 +31,4 @@ profile_begin :: #force_inline proc "contextless" ( name : string, loc := #calle
 profile_end :: #force_inline proc "contextless" () {
 	spall._buffer_end( & Module_Context.ctx, & Module_Context.buffer)
 }
+

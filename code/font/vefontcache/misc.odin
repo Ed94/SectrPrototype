@@ -57,16 +57,17 @@ font_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, glyph_
 is_glyph_empty :: #force_inline proc ( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
 {
 	if glyph_index == 0 do return true
-	if parser_is_glyph_empty( & entry.parser_info, glyph_index ) do return true
+	if parser_is_glyph_empty( entry.parser_info, glyph_index ) do return true
 	return false
 }
 
-mark_batch_codepoint_seen :: #force_inline proc ( ctx : ^Context, lru_code : u64 ) {
+mark_batch_codepoint_seen :: #force_inline proc "contextless" ( ctx : ^Context, lru_code : u64 ) {
 	ctx.temp_codepoint_seen[lru_code] = true
 	ctx.temp_codepoint_seen_num += 1
 }
 
 reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
+	profile(#procedure)
 	clear_map( & ctx.temp_codepoint_seen )
 	ctx.temp_codepoint_seen_num = 0
 }

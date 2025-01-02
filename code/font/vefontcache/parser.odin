@@ -111,7 +111,7 @@ parser_unload_font :: proc( font : ^Parser_Font_Info )
 	}
 }
 
-parser_find_glyph_index :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, codepoint : rune ) -> (glyph_index : Glyph)
+parser_find_glyph_index :: #force_inline proc "contextless" ( font : Parser_Font_Info, codepoint : rune ) -> (glyph_index : Glyph)
 {
 	profile(#procedure)
 	switch font.kind
@@ -126,7 +126,7 @@ parser_find_glyph_index :: #force_inline proc "contextless" ( font : ^Parser_Fon
 			return
 
 		case .STB_TrueType:
-			glyph_index = transmute(Glyph) stbtt.FindGlyphIndex( & font.stbtt_info, codepoint )
+			glyph_index = transmute(Glyph) stbtt.FindGlyphIndex( font.stbtt_info, codepoint )
 			return
 	}
 	return Glyph(-1)
@@ -220,12 +220,14 @@ parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : ^P
 	return
 }
 
-parser_get_glyph_box :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, glyph_index : Glyph ) -> (bounds_0, bounds_1 : Vec2i)
+parser_get_bounds :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, glyph_index : Glyph ) -> (bounds : GlyphBounds)
 {
 	profile(#procedure)
+
+	bounds_0, bounds_1 : Vec2i
+
 	switch font.kind
 	{
-		
 		case .Freetype:
 			freetype.load_glyph( font.freetype_info, c.uint(glyph_index), { .No_Bitmap, .No_Hinting, .No_Scale } )
 
@@ -242,6 +244,7 @@ parser_get_glyph_box :: #force_inline proc "contextless" ( font : ^Parser_Font_I
 			bounds_0 = { x0, y0 }
 			bounds_1 = { x1, y1 }
 	}
+	bounds = { vec2(bounds_0), vec2(bounds_1) }
 	return
 }
 
@@ -269,7 +272,7 @@ parser_get_glyph_shape :: #force_inline proc ( font : ^Parser_Font_Info, glyph_i
 	return
 }
 
-parser_is_glyph_empty :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, glyph_index : Glyph ) -> b32
+parser_is_glyph_empty :: #force_inline proc "contextless" ( font : Parser_Font_Info, glyph_index : Glyph ) -> b32
 {
 	switch font.kind
 	{
@@ -287,7 +290,7 @@ parser_is_glyph_empty :: #force_inline proc "contextless" ( font : ^Parser_Font_
 			return false
 
 		case .STB_TrueType:
-			return stbtt.IsGlyphEmpty( & font.stbtt_info, cast(c.int) glyph_index )
+			return stbtt.IsGlyphEmpty( font.stbtt_info, cast(c.int) glyph_index )
 	}
 	return false
 }

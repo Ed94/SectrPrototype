@@ -243,7 +243,7 @@ lru_peek :: #force_inline proc "contextless" ( cache : ^LRU_Cache, key : u64, mu
 
 lru_put :: #force_inline proc( cache : ^LRU_Cache, key : u64, value : i32 ) -> u64
 {
-	profile(#procedure)
+	// profile(#procedure)
 	if link, ok := & cache.table[ key ]; ok {
 		pool_list_move_to_front( & cache.key_queue, link.ptr )
 		link.value = value

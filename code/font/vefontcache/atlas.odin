@@ -34,6 +34,8 @@ Atlas :: struct {
 	region_b : Atlas_Region,
 	region_c : Atlas_Region,
 	region_d : Atlas_Region,
+
+	regions : [4] ^Atlas_Region,
 }
 
 atlas_bbox :: #force_inline proc "contextless" ( atlas : ^Atlas, region : Atlas_Region_Kind, local_idx : i32 ) -> (position, size: Vec2)
@@ -86,32 +88,27 @@ atlas_bbox :: #force_inline proc "contextless" ( atlas : ^Atlas, region : Atlas_
 	return
 }
 
-decide_codepoint_region :: #force_inline proc (ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> (region_kind : Atlas_Region_Kind, region : ^Atlas_Region, over_sample : Vec2)
+atlas_region_bbox :: proc( region : Atlas_Region, local_idx : i32 ) -> (position, size: Vec2)
+{
+	size.x = f32(region.width)
+	size.y = f32(region.height)
+
+	position.x = cast(f32) (( local_idx % region.capacity.x ) * region.width)
+	position.y = cast(f32) (( local_idx / region.capacity.x ) * region.height)
+
+	position.x += f32(region.offset.x)
+	position.y += f32(region.offset.y)
+	return
+}
+
+decide_codepoint_region :: #force_inline proc (atlas : Atlas, glyph_buffer : Glyph_Draw_Buffer,  size_scale : f32, glyph_index : Glyph, bounds_size : Vec2 ) -> (region_kind : Atlas_Region_Kind,  over_sample : Vec2)
 {
 	profile(#procedure)
-	if parser_is_glyph_empty(&entry.parser_info, glyph_index) {
-		return .None, nil, {}
-	}
+	glyph_padding_dbl  := atlas.glyph_padding * 2
+	bounds_size_scaled := bounds_size * size_scale + glyph_padding_dbl
 
-	bounds_0, bounds_1 := parser_get_glyph_box(&entry.parser_info, glyph_index)
-	bounds_size        := vec2(bounds_1) - vec2(bounds_0)
-
-	atlas             := & ctx.atlas
-	glyph_buffer      := & ctx.glyph_buffer
-	glyph_padding_dbl := atlas.glyph_padding * 2
-
-	bounds_size_scaled := bounds_size * entry.size_scale * atlas.glyph_over_scalar + glyph_padding_dbl
-
-	// Use a lookup table for faster region selection
-	region_lookup := [4]struct { kind: Atlas_Region_Kind, region: ^Atlas_Region } {
-		{ .A, & atlas.region_a },
-		{ .B, & atlas.region_b },
-		{ .C, & atlas.region_c },
-		{ .D, & atlas.region_d },
-	}
-
-	for region in region_lookup do if bounds_size_scaled.x <= f32(region.region.width) && bounds_size_scaled.y <= f32(region.region.height) {
-		return region.kind, region.region, glyph_buffer.over_sample
+	for kind in 0 ..< 4 do if bounds_size_scaled.x <= f32( atlas.regions[kind].width) && bounds_size_scaled.y <= f32(atlas.regions[kind].height) {
+		return cast(Atlas_Region_Kind) kind, glyph_buffer.over_sample
 	}
 
 	if bounds_size_scaled.x <= f32(glyph_buffer.width) \
@@ -121,9 +118,9 @@ decide_codepoint_region :: #force_inline proc (ctx : ^Context, entry : ^Entry, g
 			bounds_size_scaled.y <= f32(glyph_buffer.height / 2) ? \
 			  {2.0, 2.0} \
 			: {1.0, 1.0}
-		return .E, nil, over_sample
+		return .E, over_sample
 	}
-	return .None, nil, {}
+	return .None, {}
 }
 
 // Grab an atlas LRU cache slot.
@@ -149,5 +146,42 @@ atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u6
 	}
 
 	assert( lru_get( & region.state, lru_code ) != - 1 )
+	return
+}
+
+check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : ^Context, font : Font_ID, entry : ^Entry, glyph_index : Glyph,
+	lru_code    : u64,
+	atlas_index : ^i32,
+	region_kind : Atlas_Region_Kind,
+	region      : ^Atlas_Region,
+	over_sample : Vec2
+) -> (found, should_cache : b8 )
+{
+	profile(#procedure)
+	assert( glyph_index != -1 )
+
+	if ctx.temp_codepoint_seen_num > i32(cap(ctx.temp_codepoint_seen)) do return
+
+	if (atlas_index ^) == - 1
+	{
+		// Check to see if we reached capacity for the atlas
+		if region.next_idx > region.state.capacity 
+		{
+			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
+			next_evict_codepoint := lru_get_next_evicted( & region.state )
+			success : bool
+			found, success   = ctx.temp_codepoint_seen[next_evict_codepoint]
+			assert(success != false)
+
+			if (found) {
+				return
+			}
+		}
+
+		should_cache = true
+		(atlas_index ^) = atlas_reserve_slot(region, lru_code)
+	}
+
+	found = true
 	return
 }

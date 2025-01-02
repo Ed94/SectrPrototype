@@ -6,7 +6,7 @@ import ve         "codebase:font/VEFontCache"
 import sokol_gfx  "thirdparty:sokol/gfx"
 
 Font_Provider_Use_Freetype :: false
-Font_Largest_Px_Size       :: 72
+Font_Largest_Px_Size       :: 152
 Font_Size_Interval         :: 2
 
 Font_Default            :: FontID { 0, "" }
