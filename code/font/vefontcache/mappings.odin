@@ -120,7 +120,7 @@ vec2_64 :: proc {
 import "../../grime"
 
 
-DISABLE_PROFILING :: false
+DISABLE_PROFILING :: true
 
 @(deferred_none = profile_end, disabled = DISABLE_PROFILING)
 profile :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {

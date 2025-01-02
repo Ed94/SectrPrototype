@@ -38,56 +38,6 @@ Atlas :: struct {
 	regions : [4] ^Atlas_Region,
 }
 
-atlas_bbox :: #force_inline proc "contextless" ( atlas : ^Atlas, region : Atlas_Region_Kind, local_idx : i32 ) -> (position, size: Vec2)
-{
-	profile(#procedure)
-	switch region
-	{
-		case .A:
-			size.x = f32(atlas.region_a.width)
-			size.y = f32(atlas.region_a.height)
-
-			position.x = cast(f32) (( local_idx % atlas.region_a.capacity.x ) * atlas.region_a.width)
-			position.y = cast(f32) (( local_idx / atlas.region_a.capacity.x ) * atlas.region_a.height)
-
-			position.x += f32(atlas.region_a.offset.x)
-			position.y += f32(atlas.region_a.offset.y)
-
-		case .B:
-			size.x = f32(atlas.region_b.width)
-			size.y = f32(atlas.region_b.height)
-
-			position.x = cast(f32) (( local_idx % atlas.region_b.capacity.x ) * atlas.region_b.width)
-			position.y = cast(f32) (( local_idx / atlas.region_b.capacity.x ) * atlas.region_b.height)
-
-			position.x += f32(atlas.region_b.offset.x)
-			position.y += f32(atlas.region_b.offset.y)
-
-		case .C:
-			size.x = f32(atlas.region_c.width)
-			size.y = f32(atlas.region_c.height)
-
-			position.x = cast(f32) (( local_idx % atlas.region_c.capacity.x ) * atlas.region_c.width)
-			position.y = cast(f32) (( local_idx / atlas.region_c.capacity.x ) * atlas.region_c.height)
-
-			position.x += f32(atlas.region_c.offset.x)
-			position.y += f32(atlas.region_c.offset.y)
-
-		case .D:
-			size.x = f32(atlas.region_d.width)
-			size.y = f32(atlas.region_d.height)
-
-			position.x = cast(f32) (( local_idx % atlas.region_d.capacity.x ) * atlas.region_d.width)
-			position.y = cast(f32) (( local_idx / atlas.region_d.capacity.x ) * atlas.region_d.height)
-
-			position.x += f32(atlas.region_d.offset.x)
-			position.y += f32(atlas.region_d.offset.y)
-
-		case .Ignore, .None, .E:
-	}
-	return
-}
-
 atlas_region_bbox :: proc( region : Atlas_Region, local_idx : i32 ) -> (position, size: Vec2)
 {
 	size.x = f32(region.width)
@@ -135,28 +85,28 @@ atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u6
 	}
 	else
 	{
-		next_evict_codepoint := lru_get_next_evicted( & region.state )
-		assert( next_evict_codepoint != 0xFFFFFFFFFFFFFFFF )
+		next_evict_codepoint := lru_get_next_evicted( region.state )
+		// assert( next_evict_codepoint != 0xFFFFFFFFFFFFFFFF )
 
-		atlas_index = lru_peek( & region.state, next_evict_codepoint, must_find = true )
-		assert( atlas_index != -1 )
+		atlas_index = lru_peek( region.state, next_evict_codepoint, must_find = true )
+		// assert( atlas_index != -1 )
 
 		evicted := lru_put( & region.state, lru_code, atlas_index )
-		assert( evicted == next_evict_codepoint )
+		// assert( evicted == next_evict_codepoint )
 	}
 
 	assert( lru_get( & region.state, lru_code ) != - 1 )
 	return
 }
 
-check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : ^Context, glyph_index : Glyph,
+check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : Context, glyph_index : Glyph,
 	lru_code    : u64,
 	atlas_index : ^i32,
 	region      : ^Atlas_Region,
 ) -> (found, should_cache : b8 )
 {
 	profile(#procedure)
-	assert( glyph_index != -1 )
+	// assert( glyph_index != -1 )
 
 	if ctx.temp_codepoint_seen_num > i32(cap(ctx.temp_codepoint_seen)) do return
 
@@ -166,10 +116,10 @@ check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : ^Context, glyph_ind
 		if region.next_idx > region.state.capacity 
 		{
 			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
-			next_evict_codepoint := lru_get_next_evicted( & region.state )
+			next_evict_codepoint := lru_get_next_evicted( region.state )
 			success : bool
 			found, success   = ctx.temp_codepoint_seen[next_evict_codepoint]
-			assert(success != false)
+			// assert(success != false)
 			if (found) {
 				return
 			}

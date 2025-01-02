@@ -1,6 +1,9 @@
 package vefontcache
 
 Shaped_Text :: struct {
+	font               : Font_ID,
+	entry              : ^Entry,
+
 	glyphs             : [dynamic]Glyph,
 	positions          : [dynamic]Vec2,
 	end_cursor_pos     : Vec2,
@@ -19,9 +22,9 @@ shape_lru_hash :: #force_inline proc "contextless" ( hash : ^u64, bytes : []byte
 	}
 }
 
-ShapedTextUncachedProc :: #type proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, output : ^Shaped_Text )
+ShapedTextUncachedProc :: #type proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : Entry, output : ^Shaped_Text )
 
-shape_text_cached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, shape_text_uncached : ShapedTextUncachedProc ) -> ^Shaped_Text #no_bounds_check
+shaper_shape_text_cached :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : Entry, shape_text_uncached : $ShapedTextUncachedProc ) -> (shaped_text : Shaped_Text)
 {
 	profile(#procedure)
 	font        := font
@@ -45,23 +48,27 @@ shape_text_cached :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, e
 		}
 		else
 		{
-			next_evict_idx := lru_get_next_evicted( state )
-			assert( next_evict_idx != 0xFFFFFFFFFFFFFFFF )
+			next_evict_idx := lru_get_next_evicted( state ^ )
+			// assert( next_evict_idx != 0xFFFFFFFFFFFFFFFF )
 
-			shape_cache_idx = lru_peek( state, next_evict_idx, must_find = true )
-			assert( shape_cache_idx != - 1 )
+			shape_cache_idx = lru_peek( state ^, next_evict_idx, must_find = true )
+			// assert( shape_cache_idx != - 1 )
 
 			lru_put( state, lru_code, shape_cache_idx )
 		}
 
-		shape_entry := & shape_cache.storage[ shape_cache_idx ]
-		shape_text_uncached( ctx, font, text_utf8, entry, shape_entry )
+		storage_entry := & shape_cache.storage[ shape_cache_idx ]
+		shape_text_uncached( ctx, font, text_utf8, entry, storage_entry )
+
+		shaped_text = storage_entry ^
+		return
 	}
 
-	return & shape_cache.storage[ shape_cache_idx ]
+	shaped_text = shape_cache.storage[ shape_cache_idx ]
+	return
 }
 
-shape_text_uncached_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, output : ^Shaped_Text )
+shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : Entry, output : ^Shaped_Text )
 {
 	profile(#procedure)
 	assert( ctx != nil )
@@ -70,16 +77,16 @@ shape_text_uncached_advanced :: #force_inline proc( ctx : ^Context, font : Font_
 	clear( & output.glyphs )
 	clear( & output.positions )
 
-	ascent_i32, descent_i32, line_gap_i32 := parser_get_font_vertical_metrics( & entry.parser_info )
+	ascent_i32, descent_i32, line_gap_i32 := parser_get_font_vertical_metrics( entry.parser_info )
 	ascent      := f32(ascent_i32)
 	descent     := f32(descent_i32)
 	line_gap    := f32(line_gap_i32)
 	line_height := (ascent - descent + line_gap) * entry.size_scale
 
-	shaper_shape_from_text( & ctx.shaper_ctx, entry.parser_info, & entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
+	shaper_shape_from_text( & ctx.shaper_ctx, entry.parser_info, entry.shaper_info, output, text_utf8, ascent_i32, descent_i32, line_gap_i32, entry.size, entry.size_scale )
 }
 
-shape_text_uncached_latin :: proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, output : ^Shaped_Text )
+shaper_shape_from_text_latin :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : Entry, output : ^Shaped_Text )
 {	
 	profile(#procedure)
 	assert( ctx != nil )
@@ -88,7 +95,7 @@ shape_text_uncached_latin :: proc( ctx : ^Context, font : Font_ID, text_utf8 : s
 	clear( & output.glyphs )
 	clear( & output.positions )
 
-	ascent_i32, descent_i32, line_gap_i32 := parser_get_font_vertical_metrics( & entry.parser_info )
+	ascent_i32, descent_i32, line_gap_i32 := parser_get_font_vertical_metrics( entry.parser_info )
 	ascent      := f32(ascent_i32)
 	descent     := f32(descent_i32)
 	line_gap    := f32(line_gap_i32)
@@ -102,7 +109,7 @@ shape_text_uncached_latin :: proc( ctx : ^Context, font : Font_ID, text_utf8 : s
 	for codepoint, index in text_utf8
 	{
 		if prev_codepoint > 0 {
-			kern       := parser_get_codepoint_kern_advance( & entry.parser_info, prev_codepoint, codepoint )
+			kern       := parser_get_codepoint_kern_advance( entry.parser_info, prev_codepoint, codepoint )
 			position.x += f32(kern) * entry.size_scale
 		}
 		if codepoint == '\n'
@@ -130,7 +137,7 @@ shape_text_uncached_latin :: proc( ctx : ^Context, font : Font_ID, text_utf8 : s
 			})
 		}
 
-		advance, _ := parser_get_codepoint_horizontal_metrics( & entry.parser_info, codepoint )
+		advance, _ := parser_get_codepoint_horizontal_metrics( entry.parser_info, codepoint )
 		position.x += f32(advance) * entry.size_scale
 		prev_codepoint = codepoint
 	}

@@ -44,6 +44,11 @@ reload_array :: proc( self : ^[dynamic]$Type, allocator : Allocator ) {
 	raw.allocator = allocator
 }
 
+reload_array_soa :: proc( self : ^#soa[dynamic]$Type, allocator : Allocator ) {
+	raw          := runtime.raw_soa_footer(self)
+	raw.allocator = allocator
+}
+
 reload_map :: proc( self : ^map [$KeyType] $EntryType, allocator : Allocator ) {
 	raw          := transmute( ^runtime.Raw_Map) self
 	raw.allocator = allocator

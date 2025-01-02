@@ -58,13 +58,21 @@ UI_ScalarConstraint :: struct {
 
 UI_Scalar2 :: [Axis2.Count]UI_Scalar
 
-// UI_BoxFlags_Stack_Size    :: 512
-UI_Layout_Stack_Size      :: 512
-UI_Style_Stack_Size       :: 512
-UI_Parent_Stack_Size      :: 512
-// UI_Built_Boxes_Array_Size :: 8
-UI_Built_Boxes_Array_Size :: 56 * Kilobyte
-UI_BoxCache_TableSize     :: 8 * Kilobyte
+// The UI_Box's actual positioning and sizing
+// There is an excess of rectangles here for debug puproses.
+UI_Computed :: struct {
+	// anchors    : Range2,  // Bounds for anchors within parent
+	// margins    : Range2,  // Bounds for margins within parent
+	padding    : Range2,     // Bounds for padding's starting bounds (will be offset by border if there is one), only here for debug vis
+
+	bounds     : Range2,     // Bounds for box itself
+	content    : Range2,     // Bounds for content (text or children)
+	text_shape : ShapedText, // Text string processed into shape optimial for processing by text draw_list generator.
+	text_pos   : Vec2,       // Position of text within content
+	text_size  : Vec2,       // Size of text within content
+	fresh      : b32,        // If the auto-layout has been computed for the current frame
+}
+
 
 UI_RenderEntry :: struct {
 	info        : UI_RenderBoxInfo,
@@ -74,16 +82,6 @@ UI_RenderEntry :: struct {
 }
 
 UI_RenderLayer :: DLL_NodeFL(UI_RenderEntry)
-
-// UI_RenderBoxInfo :: struct {
-// 	using computed : UI_Computed,
-// 	using style    : UI_Style,
-// 	text           : StrRunesPair,
-// 	font_size      : UI_Scalar,
-// 	border_width   : UI_Scalar,
-// 	label          : StrRunesPair,
-// 	layer_signal   : b32,
-// }
 
 UI_RenderBoxInfo :: struct {
 	bounds       : Range2,
@@ -96,6 +94,7 @@ UI_RenderBoxInfo :: struct {
 
 UI_RenderTextInfo :: struct {
 	text         : string,
+	shape        : ShapedText,
 	position     : Vec2,
 	color        : RGBA8,
 	font         : FontID,
@@ -109,6 +108,14 @@ UI_RenderMethod :: enum u32 {
 }
 
 UI_Render_Method :: UI_RenderMethod.Layers
+
+// UI_BoxFlags_Stack_Size    :: 512
+UI_Layout_Stack_Size      :: 512
+UI_Style_Stack_Size       :: 512
+UI_Parent_Stack_Size      :: 512
+// UI_Built_Boxes_Array_Size :: 8
+UI_Built_Boxes_Array_Size :: 56 * Kilobyte
+UI_BoxCache_TableSize     :: 8 * Kilobyte
 
 // TODO(Ed): Rename to UI_Context
 UI_State :: struct {
@@ -267,7 +274,20 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 		for current := ui.root.first; current != nil; 
 				current  = ui_box_tranverse_next_depth_first( current, bypass_intersection_test = true, ctx = ui )
 		{
-			if ! current.computed.fresh {
+			if ! current.computed.fresh
+			{
+				if len(current.text.str) > 0 {
+					app_window       := get_state().app_window
+					screen_extent    := app_window.extent
+					screen_size      := screen_extent * 2
+					screen_size_norm := 1 / screen_size
+
+					font_size_screen_scalar := app_config().font_size_screen_scalar
+
+					// over_sample : f32 = f32(get_state().config.font_size_canvas_scalar)
+
+					current.computed.text_shape = shape_text_cached( current.text.str, current.style.font, current.layout.font_size, 1.0 )
+				}
 				ui_box_compute_layout( current )
 			}
 
@@ -288,10 +308,11 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			array_append(& ui.render_list_box,  entry_box)
 
 			// TODO(Ed): It may be better to let VEFontCache handle processing empty strings.
-			if len(current.text.str) > 0
-			{
+			// if len(current.text.str) > 0
+			// {
 				entry_text := UI_RenderTextInfo {
 					text      = current.text.str,
+					shape     = current.computed.text_shape,
 					position  = current.computed.text_pos,
 					color     = current.style.text_color,
 					font      = current.style.font,
@@ -299,7 +320,7 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 				}
 				entry_text.layer_signal = different_ancestory
 				array_append(& ui.render_list_text, entry_text)
-			}
+			// }
 
 			previous_layer = current.ancestors
 		}

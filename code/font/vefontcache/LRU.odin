@@ -139,7 +139,7 @@ pool_list_erase :: proc( pool : ^Pool_List, iter : Pool_ListIter )
 	}
 }
 
-pool_list_move_to_front :: #force_inline proc "contextless" ( pool : ^Pool_List, iter : Pool_ListIter )
+pool_list_move_to_front :: proc "contextless" ( pool : ^Pool_List, iter : Pool_ListIter )
 {
 	using pool
 
@@ -156,7 +156,7 @@ pool_list_move_to_front :: #force_inline proc "contextless" ( pool : ^Pool_List,
 	front               = iter
 }
 
-pool_list_peek_back :: #force_inline proc ( pool : ^Pool_List ) -> Pool_ListValue #no_bounds_check {
+pool_list_peek_back :: #force_inline proc ( pool : Pool_List ) -> Pool_ListValue #no_bounds_check {
 	assert( pool.back != - 1 )
 	value := pool.items[ pool.back ].value
 	return value
@@ -212,7 +212,7 @@ lru_clear :: proc ( cache : ^LRU_Cache ) {
 	cache.num = 0
 }
 
-lru_find :: #force_inline proc "contextless" ( cache : ^LRU_Cache, key : u64, must_find := false ) -> (LRU_Link, bool) {
+lru_find :: #force_inline proc "contextless" ( cache : LRU_Cache, key : u64, must_find := false ) -> (LRU_Link, bool) {
 	link, success := cache.table[key]
 	return link, success
 }
@@ -225,15 +225,15 @@ lru_get :: #force_inline proc ( cache: ^LRU_Cache, key : u64 ) -> i32 #no_bounds
 	return -1
 }
 
-lru_get_next_evicted :: #force_inline proc ( cache : ^LRU_Cache ) -> u64 {
+lru_get_next_evicted :: #force_inline proc ( cache : LRU_Cache ) -> u64 {
 	if cache.key_queue.size >= cache.capacity {
-		evict := pool_list_peek_back( & cache.key_queue )
+		evict := pool_list_peek_back( cache.key_queue )
 		return evict
 	}
 	return 0xFFFFFFFFFFFFFFFF
 }
 
-lru_peek :: #force_inline proc "contextless" ( cache : ^LRU_Cache, key : u64, must_find := false ) -> i32 {
+lru_peek :: #force_inline proc "contextless" ( cache : LRU_Cache, key : u64, must_find := false ) -> i32 {
 	iter, success := lru_find( cache, key, must_find )
 	if success == false {
 		return -1
@@ -267,7 +267,7 @@ lru_put :: #force_inline proc( cache : ^LRU_Cache, key : u64, value : i32 ) -> u
 }
 
 lru_refresh :: proc( cache : ^LRU_Cache, key : u64 ) {
-	link, success := lru_find( cache, key )
+	link, success := lru_find( cache ^, key )
 	pool_list_erase( & cache.key_queue, link.ptr )
 	pool_list_push_front( & cache.key_queue, key )
 	link.ptr = cache.key_queue.front

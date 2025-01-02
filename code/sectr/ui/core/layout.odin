@@ -46,21 +46,6 @@ UI_Align_Presets :: UI_Align_Presets_Struct {
 	text_centered      = {0.5, 0.5},
 }
 
-
-// The UI_Box's actual positioning and sizing
-// There is an excess of rectangles here for debug puproses.
-UI_Computed :: struct {
-	// anchors    : Range2, // Bounds for anchors within parent
-	// margins    : Range2, // Bounds for margins within parent
-	padding    : Range2, // Bounds for padding's starting bounds (will be offset by border if there is one), only here for debug vis
-
-	bounds     : Range2, // Bounds for box itself
-	content    : Range2, // Bounds for content (text or children)
-	text_pos   : Vec2,   // Position of text within content
-	text_size  : Vec2,   // Size of text within content
-	fresh      : b32,    // If the auto-layout has been computed for the current frame
-}
-
 UI_LayoutDirection_XY :: enum(i32) {
 	Left_To_Right,
 	Right_to_Left,

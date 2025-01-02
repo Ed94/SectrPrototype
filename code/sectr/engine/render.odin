@@ -158,7 +158,8 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 
 			font := font
 			if font.key == Font_Default.key do font = default_font
-			draw_text_string_pos_extent( content, font, size, pos, color )
+			shape := shape_text_cached( content, font, size, app_config().font_size_screen_scalar )
+			draw_text_shape_pos_extent( shape, font, size, pos, color )
 		}
 
 		debug_text :: proc( format : string, args : ..any )
@@ -578,8 +579,8 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 		cam != nil ? cam.position.y : 0,
 	}
 
-	screen_size   := screen_extent * 2
-	screen_scaled := (1.0 / screen_size)
+	screen_size      := screen_extent * 2
+	screen_size_norm := (1.0 / screen_size)
 
 	layer_left : b32 = true
 	for layer_left
@@ -646,10 +647,12 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 			text_id        += 1
 
 			if cam != nil {
-				draw_text_string_pos_extent_zoomed( entry.text, font, entry.font_size, entry.position, cam_offset, screen_size, screen_scaled, cam.zoom, entry.color )
+				// draw_text_shape_pos_extent_zoomed( entry.shape, font, entry.font_size, entry.position, cam_offset, screen_size, screen_size_norm, cam.zoom, entry.color )
+				draw_text_string_pos_extent_zoomed( entry.text, font, entry.font_size, entry.position, cam_offset, screen_size, screen_size_norm, cam.zoom, entry.color )
 			}
 			else {
 				draw_text_string_pos_extent( entry.text, font, entry.font_size, entry.position, entry.color )
+				// draw_text_string_pos_extent( entry.shape, font, entry.font_size, entry.position, entry.color )
 			}
 		}
 
@@ -897,34 +900,64 @@ draw_rect_rounded_border :: proc(rect: Range2, radii: [4]f32, border_width: f32,
 }
 
 // Draw text using a string and normalized render coordinates
-draw_text_string_pos_norm :: proc( content : string, id : FontID, size : f32, pos : Vec2, color := Color_White, scale : f32 = 1.0 )
+draw_text_string_pos_norm :: #force_inline proc( text : string, id : FontID, font_size : f32, pos : Vec2, color := Color_White, scale : f32 = 1.0 )
 {
 	state := get_state(); using state
 	width  := app_window.extent.x * 2
 	height := app_window.extent.y * 2
 
-	ve_id, resolved_size := font_provider_resolve_draw_id( id, size * config.font_size_screen_scalar )
+	ve_id, resolved_size := font_provider_resolve_draw_id( id, font_size * config.font_size_screen_scalar )
 	color_norm           := normalize_rgba8(color)
 
+	screen_size_norm := Vec2{1 / width, 1 / height}
+
 	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
-	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, content, pos, Vec2{1 / width, 1 / height} * scale * (1 / config.font_size_screen_scalar) )
+	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, text, pos, screen_size_norm * scale * (1 / config.font_size_screen_scalar) )
 	return
 }
 
 // Draw text using a string and extent-based screen coordinates
-draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, pos : Vec2, color := Color_White )
+draw_text_string_pos_extent :: #force_inline proc( text : string, id : FontID, font_size : f32, pos : Vec2, color := Color_White )
 {
-	// profile(#procedure)
+	profile(#procedure)
 	state          := get_state(); using state
 	screen_size    := app_window.extent * 2
 	render_pos     := screen_to_render_pos(pos)
 	normalized_pos := render_pos * (1.0 / screen_size)
-	draw_text_string_pos_norm( content, id, size, normalized_pos, color )
+	draw_text_string_pos_norm( text, id, font_size, normalized_pos, color )
 }
 
-draw_text_string_pos_extent_zoomed :: #force_inline proc( content : string, id : FontID, size : f32, pos, cam_offset, screen_size, screen_scaled : Vec2, zoom : f32, color := Color_White )
+// Draw text using a string and normalized render coordinates
+draw_text_shape_pos_norm :: #force_inline proc( shape : ShapedText, id : FontID, font_size : f32, pos : Vec2, color := Color_White, scale : f32 = 1.0 )
 {
-	// profile(#procedure)
+	state := get_state(); using state
+	width  := app_window.extent.x * 2
+	height := app_window.extent.y * 2
+
+	ve_id, resolved_size := font_provider_resolve_draw_id( id, font_size * config.font_size_screen_scalar )
+	color_norm           := normalize_rgba8(color)
+
+	screen_size_norm := Vec2{1 / width, 1 / height}
+
+	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
+	ve.draw_text_shape( & font_provider_ctx.ve_ctx, ve_id, shape, pos, screen_size_norm * scale * (1 / config.font_size_screen_scalar) )
+	return
+}
+
+// Draw text using a string and extent-based screen coordinates
+draw_text_shape_pos_extent :: #force_inline proc( shape : ShapedText, id : FontID, font_size : f32, pos : Vec2, color := Color_White )
+{
+	profile(#procedure)
+	state          := get_state(); using state
+	screen_size    := app_window.extent * 2
+	render_pos     := screen_to_render_pos(pos)
+	normalized_pos := render_pos * (1.0 / screen_size)
+	draw_text_shape_pos_norm( shape, id, font_size, normalized_pos, color )
+}
+
+draw_text_string_pos_extent_zoomed :: #force_inline proc( text : string, id : FontID, size : f32, pos, cam_offset, screen_size, screen_size_norm : Vec2, zoom : f32, color := Color_White )
+{
+	profile(#procedure)
 	state := get_state(); using state // TODO(Ed): Remove usage of direct access to entire mutable state.
 
 	zoom_adjust_size := size * zoom
@@ -935,16 +968,16 @@ draw_text_string_pos_extent_zoomed :: #force_inline proc( content : string, id :
 
 	pos_offset     := (pos + cam_offset)
 	render_pos     := ws_view_to_render_pos(pos)
-	normalized_pos := render_pos * screen_scaled
+	normalized_pos := render_pos * screen_size_norm
 
 	ve_id, resolved_size := font_provider_resolve_draw_id( id, zoom_adjust_size	)
 
-	text_scale : Vec2 = screen_scaled
+	text_scale : Vec2 = screen_size_norm
 	// if config.cam_zoom_mode == .Smooth
 	{
 		f32_resolved_size := f32(resolved_size)
 		diff_scalar       := 1 + (zoom_adjust_size - f32_resolved_size) / f32_resolved_size
-		text_scale         = diff_scalar * screen_scaled
+		text_scale         = diff_scalar * screen_size_norm
 		text_scale.x       = clamp( text_scale.x, 0, screen_size.x )
 		text_scale.y       = clamp( text_scale.y, 0, screen_size.y )
 	}
@@ -954,7 +987,42 @@ draw_text_string_pos_extent_zoomed :: #force_inline proc( content : string, id :
 
 	color_norm := normalize_rgba8(color)
 	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
-	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, content, normalized_pos, text_scale )
+	ve.draw_text( & font_provider_ctx.ve_ctx, ve_id, text, normalized_pos, text_scale )
+}
+
+draw_text_shape_pos_extent_zoomed :: #force_inline proc( shape : ShapedText, id : FontID, size : f32, pos, cam_offset, screen_size, screen_size_norm : Vec2, zoom : f32, color := Color_White )
+{
+	profile(#procedure)
+	state := get_state(); using state // TODO(Ed): Remove usage of direct access to entire mutable state.
+
+	zoom_adjust_size := size * zoom
+
+	// Over-sample font-size for any render under a camera
+	over_sample : f32 = f32(state.config.font_size_canvas_scalar)
+	zoom_adjust_size *= over_sample
+
+	pos_offset     := (pos + cam_offset)
+	render_pos     := ws_view_to_render_pos(pos)
+	normalized_pos := render_pos * screen_size_norm
+
+	ve_id, resolved_size := font_provider_resolve_draw_id( id, zoom_adjust_size	)
+
+	text_scale : Vec2 = screen_size_norm
+	// if config.cam_zoom_mode == .Smooth
+	{
+		f32_resolved_size := f32(resolved_size)
+		diff_scalar       := 1 + (zoom_adjust_size - f32_resolved_size) / f32_resolved_size
+		text_scale         = diff_scalar * screen_size_norm
+		text_scale.x       = clamp( text_scale.x, 0, screen_size.x )
+		text_scale.y       = clamp( text_scale.y, 0, screen_size.y )
+	}
+
+	// Down-sample back
+	text_scale  /= over_sample
+
+	color_norm := normalize_rgba8(color)
+	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
+	ve.draw_text_shape( & font_provider_ctx.ve_ctx, ve_id, shape, normalized_pos, text_scale )
 }
 
 // TODO(Ed): Eventually the workspace will need a viewport for drawing text

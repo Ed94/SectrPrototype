@@ -132,7 +132,7 @@ parser_find_glyph_index :: #force_inline proc "contextless" ( font : Parser_Font
 	return Glyph(-1)
 }
 
-parser_free_shape :: #force_inline proc( font : ^Parser_Font_Info, shape : Parser_Glyph_Shape )
+parser_free_shape :: #force_inline proc( font : Parser_Font_Info, shape : Parser_Glyph_Shape )
 {
 	switch font.kind
 	{
@@ -140,11 +140,11 @@ parser_free_shape :: #force_inline proc( font : ^Parser_Font_Info, shape : Parse
 			delete(shape)
 
 		case .STB_TrueType:
-			stbtt.FreeShape( & font.stbtt_info, transmute( [^]stbtt.vertex) raw_data(shape) )
+			stbtt.FreeShape( font.stbtt_info, transmute( [^]stbtt.vertex) raw_data(shape) )
 	}
 }
 
-parser_get_codepoint_horizontal_metrics :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, codepoint : rune ) -> ( advance, to_left_side_glyph : i32 )
+parser_get_codepoint_horizontal_metrics :: #force_inline proc "contextless" ( font : Parser_Font_Info, codepoint : rune ) -> ( advance, to_left_side_glyph : i32 )
 {
 	switch font.kind
 	{
@@ -170,12 +170,12 @@ parser_get_codepoint_horizontal_metrics :: #force_inline proc "contextless" ( fo
 			}
 
 		case .STB_TrueType:
-			stbtt.GetCodepointHMetrics( & font.stbtt_info, codepoint, & advance, & to_left_side_glyph )
+			stbtt.GetCodepointHMetrics( font.stbtt_info, codepoint, & advance, & to_left_side_glyph )
 	}
 	return
 }
 
-parser_get_codepoint_kern_advance :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, prev_codepoint, codepoint : rune ) -> i32
+parser_get_codepoint_kern_advance :: #force_inline proc "contextless" ( font : Parser_Font_Info, prev_codepoint, codepoint : rune ) -> i32
 {
 	switch font.kind
 	{
@@ -198,13 +198,13 @@ parser_get_codepoint_kern_advance :: #force_inline proc "contextless" ( font : ^
 			}
 
 		case .STB_TrueType:
-			kern := stbtt.GetCodepointKernAdvance( & font.stbtt_info, prev_codepoint, codepoint )
+			kern := stbtt.GetCodepointKernAdvance( font.stbtt_info, prev_codepoint, codepoint )
 			return kern
 	}
 	return -1
 }
 
-parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : ^Parser_Font_Info ) -> (ascent, descent, line_gap : i32 )
+parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : Parser_Font_Info ) -> (ascent, descent, line_gap : i32 )
 {
 	switch font.kind
 	{
@@ -215,12 +215,12 @@ parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : ^P
 			line_gap = i32(info.height) - (ascent - descent)
 
 		case .STB_TrueType:
-			stbtt.GetFontVMetrics( & font.stbtt_info, & ascent, & descent, & line_gap )
+			stbtt.GetFontVMetrics( font.stbtt_info, & ascent, & descent, & line_gap )
 	}
 	return
 }
 
-parser_get_bounds :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, glyph_index : Glyph ) -> (bounds : GlyphBounds)
+parser_get_bounds :: #force_inline proc "contextless" ( font : Parser_Font_Info, glyph_index : Glyph ) -> (bounds : GlyphBounds)
 {
 	profile(#procedure)
 
@@ -238,7 +238,7 @@ parser_get_bounds :: #force_inline proc "contextless" ( font : ^Parser_Font_Info
 
 		case .STB_TrueType:
 			x0, y0, x1, y1 : i32
-			success := cast(bool) stbtt.GetGlyphBox( & font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
+			success := cast(bool) stbtt.GetGlyphBox( font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
 			// assert( success )
 
 			bounds_0 = { x0, y0 }
@@ -248,7 +248,7 @@ parser_get_bounds :: #force_inline proc "contextless" ( font : ^Parser_Font_Info
 	return
 }
 
-parser_get_glyph_shape :: #force_inline proc ( font : ^Parser_Font_Info, glyph_index : Glyph ) -> (shape : Parser_Glyph_Shape, error : Allocator_Error)
+parser_get_glyph_shape :: #force_inline proc ( font : Parser_Font_Info, glyph_index : Glyph ) -> (shape : Parser_Glyph_Shape, error : Allocator_Error)
 {
 	switch font.kind
 	{
@@ -258,7 +258,7 @@ parser_get_glyph_shape :: #force_inline proc ( font : ^Parser_Font_Info, glyph_i
 
 		case .STB_TrueType:
 			stb_shape : [^]stbtt.vertex
-			nverts    := stbtt.GetGlyphShape( & font.stbtt_info, cast(i32) glyph_index, & stb_shape )
+			nverts    := stbtt.GetGlyphShape( font.stbtt_info, cast(i32) glyph_index, & stb_shape )
 
 			shape_raw          := transmute( ^runtime.Raw_Dynamic_Array) & shape
 			shape_raw.data      = stb_shape
@@ -295,7 +295,7 @@ parser_is_glyph_empty :: #force_inline proc "contextless" ( font : Parser_Font_I
 	return false
 }
 
-parser_scale :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, size : f32 ) -> f32
+parser_scale :: #force_inline proc "contextless" ( font : Parser_Font_Info, size : f32 ) -> f32
 {
 	size_scale := size < 0.0 ?                            \
 		parser_scale_for_pixel_height( font, -size )        \
@@ -304,7 +304,7 @@ parser_scale :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, siz
 	return size_scale
 }
 
-parser_scale_for_pixel_height :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, size : f32 ) -> f32
+parser_scale_for_pixel_height :: #force_inline proc "contextless" ( font : Parser_Font_Info, size : f32 ) -> f32
 {
 	switch font.kind {
 		case .Freetype:
@@ -313,12 +313,12 @@ parser_scale_for_pixel_height :: #force_inline proc "contextless" ( font : ^Pars
 			return size_scale
 
 		case.STB_TrueType:
-			return stbtt.ScaleForPixelHeight( & font.stbtt_info, size )
+			return stbtt.ScaleForPixelHeight( font.stbtt_info, size )
 	}
 	return 0
 }
 
-parser_scale_for_mapping_em_to_pixels :: #force_inline proc "contextless" ( font : ^Parser_Font_Info, size : f32 ) -> f32
+parser_scale_for_mapping_em_to_pixels :: #force_inline proc "contextless" ( font : Parser_Font_Info, size : f32 ) -> f32
 {
 	switch font.kind {
 		case .Freetype:
@@ -342,7 +342,7 @@ parser_scale_for_mapping_em_to_pixels :: #force_inline proc "contextless" ( font
 			return size_scale
 
 		case .STB_TrueType:
-			return stbtt.ScaleForMappingEmToPixels( & font.stbtt_info, size )
+			return stbtt.ScaleForMappingEmToPixels( font.stbtt_info, size )
 	}
 	return 0
 }

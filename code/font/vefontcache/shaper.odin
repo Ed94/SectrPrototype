@@ -54,7 +54,7 @@ shaper_unload_font :: proc( ctx : ^Shaper_Info )
 	if blob != nil do harfbuzz.blob_destroy( blob )
 }
 
-shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, parser_info : Parser_Font_Info, info : ^Shaper_Info, output :^Shaped_Text, text_utf8 : string,
+shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, parser_info : Parser_Font_Info, info : Shaper_Info, output :^Shaped_Text, text_utf8 : string,
 	ascent, descent, line_gap : i32, size, size_scale : f32 )
 {
 	profile(#procedure)
@@ -72,7 +72,7 @@ shaper_shape_from_text :: #force_inline proc( ctx : ^Shaper_Context, parser_info
 	line_height    := ((ascent - descent + line_gap) * size_scale)
 
 	position : Vec2
-	shape_run :: #force_inline proc( parser_info : Parser_Font_Info, buffer : harfbuzz.Buffer, script : harfbuzz.Script, font : harfbuzz.Font, output : ^Shaped_Text,
+	shape_run :: proc( parser_info : Parser_Font_Info, buffer : harfbuzz.Buffer, script : harfbuzz.Script, font : harfbuzz.Font, output : ^Shaped_Text,
 		position : ^Vec2, max_line_width: ^f32, line_count: ^int,
 		ascent, descent, line_gap, size, size_scale: f32,
 		snap_shape_pos : b32, adv_snap_small_font_threshold : f32 )
