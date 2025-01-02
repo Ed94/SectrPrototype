@@ -51,26 +51,22 @@ atlas_region_bbox :: proc( region : Atlas_Region, local_idx : i32 ) -> (position
 	return
 }
 
-decide_codepoint_region :: #force_inline proc (atlas : Atlas, glyph_buffer : Glyph_Draw_Buffer,  size_scale : f32, glyph_index : Glyph, bounds_size : Vec2 ) -> (region_kind : Atlas_Region_Kind,  over_sample : Vec2)
+atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_buffer_size : Vec2, glyph_index : Glyph, bounds_size_scaled : Vec2 ) -> (region_kind : Atlas_Region_Kind)
 {
 	profile(#procedure)
 	glyph_padding_dbl  := atlas.glyph_padding * 2
-	bounds_size_scaled := bounds_size * size_scale + glyph_padding_dbl
+	padded_bounds := bounds_size_scaled + glyph_padding_dbl
 
-	for kind in 0 ..< 4 do if bounds_size_scaled.x <= f32( atlas.regions[kind].width) && bounds_size_scaled.y <= f32(atlas.regions[kind].height) {
-		return cast(Atlas_Region_Kind) kind, glyph_buffer.over_sample
+	for kind in 0 ..< 4 do if padded_bounds.x <= f32( atlas.regions[kind].width) && padded_bounds.y <= f32(atlas.regions[kind].height) {
+		return cast(Atlas_Region_Kind) kind
 	}
 
-	if bounds_size_scaled.x <= f32(glyph_buffer.width) \
-	&& bounds_size_scaled.y <= f32(glyph_buffer.height) {
-		over_sample = \
-			bounds_size_scaled.x <= f32(glyph_buffer.width  / 2) &&
-			bounds_size_scaled.y <= f32(glyph_buffer.height / 2) ? \
-			  {2.0, 2.0} \
-			: {1.0, 1.0}
-		return .E, over_sample
+	if padded_bounds.x <= glyph_buffer_size.x \
+	&& padded_bounds.y <= glyph_buffer_size.y
+	{
+		return .E
 	}
-	return .None, {}
+	return .None
 }
 
 // Grab an atlas LRU cache slot.
