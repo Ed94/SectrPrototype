@@ -149,12 +149,10 @@ atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u6
 	return
 }
 
-check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : ^Context, font : Font_ID, entry : ^Entry, glyph_index : Glyph,
+check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : ^Context, glyph_index : Glyph,
 	lru_code    : u64,
 	atlas_index : ^i32,
-	region_kind : Atlas_Region_Kind,
 	region      : ^Atlas_Region,
-	over_sample : Vec2
 ) -> (found, should_cache : b8 )
 {
 	profile(#procedure)
@@ -172,7 +170,6 @@ check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : ^Context, font : Fo
 			success : bool
 			found, success   = ctx.temp_codepoint_seen[next_evict_codepoint]
 			assert(success != false)
-
 			if (found) {
 				return
 			}

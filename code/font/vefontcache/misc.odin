@@ -67,7 +67,6 @@ mark_batch_codepoint_seen :: #force_inline proc "contextless" ( ctx : ^Context, 
 }
 
 reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
-	profile(#procedure)
 	clear_map( & ctx.temp_codepoint_seen )
 	ctx.temp_codepoint_seen_num = 0
 }

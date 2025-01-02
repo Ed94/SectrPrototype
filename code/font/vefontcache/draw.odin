@@ -341,8 +341,8 @@ cache_glyph_to_atlas :: proc ( ctx : ^Context,
 	lru_code    : u64,
 	atlas_index : i32,
 	entry       : ^Entry,
-	region_kind : Atlas_Region_Kind,
-	region      : ^Atlas_Region,
+	// region_kind : Atlas_Region_Kind,
+	// region      : ^Atlas_Region,
 	over_sample : Vec2 
 )
 {
@@ -353,14 +353,6 @@ cache_glyph_to_atlas :: proc ( ctx : ^Context,
 	atlas_size        := Vec2 { f32(atlas.width), f32(atlas.height) }
 	glyph_buffer_size := Vec2 { f32(glyph_buffer.width), f32(glyph_buffer.height) }
 	glyph_padding     := cast(f32) atlas.glyph_padding
-
-	if ctx.debug_print
-	{
-		@static debug_total_cached : i32 = 0
-		logf("glyph %v%v( %v ) caching to atlas region %v at idx %d. %d total glyphs cached.\n",
-			i32(glyph_index), rune(glyph_index), cast(rune) region_kind, atlas_index, debug_total_cached)
-		debug_total_cached += 1
-	}
 
 	// Draw oversized glyph to glyph render target (FBO)
 	glyph_draw_scale       := over_sample * entry.size_scale
@@ -555,29 +547,12 @@ draw_text_batch :: #force_inline proc (ctx: ^Context, entry: ^Entry, shaped: ^Sh
 	atlas_size    := Vec2{ f32(atlas.width), f32(atlas.height) }
 	glyph_padding := atlas.glyph_padding
 
-	// for glyph, index in glyph_pack
-	// {
-	// 	profile("oversized")
-	// 	if glyph.region_kind != .E do continue
-	// 	directly_draw_massive_glyph(ctx, entry, glyph.index,
-	// 		glyph.bounds,
-	// 		glyph.bounds_size,
-	// 		glyph.over_sample, glyph.translate, scale )
-	// }
+	call             := Draw_Call_Default
+	call.pass         = .Target
+	call.colour       = ctx.colour
 
 	for glyph, index in glyph_pack
 	{
-		// profile_begin("oversized")
-		// if glyph.region_kind == .E
-		// {
-		// 	directly_draw_massive_glyph(ctx, entry, glyph.index,
-		// 		glyph.bounds,
-		// 		glyph.bounds_size,
-		// 		glyph.over_sample, glyph.translate, scale )
-		// 	continue
-		// }
-		// profile_end()
-
 		profile("cached")
 
 		glyph_scale      := glyph.bounds_size * entry.size_scale + glyph_padding
@@ -588,9 +563,6 @@ draw_text_batch :: #force_inline proc (ctx: ^Context, entry: ^Entry, shaped: ^Sh
 
 		textspace_x_form( & src_pos, & glyph_scale, atlas_size )
 
-		call             := Draw_Call_Default
-		call.pass         = .Target
-		call.colour       = ctx.colour
 		call.start_index  = u32(len(ctx.draw_list.indices))
 
 		blit_quad(& ctx.draw_list,
@@ -623,6 +595,11 @@ GlyphPackEntry :: struct {
 	should_cache : b8,
 }
 
+Glyph_Sub_Pack :: struct {
+	pack : #soa[]GlyphPackEntry,
+	num  : i32
+}
+
 // Helper for draw_text, all raw text content should be confirmed to be either formatting or visible shapes before getting cached.
 draw_text_shape :: #force_inline proc( ctx : ^Context,
 	font                    : Font_ID,
@@ -634,122 +611,111 @@ draw_text_shape :: #force_inline proc( ctx : ^Context,
 {
 	profile(#procedure)
 
-	glyph_pack, glyph_pack_alloc_error         := make_soa( #soa[]GlyphPackEntry, len(shaped.glyphs), allocator = context.temp_allocator )
-	oversized_pack, oversized_pack_alloc_error := make_soa( #soa[dynamic]GlyphPackEntry, length = 0, capacity = len(shaped.glyphs), allocator = context.temp_allocator )
+	oversized : Glyph_Sub_Pack = {}
+	to_cache  : Glyph_Sub_Pack = {}
+	cached    : Glyph_Sub_Pack = {}
+
+	profile_begin("soa allocation")
+	glyph_pack, glyph_pack_alloc_error := make_soa( #soa[]GlyphPackEntry, len(shaped.glyphs), allocator = context.temp_allocator )
+
+	alloc_error : Allocator_Error
+	oversized.pack, alloc_error = make_soa( #soa[]GlyphPackEntry, len(shaped.glyphs), allocator = context.temp_allocator )
+	to_cache.pack,  alloc_error = make_soa( #soa[]GlyphPackEntry, len(shaped.glyphs), allocator = context.temp_allocator )
+	cached.pack,    alloc_error = make_soa( #soa[]GlyphPackEntry, len(shaped.glyphs), allocator = context.temp_allocator )
+	profile_end()
+
+	append_sub_pack :: #force_inline proc "contextless" ( sub : ^Glyph_Sub_Pack, entry : GlyphPackEntry )
+	{
+		sub.pack[sub.num] = entry
+		sub.num += 1
+	}
+	sub_slice :: #force_inline proc "contextless" ( sub : Glyph_Sub_Pack) -> #soa[]GlyphPackEntry { return sub.pack[: sub.num] }
 
 	atlas := & ctx.atlas
 
-	profile_begin("SOA setup")
-
-	profile_begin("index & translate")
-	for & glyph, index in glyph_pack
+	SOA_Setup:
 	{
-		glyph.shape_id = cast(i32) index
-		glyph.index    = shaped.glyphs[ index ]
-	}
-	profile_end()
+		profile("SOA setup")
 
-	profile_begin("translate")
-	for & glyph, index in glyph_pack
-	{
-		glyph.translate = position + (shaped.positions[index]) * scale
-	}
-	profile_end()
-
-	profile_begin("bounds")
-	for & glyph, index in glyph_pack
-	{
-		glyph.lru_code    = font_glyph_lru_code(entry.id, glyph.index)
-		glyph.bounds      = parser_get_bounds( & entry.parser_info, glyph.index )
-		glyph.bounds_size = glyph.bounds.p1 - glyph.bounds.p0
-	}
-	profile_end()
-
-	profile_begin("region")
-	for & glyph, index in glyph_pack
-	{
-		glyph.region_kind, 
-		glyph.over_sample = decide_codepoint_region( ctx.atlas, ctx.glyph_buffer, entry.size_scale, glyph.index, glyph.bounds_size )
-	}
-	profile_end()
-
-	profile_begin("atlas region slot check & reservation")
-	for & glyph, index in glyph_pack
-	{
-		region := atlas.regions[glyph.region_kind]
-
-		if glyph.region_kind == .E do continue
-
-		glyph.atlas_index =  lru_get( & region.state, glyph.lru_code )
-		glyph.in_atlas, glyph.should_cache  = check_and_reserve_slot_in_atlas( ctx, font, entry, glyph.index, glyph.lru_code, & glyph.atlas_index, glyph.region_kind, region, glyph.over_sample )
-		glyph.region_pos, glyph.region_size = atlas_region_bbox(region ^, glyph.atlas_index)
-	}
-	profile_end()
-
-	profile_begin("caching to atlas")
-	for glyph, index in glyph_pack
-	{
-		if glyph.region_kind == .E do continue
-		if ! glyph.should_cache    do continue 
-		cache_glyph_to_atlas(ctx, font, glyph.index, glyph.bounds, glyph.bounds_size, glyph.region_pos, glyph.region_size, glyph.lru_code, glyph.atlas_index, entry, glyph.region_kind, atlas.regions[glyph.region_kind], glyph.over_sample)
-	}
-	profile_end()
-
-	profile_end()
-
-	
-	// First batch the other cached glyphs
-	// flush_glyph_buffer_to_atlas(ctx)
-	// draw_text_batch( ctx, entry, shaped, glyph_pack[batch_start_idx : index], position, scale, snap_width, snap_height )
-	// reset_batch_codepoint_state( ctx )
-
-
-	// Prepare uncached glyphs for caching
-	batch_start_idx : i32 = 0
-	for glyph, index in glyph_pack
-	{
-		profile("caching glyph")
-
-		if glyph.region_kind == .E {
-			append_soa( & oversized_pack, glyph )
-			continue
+		profile_begin("index & translate")
+		for & glyph, index in glyph_pack
+		{
+			glyph.shape_id = cast(i32) index
+			glyph.index    = shaped.glyphs[ index ]
 		}
+		profile_end()
 
-		if glyph.in_atlas {
-			profile("glyph in atlas")
-			// assert( lru_get( & atlas.regions[glyph.region_kind].state, glyph.lru_code ) != -1 )
-			mark_batch_codepoint_seen( ctx, glyph.lru_code)
-			continue
+		profile_begin("translate")
+		for & glyph, index in glyph_pack
+		{
+			glyph.translate = position + (shaped.positions[index]) * scale
 		}
+		profile_end()
 
-		// We can no longer directly append the shape as it has missing glyphs in the atlas
+		profile_begin("bounds")
+		for & glyph, index in glyph_pack
+		{
+			glyph.lru_code    = font_glyph_lru_code(entry.id, glyph.index)
+			glyph.bounds      = parser_get_bounds( & entry.parser_info, glyph.index )
+			glyph.bounds_size = glyph.bounds.p1 - glyph.bounds.p0
+		}
+		profile_end()
 
-		// First batch the other cached glyphs
-		// flush_glyph_buffer_to_atlas(ctx)
-		// draw_text_batch( ctx, entry, shaped, glyph_pack[batch_start_idx : index], position, scale, snap_width, snap_height )
-		// reset_batch_codepoint_state( ctx )
+		profile_begin("region & oversized segregation")
+		for & glyph, index in glyph_pack
+		{
+			glyph.region_kind, 
+			glyph.over_sample = decide_codepoint_region( ctx.atlas, ctx.glyph_buffer, entry.size_scale, glyph.index, glyph.bounds_size )
+		}
+		profile_end()
 
-		cache_glyph_to_atlas( ctx, font, glyph.index, glyph.bounds, glyph.bounds_size, glyph.region_pos, glyph.region_size, glyph.lru_code, glyph.atlas_index, entry, glyph.region_kind, atlas.regions[glyph.region_kind], glyph.over_sample )
-		mark_batch_codepoint_seen( ctx, glyph.lru_code)
-	
-		batch_start_idx = glyph.shape_id
+		profile_begin("caching setup")
+		for & glyph, index in glyph_pack
+		{
+			region := atlas.regions[glyph.region_kind]
+			if glyph.region_kind == .E {
+				append_sub_pack(& oversized, glyph)
+				continue
+			}
+
+			glyph.atlas_index =  lru_get( & region.state, glyph.lru_code )
+			glyph.in_atlas, glyph.should_cache  = check_and_reserve_slot_in_atlas( ctx, glyph.index, glyph.lru_code, & glyph.atlas_index, region )
+			glyph.region_pos, glyph.region_size = atlas_region_bbox(region ^, glyph.atlas_index)
+
+			if glyph.should_cache {
+				profile("append to_cache")
+				append_sub_pack(& to_cache, glyph)
+				mark_batch_codepoint_seen(ctx, glyph.lru_code)
+				cache_glyph_to_atlas( ctx, font, glyph.index, glyph.bounds, glyph.bounds_size, glyph.region_pos, glyph.region_size, glyph.lru_code, glyph.atlas_index, entry, glyph.over_sample  )
+				continue
+			}
+			else {
+				profile("append cached")
+				append_sub_pack(& cached, glyph)
+				mark_batch_codepoint_seen(ctx, glyph.lru_code)
+			}
+		}
+		profile_end()
 	}
-
-	draw_text_batch( ctx, entry, shaped, glyph_pack[batch_start_idx : len(glyph_pack)], position, scale, snap_width , snap_height )
+	
+	draw_text_batch( ctx, entry, shaped, sub_slice(to_cache), position, scale, snap_width, snap_height )
 	reset_batch_codepoint_state( ctx )
 
-	profile_begin("draw oversized glyphs")
+	draw_text_batch( ctx, entry, shaped, sub_slice(cached), position, scale, snap_width , snap_height )
+	reset_batch_codepoint_state( ctx )
+
+	profile_begin("generate oversized glyphs draw_list")
 	flush_glyph_buffer_to_atlas(ctx)
 
-	for & glyph, index in oversized_pack
+	for & glyph, index in sub_slice(oversized)
 	{
 		directly_draw_massive_glyph(ctx, entry, glyph.index,
 			glyph.bounds,
 			glyph.bounds_size,
 			glyph.over_sample, glyph.translate, scale )
 	}
-
 	reset_batch_codepoint_state( ctx )
+
 	profile_end()
 	
 	cursor_pos = position + shaped.end_cursor_pos * scale
