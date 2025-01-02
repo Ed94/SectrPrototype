@@ -452,6 +452,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 	}
 }
 
+when false {
 render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
 {
 	// TODO(Ed): Make a debug getter.
@@ -544,7 +545,7 @@ render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^
 
 		if len(text.str) > 0 && style.font.key != 0 {
 			if cam != nil {
-				draw_text_string_pos_extent_zoomed( text.str, default_font, font_size, computed.text_pos, cam^, style.text_color )
+				// draw_text_string_pos_extent_zoomed( text.str, default_font, font_size, computed.text_pos, cam^, style.text_color )
 			}
 			else {
 				draw_text_string_pos_extent( text.str, default_font, font_size, computed.text_pos, style.text_color )
@@ -558,6 +559,7 @@ render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^
 	if shape_enqueued do render_flush_gp()
 	if text_enqueued  do render_text_layer( screen_extent, ve_ctx, ve_render )
 }
+}
 
 render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_RenderTextInfo, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
 {
@@ -570,6 +572,14 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 
 	box_id  : i32 = 0
 	text_id : i32 = 0
+
+	cam_offset := Vec2 {
+		cam != nil ? cam.position.x : 0,
+		cam != nil ? cam.position.y : 0,
+	}
+
+	screen_size   := screen_extent * 2
+	screen_scaled := (1.0 / screen_size)
 
 	layer_left : b32 = true
 	for layer_left
@@ -628,23 +638,19 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 		for text_id < cast(i32) len(text_list) && ! text_layer_done
 		{
 			profile("Text_Render")
-			text_layer_done = b32(text_id > 0) && text_list[ text_id - 1 ].layer_signal
-
 			entry := text_list[text_id]
+			font  := entry.font.key != 0 ? entry.font : default_font
 
-			font := entry.font.key != 0 ? entry.font : default_font
-			if len(entry.text) > 0
-			{
-				if cam != nil {
-					draw_text_string_pos_extent_zoomed( entry.text, font, entry.font_size, entry.position, cam^, entry.color )
-				}
-				else {
-					draw_text_string_pos_extent( entry.text, font, entry.font_size, entry.position, entry.color )
-				}
-				text_enqueued = true
+			text_enqueued   = true
+			text_layer_done = b32(text_id > 0) && text_list[ text_id - 1 ].layer_signal
+			text_id        += 1
+
+			if cam != nil {
+				draw_text_string_pos_extent_zoomed( entry.text, font, entry.font_size, entry.position, cam_offset, screen_size, screen_scaled, cam.zoom, entry.color )
 			}
-
-			text_id += 1
+			else {
+				draw_text_string_pos_extent( entry.text, font, entry.font_size, entry.position, entry.color )
+			}
 		}
 
 		if text_enqueued {
@@ -653,8 +659,64 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 			text_enqueued  = false
 		}
 
-		layer_left = box_id < cast(i32) len(box_list) && text_id < cast(i32) len(text_list)
+		layer_left = box_id < cast(i32) len(box_list) || text_id < cast(i32) len(text_list)
 	}
+}
+
+when false {
+render_gp_layer :: proc (  )
+{
+	profile("GP_Render")
+
+	shape_enqueued : b32 = false
+	box_layer_done : b32 = false
+	for box_id < cast(i32) len(box_list) && ! box_layer_done
+	{
+		profile("GP_Render")
+		box_layer_done = b32(box_id > 0) && box_list[ box_id - 1 ].layer_signal
+
+		entry := box_list[box_id]
+
+		corner_radii_total : f32 = 0
+		for radius in entry.corner_radii do corner_radii_total += radius
+
+		if entry.bg_color.a != 0
+		{
+			render_set_color( entry.bg_color )
+			if corner_radii_total > 0 do draw_rect_rounded( entry.bounds, entry.corner_radii, 16 )
+			else                      do draw_rect( entry.bounds)
+			shape_enqueued = true
+		}
+
+		if entry.border_color.a != 0 && entry.border_width > 0
+		{
+			render_set_color( entry.border_color )
+
+			if corner_radii_total > 0 do draw_rect_rounded_border( entry.bounds, entry.corner_radii, entry.border_width, 16 )
+			else                      do draw_rect_border( entry.bounds, entry.border_width )
+			shape_enqueued = true
+		}
+
+		if debug.draw_ui_box_bounds_points
+		{
+			render_set_color(Color_Red)
+			draw_filled_circle(entry.bounds.min.x, entry.bounds.min.y, circle_radius, 24)
+
+			render_set_color(Color_Blue)
+			draw_filled_circle(entry.bounds.max.x, entry.bounds.max.y, circle_radius, 24)
+			shape_enqueued = true
+		}
+
+		box_id += 1
+	}
+
+	box_id += 1
+
+	if shape_enqueued {
+		profile("render ui box_layer")
+		render_flush_gp()
+	}
+}
 }
 
 #region("Helpers")
@@ -860,38 +922,29 @@ draw_text_string_pos_extent :: proc( content : string, id : FontID, size : f32, 
 	draw_text_string_pos_norm( content, id, size, normalized_pos, color )
 }
 
-draw_text_string_pos_extent_zoomed :: proc( content : string, id : FontID, size : f32, pos : Vec2, cam : Camera, color := Color_White )
+draw_text_string_pos_extent_zoomed :: #force_inline proc( content : string, id : FontID, size : f32, pos, cam_offset, screen_size, screen_scaled : Vec2, zoom : f32, color := Color_White )
 {
 	// profile(#procedure)
 	state := get_state(); using state // TODO(Ed): Remove usage of direct access to entire mutable state.
 
-	cam_offset := Vec2 {
-		cam.position.x,
-		cam.position.y,
-	}
-
-	pos_offset     := (pos + cam_offset)
-	cam_zoom_ratio := 1 / cam.zoom
-
-	screen_size    := app_window.extent * 2
-	screen_scale   := (1.0 / screen_size)
-	render_pos     := ws_view_to_render_pos(pos)
-	normalized_pos := render_pos * screen_scale
-
-	zoom_adjust_size := size * cam.zoom
+	zoom_adjust_size := size * zoom
 
 	// Over-sample font-size for any render under a camera
 	over_sample : f32 = f32(state.config.font_size_canvas_scalar)
 	zoom_adjust_size *= over_sample
 
+	pos_offset     := (pos + cam_offset)
+	render_pos     := ws_view_to_render_pos(pos)
+	normalized_pos := render_pos * screen_scaled
+
 	ve_id, resolved_size := font_provider_resolve_draw_id( id, zoom_adjust_size	)
 
-	text_scale : Vec2 = screen_scale
+	text_scale : Vec2 = screen_scaled
 	// if config.cam_zoom_mode == .Smooth
 	{
 		f32_resolved_size := f32(resolved_size)
 		diff_scalar       := 1 + (zoom_adjust_size - f32_resolved_size) / f32_resolved_size
-		text_scale         = diff_scalar * screen_scale
+		text_scale         = diff_scalar * screen_scaled
 		text_scale.x       = clamp( text_scale.x, 0, screen_size.x )
 		text_scale.y       = clamp( text_scale.y, 0, screen_size.y )
 	}

@@ -275,16 +275,8 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 				continue
 			}
 
-			when true {
-			// entry : UI_RenderBoxInfo = {
-			// 	current.computed,
-			// 	current.style,
-			// 	current.text,
-			// 	current.layout.font_size,
-			// 	current.layout.border_width,
-			// 	current.label,
-			// 	false,
-			// }
+			different_ancestory := b8(current.ancestors != previous_layer)
+
 			entry_box := UI_RenderBoxInfo {
 				bounds        = current.computed.bounds,
 				corner_radii  = current.style.corner_radii,
@@ -292,23 +284,24 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 				border_color  = current.style.border_color,
 				border_width  = current.layout.border_width,
 			}
-			entry_text := UI_RenderTextInfo {
-				text      = current.text.str,
-				position  = current.computed.text_pos,
-				color     = current.style.text_color,
-				font      = current.style.font,
-				font_size = current.layout.font_size,
-			}
-
-			if current.ancestors != previous_layer {
-				entry_box .layer_signal = true
-				entry_text.layer_signal = true
-			}
-
+			entry_box .layer_signal = different_ancestory
 			array_append(& ui.render_list_box,  entry_box)
-			array_append(& ui.render_list_text, entry_text)
-			previous_layer = current.ancestors
+
+			// TODO(Ed): It may be better to let VEFontCache handle processing empty strings.
+			if len(current.text.str) > 0
+			{
+				entry_text := UI_RenderTextInfo {
+					text      = current.text.str,
+					position  = current.computed.text_pos,
+					color     = current.style.text_color,
+					font      = current.style.font,
+					font_size = current.layout.font_size,
+				}
+				entry_text.layer_signal = different_ancestory
+				array_append(& ui.render_list_text, entry_text)
 			}
+
+			previous_layer = current.ancestors
 		}
 		profile_end()
 
