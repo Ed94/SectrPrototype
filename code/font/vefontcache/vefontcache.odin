@@ -46,8 +46,9 @@ Context :: struct {
 	snap_width  : f32,
 	snap_height : f32,
 
-	colour     : Colour,
-	cursor_pos : Vec2,
+	alpha_scalar : f32,    // Will apply a multiplier to the colour's alpha which provides some sharpening of the edges.
+	colour       : Colour,
+	cursor_pos   : Vec2,
 
 	draw_layer : struct {
 		vertices_offset : int,
@@ -116,7 +117,7 @@ Init_Glyph_Draw_Params :: struct {
 
 Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
 	over_sample   = Vec2 { 4, 4 },
-	buffer_batch  = 8,
+	buffer_batch  = 4,
 	draw_padding  = Init_Atlas_Params_Default.glyph_padding,
 }
 
@@ -151,10 +152,11 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	glyph_draw_params           := Init_Glyph_Draw_Params_Default,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
 	shaper_params               := Init_Shaper_Params_Default,
-	default_curve_quality       : u32 = 6,
+	alpha_sharpen               := 0.2,
+	default_curve_quality       : u32 = 3,
 	entires_reserve             : u32 = 256,
-	temp_path_reserve           : u32 = 1024,
-	temp_codepoint_seen_reserve : u32 = 1024,
+	temp_path_reserve           : u32 = 10 * 1024,
+	temp_codepoint_seen_reserve : u32 = 10 * 1024,
 )
 {
 	assert( ctx != nil, "Must provide a valid context" )
@@ -163,12 +165,14 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	ctx.backing       = allocator
 	context.allocator = ctx.backing
 
+	ctx.colour = { 1, 1, 1, 1 }
+
 	use_advanced_shaper                      = shaper_params.use_advanced_text_shaper
 	shaper_ctx.adv_snap_small_font_threshold = f32(shaper_params.adv_snap_small_font_threshold)
 	shaper_ctx.snap_glyph_position           = shaper_params.snap_glyph_position
 
 	if default_curve_quality == 0 {
-		default_curve_quality = 6
+		default_curve_quality = 3
 	}
 	ctx.default_curve_quality = default_curve_quality
 
@@ -267,7 +271,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		over_sample   = glyph_draw_params.over_sample
 		batch         = cast(i32) glyph_draw_params.buffer_batch
 		width         = atlas.region_d.width  * i32(over_sample.x) * batch
-		height        = atlas.region_d.height * i32(over_sample.y)
+		height        = atlas.region_d.height * i32(over_sample.y) //* (batch / 2)
 		draw_padding  = cast(f32) glyph_draw_params.draw_padding
 
 		draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = glyph_draw_params.buffer_batch * 2 )

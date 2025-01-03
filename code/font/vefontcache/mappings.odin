@@ -36,8 +36,6 @@ import "core:mem"
 	arena_init      :: mem.arena_init
 import "core:slice"
 
-
-
 //#region("Proc overload mappings")
 
 append :: proc {
@@ -51,15 +49,15 @@ append_soa :: proc {
 }
 
 ceil :: proc {
-	math.ceil_f16,
-	math.ceil_f16le,
-	math.ceil_f16be,
-	math.ceil_f32,
-	math.ceil_f32le,
-	math.ceil_f32be,
-	math.ceil_f64,
-	math.ceil_f64le,
-	math.ceil_f64be,
+	ceil_f16,
+	ceil_f16le,
+	ceil_f16be,
+	ceil_f32,
+	ceil_f32le,
+	ceil_f32be,
+	ceil_f64,
+	ceil_f64le,
+	ceil_f64be,
 
 	ceil_vec2,
 }
@@ -70,15 +68,15 @@ clear :: proc {
 }
 
 floor :: proc {
-	math.floor_f16,
-	math.floor_f16le,
-	math.floor_f16be,
-	math.floor_f32,
-	math.floor_f32le,
-	math.floor_f32be,
-	math.floor_f64,
-	math.floor_f64le,
-	math.floor_f64be,
+	floor_f16,
+	floor_f16le,
+	floor_f16be,
+	floor_f32,
+	floor_f32le,
+	floor_f32be,
+	floor_f64,
+	floor_f64le,
+	floor_f64be,
 
 	floor_vec2,
 }

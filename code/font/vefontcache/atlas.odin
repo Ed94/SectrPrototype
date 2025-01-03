@@ -13,29 +13,29 @@ Atlas_Region_Kind :: enum u8 {
 Atlas_Region :: struct {
 	state : LRU_Cache,
 
-	width  : i32,
-	height : i32,
-
 	size     : Vec2i,
 	capacity : Vec2i,
 	offset   : Vec2i,
+
+	width  : i32,
+	height : i32,
 
 	next_idx : i32,
 }
 
 Atlas :: struct {
-	width  : i32,
-	height : i32,
-
-	glyph_padding     : f32, // Padding to add to bounds_<width/height>_scaled for choosing which atlas region.
-	glyph_over_scalar : f32, // Scalar to apply to bounds_<width/height>_scaled for choosing which atlas region.
-
 	region_a : Atlas_Region,
 	region_b : Atlas_Region,
 	region_c : Atlas_Region,
 	region_d : Atlas_Region,
 
 	regions : [5] ^Atlas_Region,
+
+	glyph_padding     : f32, // Padding to add to bounds_<width/height>_scaled for choosing which atlas region.
+	glyph_over_scalar : f32, // Scalar to apply to bounds_<width/height>_scaled for choosing which atlas region.
+
+	width  : i32,
+	height : i32,
 }
 
 atlas_region_bbox :: proc( region : Atlas_Region, local_idx : i32 ) -> (position, size: Vec2)

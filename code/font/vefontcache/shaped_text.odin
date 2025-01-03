@@ -1,13 +1,12 @@
 package vefontcache
 
 Shaped_Text :: struct {
-	font               : Font_ID,
-	entry              : ^Entry,
-
 	glyphs             : [dynamic]Glyph,
 	positions          : [dynamic]Vec2,
 	end_cursor_pos     : Vec2,
 	size               : Vec2,
+	entry              : ^Entry,
+	font               : Font_ID,
 }
 
 Shaped_Text_Cache :: struct {

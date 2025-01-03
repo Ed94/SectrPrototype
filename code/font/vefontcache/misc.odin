@@ -89,7 +89,7 @@ to_screen_space :: #force_inline proc "contextless" ( #no_alias position, scale 
 		pos_64      = pos_64   * quotient * 2.0 - 1.0
 		scale_64    = scale_64 * quotient * 2.0
 
-		(position^) = { f32(pos_64.x), f32(pos_64.y) }
+		(position^) = { f32(pos_64.x),   f32(pos_64.y) }
 		(scale^)    = { f32(scale_64.x), f32(scale_64.y) }
 	}
 	else
@@ -98,7 +98,7 @@ to_screen_space :: #force_inline proc "contextless" ( #no_alias position, scale 
 		scale_32 := scale^
 
 		quotient : Vec2 = 1.0 / size
-		pos       = pos   * quotient * 2.0 - 1.0
+		pos       = pos      * quotient * 2.0 - 1.0
 		scale_32  = scale_32 * quotient * 2.0
 
 		(position^) = pos
@@ -117,7 +117,7 @@ to_text_space :: #force_inline proc "contextless" ( #no_alias position, scale : 
 		pos_64   *= quotient
 		scale_64 *= quotient
 
-		(position^) = { f32(pos_64.x), f32(pos_64.y) }
+		(position^) = { f32(pos_64.x),   f32(pos_64.y) }
 		(scale^)    = { f32(scale_64.x), f32(scale_64.y) }
 	}
 	else
