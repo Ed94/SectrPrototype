@@ -265,8 +265,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	if true
 	{
 		font_provider_startup( & font_provider_ctx )
-		// path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
-		// font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 16.0, "RecMonoSemiCasual_Regular" )
+		path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
+		font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 16.0, "RecMonoSemiCasual_Regular" )
 
 		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
 		// font_squidgy_slimes = font_load( path_squidgy_slimes, 32.0, "Squidgy_Slime" )
@@ -292,8 +292,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
 		// font_roboto_regular  = font_load( path_roboto_regular, 32.0, "Roboto Regular" )
 
-		path_roboto_mono_regular := strings.concatenate( { Path_Assets, "RobotoMono-Regular.ttf"} )
-		font_roboto_mono_regular  = font_load( path_roboto_mono_regular, 32.0, "Roboto Mono Regular" )
+		// path_roboto_mono_regular := strings.concatenate( { Path_Assets, "RobotoMono-Regular.ttf"} )
+		// font_roboto_mono_regular  = font_load( path_roboto_mono_regular, 32.0, "Roboto Mono Regular" )
 
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
@@ -301,7 +301,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
-		default_font = font_roboto_mono_regular
+		default_font = font_rec_mono_semicasual_reg
 		log( "Default font loaded" )
 	}
 

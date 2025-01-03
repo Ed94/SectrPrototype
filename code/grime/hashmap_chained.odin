@@ -19,6 +19,8 @@ import "core:strings"
 
 HTable_Minimum_Capacity :: 4 * Kilobyte
 
+// TODO(Ed): Have the key type be user specifiable
+
 HMapChainedSlot :: struct( $Type : typeid ) {
 	using links : DLL_NodePN(HMapChainedSlot(Type)),
 	value    : Type,

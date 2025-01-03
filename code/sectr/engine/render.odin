@@ -421,7 +421,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 
 				fs_target_uniform := Ve_Draw_Text_Fs_Params {
 					down_sample = 0,
-					colour = draw_call.colour,
+					colour      = draw_call.colour,
 				}
 
 				if draw_call.pass == .Target_Uncached {
