@@ -146,6 +146,13 @@ get_font_vertical_metrics :: #force_inline proc ( font : FontID, font_size := Fo
 	return
 }
 
+shape_text_cached_latin :: #force_inline proc( text : string, font : FontID, font_size := Font_Use_Default_Size, scalar : f32 ) -> ShapedText
+{
+	ve_id, size := font_provider_resolve_draw_id( font, font_size * scalar )
+	shape       := ve.shape_text_latin( & get_state().font_provider_ctx.ve_ctx, ve_id, text )
+	return shape
+}
+
 shape_text_cached :: #force_inline proc( text : string, font : FontID, font_size := Font_Use_Default_Size, scalar : f32 ) -> ShapedText
 {
 	ve_id, size := font_provider_resolve_draw_id( font, font_size * scalar )

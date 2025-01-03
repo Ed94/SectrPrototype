@@ -473,6 +473,7 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : str
 	profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
+	assert( len(text_utf8) > 0 )
 
 	ctx.cursor_pos = {}
 
@@ -481,8 +482,6 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : str
 	position.y = ceil(position.y * ctx.snap_height) / ctx.snap_height
 
 	entry := ctx.entries[ font ]
-
-
 
 	shape         := shaper_shape_text_cached( ctx, font, text_utf8, entry, shaper_shape_text_uncached_advanced )
 	ctx.cursor_pos = generate_shape_draw_list( ctx, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
@@ -494,6 +493,7 @@ draw_text_no_snap :: #force_inline proc( ctx : ^Context, font : Font_ID, text_ut
 	profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
+	assert( len(text_utf8) > 0 )
 
 	ctx.cursor_pos = {}
 
@@ -599,12 +599,16 @@ get_font_vertical_metrics :: #force_inline proc ( ctx : ^Context, font : Font_ID
 
 shape_text_latin :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, allocator := context.allocator ) -> Shaped_Text
 {
+	profile(#procedure)
+	assert( len(text_utf8) > 0 )
 	entry := ctx.entries[ font ]
 	return shaper_shape_text_cached( ctx, font, text_utf8, entry, shaper_shape_from_text_latin )
 }
 
 shape_text_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string ) -> Shaped_Text
 {
+	profile(#procedure)
+	assert( len(text_utf8) > 0 )
 	entry := ctx.entries[ font ]
 	return shaper_shape_text_cached( ctx, font, text_utf8, entry, shaper_shape_text_uncached_advanced )
 }

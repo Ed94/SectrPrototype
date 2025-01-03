@@ -642,9 +642,11 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 			entry := text_list[text_id]
 			font  := entry.font.key != 0 ? entry.font : default_font
 
-			text_enqueued   = true
 			text_layer_done = b32(text_id > 0) && text_list[ text_id - 1 ].layer_signal
 			text_id        += 1
+
+			if len(entry.text) == 0 do continue
+			text_enqueued   = true
 
 			if cam != nil {
 				// draw_text_shape_pos_extent_zoomed( entry.shape, font, entry.font_size, entry.position, cam_offset, screen_size, screen_size_norm, cam.zoom, entry.color )

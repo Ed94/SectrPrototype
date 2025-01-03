@@ -100,7 +100,7 @@ check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : Context, glyph_inde
 ) -> (found, should_cache : b8 )
 {
 	profile(#procedure)
-	// assert( glyph_index != -1 )
+	assert( glyph_index != -1 )
 
 	if ctx.temp_codepoint_seen_num > i32(cap(ctx.temp_codepoint_seen)) do return
 
@@ -113,7 +113,7 @@ check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : Context, glyph_inde
 			next_evict_codepoint := lru_get_next_evicted( region.state )
 			success : bool
 			found, success   = ctx.temp_codepoint_seen[next_evict_codepoint]
-			// assert(success != false)
+			assert(success != false)
 			if (found) {
 				return
 			}

@@ -277,16 +277,16 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			if ! current.computed.fresh
 			{
 				if len(current.text.str) > 0 {
-					app_window       := get_state().app_window
-					screen_extent    := app_window.extent
-					screen_size      := screen_extent * 2
-					screen_size_norm := 1 / screen_size
+					// app_window       := get_state().app_window
+					// screen_extent    := app_window.extent
+					// screen_size      := screen_extent * 2
+					// screen_size_norm := 1 / screen_size
 
 					font_size_screen_scalar := app_config().font_size_screen_scalar
 
 					// over_sample : f32 = f32(get_state().config.font_size_canvas_scalar)
 
-					current.computed.text_shape = shape_text_cached( current.text.str, current.style.font, current.layout.font_size, 1.0 )
+					current.computed.text_shape = shape_text_cached_latin( current.text.str, current.style.font, current.layout.font_size, 1.0 )
 				}
 				ui_box_compute_layout( current )
 			}

@@ -220,7 +220,7 @@ parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : Pa
 	return
 }
 
-parser_get_bounds :: #force_inline proc "contextless" ( font : Parser_Font_Info, glyph_index : Glyph ) -> (bounds : Glyph_Bounds)
+parser_get_bounds :: #force_inline proc "contextless" ( font : Parser_Font_Info, glyph_index : Glyph ) -> (bounds : Range2)
 {
 	profile(#procedure)
 
