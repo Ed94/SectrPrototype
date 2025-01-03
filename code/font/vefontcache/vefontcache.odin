@@ -7,6 +7,11 @@ package vefontcache
 
 import "base:runtime"
 
+// White: Cached Hit, Red: Cache Miss, Yellow: Oversized
+ENABLE_DRAW_TYPE_VIS :: false 
+// See: mappings.odin for profiling hookup
+DISABLE_PROFILING    :: true  
+
 Font_ID :: distinct i32
 Glyph   :: distinct i32
 
@@ -400,6 +405,7 @@ shutdown :: proc( ctx : ^Context )
 // ve_fontcache_load
 load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32, glyph_curve_quality : u32 = 0 ) -> (font_id : Font_ID)
 {
+	profile(#procedure)
 	assert( ctx != nil )
 	assert( len(data) > 0 )
 	using ctx
@@ -423,8 +429,10 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32,
 		using entry
 		used = true
 
+		profile_begin("calling loaders")
 		parser_info = parser_load_font( & parser_ctx, label, data )
 		shaper_info = shaper_load_font( & shaper_ctx, label, data )
+		profile_end()
 
 		size       = size_px
 		size_scale = parser_scale( parser_info, size )

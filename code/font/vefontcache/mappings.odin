@@ -35,6 +35,7 @@ import "core:mem"
 	arena_allocator :: mem.arena_allocator
 	arena_init      :: mem.arena_init
 import "core:slice"
+import "core:unicode"
 
 //#region("Proc overload mappings")
 
@@ -117,9 +118,6 @@ vec2_64 :: proc {
 
 import "../../grime"
 
-
-DISABLE_PROFILING :: false
-
 @(deferred_none = profile_end, disabled = DISABLE_PROFILING)
 profile :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {
 	grime.profile_begin(name, loc)
@@ -136,3 +134,4 @@ profile_end :: #force_inline proc "contextless" () {
 }
 
 //#endregion("Proc overload mappings")
+

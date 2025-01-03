@@ -63,7 +63,8 @@ pool_list_reload :: proc( pool : ^Pool_List, allocator : Allocator ) {
 	reload_array( & pool.free_list, allocator )
 }
 
-pool_list_clear :: proc( pool: ^Pool_List ) {
+pool_list_clear :: proc( pool: ^Pool_List )
+{
 	using pool
 	clear(& items)
 	clear(& free_list)
@@ -219,8 +220,8 @@ lru_find :: #force_inline proc "contextless" ( cache : LRU_Cache, key : u32, mus
 
 lru_get :: #force_inline proc ( cache: ^LRU_Cache, key : u32 ) -> i32 #no_bounds_check {
 	if link, ok := &cache.table[ key ]; ok {
-			pool_list_move_to_front(&cache.key_queue, link.ptr)
-			return link.value
+		pool_list_move_to_front(&cache.key_queue, link.ptr)
+		return link.value
 	}
 	return -1
 }

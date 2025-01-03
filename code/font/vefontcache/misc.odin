@@ -62,13 +62,6 @@ font_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, glyph_
 	return
 }
 
-is_glyph_empty :: #force_inline proc ( ctx : ^Context, entry : ^Entry, glyph_index : Glyph ) -> b32
-{
-	if glyph_index == 0 do return true
-	if parser_is_glyph_empty( entry.parser_info, glyph_index ) do return true
-	return false
-}
-
 mark_batch_codepoint_seen :: #force_inline proc "contextless" ( ctx : ^Context, lru_code : u32 ) {
 	ctx.temp_codepoint_seen[lru_code] = true
 	ctx.temp_codepoint_seen_num += 1
@@ -79,56 +72,24 @@ reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
 	ctx.temp_codepoint_seen_num = 0
 }
 
-USE_F64_PRECISION_ON_X_FORM_OPS :: false
-
-to_screen_space :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
+to_glyph_buffer_space :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
 {
-	when USE_F64_PRECISION_ON_X_FORM_OPS
-	{
-		pos_64   := vec2_64_from_vec2(position^)
-		scale_64 := vec2_64_from_vec2(scale^)
+	pos      := position^
+	scale_32 := scale^
 
-		quotient : Vec2_64 = 1.0 / vec2_64(size)
-		pos_64      = pos_64   * quotient * 2.0 - 1.0
-		scale_64    = scale_64 * quotient * 2.0
+	quotient : Vec2 = 1.0 / size
+	pos       = pos      * quotient * 2.0 - 1.0
+	scale_32  = scale_32 * quotient * 2.0
 
-		(position^) = { f32(pos_64.x),   f32(pos_64.y) }
-		(scale^)    = { f32(scale_64.x), f32(scale_64.y) }
-	}
-	else
-	{
-		pos      := position^
-		scale_32 := scale^
-
-		quotient : Vec2 = 1.0 / size
-		pos       = pos      * quotient * 2.0 - 1.0
-		scale_32  = scale_32 * quotient * 2.0
-
-		(position^) = pos
-		(scale^)    = scale_32
-	}
+	(position^) = pos
+	(scale^)    = scale_32
 }
 
-to_text_space :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
+to_target_space :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
 {
-	when USE_F64_PRECISION_ON_X_FORM_OPS
-	{
-		pos_64   := vec2_64_from_vec2(position^)
-		scale_64 := vec2_64_from_vec2(scale^)
-
-		quotient : Vec2_64 = 1.0 / vec2_64(size)
-		pos_64   *= quotient
-		scale_64 *= quotient
-
-		(position^) = { f32(pos_64.x),   f32(pos_64.y) }
-		(scale^)    = { f32(scale_64.x), f32(scale_64.y) }
-	}
-	else
-	{
-		quotient : Vec2 = 1.0 / size
-		(position^) *= quotient
-		(scale^)    *= quotient
-	}
+	quotient : Vec2 = 1.0 / size
+	(position^) *= quotient
+	(scale^)    *= quotient
 }
 
 USE_MANUAL_SIMD_FOR_BEZIER_OPS :: true

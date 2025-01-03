@@ -263,7 +263,7 @@ shaper_shape_from_text_latin :: #force_inline proc( ctx : ^Context, font : Font_
 		}
 
 		glyph_index := parser_find_glyph_index( entry.parser_info, codepoint )
-		is_glyph_empty    := parser_is_glyph_empty( entry.parser_info,glyph_index )
+		is_glyph_empty    := parser_is_glyph_empty( entry.parser_info, glyph_index )
 		if ! is_glyph_empty
 		{
 			append( & output.glyphs, glyph_index)

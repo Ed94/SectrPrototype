@@ -274,6 +274,7 @@ parser_get_glyph_shape :: #force_inline proc ( font : Parser_Font_Info, glyph_in
 
 parser_is_glyph_empty :: #force_inline proc "contextless" ( font : Parser_Font_Info, glyph_index : Glyph ) -> b32
 {
+	
 	// switch font.kind
 	// {
 	// 	case .Freetype:
@@ -297,6 +298,7 @@ parser_is_glyph_empty :: #force_inline proc "contextless" ( font : Parser_Font_I
 
 parser_scale :: #force_inline proc "contextless" ( font : Parser_Font_Info, size : f32 ) -> f32
 {
+	profile(#procedure)
 	size_scale := size < 0.0 ?                            \
 		parser_scale_for_pixel_height( font, -size )        \
 	: parser_scale_for_mapping_em_to_pixels( font, size )
