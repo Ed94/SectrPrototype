@@ -7,7 +7,7 @@ The choice was made to keep the LRU cache implementation as close to the origina
 import "base:runtime"
 
 Pool_ListIter  :: i32
-Pool_ListValue :: u64
+Pool_ListValue :: u32
 
 Pool_List_Item :: struct {
 	prev  : Pool_ListIter,
@@ -183,14 +183,14 @@ LRU_Link :: struct {
 LRU_Cache :: struct {
 	capacity  : i32,
 	num       : i32,
-	table     :  map[u64]LRU_Link,
+	table     :  map[u32]LRU_Link,
 	key_queue : Pool_List,
 }
 
 lru_init :: proc( cache : ^LRU_Cache, capacity : i32, dbg_name : string = "" ) {
 	error : Allocator_Error
 	cache.capacity     = capacity
-	cache.table, error = make( map[u64]LRU_Link, uint(capacity) )
+	cache.table, error = make( map[u32]LRU_Link, uint(capacity) )
 	assert( error == .None, "VEFontCache.lru_init : Failed to allocate cache's table")
 
 	pool_list_init( & cache.key_queue, capacity, dbg_name = dbg_name )
@@ -212,12 +212,12 @@ lru_clear :: proc ( cache : ^LRU_Cache ) {
 	cache.num = 0
 }
 
-lru_find :: #force_inline proc "contextless" ( cache : LRU_Cache, key : u64, must_find := false ) -> (LRU_Link, bool) {
+lru_find :: #force_inline proc "contextless" ( cache : LRU_Cache, key : u32, must_find := false ) -> (LRU_Link, bool) {
 	link, success := cache.table[key]
 	return link, success
 }
 
-lru_get :: #force_inline proc ( cache: ^LRU_Cache, key : u64 ) -> i32 #no_bounds_check {
+lru_get :: #force_inline proc ( cache: ^LRU_Cache, key : u32 ) -> i32 #no_bounds_check {
 	if link, ok := &cache.table[ key ]; ok {
 			pool_list_move_to_front(&cache.key_queue, link.ptr)
 			return link.value
@@ -225,15 +225,15 @@ lru_get :: #force_inline proc ( cache: ^LRU_Cache, key : u64 ) -> i32 #no_bounds
 	return -1
 }
 
-lru_get_next_evicted :: #force_inline proc ( cache : LRU_Cache ) -> u64 {
+lru_get_next_evicted :: #force_inline proc ( cache : LRU_Cache ) -> u32 {
 	if cache.key_queue.size >= cache.capacity {
 		evict := pool_list_peek_back( cache.key_queue )
 		return evict
 	}
-	return 0xFFFFFFFFFFFFFFFF
+	return 0xFFFFFFFF
 }
 
-lru_peek :: #force_inline proc "contextless" ( cache : LRU_Cache, key : u64, must_find := false ) -> i32 {
+lru_peek :: #force_inline proc "contextless" ( cache : LRU_Cache, key : u32, must_find := false ) -> i32 {
 	iter, success := lru_find( cache, key, must_find )
 	if success == false {
 		return -1
@@ -241,7 +241,7 @@ lru_peek :: #force_inline proc "contextless" ( cache : LRU_Cache, key : u64, mus
 	return iter.value
 }
 
-lru_put :: #force_inline proc( cache : ^LRU_Cache, key : u64, value : i32 ) -> u64
+lru_put :: #force_inline proc( cache : ^LRU_Cache, key : u32, value : i32 ) -> u32
 {
 	// profile(#procedure)
 	if link, ok := & cache.table[ key ]; ok {
@@ -266,7 +266,7 @@ lru_put :: #force_inline proc( cache : ^LRU_Cache, key : u64, value : i32 ) -> u
 	return evict
 }
 
-lru_refresh :: proc( cache : ^LRU_Cache, key : u64 ) {
+lru_refresh :: proc( cache : ^LRU_Cache, key : u32 ) {
 	link, success := lru_find( cache ^, key )
 	pool_list_erase( & cache.key_queue, link.ptr )
 	pool_list_push_front( & cache.key_queue, key )

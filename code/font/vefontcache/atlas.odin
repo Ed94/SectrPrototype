@@ -68,7 +68,7 @@ atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_bu
 }
 
 // Grab an atlas LRU cache slot.
-atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u64 ) -> (atlas_index : i32)
+atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u32 ) -> (atlas_index : i32)
 {
 	if region.next_idx < region.state.capacity
 	{
@@ -80,7 +80,7 @@ atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u6
 	else
 	{
 		next_evict_codepoint := lru_get_next_evicted( region.state )
-		assert( next_evict_codepoint != 0xFFFFFFFFFFFFFFFF )
+		assert( next_evict_codepoint != 0xFFFFFFFF)
 
 		atlas_index = lru_peek( region.state, next_evict_codepoint, must_find = true )
 		assert( atlas_index != -1 )
@@ -90,39 +90,5 @@ atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u6
 	}
 
 	assert( lru_get( & region.state, lru_code ) != - 1 )
-	return
-}
-
-check_and_reserve_slot_in_atlas :: #force_inline proc( ctx : Context, glyph_index : Glyph,
-	lru_code    : u64,
-	atlas_index : ^i32,
-	region      : ^Atlas_Region,
-) -> (found, should_cache : b8 )
-{
-	profile(#procedure)
-	assert( glyph_index != -1 )
-
-	if ctx.temp_codepoint_seen_num > i32(cap(ctx.temp_codepoint_seen)) do return
-
-	if (atlas_index ^) == - 1
-	{
-		// Check to see if we reached capacity for the atlas
-		if region.next_idx > region.state.capacity 
-		{
-			// We will evict LRU. We must predict which LRU will get evicted, and if it's something we've seen then we need to take slowpath and flush batch.
-			next_evict_codepoint := lru_get_next_evicted( region.state )
-			success : bool
-			found, success   = ctx.temp_codepoint_seen[next_evict_codepoint]
-			assert(success != false)
-			if (found) {
-				return
-			}
-		}
-
-		should_cache = true
-		(atlas_index ^) = atlas_reserve_slot(region, lru_code)
-	}
-
-	found = true
 	return
 }

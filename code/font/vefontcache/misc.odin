@@ -11,6 +11,9 @@ Vec2    :: [2]f32
 Vec2i   :: [2]i32
 Vec2_64 :: [2]f64
 
+djb8_hash_32 :: #force_inline proc "contextless" ( hash : ^u32, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + u32(value) }
+djb8_hash    :: #force_inline proc "contextless" ( hash : ^u64, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + u64(value) }
+
 vec2_from_scalar  :: #force_inline proc "contextless" ( scalar : f32   ) -> Vec2    { return { scalar, scalar }}
 vec2_64_from_vec2 :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
 vec2_from_vec2i   :: #force_inline proc "contextless" ( v2i    : Vec2i ) -> Vec2    { return { f32(v2i.x), f32(v2i.y) }}
@@ -54,8 +57,8 @@ reload_map :: proc( self : ^map [$KeyType] $EntryType, allocator : Allocator ) {
 	raw.allocator = allocator
 }
 
-font_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, glyph_index : Glyph ) -> (lru_code : u64) {
-	lru_code = u64(glyph_index) + ( ( 0x100000000 * u64(font) ) & 0xFFFFFFFF00000000 )
+font_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, glyph_index : Glyph ) -> (lru_code : u32) {
+	lru_code = u32(glyph_index) + ( ( 0x10000 * u32(font) ) & 0xFFFF0000 )
 	return
 }
 
@@ -66,7 +69,7 @@ is_glyph_empty :: #force_inline proc ( ctx : ^Context, entry : ^Entry, glyph_ind
 	return false
 }
 
-mark_batch_codepoint_seen :: #force_inline proc "contextless" ( ctx : ^Context, lru_code : u64 ) {
+mark_batch_codepoint_seen :: #force_inline proc "contextless" ( ctx : ^Context, lru_code : u32 ) {
 	ctx.temp_codepoint_seen[lru_code] = true
 	ctx.temp_codepoint_seen_num += 1
 }
@@ -137,11 +140,6 @@ when ! USE_MANUAL_SIMD_FOR_BEZIER_OPS
 	// ve_fontcache_eval_bezier (quadratic)
 	eval_point_on_bezier3 :: #force_inline proc "contextless" ( p0, p1, p2 : Vec2, alpha : f32 ) -> Vec2
 	{
-		// p0    := vec2_64(p0)
-		// p1    := vec2_64(p1)
-		// p2    := vec2_64(p2)
-		// alpha := f64(alpha)
-
 		weight_start   := (1 - alpha) * (1 - alpha)
 		weight_control := 2.0 * (1 - alpha) * alpha
 		weight_end     := alpha * alpha
@@ -159,12 +157,6 @@ when ! USE_MANUAL_SIMD_FOR_BEZIER_OPS
 	// ve_fontcache_eval_bezier (cubic)
 	eval_point_on_bezier4 :: #force_inline proc "contextless" ( p0, p1, p2, p3 : Vec2, alpha : f32 ) -> Vec2
 	{
-		// p0    := vec2_64(p0)
-		// p1    := vec2_64(p1)
-		// p2    := vec2_64(p2)
-		// p3    := vec2_64(p3)
-		// alpha := f64(alpha)
-
 		weight_start := (1 - alpha) * (1 - alpha) * (1 - alpha)
 		weight_c_a   := 3 * (1 - alpha) * (1 - alpha) * alpha
 		weight_c_b   := 3 * (1 - alpha) * alpha * alpha

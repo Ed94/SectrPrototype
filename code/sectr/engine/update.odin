@@ -322,7 +322,7 @@ update :: proc( delta_time : f64 ) -> b32
 			flags          = frame_style_flags,
 			anchor         = {},
 			// alignment      = { 0.5, 0.5 },
-			font_size      = 14,
+			font_size      = 16,
 			text_alignment = { 0.0, 0.0 },
 			// corner_radii   = { 0.2, 0.2, 0.2, 0.2 },
 			pos            = { 0, 0 },
