@@ -169,14 +169,14 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		glyph_rt_sampler = sokol_gfx.make_sampler( SamplerDescription {
 			min_filter     = Image_Filter,
 			mag_filter     = Image_Filter,
-			mipmap_filter  = Filter.LINEAR,
+			mipmap_filter  = Filter.NEAREST,
 			wrap_u         = .CLAMP_TO_EDGE,
 			wrap_v         = .CLAMP_TO_EDGE,
 			min_lod        = -1000.0,
 			max_lod        =  1000.0,
 			border_color   = BorderColor.OPAQUE_BLACK,
 			compare        = .NEVER,
-			max_anisotropy = 16,
+			max_anisotropy = 1,
 		})
 		verify( sokol_gfx.query_sampler_state( glyph_rt_sampler) < ResourceState.FAILED, "Failed to make atlas_rt_sampler" )
 

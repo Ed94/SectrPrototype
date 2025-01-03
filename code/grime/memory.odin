@@ -94,4 +94,8 @@ memory_aign_forward :: #force_inline proc( address, alignment : uintptr) -> uint
 
 //endregion Memory Math
 
-swap :: #force_inline proc( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) { return b, a }
+swap :: #force_inline proc "contextless" ( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) { return b, a }
+
+to_bytes :: #force_inline proc "contextless" ( typed_block : ^$Type ) -> []byte {
+	return slice_ptr( transmute(^byte) typed_block, size_of(Type) )
+}

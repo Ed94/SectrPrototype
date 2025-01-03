@@ -274,6 +274,13 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 		for current := ui.root.first; current != nil; 
 				current  = ui_box_tranverse_next_depth_first( current, bypass_intersection_test = true, ctx = ui )
 		{
+			// prev_box := ui_prev_cached_box( current )
+			// prev_hash : u64
+			// curr_hash : u64
+			// djb8_hash( & prev_hash, to_bytes(& prev_box.layout) )
+			// djb8_hash( & curr_hash, to_bytes(& current.layout) )
+			// current.computed.fresh = prev_hash == curr_hash && (current.parent != nil && current.parent.computed.fresh)
+
 			if ! current.computed.fresh
 			{
 				if len(current.text.str) > 0 {

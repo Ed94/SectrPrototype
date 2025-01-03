@@ -4,7 +4,8 @@ package sectr
 #region("base")
 
 import "base:builtin"
-	copy :: builtin.copy
+	copy       :: builtin.copy
+	// byte_slice :: builtin.byte_slice
 
 import "base:intrinsics"
 	mem_zero       :: intrinsics.mem_zero
@@ -51,6 +52,26 @@ import fmt_io "core:fmt"
 	str_tmp_from_any :: fmt_io.tprint
 
 import "core:math"
+	ceil_f16   :: math.ceil_f16
+	ceil_f16le :: math.ceil_f16le
+	ceil_f16be :: math.ceil_f16be
+	ceil_f32   :: math.ceil_f32
+	ceil_f32le :: math.ceil_f32le
+	ceil_f32be :: math.ceil_f32be
+	ceil_f64   :: math.ceil_f64
+	ceil_f64le :: math.ceil_f64le
+	ceil_f64be :: math.ceil_f64be
+
+	floor_f16   :: math.floor_f16
+	floor_f16le :: math.floor_f16le
+	floor_f16be :: math.floor_f16be
+	floor_f32   :: math.floor_f32
+	floor_f32le :: math.floor_f32le
+	floor_f32be :: math.floor_f32be
+	floor_f64   :: math.floor_f64
+	floor_f64le :: math.floor_f64le
+	floor_f64be :: math.floor_f64be
+
 	lerp  :: math.lerp
 
 import "core:math/bits"
@@ -239,6 +260,9 @@ import "codebase:grime"
 	file_exists :: grime.file_exists
 	file_rewind :: grime.file_rewind
 
+	// hashing
+	djb8_hash :: grime.djb8_hash
+
 	// linked lists
 	LL_Node :: grime.LL_Node
 
@@ -278,6 +302,7 @@ import "codebase:grime"
 	memory_after_header      :: grime.memory_after_header
 	memory_after             :: grime.memory_after
 	swap                     :: grime.swap
+	to_bytes                 :: grime.to_bytes
 
 	// strings
 	StrRunesPair :: grime.StrRunesPair
@@ -344,6 +369,20 @@ append_at :: proc {
 bivec3 :: proc {
 	bivec3_via_f32s,
 	vec3_to_bivec3,
+}
+
+ceil :: proc {
+	math.ceil_f16,
+	math.ceil_f16le,
+	math.ceil_f16be,
+	math.ceil_f32,
+	math.ceil_f32le,
+	math.ceil_f32be,
+	math.ceil_f64,
+	math.ceil_f64le,
+	math.ceil_f64be,
+
+	// ceil_vec2,
 }
 
 clear :: proc{
