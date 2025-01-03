@@ -1,6 +1,7 @@
 package vefontcache
 
 import "base:runtime"
+import "base:intrinsics"
 import "core:slice"
 import "thirdparty:freetype"
 
@@ -9,9 +10,16 @@ Vertex :: struct {
 	u, v : f32,
 }
 
-GlyphBounds :: struct {
-	p0, p1 : Vec2
+Transform :: struct {
+	translate : Vec2,
+	scale     : Vec2,
 }
+
+Glyph_Bounds :: struct {
+	p0, p1 : Vec2,
+}
+
+Glyph_Bounds_Mat :: matrix[2, 2] f32
 
 Glyph_Pack_Entry :: struct #packed {
 	translate          : Vec2,
@@ -27,12 +35,16 @@ Glyph_Pack_Entry :: struct #packed {
 
 	shape              : Parser_Glyph_Shape,
 
-	bounds             : GlyphBounds,
+	bounds             : Glyph_Bounds,
 	bounds_size        : Vec2,
 	bounds_size_scaled : Vec2,
 	over_sample        : Vec2,
+	scale              : Vec2,
 
-	// scale        : Vec2,
+	draw_transform : Transform,
+	// cache_draw_scale     : Vec2,
+	// cache_draw_translate : Vec2,
+
 	// shape_id     : i32,
 }
 
@@ -74,7 +86,7 @@ Glyph_Draw_Buffer :: struct {
 	batch         : i32,
 	width         : i32,
 	height        : i32,
-	draw_padding  : i32,
+	draw_padding  : f32,
 
 	batch_x         : i32,
 	clear_draw_list : Draw_List,
@@ -157,10 +169,9 @@ construct_filled_path :: #force_inline proc( draw_list : ^Draw_List, outside_poi
 }
 
 generate_glyph_pass_draw_list :: #force_inline proc(ctx : ^Context, 
-	glyph_index : Glyph,
 	glyph_shape : Parser_Glyph_Shape, 
 	curve_quality : f32, 
-	bounds : GlyphBounds, 
+	bounds : Glyph_Bounds, 
 	scale, translate : Vec2
 ) -> b32
 {
@@ -224,11 +235,23 @@ generate_glyph_pass_draw_list :: #force_inline proc(ctx : ^Context,
 }
 
 cache_glyph_to_atlas :: #force_no_inline proc ( ctx : ^Context,
-	#no_alias draw_list, glyph_buf_draw_list, glyph_buf_clear_list : ^Draw_List, glyph_buf_Batch_x : ^i32,
-	glyph_index : Glyph,
+	#no_alias draw_list, 
+	glyph_buf_draw_list, glyph_buf_clear_list : ^Draw_List,
+	glyph_buf_Batch_x : ^i32,
+
+	glyph_padding : f32,
+	glyph_buffer_size : Vec2,
+
+	atlas_size : Vec2,
+
+	buf_transform : Transform,
+
 	glyph_shape : Parser_Glyph_Shape,
-	bounds      : GlyphBounds,
+
+	bounds      : Glyph_Bounds, // -> generate_glyph_pass_draw_list
 	bounds_size : Vec2,
+
+
 	region_pos  : Vec2,
 	region_size : Vec2,
 	lru_code    : u64,
@@ -241,53 +264,43 @@ cache_glyph_to_atlas :: #force_no_inline proc ( ctx : ^Context,
 {
 	profile(#procedure)
 
-	atlas             := & ctx.atlas
-	glyph_buffer      := & ctx.glyph_buffer
-	atlas_size        := Vec2 { f32(atlas.width), f32(atlas.height) }
-	glyph_buffer_size := Vec2 { f32(glyph_buffer.width), f32(glyph_buffer.height) }
-	glyph_padding     := cast(f32) atlas.glyph_padding
+	batch_x := cast(f32) glyph_buf_Batch_x ^
 
-	// Draw oversized glyph to glyph render target (FBO)
-	glyph_draw_scale       := over_sample * entry.size_scale
-	glyph_draw_translate   := -1 * bounds.p0 * glyph_draw_scale + vec2( glyph_padding )
+	glyph_buffer_pad := over_sample.x * glyph_padding
 
 	// Allocate a glyph glyph render target region (FBO)
-	gwidth_scaled_px := bounds_size.x * glyph_draw_scale.x + over_sample.x * glyph_padding + 1.0
+	buffer_x_allocation := bounds_size.x * buf_transform.scale.x + glyph_buffer_pad + 2.0
 
 	// If we exceed the region availbe to draw on the buffer, flush the calls to reset the buffer
-	if i32(f32(glyph_buffer.batch_x) + gwidth_scaled_px) >= i32(glyph_buffer.width) {
+	if i32(batch_x + buffer_x_allocation) >= i32(glyph_buffer_size.x) {
 		flush_glyph_buffer_draw_list( draw_list, glyph_buf_draw_list, glyph_buf_clear_list, glyph_buf_Batch_x )
+		batch_x = cast(f32) glyph_buf_Batch_x ^
 	}
 
 	region_pos := region_pos
 
 	dst_glyph_position := region_pos
-	dst_glyph_size     := ceil(bounds_size * entry.size_scale + glyph_padding)
+	dst_glyph_size     := ceil(bounds_size * entry.size_scale) + glyph_padding
 	dst_size           := (region_size)
-	screenspace_x_form( & dst_glyph_position, & dst_glyph_size, atlas_size )
-	screenspace_x_form( & region_pos,         & dst_size,       atlas_size )
+	to_screen_space( & dst_glyph_position, & dst_glyph_size, atlas_size )
+	to_screen_space( & region_pos,         & dst_size,       atlas_size )
 
-	src_position := Vec2 { f32(glyph_buffer.batch_x), 0 }
-	src_size     := (bounds_size * glyph_draw_scale + over_sample * glyph_padding)
-	textspace_x_form( & src_position, & src_size, glyph_buffer_size )
-
-	// Advance glyph_update_batch_x and calculate final glyph drawing transform
-	glyph_draw_translate.x  = (glyph_draw_translate.x + f32(glyph_buffer.batch_x))
-	glyph_buffer.batch_x   += i32(gwidth_scaled_px)
-	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, glyph_buffer_size )
+	src_position := Vec2 { batch_x, 0 }
+	src_size     := (bounds_size * buf_transform.scale + over_sample * glyph_padding)
+	to_text_space( & src_position, & src_size, glyph_buffer_size )
 
 	clear_target_region : Draw_Call
 	{
 		using clear_target_region
 		pass        = .Atlas
 		region      = .Ignore
-		start_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
+		start_index = cast(u32) len(glyph_buf_clear_list.indices)
 
-		blit_quad( & glyph_buffer.clear_draw_list,
-			region_pos, region_pos + dst_size,
+		blit_quad( glyph_buf_clear_list,
+			region_pos,     region_pos + dst_size,
 			{ 1.0, 1.0 },  { 1.0, 1.0 } )
 
-		end_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
+		end_index = cast(u32) len(glyph_buf_clear_list.indices)
 	}
 
 	blit_to_atlas : Draw_Call
@@ -295,40 +308,49 @@ cache_glyph_to_atlas :: #force_no_inline proc ( ctx : ^Context,
 		using blit_to_atlas
 		pass        = .Atlas
 		region      = .None
-		start_index = cast(u32) len(glyph_buffer.draw_list.indices)
+		start_index = cast(u32) len(glyph_buf_draw_list.indices)
 
-		blit_quad( & glyph_buffer.draw_list,
-			dst_glyph_position, region_pos + dst_glyph_size,
-			src_position,       src_position  + src_size )
+		blit_quad( glyph_buf_draw_list,
+			dst_glyph_position, region_pos   + dst_glyph_size,
+			src_position,       src_position + src_size )
 
-		end_index = cast(u32) len(glyph_buffer.draw_list.indices)
+		end_index = cast(u32) len(glyph_buf_draw_list.indices)
 	}
 
-	append( & glyph_buffer.clear_draw_list.calls, clear_target_region )
-	append( & glyph_buffer.draw_list.calls, blit_to_atlas )
+	append( & glyph_buf_clear_list.calls, clear_target_region )
+	append( & glyph_buf_draw_list.calls, blit_to_atlas )
+
+	
+
+	screen_space_translate := buf_transform.translate
+	screen_space_scale     := buf_transform.scale
+
+	screen_space_translate.x  = (buf_transform.translate.x + batch_x)
+	glyph_buf_Batch_x^       += i32(buffer_x_allocation)
+
+	to_screen_space( & screen_space_translate, & screen_space_scale, glyph_buffer_size )
 
 	// Render glyph to glyph render target (FBO)
-	generate_glyph_pass_draw_list( ctx, glyph_index, glyph_shape, entry.curve_quality, bounds, glyph_draw_scale, glyph_draw_translate )
+	generate_glyph_pass_draw_list( ctx, glyph_shape, entry.curve_quality, bounds, screen_space_scale, screen_space_translate )
 }
 
-generate_oversized_draw_list :: #force_no_inline proc( ctx : ^Context,
+generate_oversized_draw_list :: #force_no_inline proc( ctx : ^Context, 
+	glyph_padding : f32,
+	glyph_buffer_size : Vec2,
 	entry : Entry,
 	glyph : Glyph,
 	glyph_shape : Parser_Glyph_Shape,
-	bounds                       : GlyphBounds,
+	bounds                       : Glyph_Bounds, // -> generate_glyph_pass_draw_list
 	bounds_size                  : Vec2,
 	over_sample, position, scale : Vec2 )
 {
 	profile(#procedure)
-	glyph_padding     := f32(ctx.atlas.glyph_padding)
-	glyph_buffer_size := Vec2 { f32(ctx.glyph_buffer.width), f32(ctx.glyph_buffer.height) }
-
 	// Draw un-antialiased glyph to draw_buffer
 	glyph_draw_scale     := over_sample * entry.size_scale
-	glyph_draw_translate := -1 * bounds.p0 * glyph_draw_scale + vec2_from_scalar(glyph_padding)
-	screenspace_x_form( & glyph_draw_translate, & glyph_draw_scale, glyph_buffer_size )
+	glyph_draw_translate := -1 * bounds.p0 * glyph_draw_scale + glyph_padding
+	to_screen_space( & glyph_draw_translate, & glyph_draw_scale, glyph_buffer_size )
 
-	generate_glyph_pass_draw_list( ctx, glyph, glyph_shape, entry.curve_quality, bounds, glyph_draw_scale, glyph_draw_translate )
+	generate_glyph_pass_draw_list( ctx, glyph_shape, entry.curve_quality, bounds, glyph_draw_scale, glyph_draw_translate )
 
 	bounds_scaled := bounds_size * entry.size_scale
 
@@ -341,7 +363,7 @@ generate_oversized_draw_list :: #force_no_inline proc( ctx : ^Context,
 	bounds_0_scaled := (bounds.p0 * entry.size_scale)
 	dst             := position + scale * bounds_0_scaled - glyph_padding * scale
 	dst_size        := glyph_dst_size * scale
-	textspace_x_form( & glyph_position, & glyph_size, glyph_buffer_size )
+	to_text_space( & glyph_position, & glyph_size, glyph_buffer_size )
 
 	// Add the glyph Draw_Call.
 	calls : [2]Draw_Call
@@ -373,9 +395,8 @@ generate_oversized_draw_list :: #force_no_inline proc( ctx : ^Context,
 
 generate_cached_draw_list :: proc (draw_list : ^Draw_List, glyph_pack : #soa[]Glyph_Pack_Entry, sub_pack : []i32,
 	atlas_size       : Vec2,
-	glyph_padding    : f32,
+	glyph_size_scale : f32,
 	colour           : Colour,
-	glyph_size_scale : f32, 
 	position         : Vec2,
 	scale            : Vec2
 )
@@ -391,24 +412,34 @@ generate_cached_draw_list :: proc (draw_list : ^Draw_List, glyph_pack : #soa[]Gl
 		glyph := glyph_pack[id]
 		profile("cached")
 
-		glyph_scale      := glyph.bounds_size_scaled + glyph_padding
 		bounds_0_scaled  := ceil(glyph.bounds.p0 * glyph_size_scale - 0.5 )
 		dst_pos          := glyph.translate + bounds_0_scaled * scale
-		dst_scale        := glyph_scale * scale
+		dst_scale        := glyph.scale * scale
 		src_pos          := glyph.region_pos
 
-		textspace_x_form( & src_pos, & glyph_scale, atlas_size )
+		to_text_space( & src_pos, & glyph.scale, atlas_size )
 
 		call.start_index  = u32(len(draw_list.indices))
 
 		blit_quad(draw_list,
 			dst_pos, dst_pos + dst_scale,
-			src_pos, src_pos + glyph_scale )
+			src_pos, src_pos + glyph.scale )
 
 		call.end_index = u32(len(draw_list.indices))
 
 		append(& draw_list.calls, call)
 	}
+}
+
+// @(require_results)
+append_no_bounds_check :: proc "contextless" (array: ^[dynamic]i32, value: i32) -> (n: int) {
+	raw := transmute(^runtime.Raw_Dynamic_Array)array
+	if raw.len >= raw.cap {
+			return 0
+	}
+	array[raw.len] = value
+	raw.len += 1
+	return raw.len
 }
 
 generate_shape_draw_list :: #force_no_inline proc( ctx : ^Context,
@@ -428,14 +459,6 @@ generate_shape_draw_list :: #force_no_inline proc( ctx : ^Context,
 	atlas_size        := Vec2 { f32(atlas.width), f32(atlas.height) }
 	glyph_buffer_size := Vec2 { f32(glyph_buffer.width), f32(glyph_buffer.height) }
 
-	append_sub_pack :: #force_inline proc ( pack : ^[dynamic]i32, entry : i32 )
-	{
-			raw := cast(^runtime.Raw_Dynamic_Array) pack
-			raw.len            += 1
-			pack[len(pack) - 1] = entry
-	}
-	sub_slice :: #force_inline proc "contextless" ( pack : ^[dynamic]i32) -> []i32 { return pack[:] }
-
 	profile_begin("soa prep")
 	// Make sure the packs are large enough for the shape
 	glyph_pack := & glyph_buffer.glyph_pack
@@ -447,6 +470,14 @@ generate_shape_draw_list :: #force_no_inline proc( ctx : ^Context,
 	clear(to_cache)
 	clear(cached)
 	profile_end()
+
+	append_sub_pack :: #force_inline proc ( pack : ^[dynamic]i32, entry : i32 )
+	{
+			raw := cast(^runtime.Raw_Dynamic_Array) pack
+			raw.len            += 1
+			pack[len(pack) - 1] = entry
+	}
+	sub_slice :: #force_inline proc "contextless" ( pack : ^[dynamic]i32) -> []i32 { return pack[:] }
 
 	profile_begin("index")
 	for & glyph, index in glyph_pack
@@ -466,17 +497,33 @@ generate_shape_draw_list :: #force_no_inline proc( ctx : ^Context,
 	profile_begin("bounds")
 	for & glyph, index in glyph_pack
 	{
-		glyph.lru_code           = font_glyph_lru_code(entry.id, glyph.index)
-		glyph.bounds             = parser_get_bounds( entry.parser_info, glyph.index )
-		glyph.bounds_size        = glyph.bounds.p1   - glyph.bounds.p0
-		glyph.bounds_size_scaled = glyph.bounds_size * entry.size_scale
+		glyph.lru_code = font_glyph_lru_code(entry.id, glyph.index)
+	}
+	for & glyph, index in glyph_pack
+	{
+		glyph.bounds      = parser_get_bounds( entry.parser_info, glyph.index )
+		glyph.bounds_size = glyph.bounds.p1 - glyph.bounds.p0
+	}
+	for & glyph, index in glyph_pack
+	{
+		glyph.bounds_size_scaled = glyph.bounds_size        * entry.size_scale
+		glyph.scale              = glyph.bounds_size_scaled + atlas.glyph_padding
 	}
 	profile_end()
+
+	glyph_padding_dbl  := atlas.glyph_padding * 2
 
 	profile_begin("region & oversized segregation")
 	for & glyph, index in glyph_pack
 	{
-		glyph.region_kind = atlas_decide_region( ctx.atlas, glyph_buffer_size, glyph.index, glyph.bounds_size_scaled )
+		glyph.region_kind = atlas_decide_region( atlas ^, glyph_buffer_size, glyph.bounds_size_scaled )
+		glyph.over_sample = glyph_buffer.over_sample
+	}
+	profile_end()
+
+	profile_begin("atlas slot resolution & to_cache/cached segregation")
+	for & glyph, index in glyph_pack
+	{
 		if glyph.region_kind == .E
 		{
 			glyph.over_sample = \
@@ -487,13 +534,7 @@ generate_shape_draw_list :: #force_no_inline proc( ctx : ^Context,
 			append_sub_pack(oversized, cast(i32) index)
 			continue
 		}
-		glyph.over_sample = glyph_buffer.over_sample
-	}
-	profile_end()
 
-	profile_begin("atlas slot resolution & to_cache/cached segregation")
-	for & glyph, index in glyph_pack
-	{
 		region := atlas.regions[glyph.region_kind]
 		glyph.atlas_index =  lru_get( & region.state, glyph.lru_code )
 
@@ -536,10 +577,47 @@ generate_shape_draw_list :: #force_no_inline proc( ctx : ^Context,
 	}
 	profile_end()
 
+	profile_begin("transform math")
+	for id, index in sub_slice(to_cache)
+	{
+		transform := & glyph_pack[id].draw_transform
+		transform.scale     = glyph_buffer.over_sample * entry.size_scale
+		transform.translate = -1 * glyph_pack[id].bounds.p0 * transform.scale + atlas.glyph_padding
+	}
+	for id, index in sub_slice(oversized)
+	{
+		transform := & glyph_pack[id].draw_transform
+		transform.scale     = glyph_buffer.over_sample * entry.size_scale
+		transform.translate = -1 * glyph_pack[id].bounds.p0 * transform.scale + atlas.glyph_padding
+	}
+	profile_end()
+
 	profile_begin("to_cache: caching to atlas")
-	for id, index in sub_slice(to_cache) {
+	for id, index in sub_slice(to_cache)
+	{
 		glyph := glyph_pack[id]
-		cache_glyph_to_atlas( ctx, draw_list, & glyph_buffer.draw_list, & glyph_buffer.clear_draw_list, & glyph_buffer.batch_x, glyph.index, glyph.shape, glyph.bounds, glyph.bounds_size, glyph.region_pos, glyph.region_size, glyph.lru_code, glyph.atlas_index, entry, glyph.over_sample  )
+		cache_glyph_to_atlas( ctx, 
+			draw_list, 
+			& glyph_buffer.draw_list, 
+			& glyph_buffer.clear_draw_list, 
+			& glyph_buffer.batch_x, 
+
+			atlas.glyph_padding,
+			glyph_buffer_size,
+			atlas_size,
+
+			glyph.draw_transform,
+
+			glyph.shape, 
+			glyph.bounds, 
+			glyph.bounds_size, 
+			glyph.region_pos, 
+			glyph.region_size, 
+			glyph.lru_code, 
+			glyph.atlas_index, 
+			entry, 
+			glyph.over_sample
+		)
 		mark_batch_codepoint_seen(ctx, glyph.lru_code)
 	}
 	reset_batch_codepoint_state( ctx )
@@ -551,17 +629,21 @@ generate_shape_draw_list :: #force_no_inline proc( ctx : ^Context,
 		parser_free_shape(entry.parser_info, glyph_pack[id].shape)
 	}
 	
-	generate_cached_draw_list( draw_list, glyph_pack[:], sub_slice(to_cache), atlas_size, atlas.glyph_padding, ctx.colour, entry.size_scale, position, scale )
-	generate_cached_draw_list( draw_list, glyph_pack[:], sub_slice(cached),   atlas_size, atlas.glyph_padding, ctx.colour, entry.size_scale, position, scale )
+	generate_cached_draw_list( draw_list, glyph_pack[:], sub_slice(to_cache), atlas_size, entry.size_scale, ctx.colour, position, scale )
+	generate_cached_draw_list( draw_list, glyph_pack[:], sub_slice(cached),   atlas_size, entry.size_scale, ctx.colour, position, scale )
 
 	profile_begin("generate oversized glyphs draw_list")
 	for id, index in sub_slice(oversized)
 	{
 		glyph := glyph_pack[id]
-		generate_oversized_draw_list(ctx, entry, glyph.index, glyph.shape,
+		generate_oversized_draw_list(ctx, 
+			glyph_buffer.draw_padding,
+			glyph_buffer_size,
+			entry, glyph.index, glyph.shape,
 			glyph.bounds,
 			glyph.bounds_size,
-			glyph.over_sample, glyph.translate, scale )
+			glyph.over_sample, glyph.translate, scale
+		)
 	}
 	reset_batch_codepoint_state( ctx )
 	profile_end()

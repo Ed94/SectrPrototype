@@ -230,6 +230,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	atlas.region_d.offset.y = 0
 
 	atlas.regions = {
+		nil,
 		& atlas.region_a,
 		& atlas.region_b,
 		& atlas.region_c,
@@ -267,7 +268,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		batch         = cast(i32) glyph_draw_params.buffer_batch
 		width         = atlas.region_d.width  * i32(over_sample.x) * batch
 		height        = atlas.region_d.height * i32(over_sample.y)
-		draw_padding  = cast(i32) glyph_draw_params.draw_padding
+		draw_padding  = cast(f32) glyph_draw_params.draw_padding
 
 		draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = glyph_draw_params.buffer_batch * 2 )
 		assert( error == .None, "VEFontCache.init : Failed to allocate calls for draw_list" )

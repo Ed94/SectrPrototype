@@ -220,30 +220,30 @@ parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : Pa
 	return
 }
 
-parser_get_bounds :: #force_inline proc "contextless" ( font : Parser_Font_Info, glyph_index : Glyph ) -> (bounds : GlyphBounds)
+parser_get_bounds :: #force_inline proc "contextless" ( font : Parser_Font_Info, glyph_index : Glyph ) -> (bounds : Glyph_Bounds)
 {
 	profile(#procedure)
 
 	bounds_0, bounds_1 : Vec2i
 
-	switch font.kind
-	{
-		case .Freetype:
-			freetype.load_glyph( font.freetype_info, c.uint(glyph_index), { .No_Bitmap, .No_Hinting, .No_Scale } )
+	// switch font.kind
+	// {
+		// case .Freetype:
+		// 	freetype.load_glyph( font.freetype_info, c.uint(glyph_index), { .No_Bitmap, .No_Hinting, .No_Scale } )
 
-			metrics := font.freetype_info.glyph.metrics
+		// 	metrics := font.freetype_info.glyph.metrics
 
-			bounds_0 = {i32(metrics.hori_bearing_x), i32(metrics.hori_bearing_y - metrics.height)}
-			bounds_1 = {i32(metrics.hori_bearing_x + metrics.width), i32(metrics.hori_bearing_y)}
+		// 	bounds_0 = {i32(metrics.hori_bearing_x), i32(metrics.hori_bearing_y - metrics.height)}
+		// 	bounds_1 = {i32(metrics.hori_bearing_x + metrics.width), i32(metrics.hori_bearing_y)}
 
-		case .STB_TrueType:
+		// case .STB_TrueType:
 			x0, y0, x1, y1 : i32
 			success := cast(bool) stbtt.GetGlyphBox( font.stbtt_info, i32(glyph_index), & x0, & y0, & x1, & y1 )
 			// assert( success )
 
 			bounds_0 = { x0, y0 }
 			bounds_1 = { x1, y1 }
-	}
+	// }
 	bounds = { vec2(bounds_0), vec2(bounds_1) }
 	return
 }

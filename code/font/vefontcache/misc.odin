@@ -78,7 +78,7 @@ reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
 
 USE_F64_PRECISION_ON_X_FORM_OPS :: false
 
-screenspace_x_form :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
+to_screen_space :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
 {
 	when USE_F64_PRECISION_ON_X_FORM_OPS
 	{
@@ -106,7 +106,7 @@ screenspace_x_form :: #force_inline proc "contextless" ( #no_alias position, sca
 	}
 }
 
-textspace_x_form :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
+to_text_space :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
 {
 	when USE_F64_PRECISION_ON_X_FORM_OPS
 	{

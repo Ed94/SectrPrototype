@@ -343,7 +343,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 				}
 				gfx.begin_pass( pass )
 
-				gfx.apply_viewport( 0,0, width, height, origin_top_left = true )
+				gfx.apply_viewport    ( 0,0, width, height, origin_top_left = true )
 				gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
 
 				gfx.apply_pipeline( glyph_pipeline )
@@ -356,7 +356,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 						0 = 0,
 					},
 					index_buffer        = draw_list_ibuf,
-					index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
+					index_buffer_offset = 0,
 				}
 				gfx.apply_bindings( bindings )
 
@@ -378,7 +378,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 				}
 				gfx.begin_pass( pass )
 
-				gfx.apply_viewport( 0, 0, width, height, origin_top_left = true )
+				gfx.apply_viewport    ( 0, 0, width, height, origin_top_left = true )
 				gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
 
 				gfx.apply_pipeline( atlas_pipeline )
@@ -394,9 +394,9 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 						0 = 0,
 					},
 					index_buffer        = draw_list_ibuf,
-					index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
-					images   = { IMG_ve_blit_atlas_src_texture = glyph_rt_color, },
-					samplers = { SMP_ve_blit_atlas_src_sampler = glyph_rt_sampler, },
+					index_buffer_offset = 0,
+					images              = { IMG_ve_blit_atlas_src_texture = glyph_rt_color,   },
+					samplers            = { SMP_ve_blit_atlas_src_sampler = glyph_rt_sampler, },
 				})
 
 			// 3. Use the atlas to then render the text.
@@ -411,7 +411,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 				pass.swapchain = sokol_glue.swapchain()
 				gfx.begin_pass( pass )
 
-				gfx.apply_viewport( 0, 0, screen_width, screen_height, origin_top_left = true )
+				gfx.apply_viewport    ( 0, 0, screen_width, screen_height, origin_top_left = true )
 				gfx.apply_scissor_rect( 0, 0, screen_width, screen_height, origin_top_left = true )
 
 				gfx.apply_pipeline( screen_pipeline )
@@ -439,9 +439,9 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 						0 = 0,
 					},
 					index_buffer        = draw_list_ibuf,
-					index_buffer_offset = 0,//i32(draw_call.start_index) * size_of(u32),
-					images   = { IMG_ve_draw_text_src_texture = src_rt, },
-					samplers = { SMP_ve_draw_text_src_sampler = src_sampler, },
+					index_buffer_offset = 0,
+					images              = { IMG_ve_draw_text_src_texture = src_rt, },
+					samplers            = { SMP_ve_draw_text_src_sampler = src_sampler, },
 				})
 		}
 

@@ -2,11 +2,11 @@ package vefontcache
 
 Atlas_Region_Kind :: enum u8 {
 	None   = 0x00,
-	A      = 0x41,
-	B      = 0x42,
-	C      = 0x43,
-	D      = 0x44,
-	E      = 0x45,
+	A      = 0x01,
+	B      = 0x02,
+	C      = 0x03,
+	D      = 0x04,
+	E      = 0x05,
 	Ignore = 0xFF, // ve_fontcache_cache_glyph_to_atlas uses a -1 value in clear draw call
 }
 
@@ -35,7 +35,7 @@ Atlas :: struct {
 	region_c : Atlas_Region,
 	region_d : Atlas_Region,
 
-	regions : [4] ^Atlas_Region,
+	regions : [5] ^Atlas_Region,
 }
 
 atlas_region_bbox :: proc( region : Atlas_Region, local_idx : i32 ) -> (position, size: Vec2)
@@ -51,19 +51,17 @@ atlas_region_bbox :: proc( region : Atlas_Region, local_idx : i32 ) -> (position
 	return
 }
 
-atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_buffer_size : Vec2, glyph_index : Glyph, bounds_size_scaled : Vec2 ) -> (region_kind : Atlas_Region_Kind)
+atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_buffer_size : Vec2, bounds_size_scaled : Vec2 ) -> (region_kind : Atlas_Region_Kind)
 {
 	profile(#procedure)
 	glyph_padding_dbl  := atlas.glyph_padding * 2
 	padded_bounds := bounds_size_scaled + glyph_padding_dbl
 
-	for kind in 0 ..< 4 do if padded_bounds.x <= f32( atlas.regions[kind].width) && padded_bounds.y <= f32(atlas.regions[kind].height) {
+	for kind in 1 ..= 4 do if padded_bounds.x <= f32( atlas.regions[kind].width) && padded_bounds.y <= f32(atlas.regions[kind].height) {
 		return cast(Atlas_Region_Kind) kind
 	}
 
-	if padded_bounds.x <= glyph_buffer_size.x \
-	&& padded_bounds.y <= glyph_buffer_size.y
-	{
+	if padded_bounds.x <= glyph_buffer_size.x && padded_bounds.y <= glyph_buffer_size.y{
 		return .E
 	}
 	return .None
