@@ -82,13 +82,13 @@ atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u6
 	else
 	{
 		next_evict_codepoint := lru_get_next_evicted( region.state )
-		// assert( next_evict_codepoint != 0xFFFFFFFFFFFFFFFF )
+		assert( next_evict_codepoint != 0xFFFFFFFFFFFFFFFF )
 
 		atlas_index = lru_peek( region.state, next_evict_codepoint, must_find = true )
-		// assert( atlas_index != -1 )
+		assert( atlas_index != -1 )
 
 		evicted := lru_put( & region.state, lru_code, atlas_index )
-		// assert( evicted == next_evict_codepoint )
+		assert( evicted == next_evict_codepoint )
 	}
 
 	assert( lru_get( & region.state, lru_code ) != - 1 )

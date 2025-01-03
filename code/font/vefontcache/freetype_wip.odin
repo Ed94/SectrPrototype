@@ -1,3 +1,4 @@
+package vefontcache
 
 // TODO(Ed): glyph caching cannot be handled in a 'font parser' abstraction. Just going to have explicit procedures to grab info neatly...
 // cache_glyph_freetype :: proc(ctx: ^Context, font: Font_ID, glyph_index: Glyph, entry: ^Entry, bounds_0, bounds_1: Vec2, scale, translate: Vec2) -> b32

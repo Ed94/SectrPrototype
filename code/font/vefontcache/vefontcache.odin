@@ -151,7 +151,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	glyph_draw_params           := Init_Glyph_Draw_Params_Default,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
 	shaper_params               := Init_Shaper_Params_Default,
-	default_curve_quality       : u32 = 2,
+	default_curve_quality       : u32 = 6,
 	entires_reserve             : u32 = 256,
 	temp_path_reserve           : u32 = 1024,
 	temp_codepoint_seen_reserve : u32 = 1024,
@@ -168,7 +168,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	shaper_ctx.snap_glyph_position           = shaper_params.snap_glyph_position
 
 	if default_curve_quality == 0 {
-		default_curve_quality = 3
+		default_curve_quality = 6
 	}
 	ctx.default_curve_quality = default_curve_quality
 
@@ -288,13 +288,9 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for clear_draw_list" )
 
 		glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte, allocator = context.temp_allocator )
-		oversized, error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte, allocator = context.temp_allocator )
-		to_cache,  error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte, allocator = context.temp_allocator )
-		cached,    error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte, allocator = context.temp_allocator )
-		// resize_soa(& glyph_pack, 1 * Kilobyte)
-		// resize_soa(& oversized,  1 * Kilobyte)
-		// resize_soa(& to_cache,   1 * Kilobyte)
-		// resize_soa(& cached,     1 * Kilobyte)
+		oversized, error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte, allocator = context.temp_allocator )
+		to_cache,  error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte, allocator = context.temp_allocator )
+		cached,    error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte, allocator = context.temp_allocator )
 	}
 
 	parser_init( & parser_ctx, parser_kind )
@@ -339,9 +335,9 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	reload_array( & glyph_buffer.clear_draw_list.vertices, allocator )
 
 	reload_array_soa( & glyph_buffer.glyph_pack, allocator )
-	reload_array_soa( & glyph_buffer.oversized,  allocator )
-	reload_array_soa( & glyph_buffer.to_cache,   allocator )
-	reload_array_soa( & glyph_buffer.cached,     allocator )
+	reload_array( & glyph_buffer.oversized,  allocator )
+	reload_array( & glyph_buffer.to_cache,   allocator )
+	reload_array( & glyph_buffer.cached,     allocator )
 
 	reload_array( & shape_cache.storage, allocator )
 }
@@ -388,9 +384,9 @@ shutdown :: proc( ctx : ^Context )
 	delete( glyph_buffer.clear_draw_list.calls )
 
 	delete_soa( glyph_buffer.glyph_pack)
-	delete_soa( glyph_buffer.oversized)
-	delete_soa( glyph_buffer.to_cache)
-	delete_soa( glyph_buffer.cached)
+	delete( glyph_buffer.oversized)
+	delete( glyph_buffer.to_cache)
+	delete( glyph_buffer.cached)
 
 	shaper_shutdown( & shaper_ctx )
 	parser_shutdown( & parser_ctx )
@@ -485,8 +481,10 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : str
 
 	entry := ctx.entries[ font ]
 
+
+
 	shape         := shaper_shape_text_cached( ctx, font, text_utf8, entry, shaper_shape_text_uncached_advanced )
-	ctx.cursor_pos = generate_shape_draw_list( ctx, font, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
+	ctx.cursor_pos = generate_shape_draw_list( ctx, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
 	return true
 }
 
@@ -500,7 +498,7 @@ draw_text_no_snap :: #force_inline proc( ctx : ^Context, font : Font_ID, text_ut
 
 	entry := ctx.entries[ font ]
 	shape         := shaper_shape_text_cached( ctx, font, text_utf8, entry, shaper_shape_text_uncached_advanced )
-	ctx.cursor_pos = generate_shape_draw_list( ctx, font, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
+	ctx.cursor_pos = generate_shape_draw_list( ctx, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
 	return true
 }
 
@@ -515,7 +513,7 @@ draw_text_shape :: #force_inline proc( ctx : ^Context, font : Font_ID, shape : S
 	position.y = ceil(position.y * ctx.snap_height) / ctx.snap_height
 
 	entry := ctx.entries[ font ]
-	ctx.cursor_pos = generate_shape_draw_list( ctx, font, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
+	ctx.cursor_pos = generate_shape_draw_list( ctx, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
 	return true
 }
 
@@ -527,7 +525,7 @@ draw_text_shape_no_snap :: #force_inline proc( ctx : ^Context, font : Font_ID, s
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
 	entry := ctx.entries[ font ]
-	ctx.cursor_pos = generate_shape_draw_list( ctx, font, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
+	ctx.cursor_pos = generate_shape_draw_list( ctx, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
 	return true
 }
 
