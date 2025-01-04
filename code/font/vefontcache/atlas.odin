@@ -55,7 +55,7 @@ atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_bu
 {
 	profile(#procedure)
 	glyph_padding_dbl  := atlas.glyph_padding * 2
-	padded_bounds := bounds_size_scaled + glyph_padding_dbl
+	padded_bounds      := bounds_size_scaled + glyph_padding_dbl
 
 	for kind in 1 ..= 4 do if padded_bounds.x <= f32( atlas.regions[kind].width) && padded_bounds.y <= f32(atlas.regions[kind].height) {
 		return cast(Atlas_Region_Kind) kind

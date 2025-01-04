@@ -117,16 +117,16 @@ Init_Glyph_Draw_Params :: struct {
 	over_sample               : Vec2,
 	draw_padding              : u32,
 	shape_gen_scratch_reserve : u32,
-	buffer_batch              : u32,
-	buffer_batch_glyph_limit  : u32, // How many glyphs can at maximimum be proccessed at once by batch_generate_glyphs_draw_list
+	buffer_glyph_limit        : u32, // How many region.D glyphs can be drawn to the glyph render target buffer at once (worst case scenario)
+	batch_glyph_limit         : u32, // How many glyphs can at maximimum be proccessed at once by batch_generate_glyphs_draw_list
 }
 
 Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
 	over_sample                     = Vec2 { 4, 4 },
 	draw_padding                    = Init_Atlas_Params_Default.glyph_padding,
 	shape_gen_scratch_reserve       = 10 * 1024,
-	buffer_batch                    = 4,
-	buffer_batch_glyph_limit        = 512,
+	buffer_glyph_limit              = 4,
+	batch_glyph_limit               = 512,
 }
 
 Init_Shaper_Params :: struct {
@@ -166,147 +166,146 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 )
 {
 	assert( ctx != nil, "Must provide a valid context" )
-	using ctx
 
 	ctx.backing       = allocator
 	context.allocator = ctx.backing
 
 	ctx.colour = { 1, 1, 1, 1 }
 
+	shaper_ctx := & ctx.shaper_ctx
 	shaper_ctx.adv_snap_small_font_threshold = f32(shaper_params.adv_snap_small_font_threshold)
 	shaper_ctx.snap_glyph_position           = shaper_params.snap_glyph_position
 
-	if default_curve_quality == 0 {
-		default_curve_quality = 3
-	}
-	ctx.default_curve_quality = default_curve_quality
+	ctx.default_curve_quality = default_curve_quality == 0 ? 3 : i32(default_curve_quality)
 
 	error : Allocator_Error
-	entries, error = make( [dynamic]Entry, len = 0, cap = entires_reserve )
+	ctx.entries, error = make( [dynamic]Entry, len = 0, cap = entires_reserve )
 	assert(error == .None, "VEFontCache.init : Failed to allocate entries")
 
-	draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = 8 * Kilobyte )
+	ctx.draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = 8 * Kilobyte )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.vertices")
 
-	draw_list.indices, error = make( [dynamic]u32, len = 0, cap = 16 * Kilobyte )
+	ctx.draw_list.indices, error = make( [dynamic]u32, len = 0, cap = 16 * Kilobyte )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.indices")
 
-	draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = 1024 )
+	ctx.draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = Kilobyte )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.calls")
 
-	init_atlas_region :: proc( region : ^Atlas_Region, params : Init_Atlas_Params, region_params : Init_Atlas_Region_Params, factor : Vec2i, expected_cap : i32 )
+	atlas := & ctx.atlas
+	Atlas_Setup:
 	{
-		using region
+		init_atlas_region :: proc( region : ^Atlas_Region, params : Init_Atlas_Params, region_params : Init_Atlas_Region_Params, factor : Vec2i, expected_cap : i32 )
+		{
+			region.next_idx = 0;
+			region.width    = i32(region_params.width)
+			region.height   = i32(region_params.height)
+			region.size = {
+				i32(params.width)  / factor.x,
+				i32(params.height) / factor.y,
+			}
+			region.capacity = {
+				region.size.x / i32(region.width),
+				region.size.y / i32(region.height),
+			}
+			assert( region.capacity.x * region.capacity.y == expected_cap )
 
-		next_idx = 0;
-		width    = i32(region_params.width)
-		height   = i32(region_params.height)
-		size = {
-			i32(params.width)  / factor.x,
-			i32(params.height) / factor.y,
+			error : Allocator_Error
+			lru_init( & region.state, region.capacity.x * region.capacity.y )
 		}
-		capacity = {
-			size.x / i32(width),
-			size.y / i32(height),
+		init_atlas_region( & atlas.region_a, atlas_params, atlas_params.region_a, { 4, 2}, 1024 )
+		init_atlas_region( & atlas.region_b, atlas_params, atlas_params.region_b, { 4, 2}, 512 )
+		init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c, { 4, 1}, 512 )
+		init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d, { 2, 1}, 256 )
+
+		atlas.width             = i32(atlas_params.width)
+		atlas.height            = i32(atlas_params.height)
+		atlas.glyph_padding     = f32(atlas_params.glyph_padding)
+		atlas.glyph_over_scalar = atlas_params.glyph_over_scalar
+
+		atlas.region_a.offset   = {0, 0}
+		atlas.region_b.offset.x = 0
+		atlas.region_b.offset.y = atlas.region_a.size.y
+		atlas.region_c.offset.x = atlas.region_a.size.x
+		atlas.region_c.offset.y = 0
+		atlas.region_d.offset.x = atlas.width / 2
+		atlas.region_d.offset.y = 0
+
+		atlas.regions = {
+			nil,
+			& atlas.region_a,
+			& atlas.region_b,
+			& atlas.region_c,
+			& atlas.region_d,
 		}
-		assert( capacity.x * capacity.y == expected_cap )
-
-		error : Allocator_Error
-		lru_init( & state, capacity.x * capacity.y )
-	}
-	init_atlas_region( & atlas.region_a, atlas_params, atlas_params.region_a, { 4, 2}, 1024 )
-	init_atlas_region( & atlas.region_b, atlas_params, atlas_params.region_b, { 4, 2}, 512 )
-	init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c, { 4, 1}, 512 )
-	init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d, { 2, 1}, 256 )
-
-	atlas.width             = i32(atlas_params.width)
-	atlas.height            = i32(atlas_params.height)
-	atlas.glyph_padding     = f32(atlas_params.glyph_padding)
-	atlas.glyph_over_scalar = atlas_params.glyph_over_scalar
-
-	atlas.region_a.offset   = {0, 0}
-	atlas.region_b.offset.x = 0
-	atlas.region_b.offset.y = atlas.region_a.size.y
-	atlas.region_c.offset.x = atlas.region_a.size.x
-	atlas.region_c.offset.y = 0
-	atlas.region_d.offset.x = atlas.width / 2
-	atlas.region_d.offset.y = 0
-
-	atlas.regions = {
-		nil,
-		& atlas.region_a,
-		& atlas.region_b,
-		& atlas.region_c,
-		& atlas.region_d,
 	}
 
-	lru_init( & shape_cache.state, i32(shape_cache_params.capacity) )
+	Shape_Cache_Setup:
+	{
+		shape_cache := & ctx.shape_cache
+		lru_init( & shape_cache.state, i32(shape_cache_params.capacity) )
 
-	shape_cache.storage, error = make( [dynamic]Shaped_Text, shape_cache_params.capacity )
-	assert(error == .None, "VEFontCache.init : Failed to allocate shape_cache.storage")
+		shape_cache.storage, error = make( [dynamic]Shaped_Text, shape_cache_params.capacity )
+		assert(error == .None, "VEFontCache.init : Failed to allocate shape_cache.storage")
 
-	for idx : u32 = 0; idx < shape_cache_params.capacity; idx += 1 {
-		stroage_entry := & shape_cache.storage[idx]
-		using stroage_entry
-		glyphs, error = make( [dynamic]Glyph, len = 0, cap = shape_cache_params.reserve_length )
-		assert( error == .None, "VEFontCache.init : Failed to allocate glyphs array for shape cache storage" )
+		for idx : u32 = 0; idx < shape_cache_params.capacity; idx += 1 {
+			stroage_entry := & shape_cache.storage[idx]
 
-		positions, error = make( [dynamic]Vec2, len = 0, cap = shape_cache_params.reserve_length )
-		assert( error == .None, "VEFontCache.init : Failed to allocate positions array for shape cache storage" )
+			stroage_entry.glyphs, error = make( [dynamic]Glyph, len = 0, cap = shape_cache_params.reserve_length )
+			assert( error == .None, "VEFontCache.init : Failed to allocate glyphs array for shape cache storage" )
 
-		draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = glyph_draw_params.buffer_batch * 2 )
-		assert( error == .None, "VEFontCache.init : Failed to allocate calls for draw_list" )
-
-		draw_list.indices, error = make( [dynamic]u32, len = 0, cap = glyph_draw_params.buffer_batch * 2 * 6 )
-		assert( error == .None, "VEFontCache.init : Failed to allocate indices array for draw_list" )
-
-		draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = glyph_draw_params.buffer_batch * 2 * 4 )
-		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for draw_list" )
+			stroage_entry.positions, error = make( [dynamic]Vec2, len = 0, cap = shape_cache_params.reserve_length )
+			assert( error == .None, "VEFontCache.init : Failed to allocate positions array for shape cache storage" )
+		}
 	}
 
 	Glyph_Buffer_Setup:
 	{
-		using glyph_buffer
-		over_sample   = glyph_draw_params.over_sample
-		batch         = cast(i32) glyph_draw_params.buffer_batch
-		width         = atlas.region_d.width  * i32(over_sample.x) * batch
-		height        = atlas.region_d.height * i32(over_sample.y) //* (batch / 2)
-		draw_padding  = cast(f32) glyph_draw_params.draw_padding
+		glyph_buffer := & ctx.glyph_buffer
 
-		draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = glyph_draw_params.buffer_batch * 2 )
-		assert( error == .None, "VEFontCache.init : Failed to allocate calls for draw_list" )
+		// using glyph_buffer
+		glyph_buffer.over_sample   = glyph_draw_params.over_sample
+		glyph_buffer.width         = atlas.region_d.width  * i32(glyph_buffer.over_sample.x) * i32(glyph_draw_params.buffer_glyph_limit)
+		glyph_buffer.height        = atlas.region_d.height * i32(glyph_buffer.over_sample.y)
+		glyph_buffer.draw_padding  = cast(f32) glyph_draw_params.draw_padding
 
-		draw_list.indices, error = make( [dynamic]u32, len = 0, cap = glyph_draw_params.buffer_batch * 2 * 6 )
-		assert( error == .None, "VEFontCache.init : Failed to allocate indices array for draw_list" )
+		buffer_limit := glyph_draw_params.buffer_glyph_limit
+		batch_limit  := glyph_draw_params.batch_glyph_limit
 
-		draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = glyph_draw_params.buffer_batch * 2 * 4 )
-		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for draw_list" )
+		glyph_buffer.draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = 8 * Kilobyte )
+		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for glyph_buffer.draw_list" )
 
-		clear_draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = glyph_draw_params.buffer_batch * 2 )
-		assert( error == .None, "VEFontCache.init : Failed to allocate calls for calls for clear_draw_list" )
+		glyph_buffer.draw_list.indices, error = make( [dynamic]u32, len = 0, cap = 16 * Kilobyte )
+		assert( error == .None, "VEFontCache.init : Failed to allocate indices for glyph_buffer.draw_list" )
 
-		clear_draw_list.indices, error = make( [dynamic]u32, len = 0, cap = glyph_draw_params.buffer_batch * 2 * 4 )
-		assert( error == .None, "VEFontCache.init : Failed to allocate calls for indices array for clear_draw_list" )
+		glyph_buffer.draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = Kilobyte )
+		assert( error == .None, "VEFontCache.init : Failed to allocate calls for glyph_buffer.draw_list" )
 
-		clear_draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = glyph_draw_params.buffer_batch * 2 * 4 )
+		glyph_buffer.clear_draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = 2 * Kilobyte )
 		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for clear_draw_list" )
 
-		shape_gen_scratch, error = make( [dynamic]Vertex, len = 0, cap = glyph_draw_params.buffer_batch_glyph_limit )
+		glyph_buffer.clear_draw_list.indices, error = make( [dynamic]u32, len = 0, cap = 4 * Kilobyte )
+		assert( error == .None, "VEFontCache.init : Failed to allocate calls for indices array for clear_draw_list" )
+
+		glyph_buffer.clear_draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = Kilobyte )
+		assert( error == .None, "VEFontCache.init : Failed to allocate calls for calls for clear_draw_list" )
+
+		glyph_buffer.shape_gen_scratch, error = make( [dynamic]Vertex, len = 0, cap = 4 * Kilobyte )
 		assert(error == .None, "VEFontCache.init : Failed to allocate shape_gen_scratch")
 
-		batch_cache.cap = i32(glyph_draw_params.buffer_batch_glyph_limit)
+		batch_cache := & glyph_buffer.batch_cache
+		batch_cache.cap = i32(glyph_draw_params.batch_glyph_limit)
 		batch_cache.num = 0
 		batch_cache.table, error = make( map[u32]b8, uint(glyph_draw_params.shape_gen_scratch_reserve) )
 		assert(error == .None, "VEFontCache.init : Failed to allocate batch_cache")
 
-		glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte )
-		oversized, error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
-		to_cache,  error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
-		cached,    error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
+		glyph_buffer.glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte )
+		glyph_buffer.oversized, error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
+		glyph_buffer.to_cache,  error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
+		glyph_buffer.cached,    error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
 	}
 
-	parser_init( & parser_ctx, parser_kind )
-	shaper_init( & shaper_ctx )
+	parser_init( & ctx.parser_ctx, parser_kind )
+	shaper_init( & ctx.shaper_ctx )
 }
 
 hot_reload :: proc( ctx : ^Context, allocator : Allocator )
@@ -506,8 +505,15 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, 
 	entry := ctx.entries[ font ]
 	font_scale    := parser_scale( entry.parser_info, px_size )
 	shape         := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, font, entry, px_size, font_scale, shaper_shape_text_uncached_advanced )
-	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, colour, entry, font_scale, position, scale, ctx.snap_width, ctx.snap_height )
-
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, 
+		colour, 
+		entry, 
+		font_scale, 
+		position, 
+		scale, 
+		ctx.snap_width, 
+		ctx.snap_height
+	)
 	return true
 }
 
