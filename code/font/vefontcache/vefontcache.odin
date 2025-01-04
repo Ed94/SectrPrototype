@@ -299,10 +299,10 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		batch_cache.table, error = make( map[u32]b8, uint(glyph_draw_params.shape_gen_scratch_reserve) )
 		assert(error == .None, "VEFontCache.init : Failed to allocate batch_cache")
 
-		glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte, allocator = context.temp_allocator )
-		oversized, error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte, allocator = context.temp_allocator )
-		to_cache,  error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte, allocator = context.temp_allocator )
-		cached,    error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte, allocator = context.temp_allocator )
+		glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte )
+		oversized, error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
+		to_cache,  error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
+		cached,    error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
 	}
 
 	parser_init( & parser_ctx, parser_kind )

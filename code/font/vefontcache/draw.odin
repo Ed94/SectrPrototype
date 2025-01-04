@@ -237,9 +237,6 @@ generate_glyph_pass_draw_list :: proc(draw_list : ^Draw_List, path : ^[dynamic]V
 				alpha := index * step
 				append( path, Vertex { pos = eval_point_on_bezier4(p0, p1, p2, p3, alpha) } )
 			}
-		
-		// case:
-			// assert(false, "WTF")
 	}
 
 	if len(path) > 0 {
@@ -366,7 +363,7 @@ generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape
 	}
 
 	atlas_glyph_pad   := atlas.glyph_padding
-	atlas_size        := Vec2 { f32(atlas.width), f32(atlas.height) }
+	atlas_size        := Vec2 { f32(atlas.width),        f32(atlas.height) }
 	glyph_buffer_size := Vec2 { f32(glyph_buffer.width), f32(glyph_buffer.height) }
 
 	// Make sure the packs are large enough for the shape
@@ -499,22 +496,25 @@ generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape
 	}
 	profile_end()
 
-	// Last batch pass
-	batch_generate_glyphs_draw_list( draw_list, glyph_pack, sub_slice(cached), sub_slice(to_cache), sub_slice(oversized),
-		atlas, 
-		glyph_buffer, 
-		atlas_size, 
-		glyph_buffer_size, 
-		entry, 
-		colour, 
-		font_scale, 
-		target_scale
-	)
+	if len(oversized) > 0 || glyph_buffer.batch_cache.num > 0
+	{
+		// Last batch pass
+		batch_generate_glyphs_draw_list( draw_list, glyph_pack, sub_slice(cached), sub_slice(to_cache), sub_slice(oversized),
+			atlas, 
+			glyph_buffer, 
+			atlas_size, 
+			glyph_buffer_size, 
+			entry, 
+			colour, 
+			font_scale, 
+			target_scale
+		)
+	}
 
 	reset_batch( & glyph_buffer.batch_cache)
-	clear(oversized)
-	clear(to_cache)
-	clear(cached)
+	// clear(oversized)
+	// clear(to_cache)
+	// clear(cached)
 
 	cursor_pos = target_position + shape.end_cursor_pos * target_scale
 	return
@@ -588,11 +588,14 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 
 		// Quad to draw during target pass, every 
 		quad := & glyph.draw_quad
-		quad.dst_pos   = glyph.position + glyph.bounds_scaled.p0                    * target_scale - glyph_padding * target_scale
-		quad.dst_scale =                 (glyph.bounds_size_scaled + glyph_padding) * target_scale
+		quad.dst_pos   = glyph.position + (glyph.bounds_scaled.p0   - glyph_padding) * target_scale //- ({0, 0.5}) * target_scale
+		quad.dst_scale =                  (glyph.bounds_size_scaled + glyph_padding) * target_scale
 		quad.src_pos   = {}
-		quad.src_scale = glyph.bounds_size_scaled * glyph.over_sample + glyph_padding
+		quad.src_scale = glyph.bounds_size_scaled * glyph.over_sample - glyph_padding
 		to_target_space( & quad.src_pos, & quad.src_scale, glyph_buffer_size )
+
+		dummy := 0
+		dummy += 1
 	}
 	profile_end()
 
@@ -685,7 +688,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		generate_glyph_pass_draw_list( draw_list, & glyph_buffer.shape_gen_scratch,
 			glyph_pack[id].shape, 
 			entry.curve_quality, 
-			glyph_pack[id].bounds, 
+			glyph_pack[id].bounds_scaled, 
 			glyph_pack[id].draw_transform.scale, 
 			glyph_pack[id].draw_transform.pos 
 		)

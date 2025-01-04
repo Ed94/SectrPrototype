@@ -331,6 +331,9 @@ slab_allocator_proc :: proc(
 			return slab_alloc( slab, size, alignment, (mode != .Alloc_Non_Zeroed), loc)
 
 		case .Free:
+			if old_memory == nil {
+				return
+			}
 			slab_free( slab, byte_slice( old_memory, int(old_size)), loc )
 
 		case .Free_All:
