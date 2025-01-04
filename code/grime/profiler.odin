@@ -15,7 +15,7 @@ set_profiler_module_context :: #force_inline proc "contextless" ( ctx : ^SpallPr
 	Module_Context = ctx
 }
 
-DISABLE_PROFILING :: true
+DISABLE_PROFILING :: false
 
 @(deferred_none = profile_end, disabled = DISABLE_PROFILING)
 profile :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {

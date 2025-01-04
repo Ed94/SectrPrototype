@@ -85,10 +85,10 @@ Draw_List :: struct {
 
 Frame_Buffer_Pass :: enum u32 {
 	None            = 0,
-	Glyph           = 1,
-	Atlas           = 2,
-	Target          = 3,
-	Target_Uncached = 4,
+	Glyph           = 1, // TODO(Ed): Rename this to Glyph_Mesh_To_Glyph_Buffer
+	Atlas           = 2, // TODO(Ed): Rename this to Glyph_Buffer_To_Atlas
+	Target          = 3, // TODO(Ed): Rename this to Target_From_Atlas
+	Target_Uncached = 4, // TODO(Ed): Rename this to Target_From_Glyph_Buffer
 }
 
 Glyph_Batch_Cache :: struct {
@@ -191,7 +191,7 @@ generate_glyph_pass_draw_list :: proc(draw_list : ^Draw_List, path : ^[dynamic]V
 	glyph_shape      : Parser_Glyph_Shape, 
 	curve_quality    : f32, 
 	bounds           : Range2, 
-	scale, translate : Vec2
+	translate, scale : Vec2
 )
 {
 	profile(#procedure)
@@ -248,99 +248,6 @@ generate_glyph_pass_draw_list :: proc(draw_list : ^Draw_List, path : ^[dynamic]V
 	if draw.end_index > draw.start_index {
 		append( & draw_list.calls, draw)
 	}
-}
-
-cache_glyph_to_atlas :: #force_no_inline proc (
-	#no_alias draw_list, 
-	glyph_buf_draw_list, 
-	glyph_buf_clear_list : ^Draw_List,
-	glyph_buf_Batch_x    : ^i32,
-
-	temp_path          : ^[dynamic]Vertex,
-	glyph_shape        : Parser_Glyph_Shape,
-	bounds             : Range2,
-	bounds_size_scaled : Vec2,
-	atlas_size         : Vec2,
-
-	glyph_buffer_size : Vec2,
-	over_sample       : Vec2,
-	glyph_padding     : f32,
-	draw_transform     : Transform,
-
-	region_pos    : Vec2,
-	region_size   : Vec2,
-	curve_quality : f32,
-
-	flush_glyph_buffer : b8,
-	glyph_buffer_x : f32,
-)
-{
-	profile(#procedure)
-	f32_allocated_x := cast(f32) glyph_buf_Batch_x ^
-
-	// Resolve how much space this glyph will allocate in the buffer
-	buffer_size := (bounds_size_scaled + glyph_padding) * over_sample
-
-	// If allocation would exceed buffer's bounds the buffer must be flush before this glyph can be rendered.
-	// flush_glyph_buffer := i32(f32_allocated_x + to_allocate_x) >= i32(glyph_buffer_size.x)
-	// glyph_buffer_x := flush_glyph_buffer ? 0 : f32_allocated_x
-
-	if flush_glyph_buffer do flush_glyph_buffer_draw_list( draw_list, glyph_buf_draw_list, glyph_buf_clear_list, glyph_buf_Batch_x )
-
-	region_pos         := region_pos
-	dst_glyph_position := region_pos
-	dst_glyph_size     := (bounds_size_scaled) + glyph_padding
-	dst_size           := region_size
-	to_glyph_buffer_space( & dst_glyph_position, & dst_glyph_size, atlas_size )
-	to_glyph_buffer_space( & region_pos,         & dst_size,       atlas_size )
-
-	src_position := Vec2 { glyph_buffer_x, 0 }
-	src_size     := buffer_size
-	to_target_space( & src_position, & src_size, glyph_buffer_size )
-
-	clear_target_region : Draw_Call
-	{
-		using clear_target_region
-		pass        = .Atlas
-		region      = .Ignore
-		start_index = cast(u32) len(glyph_buf_clear_list.indices)
-
-		blit_quad( glyph_buf_clear_list,
-			region_pos,     region_pos + dst_size,
-			{ 1.0, 1.0 },  { 1.0, 1.0 } )
-
-		end_index = cast(u32) len(glyph_buf_clear_list.indices)
-	}
-
-	blit_to_atlas : Draw_Call
-	{
-		using blit_to_atlas
-		pass        = .Atlas
-		region      = .None
-		start_index = cast(u32) len(glyph_buf_draw_list.indices)
-
-		blit_quad( glyph_buf_draw_list,
-			dst_glyph_position, region_pos   + dst_glyph_size,
-			src_position,       src_position + src_size )
-
-		end_index = cast(u32) len(glyph_buf_draw_list.indices)
-	}
-
-	append( & glyph_buf_clear_list.calls, clear_target_region )
-	append( & glyph_buf_draw_list.calls, blit_to_atlas )
-
-	// Allocate a glyph glyph render target region (FBO)
-	to_allocate_x := buffer_size.x + 2.0
-
-	// The glyph buffer space transform for generate_glyph_pass_draw_list
-	draw_transform       := draw_transform
-	draw_transform.pos.x += glyph_buffer_x
-	to_glyph_buffer_space( & draw_transform.pos, & draw_transform.scale, glyph_buffer_size )
-
-	(glyph_buf_Batch_x ^) += i32(to_allocate_x)
-
-	// Render glyph to glyph render target (FBO)
-	generate_glyph_pass_draw_list( draw_list, temp_path, glyph_shape, curve_quality, bounds, draw_transform.scale, draw_transform.pos )
 }
 
 generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape : Shaped_Text,
@@ -415,7 +322,7 @@ generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape
 
 	glyph_padding_dbl  := atlas.glyph_padding * 2
 
-	profile_begin("region & oversized segregation")
+	profile_begin("region")
 	for & glyph, index in glyph_pack
 	{
 		glyph.region_kind = atlas_decide_region( atlas ^, glyph_buffer_size, glyph.bounds_size_scaled )
@@ -580,11 +487,11 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		glyph.buffer_x           = glyph.flush_glyph_buffer ? 0 : f32_allocated_x
 
 		// The glyph buffer space transform for generate_glyph_pass_draw_list
-		draw_transform      := & glyph.draw_transform
-		draw_transform.scale = font_scale * glyph_buffer.over_sample
-		draw_transform.pos   = -1 * (glyph.bounds.p0) * draw_transform.scale + atlas.glyph_padding
-		// draw_transform.pos  += glyph.buffer_x
-		// to_glyph_buffer_space( & draw_transform.pos, & draw_transform.scale, glyph_buffer_size )
+		draw_transform       := & glyph.draw_transform
+		draw_transform.scale  = font_scale * glyph_buffer.over_sample
+		draw_transform.pos    = -1 * (glyph.bounds.p0) * draw_transform.scale + atlas.glyph_padding
+		draw_transform.pos.x += glyph.buffer_x
+		to_glyph_buffer_space( & draw_transform.pos, & draw_transform.scale, glyph_buffer_size )
 
 		// Allocate the space
 		glyph_buffer.allocated_x += i32(to_allocate_x)
@@ -648,90 +555,66 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			profile("glyph")
 			glyph := & glyph_pack[id]
 
-			cache_glyph_to_atlas(
-				draw_list, 
-				& glyph_buffer.draw_list, 
-				& glyph_buffer.clear_draw_list, 
-				& glyph_buffer.allocated_x, 
-				& glyph_buffer.shape_gen_scratch,
-	
-				glyph.shape, 
-				glyph.bounds_scaled, 
-				glyph.bounds_size_scaled,
-				atlas_size,
-	
-				glyph_buffer_size,
-				glyph.over_sample,
-				glyph_buffer.draw_padding,
-				glyph.draw_transform,
-	
-				glyph.region_pos, 
-				glyph.region_size, 
-				entry.curve_quality,
-
-				glyph.flush_glyph_buffer,
-				glyph.buffer_x
+			if glyph.flush_glyph_buffer do flush_glyph_buffer_draw_list( draw_list, 
+				& glyph_buffer.draw_list,
+				& glyph_buffer.clear_draw_list,
+				& glyph_buffer.allocated_x
 			)
 	
-			// if glyph.flush_glyph_buffer do 	flush_glyph_buffer_draw_list( draw_list, 
-			// 	& glyph_buffer.draw_list,
-			// 	& glyph_buffer.clear_draw_list,
-			// 	& glyph_buffer.allocated_x
-			// )
-	
-			// dst_region_pos  := glyph.region_pos
-			// dst_region_size := glyph.region_size
-			// to_glyph_buffer_space( & dst_region_pos, & dst_region_size, atlas_size )
+			dst_region_pos  := glyph.region_pos
+			dst_region_size := glyph.region_size
+			to_glyph_buffer_space( & dst_region_pos, & dst_region_size, atlas_size )
 		
-			// clear_target_region : Draw_Call
-			// {
-			// 	using clear_target_region
-			// 	pass        = .Atlas
-			// 	region      = .Ignore
-			// 	start_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
+			clear_target_region : Draw_Call
+			{
+				using clear_target_region
+				pass        = .Atlas
+				region      = .Ignore
+				start_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
 		
-			// 	blit_quad( & glyph_buffer.clear_draw_list,
-			// 		dst_region_pos, dst_region_pos + dst_region_size,
-			// 		{ 1.0, 1.0 },  { 1.0, 1.0 } )
-			// 		// { 0.0, 0.0 },  { 0.0, 0.0 } )
+				blit_quad( & glyph_buffer.clear_draw_list,
+					dst_region_pos, dst_region_pos + dst_region_size,
+					{ 1.0, 1.0 },  { 1.0, 1.0 }
+				)
 		
-			// 	end_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
-			// }
+				end_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
+			}
 			
-			// dst_glyph_pos  := glyph.region_pos
-			// dst_glyph_size := (glyph.bounds_size_scaled) + atlas.glyph_padding
-			// to_glyph_buffer_space( & dst_glyph_pos, & dst_glyph_size,  atlas_size )
+			dst_glyph_pos  := glyph.region_pos
+			dst_glyph_size := (glyph.bounds_size_scaled) + atlas.glyph_padding
+			to_glyph_buffer_space( & dst_glyph_pos, & dst_glyph_size,  atlas_size )
 	
-			// src_position := Vec2 { glyph.glyph_buffer_x, 0 }
-			// src_size     := (glyph.bounds_size_scaled + atlas.glyph_padding) *  glyph_buffer.over_sample
-			// to_target_space( & src_position, & src_size, glyph_buffer_size )
+			src_position := Vec2 { glyph.buffer_x, 0 }
+			src_size     := (glyph.bounds_size_scaled + atlas.glyph_padding) *  glyph_buffer.over_sample
+			to_target_space( & src_position, & src_size, glyph_buffer_size )
 	
-			// blit_to_atlas : Draw_Call
-			// {
-			// 	using blit_to_atlas
-			// 	pass        = .Atlas
-			// 	region      = .None
-			// 	start_index = cast(u32) len(glyph_buffer.draw_list.indices)
+			blit_to_atlas : Draw_Call
+			{
+				using blit_to_atlas
+				pass        = .Atlas
+				region      = .None
+				start_index = cast(u32) len(glyph_buffer.draw_list.indices)
 	
-			// 	blit_quad( & glyph_buffer.draw_list,
-			// 		dst_glyph_pos, dst_glyph_pos + dst_glyph_size,
-			// 		src_position,  src_position  + src_size )
+				blit_quad( & glyph_buffer.draw_list,
+					dst_glyph_pos, dst_glyph_pos + dst_glyph_size,
+					src_position,  src_position  + src_size )
 	
-			// 	end_index = cast(u32) len(glyph_buffer.draw_list.indices)
-			// }
+				end_index = cast(u32) len(glyph_buffer.draw_list.indices)
+			}
 	
-			// append( & glyph_buffer.clear_draw_list.calls, clear_target_region )
-			// append( & glyph_buffer.draw_list.calls,       blit_to_atlas )
+			append( & glyph_buffer.clear_draw_list.calls, clear_target_region )
+			append( & glyph_buffer.draw_list.calls,       blit_to_atlas )
 	
-			// // Render glyph to glyph render target (FBO)
-			// generate_glyph_pass_draw_list( draw_list, & glyph_buffer.shape_gen_scratch, 
-			// 	glyph.shape, 
-			// 	entry.curve_quality, 
-			// 	glyph.bounds, 
-			// 	glyph.draw_transform.pos, 
-			// 	glyph.draw_transform.scale 
-			// )
+			// Render glyph to glyph render target (FBO)
+			generate_glyph_pass_draw_list( draw_list, & glyph_buffer.shape_gen_scratch, 
+				glyph.shape, 
+				entry.curve_quality, 
+				glyph.bounds, 
+				glyph.draw_transform.pos, 
+				glyph.draw_transform.scale 
+			)
 		}
+
 		flush_glyph_buffer_draw_list(draw_list, & glyph_buffer.draw_list, & glyph_buffer.clear_draw_list, & glyph_buffer.allocated_x)
 		for id, index in to_cache do parser_free_shape(entry.parser_info, glyph_pack[id].shape)
 	}
@@ -776,7 +659,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	generate_cached_draw_list( draw_list, glyph_pack[:], cached, colour )
 	profile_end()
 
-	flush_glyph_buffer_draw_list(draw_list, & glyph_buffer.draw_list, & glyph_buffer.clear_draw_list, & glyph_buffer.allocated_x)
+	// flush_glyph_buffer_draw_list(draw_list, & glyph_buffer.draw_list, & glyph_buffer.clear_draw_list, & glyph_buffer.allocated_x)
 	
 	profile_begin("generate oversized glyphs draw_list")
 	{
@@ -792,14 +675,15 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		}
 		for id, index in oversized
 		{
+			// glyph_buffer.allocated_x += 1
 			flush_glyph_buffer_draw_list(draw_list, & glyph_buffer.draw_list, & glyph_buffer.clear_draw_list, & glyph_buffer.allocated_x)
 			
 			generate_glyph_pass_draw_list( draw_list, & glyph_buffer.shape_gen_scratch,
 				glyph_pack[id].shape, 
 				entry.curve_quality, 
 				glyph_pack[id].bounds, 
-				glyph_pack[id].draw_transform.scale, 
-				glyph_pack[id].draw_transform.pos 
+				glyph_pack[id].draw_transform.pos,
+				glyph_pack[id].draw_transform.scale
 			)
 
 			target_quad := & glyph_pack[id].draw_quad
@@ -818,14 +702,14 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 
 				end_index = u32(len(draw_list.indices))
 			}
-			clear_glyph_update := & calls[1]
-			{
-				// Clear glyph render target (FBO)
-				clear_glyph_update.pass              = .Glyph
-				clear_glyph_update.start_index       = 0
-				clear_glyph_update.end_index         = 0
-				clear_glyph_update.clear_before_draw = true
-			}
+			// clear_glyph_update := & calls[1]
+			// {
+			// 	// Clear glyph render target (FBO)
+			// 	clear_glyph_update.pass              = .Glyph
+			// 	clear_glyph_update.start_index       = 0
+			// 	clear_glyph_update.end_index         = 0
+			// 	clear_glyph_update.clear_before_draw = true
+			// }
 			append( & draw_list.calls, calls[0] )
 			append( & draw_list.calls, calls[1] )
 		}
@@ -845,16 +729,16 @@ flush_glyph_buffer_draw_list :: #force_inline proc( #no_alias draw_list, glyph_b
 	clear_draw_list( glyph_buffer_clear_draw_list )
 
 	// Clear glyph render target (FBO)
-	if (allocated_x ^) != 0
-	{
+	// if (allocated_x ^) != 0
+	// {
 		call := Draw_Call_Default
 		call.pass              = .Glyph
 		call.start_index       = 0
 		call.end_index         = 0
 		call.clear_before_draw = true
 		append( & draw_list.calls, call )
-		(allocated_x ^) = 0
-	}
+		// (allocated_x ^) = 0
+	// }
 }
 
 // ve_fontcache_clear_Draw_List
