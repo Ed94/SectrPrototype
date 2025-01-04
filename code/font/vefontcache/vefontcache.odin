@@ -8,9 +8,9 @@ package vefontcache
 import "base:runtime"
 
 // White: Cached Hit, Red: Cache Miss, Yellow: Oversized
-ENABLE_DRAW_TYPE_VIS :: false 
+ENABLE_DRAW_TYPE_VIS :: true 
 // See: mappings.odin for profiling hookup
-DISABLE_PROFILING    :: true  
+DISABLE_PROFILING    :: false
 
 Font_ID :: distinct i32
 Glyph   :: distinct i32
@@ -21,53 +21,52 @@ Entry :: struct {
 	id            : Font_ID,
 	used          : b32,
 	curve_quality : f32,
-	size          : f32,
-	size_scale    : f32,
+
+	ascent   : f32,
+	descent  : f32,
+	line_gap : f32,
 }
 
 Entry_Default :: Entry {
 	id            = 0,
 	used          = false,
-	curve_quality = 2,
-
-	// TODO(Ed): Remove size information. Its not conceptually needed.
-	// The size_scale can be computed only the fly when needed for a font.
-	size       = 24.0, 
-	size_scale = 1.0,
+	curve_quality = 3,
 }
 
 Context :: struct {
 	backing : Allocator,
 
-	parser_ctx  : Parser_Context,
-	shaper_ctx  : Shaper_Context,
+	parser_ctx  : Parser_Context, // Glyph parser state
+	shaper_ctx  : Shaper_Context, // Text shaper state
 
+	// The managed font instances
 	entries : [dynamic]Entry,
 
-	temp_path               : [dynamic]Vertex,
-	temp_codepoint_seen     : map[u32]b8,
-	temp_codepoint_seen_num : i32,
+	glyph_buffer : Glyph_Draw_Buffer,
+	atlas        : Atlas,
+	shape_cache  : Shaped_Text_Cache,
+	draw_list    : Draw_List,
 
-	snap_width  : f32,
-	snap_height : f32,
-
-	alpha_scalar : f32,    // Will apply a multiplier to the colour's alpha which provides some sharpening of the edges.
-	colour       : Colour,
-	cursor_pos   : Vec2,
-
+	// Tracks the offsets for the current layer in a draw_list
 	draw_layer : struct {
 		vertices_offset : int,
 		indices_offset  : int,
 		calls_offset    : int,
 	},
 
-	draw_list    : Draw_List,
-	atlas        : Atlas,
-	glyph_buffer : Glyph_Draw_Buffer,
-	shape_cache  : Shaped_Text_Cache,
+	// Helps with hinting
+	snap_width  : f32,
+	snap_height : f32,
+
+	colour       : Colour, // Color used in draw interface
+	cursor_pos   : Vec2,
+	alpha_scalar : f32,    // Will apply a multiplier to the colour's alpha which provides some sharpening of the edges.
+	// Used by draw interface to super-scale the text by 
+	// upscaling px_size with px_scalar and then down-scaling
+	// the draw_list result by the same amount.
+	px_scalar    : f32,
 
 	default_curve_quality : i32,
-	use_advanced_shaper   : b32,
 
 	debug_print         : b32,
 	debug_print_verbose : b32,
@@ -115,25 +114,27 @@ Init_Atlas_Params_Default :: Init_Atlas_Params {
 }
 
 Init_Glyph_Draw_Params :: struct {
-	over_sample  : Vec2,
-	buffer_batch : u32,
-	draw_padding : u32,
+	over_sample               : Vec2,
+	draw_padding              : u32,
+	shape_gen_scratch_reserve : u32,
+	buffer_batch              : u32,
+	buffer_batch_glyph_limit  : u32, // How many glyphs can at maximimum be proccessed at once by batch_generate_glyphs_draw_list
 }
 
 Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
-	over_sample   = Vec2 { 4, 4 },
-	buffer_batch  = 4,
-	draw_padding  = Init_Atlas_Params_Default.glyph_padding,
+	over_sample                     = Vec2 { 4, 4 },
+	draw_padding                    = Init_Atlas_Params_Default.glyph_padding,
+	shape_gen_scratch_reserve       = 10 * 1024,
+	buffer_batch                    = 4,
+	buffer_batch_glyph_limit        = 512,
 }
 
 Init_Shaper_Params :: struct {
-	use_advanced_text_shaper      : b32,
 	snap_glyph_position           : b32,
 	adv_snap_small_font_threshold : u32,
 }
 
 Init_Shaper_Params_Default :: Init_Shaper_Params {
-	use_advanced_text_shaper      = true,
 	snap_glyph_position           = true,
 	adv_snap_small_font_threshold = 0,
 }
@@ -158,10 +159,10 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
 	shaper_params               := Init_Shaper_Params_Default,
 	alpha_sharpen               := 0.2,
+	// Curve quality to use for a font when unspecified,
+	// Affects step size for bezier curve passes in generate_glyph_pass_draw_list
 	default_curve_quality       : u32 = 3,
 	entires_reserve             : u32 = 256,
-	temp_path_reserve           : u32 = 10 * 1024,
-	temp_codepoint_seen_reserve : u32 = 10 * 1024,
 )
 {
 	assert( ctx != nil, "Must provide a valid context" )
@@ -172,7 +173,6 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 
 	ctx.colour = { 1, 1, 1, 1 }
 
-	use_advanced_shaper                      = shaper_params.use_advanced_text_shaper
 	shaper_ctx.adv_snap_small_font_threshold = f32(shaper_params.adv_snap_small_font_threshold)
 	shaper_ctx.snap_glyph_position           = shaper_params.snap_glyph_position
 
@@ -184,12 +184,6 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	error : Allocator_Error
 	entries, error = make( [dynamic]Entry, len = 0, cap = entires_reserve )
 	assert(error == .None, "VEFontCache.init : Failed to allocate entries")
-
-	temp_path, error = make( [dynamic]Vertex, len = 0, cap = temp_path_reserve )
-	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
-
-	temp_codepoint_seen, error = make( map[u32]b8, uint(temp_codepoint_seen_reserve) )
-	assert(error == .None, "VEFontCache.init : Failed to allocate temp_path")
 
 	draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = 8 * Kilobyte )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.vertices")
@@ -270,7 +264,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for draw_list" )
 	}
 
-	// Note(From original author): We can actually go over VE_FONTCACHE_GLYPHDRAW_BUFFER_BATCH batches due to smart packing!
+	Glyph_Buffer_Setup:
 	{
 		using glyph_buffer
 		over_sample   = glyph_draw_params.over_sample
@@ -297,6 +291,14 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		clear_draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = glyph_draw_params.buffer_batch * 2 * 4 )
 		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for clear_draw_list" )
 
+		shape_gen_scratch, error = make( [dynamic]Vertex, len = 0, cap = glyph_draw_params.buffer_batch_glyph_limit )
+		assert(error == .None, "VEFontCache.init : Failed to allocate shape_gen_scratch")
+
+		batch_cache.cap = i32(glyph_draw_params.buffer_batch_glyph_limit)
+		batch_cache.num = 0
+		batch_cache.table, error = make( map[u32]b8, uint(glyph_draw_params.shape_gen_scratch_reserve) )
+		assert(error == .None, "VEFontCache.init : Failed to allocate batch_cache")
+
 		glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte, allocator = context.temp_allocator )
 		oversized, error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte, allocator = context.temp_allocator )
 		to_cache,  error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte, allocator = context.temp_allocator )
@@ -315,8 +317,6 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	using ctx
 
 	reload_array( & entries, allocator )
-	reload_array( & temp_path, allocator )
-	reload_map( & ctx.temp_codepoint_seen, allocator )
 
 	reload_array( & draw_list.vertices, allocator)
 	reload_array( & draw_list.indices, allocator )
@@ -349,10 +349,12 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	reload_array( & glyph_buffer.to_cache,   allocator )
 	reload_array( & glyph_buffer.cached,     allocator )
 
+	reload_array( & glyph_buffer.shape_gen_scratch, allocator )
+	reload_map( & glyph_buffer.batch_cache.table, allocator )
+
 	reload_array( & shape_cache.storage, allocator )
 }
 
-// ve_foncache_shutdown
 shutdown :: proc( ctx : ^Context )
 {
 	assert( ctx != nil )
@@ -364,8 +366,6 @@ shutdown :: proc( ctx : ^Context )
 	}
 
 	delete( entries )
-	delete( temp_path )
-	delete( temp_codepoint_seen )
 
 	delete( draw_list.vertices )
 	delete( draw_list.indices )
@@ -398,11 +398,13 @@ shutdown :: proc( ctx : ^Context )
 	delete( glyph_buffer.to_cache)
 	delete( glyph_buffer.cached)
 
+	delete( glyph_buffer.shape_gen_scratch )
+	delete( glyph_buffer.batch_cache.table )
+
 	shaper_shutdown( & shaper_ctx )
 	parser_shutdown( & parser_ctx )
 }
 
-// ve_fontcache_load
 load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32, glyph_curve_quality : u32 = 0 ) -> (font_id : Font_ID)
 {
 	profile(#procedure)
@@ -426,22 +428,23 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32,
 
 	entry := & entries[ id ]
 	{
-		using entry
-		used = true
+		entry.used = true
 
 		profile_begin("calling loaders")
-		parser_info = parser_load_font( & parser_ctx, label, data )
-		shaper_info = shaper_load_font( & shaper_ctx, label, data )
+		entry.parser_info = parser_load_font( & parser_ctx, label, data )
+		entry.shaper_info = shaper_load_font( & shaper_ctx, label, data )
 		profile_end()
 
-		size       = size_px
-		size_scale = parser_scale( parser_info, size )
+		ascent, descent, line_gap := parser_get_font_vertical_metrics(entry.parser_info)
+		entry.ascent   = f32(ascent)
+		entry.descent  = f32(descent)
+		entry.line_gap = f32(line_gap)
 
 		if glyph_curve_quality == 0 {
-			curve_quality = f32(ctx.default_curve_quality)
+			entry.curve_quality = f32(ctx.default_curve_quality)
 		}
 		else {
-			curve_quality = f32(glyph_curve_quality)
+			entry.curve_quality = f32(glyph_curve_quality)
 		}
 	}
 	entry.id = Font_ID(id)
@@ -451,7 +454,6 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, size_px : f32,
 	return
 }
 
-// ve_fontcache_unload
 unload_font :: proc( ctx : ^Context, font : Font_ID )
 {
 	assert( ctx != nil )
@@ -470,17 +472,17 @@ unload_font :: proc( ctx : ^Context, font : Font_ID )
 
 //#region("drawing")
 
-// ve_fontcache_configure_snap
 configure_snap :: #force_inline proc( ctx : ^Context, snap_width, snap_height : u32 ) {
 	assert( ctx != nil )
 	ctx.snap_width  = f32(snap_width)
 	ctx.snap_height = f32(snap_height)
 }
 
-get_cursor_pos :: #force_inline proc( ctx : ^Context                  ) -> Vec2 { assert(ctx != nil); return ctx.cursor_pos }
-set_colour     :: #force_inline proc( ctx : ^Context, colour : Colour )         { assert(ctx != nil); ctx.colour = colour }
+get_cursor_pos   :: #force_inline proc( ctx : ^Context                  ) -> Vec2 { assert(ctx != nil); return ctx.cursor_pos     }
+set_alpha_scalar :: #force_inline proc( ctx : ^Context, scalar : f32    )         { assert(ctx != nil); ctx.alpha_scalar = scalar }
+set_colour       :: #force_inline proc( ctx : ^Context, colour : Colour )         { assert(ctx != nil); ctx.colour       = colour }
 
-draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, position, scale : Vec2 ) -> b32
+draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, position, scale : Vec2, text_utf8 : string ) -> b32
 {
 	profile(#procedure)
 	assert( ctx != nil )
@@ -493,14 +495,23 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : str
 	position.x = ceil(position.x * ctx.snap_width ) / ctx.snap_width
 	position.y = ceil(position.y * ctx.snap_height) / ctx.snap_height
 
-	entry := ctx.entries[ font ]
+	colour   := ctx.colour
+	colour.a  = 1.0 + ctx.alpha_scalar
 
-	shape         := shaper_shape_text_cached( ctx, font, text_utf8, entry, shaper_shape_text_uncached_advanced )
-	ctx.cursor_pos = generate_shape_draw_list( ctx, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
+	// TODO(Ed): Test this.
+	// px_size_scalar :: 2
+	// px_size        := px_size * px_size_scalar
+	// scale          := scale   / px_size_scalar
+
+	entry := ctx.entries[ font ]
+	font_scale    := parser_scale( entry.parser_info, px_size )
+	shape         := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, font, entry, px_size, font_scale, shaper_shape_text_uncached_advanced )
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, colour, entry, font_scale, position, scale, ctx.snap_width, ctx.snap_height )
+
 	return true
 }
 
-draw_text_no_snap :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, position, scale : Vec2 ) -> b32
+draw_text_no_snap :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, position, scale : Vec2, text_utf8 : string ) -> b32
 {
 	profile(#procedure)
 	assert( ctx != nil )
@@ -509,14 +520,18 @@ draw_text_no_snap :: #force_inline proc( ctx : ^Context, font : Font_ID, text_ut
 
 	ctx.cursor_pos = {}
 
-	entry := ctx.entries[ font ]
-	shape         := shaper_shape_text_cached( ctx, font, text_utf8, entry, shaper_shape_text_uncached_advanced )
-	ctx.cursor_pos = generate_shape_draw_list( ctx, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
+	colour   := ctx.colour
+	colour.a  = 1.0 + ctx.alpha_scalar
+
+	entry         := ctx.entries[ font ]
+	font_scale    := parser_scale( entry.parser_info, px_size )
+	shape         := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, font, entry, px_size, font_scale, shaper_shape_text_latin )
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, colour, entry, font_scale, position, scale, ctx.snap_width, ctx.snap_height )
 	return true
 }
 
-// For high performance: Resolve the shape and track it to reduce iteration overhead
-draw_text_shape :: #force_inline proc( ctx : ^Context, font : Font_ID, shape : Shaped_Text, position, scale : Vec2 ) -> b32
+// Resolve the shape and track it to reduce iteration overhead
+draw_text_shape :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, position, scale : Vec2, shape : Shaped_Text ) -> b32
 {
 	profile(#procedure)
 	assert( ctx != nil )
@@ -525,24 +540,31 @@ draw_text_shape :: #force_inline proc( ctx : ^Context, font : Font_ID, shape : S
 	position.x = ceil(position.x * ctx.snap_width ) / ctx.snap_width
 	position.y = ceil(position.y * ctx.snap_height) / ctx.snap_height
 
-	entry := ctx.entries[ font ]
-	ctx.cursor_pos = generate_shape_draw_list( ctx, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
+	colour   := ctx.colour
+	colour.a  = 1.0 + ctx.alpha_scalar
+
+	entry         := ctx.entries[ font ]
+	font_scale    := parser_scale( entry.parser_info, px_size )
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, colour, entry, font_scale, position, scale, ctx.snap_width, ctx.snap_height )
 	return true
 }
 
-// For high performance: Resolve the shape and track it to reduce iteration overhead
-draw_text_shape_no_snap :: #force_inline proc( ctx : ^Context, font : Font_ID, shape : Shaped_Text, position, scale : Vec2 ) -> b32
+// Resolve the shape and track it to reduce iteration overhead
+draw_text_shape_no_snap :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, position, scale : Vec2, shape : Shaped_Text ) -> b32
 {
 	profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
+	colour   := ctx.colour
+	colour.a  = 1.0 + ctx.alpha_scalar
+
 	entry := ctx.entries[ font ]
-	ctx.cursor_pos = generate_shape_draw_list( ctx, entry, shape, position, scale, ctx.snap_width, ctx.snap_height )
+	font_scale     := parser_scale( entry.parser_info, px_size )
+	ctx.cursor_pos  = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, colour, entry, font_scale, position, scale, ctx.snap_width, ctx.snap_height )
 	return true
 }
 
-// ve_fontcache_Draw_List
 get_draw_list :: #force_inline proc( ctx : ^Context, optimize_before_returning := true ) -> ^Draw_List {
 	assert( ctx != nil )
 	if optimize_before_returning do optimize_draw_list( & ctx.draw_list, 0 )
@@ -558,7 +580,6 @@ get_draw_list_layer :: #force_inline proc( ctx : ^Context, optimize_before_retur
 	return
 }
 
-// ve_fontcache_flush_Draw_List
 flush_draw_list :: #force_inline proc( ctx : ^Context ) {
 	assert( ctx != nil )
 	using ctx
@@ -580,14 +601,15 @@ flush_draw_list_layer :: #force_inline proc( ctx : ^Context ) {
 
 //#region("metrics")
 
-measure_text_size :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string ) -> (measured : Vec2)
+measure_text_size :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, text_utf8 : string ) -> (measured : Vec2)
 {
 	// profile(#procedure)
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
-	entry  := ctx.entries[font]
-	shaped := shaper_shape_text_cached(ctx, font, text_utf8, entry, shaper_shape_text_uncached_advanced )
+	entry      := ctx.entries[font]
+	font_scale := parser_scale( entry.parser_info, px_size )
+	shaped     := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, font, entry, px_size, font_scale, shaper_shape_text_uncached_advanced )
 	return shaped.size
 }
 
@@ -597,11 +619,11 @@ get_font_vertical_metrics :: #force_inline proc ( ctx : ^Context, font : Font_ID
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
 	entry  := & ctx.entries[ font ]
-	ascent_i32, descent_i32, line_gap_i32 := parser_get_font_vertical_metrics( entry.parser_info )
+	// ascent_i32, descent_i32, line_gap_i32 := parser_get_font_vertical_metrics( entry.parser_info )
 
-	ascent   = (f32(ascent_i32)   * entry.size_scale)
-	descent  = (f32(descent_i32)  * entry.size_scale)
-	line_gap = (f32(line_gap_i32) * entry.size_scale)
+	ascent   = entry.ascent
+	descent  = entry.descent
+	line_gap = entry.line_gap
 	return
 }
 
@@ -609,20 +631,22 @@ get_font_vertical_metrics :: #force_inline proc ( ctx : ^Context, font : Font_ID
 
 //#region("shaping")
 
-shape_text_latin :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, allocator := context.allocator ) -> Shaped_Text
+shape_text_latin :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, text_utf8 : string ) -> Shaped_Text
 {
 	profile(#procedure)
 	assert( len(text_utf8) > 0 )
 	entry := ctx.entries[ font ]
-	return shaper_shape_text_cached( ctx, font, text_utf8, entry, shaper_shape_from_text_latin )
+	font_scale := parser_scale( entry.parser_info, px_size )
+	return shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, font, entry, px_size, font_scale, shaper_shape_text_latin )
 }
 
-shape_text_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string ) -> Shaped_Text
+shape_text_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, text_utf8 : string ) -> Shaped_Text
 {
 	profile(#procedure)
 	assert( len(text_utf8) > 0 )
 	entry := ctx.entries[ font ]
-	return shaper_shape_text_cached( ctx, font, text_utf8, entry, shaper_shape_text_uncached_advanced )
+	font_scale := parser_scale( entry.parser_info, px_size )
+	return shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, font, entry, px_size, font_scale, shaper_shape_text_uncached_advanced )
 }
 
 // User handled shaped text. Will not be cached

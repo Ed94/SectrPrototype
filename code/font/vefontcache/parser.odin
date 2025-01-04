@@ -274,8 +274,7 @@ parser_get_glyph_shape :: #force_inline proc ( font : Parser_Font_Info, glyph_in
 
 parser_is_glyph_empty :: #force_inline proc "contextless" ( font : Parser_Font_Info, glyph_index : Glyph ) -> b32
 {
-	
-	// switch font.kind
+		// switch font.kind
 	// {
 	// 	case .Freetype:
 	// 		error := freetype.load_glyph( font.freetype_info, cast(u32) glyph_index, { .No_Bitmap, .No_Hinting, .No_Scale } )

@@ -6,13 +6,33 @@ import "core:math"
 
 import core_log "core:log"
 
+reload_array :: #force_inline proc( self : ^[dynamic]$Type, allocator : Allocator ) {
+	raw          := transmute( ^runtime.Raw_Dynamic_Array) self
+	raw.allocator = allocator
+}
+
+reload_array_soa :: #force_inline proc( self : ^#soa[dynamic]$Type, allocator : Allocator ) {
+	raw          := runtime.raw_soa_footer(self)
+	raw.allocator = allocator
+}
+
+reload_map :: #force_inline proc( self : ^map [$KeyType] $EntryType, allocator : Allocator ) {
+	raw          := transmute( ^runtime.Raw_Map) self
+	raw.allocator = allocator
+}
+
+font_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, glyph_index : Glyph ) -> (lru_code : u32) {
+	lru_code = u32(glyph_index) + ( ( 0x10000 * u32(font) ) & 0xFFFF0000 )
+	return
+}
+
+djb8_hash_32 :: #force_inline proc "contextless" ( hash : ^u32, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + u32(value) }
+djb8_hash    :: #force_inline proc "contextless" ( hash : ^u64, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + u64(value) }
+
 Colour  :: [4]f32
 Vec2    :: [2]f32
 Vec2i   :: [2]i32
 Vec2_64 :: [2]f64
-
-djb8_hash_32 :: #force_inline proc "contextless" ( hash : ^u32, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + u32(value) }
-djb8_hash    :: #force_inline proc "contextless" ( hash : ^u64, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + u64(value) }
 
 vec2_from_scalar  :: #force_inline proc "contextless" ( scalar : f32   ) -> Vec2    { return { scalar, scalar }}
 vec2_64_from_vec2 :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
@@ -40,36 +60,6 @@ logf :: proc( fmt : string, args : ..any,  level := core_log.Level.Info, loc := 
 	context.temp_allocator = arena_allocator(& temp_arena)
 
 	core_log.logf( level, fmt, ..args, location = loc )
-}
-
-reload_array :: proc( self : ^[dynamic]$Type, allocator : Allocator ) {
-	raw          := transmute( ^runtime.Raw_Dynamic_Array) self
-	raw.allocator = allocator
-}
-
-reload_array_soa :: proc( self : ^#soa[dynamic]$Type, allocator : Allocator ) {
-	raw          := runtime.raw_soa_footer(self)
-	raw.allocator = allocator
-}
-
-reload_map :: proc( self : ^map [$KeyType] $EntryType, allocator : Allocator ) {
-	raw          := transmute( ^runtime.Raw_Map) self
-	raw.allocator = allocator
-}
-
-font_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, glyph_index : Glyph ) -> (lru_code : u32) {
-	lru_code = u32(glyph_index) + ( ( 0x10000 * u32(font) ) & 0xFFFF0000 )
-	return
-}
-
-mark_batch_codepoint_seen :: #force_inline proc "contextless" ( ctx : ^Context, lru_code : u32 ) {
-	ctx.temp_codepoint_seen[lru_code] = true
-	ctx.temp_codepoint_seen_num += 1
-}
-
-reset_batch_codepoint_state :: #force_inline proc( ctx : ^Context ) {
-	clear_map( & ctx.temp_codepoint_seen )
-	ctx.temp_codepoint_seen_num = 0
 }
 
 to_glyph_buffer_space :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )

@@ -22,6 +22,7 @@ Note: freetype and harfbuzz could technically be gutted if the user removes thei
 * Macro defines have been coverted (mostly) to runtime parameters
 * Support for hot_reloading
 * Curve quality step interpolation for glyph rendering can be set on a per font basis.
+* All codepaths heavily changed (its faster)
 
 ## TODOs
 
