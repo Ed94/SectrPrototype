@@ -937,7 +937,7 @@ draw_text_shape_pos_norm :: #force_inline proc( shape : ShapedText, id : FontID,
 	ve_id, resolved_size := font_provider_resolve_draw_id( id, font_size * config.font_size_screen_scalar )
 	color_norm           := normalize_rgba8(color)
 
-	screen_size_norm := Vec2{1 / width, 1 / height}
+	screen_size_norm := Vec2 { 1 / width, 1 / height }
 
 	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
 	ve.draw_text_shape( & font_provider_ctx.ve_ctx, ve_id, f32(resolved_size), pos, screen_size_norm * scale * (1 / config.font_size_screen_scalar), shape )
@@ -977,10 +977,10 @@ draw_text_string_pos_extent_zoomed :: #force_inline proc( text : string, id : Fo
 	text_scale : Vec2 = screen_size_norm
 	// if config.cam_zoom_mode == .Smooth
 	{
-		diff_scalar       := 1 + (zoom_adjust_size - f32_resolved_size) / f32_resolved_size
-		text_scale         = diff_scalar * screen_size_norm
-		text_scale.x       = clamp( text_scale.x, 0, screen_size.x )
-		text_scale.y       = clamp( text_scale.y, 0, screen_size.y )
+		diff_scalar := 1 + (zoom_adjust_size - f32_resolved_size) / f32_resolved_size
+		text_scale   = diff_scalar * screen_size_norm
+		text_scale.x = clamp( text_scale.x, 0, screen_size.x )
+		text_scale.y = clamp( text_scale.y, 0, screen_size.y )
 	}
 
 	// Down-sample back

@@ -613,17 +613,18 @@ measure_text_size :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size
 	return shaped.size
 }
 
-get_font_vertical_metrics :: #force_inline proc ( ctx : ^Context, font : Font_ID ) -> ( ascent, descent, line_gap : f32 )
+get_font_vertical_metrics :: #force_inline proc ( ctx : ^Context, font : Font_ID, px_szie : f32 ) -> ( ascent, descent, line_gap : f32 )
 {
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
 	entry  := & ctx.entries[ font ]
 	// ascent_i32, descent_i32, line_gap_i32 := parser_get_font_vertical_metrics( entry.parser_info )
+	font_scale := parser_scale( entry.parser_info, px_szie )
 
-	ascent   = entry.ascent
-	descent  = entry.descent
-	line_gap = entry.line_gap
+	ascent   = font_scale * entry.ascent
+	descent  = font_scale * entry.descent
+	line_gap = font_scale * entry.line_gap
 	return
 }
 

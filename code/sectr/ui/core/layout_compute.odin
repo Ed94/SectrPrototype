@@ -191,14 +191,14 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	{
 		ascent, descent, line_gap := get_font_vertical_metrics(style.font, layout.font_size)
 
-		offset := text_size
-		offset += { 0, -descent }
+		// offset := text_size
+		// offset += { 0, -descent }
 
 		content_size := content_bounds.max - content_bounds.min
 		text_pos : Vec2
-		text_pos = content_bounds.min
-		text_pos += { 0, -descent }
+		text_pos  = content_bounds.min
 		text_pos += (content_size - text_size) * layout.text_alignment
+		text_pos += { 0, -descent }
 
 		computed.text_size = text_size
 		computed.text_pos  = text_pos
