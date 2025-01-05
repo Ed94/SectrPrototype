@@ -203,7 +203,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			debug_text( "Replaying Input")
 		}
 
-		if true
+		if false
 		{
 			using input_events
 

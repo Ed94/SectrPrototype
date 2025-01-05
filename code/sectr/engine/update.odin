@@ -151,7 +151,7 @@ update :: proc( delta_time : f64 ) -> b32
 	// TODO(Ed): This should be per workspace view
 	{
 		Digial_Zoom_Snap_Levels := []f32{
-			0.0255,   // 0.4px (not practical for text, but allows extreme zoom out)
+			0.0258,   // 0.4px (not practical for text, but allows extreme zoom out)
 			0.03125, // 0.5px
 			0.0375,  // 0.6px
 			0.04375, // 0.7px

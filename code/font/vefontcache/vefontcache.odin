@@ -8,7 +8,7 @@ package vefontcache
 import "base:runtime"
 
 // White: Cached Hit, Red: Cache Miss, Yellow: Oversized
-ENABLE_DRAW_TYPE_VIS :: true 
+ENABLE_DRAW_TYPE_VIS :: false
 // See: mappings.odin for profiling hookup
 DISABLE_PROFILING    :: true
 

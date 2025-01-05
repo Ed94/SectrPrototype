@@ -274,8 +274,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
 		// font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
 		
-		// path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
-		// font_fira_cousine  = font_load( path_fira_cousine, 16.0, "Fira Cousine" )
+		path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
+		font_fira_cousine  = font_load( path_fira_cousine, 16.0, "Fira Cousine" )
 
 		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
 		// font_open_sans  = font_load( path_open_sans, 16.0, "OpenSans" )
@@ -301,7 +301,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
 
-		default_font = font_rec_mono_semicasual_reg
+		default_font = font_fira_cousine
 		log( "Default font loaded" )
 	}
 
@@ -532,8 +532,8 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	// config.engine_refresh_hz = 165
 
 	// config.color_theme = App_Thm_Light
-	// config.color_theme = App_Thm_Dusk
-	config.color_theme = App_Thm_Dark
+	config.color_theme = App_Thm_Dusk
+	// config.color_theme = App_Thm_Dark
 
 	sokol_width  := sokol_app.widthf()
 	sokol_height := sokol_app.heightf()
