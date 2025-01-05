@@ -74,6 +74,7 @@ UI_LayoutSide :: struct {
 UI_LayoutFlag :: enum u32 {
 	// Will perform scissor pass on children to their parent's bounds (Specified in the parent)
 	// Most boxes don't need a scissor pass so its opt-in.
+	// TODO(Ed): Implement this.
 	Clip_Children_To_bounds,
 
 	// Enforces the box will always remain in a specific position relative to the parent.

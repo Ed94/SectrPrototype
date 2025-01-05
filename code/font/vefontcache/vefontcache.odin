@@ -10,7 +10,7 @@ import "base:runtime"
 // White: Cached Hit, Red: Cache Miss, Yellow: Oversized
 ENABLE_DRAW_TYPE_VIS :: true 
 // See: mappings.odin for profiling hookup
-DISABLE_PROFILING    :: false
+DISABLE_PROFILING    :: true
 
 Font_ID :: distinct i32
 Glyph   :: distinct i32
@@ -500,7 +500,7 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, 
 	// TODO(Ed): Test this.
 	// px_size_scalar :: 2
 	// px_size        := px_size * px_size_scalar
-	// scale          := scale   / px_size_scalar
+	// scale          := scale * (1 / px_size_scalar)
 
 	entry := ctx.entries[ font ]
 	font_scale    := parser_scale( entry.parser_info, px_size )
