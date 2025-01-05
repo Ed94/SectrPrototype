@@ -11,10 +11,7 @@ The things to explore:
 * Generating a large amount of UI widget boxes with proper auto-layout & no perceptible rendering-lag or input lag for interactions (frametimes stable).
 * Model-View-Controller interface between code managed by a 'backend' (both in memory and filesystem) and the UX composition (which has separate filesystem composition).
 
-The project is so far in a "codebase boostrapping" phase.
-
-The project's is organized into 2 modules sectr_host & sectr.
-The host module loads the main module & its memory. Hot-reloading it's dll when it detects a change.
+https://github.com/user-attachments/assets/0a895478-4a04-4ac6-a0ac-5355ff87ef4e
 
 The dependencies are:
 
@@ -29,6 +26,11 @@ The dependencies are:
 * sokol
 * sokol-tools
 * Powershell (if you want to use my build scripts)
+
+The project is so far in a "codebase boostrapping" phase. Most the work being done right now is setting up high perfomrance linear zoom rendering for text and UI.
+
+The project's is organized into 2 modules sectr_host & sectr.
+The host module loads the main module & its memory. Hot-reloading it's dll when it detects a change.
 
 Major 'codebase modules':
 
