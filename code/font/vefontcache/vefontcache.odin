@@ -81,49 +81,18 @@ Context :: struct {
 	default_curve_quality : i32,
 }
 
-Init_Atlas_Region_Params :: struct {
-	width  : u32,
-	height : u32,
-}
-
 Init_Atlas_Params :: struct {
-	width             : u32,
-	height            : u32,
-	glyph_padding     : u32, // Padding to add to bounds_<width/height>_scaled for choosing which atlas region.
-	glyph_over_scalar : f32, // Scalar to apply to bounds_<width/height>_scaled for choosing which atlas region.
-
-	region_a : Init_Atlas_Region_Params,
-	region_b : Init_Atlas_Region_Params,
-	region_c : Init_Atlas_Region_Params,
-	region_d : Init_Atlas_Region_Params,
+	size_multiplier : u32, // How much to scale the the atlas size to. (Affects everything, the base is 4096 x 2048 and everything follows from there)
+	glyph_padding   : u32, // Padding to add to bounds_<width/height>_scaled for choosing which atlas region.
 }
 
 Init_Atlas_Params_Default :: Init_Atlas_Params {
-	width             = 4096 * 2,
-	height            = 2048 * 2,
-	glyph_padding     = 1,
-	glyph_over_scalar = 1,
-
-	region_a = {
-		width  = 32 * 2,
-		height = 32 * 2,
-	},
-	region_b = {
-		width  = 32 * 2,
-		height = 64 * 2,
-	},
-	region_c = {
-		width  = 64 * 2,
-		height = 64 * 2,
-	},
-	region_d = {
-		width  = 128 * 2,
-		height = 128 * 2,
-	}
+	size_multiplier = 2,
+	glyph_padding   = 1,
 }
 
 Init_Glyph_Draw_Params :: struct {
-	over_sample               : Vec2,
+	over_sample               : u32,
 	draw_padding              : u32,
 	shape_gen_scratch_reserve : u32,
 	buffer_glyph_limit        : u32, // How many region.D glyphs can be drawn to the glyph render target buffer at once (worst case scenario)
@@ -131,7 +100,7 @@ Init_Glyph_Draw_Params :: struct {
 }
 
 Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
-	over_sample                     = Vec2 { 4, 4 },
+	over_sample                     = 4,
 	draw_padding                    = Init_Atlas_Params_Default.glyph_padding,
 	shape_gen_scratch_reserve       = 10 * 1024,
 	buffer_glyph_limit              = 4,
@@ -203,44 +172,42 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 
 	ctx.draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = Kilobyte )
 	assert(error == .None, "VEFontCache.init : Failed to allocate draw_list.calls")
-
+	
 	atlas := & ctx.atlas
 	Atlas_Setup:
 	{
-		init_atlas_region :: proc( region : ^Atlas_Region, params : Init_Atlas_Params, region_params : Init_Atlas_Region_Params, factor : Vec2i, expected_cap : i32 )
+		atlas.size_multiplier = f32(atlas_params.size_multiplier)
+
+		atlas_size    := Vec2i { 4096, 2048 } * i32(atlas.size_multiplier)
+		slot_region_a := Vec2i {  32,  32 }   * i32(atlas.size_multiplier)
+		slot_region_c := Vec2i {  64,  64 }   * i32(atlas.size_multiplier)
+		slot_region_b := Vec2i {  32,  64 }   * i32(atlas.size_multiplier)
+		slot_region_d := Vec2i { 128, 128 }   * i32(atlas.size_multiplier)
+
+		init_atlas_region :: proc( region : ^Atlas_Region, atlas_size, slot_size : Vec2i, factor : Vec2i )
 		{
-			region.next_idx = 0;
-			region.width    = i32(region_params.width)
-			region.height   = i32(region_params.height)
-			region.size = {
-				i32(params.width)  / factor.x,
-				i32(params.height) / factor.y,
-			}
-			region.capacity = {
-				region.size.x / i32(region.width),
-				region.size.y / i32(region.height),
-			}
-			assert( region.capacity.x * region.capacity.y == expected_cap )
+			region.next_idx  = 0;
+			region.slot_size = slot_size
+			region.size      =  atlas_size / factor
+			region.capacity  = region.size / region.slot_size
 
 			error : Allocator_Error
 			lru_init( & region.state, region.capacity.x * region.capacity.y )
 		}
-		init_atlas_region( & atlas.region_a, atlas_params, atlas_params.region_a, { 4, 2}, 1024 * 4 )
-		init_atlas_region( & atlas.region_b, atlas_params, atlas_params.region_b, { 4, 2}, 512 * 4 )
-		init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c, { 4, 1}, 512 * 4 )
-		init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d, { 2, 1}, 256 * 4 )
+		init_atlas_region( & atlas.region_a, atlas_size, slot_region_a, { 4, 2})
+		init_atlas_region( & atlas.region_b, atlas_size, slot_region_b, { 4, 2})
+		init_atlas_region( & atlas.region_c, atlas_size, slot_region_c, { 4, 1})
+		init_atlas_region( & atlas.region_d, atlas_size, slot_region_d, { 2, 1})
 
-		atlas.width             = i32(atlas_params.width)
-		atlas.height            = i32(atlas_params.height)
-		atlas.glyph_padding     = f32(atlas_params.glyph_padding)
-		atlas.glyph_over_scalar = atlas_params.glyph_over_scalar
+		atlas.size          = atlas_size
+		atlas.glyph_padding = f32(atlas_params.glyph_padding)
 
 		atlas.region_a.offset   = {0, 0}
 		atlas.region_b.offset.x = 0
 		atlas.region_b.offset.y = atlas.region_a.size.y
 		atlas.region_c.offset.x = atlas.region_a.size.x
 		atlas.region_c.offset.y = 0
-		atlas.region_d.offset.x = atlas.width / 2
+		atlas.region_d.offset.x = atlas.size.x / 2
 		atlas.region_d.offset.y = 0
 
 		atlas.regions = {
@@ -274,9 +241,9 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	Glyph_Buffer_Setup:
 	{
 		glyph_buffer := & ctx.glyph_buffer
-		glyph_buffer.over_sample   = glyph_draw_params.over_sample
-		glyph_buffer.width         = atlas.region_d.width  * i32(glyph_buffer.over_sample.x) * i32(glyph_draw_params.buffer_glyph_limit)
-		glyph_buffer.height        = atlas.region_d.height * i32(glyph_buffer.over_sample.y)
+		glyph_buffer.over_sample   = { f32(glyph_draw_params.over_sample), f32(glyph_draw_params.over_sample) }
+		glyph_buffer.size.x        = atlas.region_d.slot_size.x * i32(glyph_buffer.over_sample.x) * i32(glyph_draw_params.buffer_glyph_limit)
+		glyph_buffer.size.y        = atlas.region_d.slot_size.y * i32(glyph_buffer.over_sample.y)
 		glyph_buffer.draw_padding  = cast(f32) glyph_draw_params.draw_padding
 
 		buffer_limit := glyph_draw_params.buffer_glyph_limit
@@ -532,16 +499,16 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, 
 	shape := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, 
 		font, 
 		entry, 
-		px_upscale,
-		font_scale_upscale, 
+		px_size,
+		font_scale, 
 		shaper_shape_text_uncached_advanced
 	)
-	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, 
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, ctx.px_scalar,
 		colour, 
 		entry, 
-		font_scale_upscale, 
+		font_scale, 
 		position,
-		downscale, 
+		scale, 
 		ctx.snap_width, 
 		ctx.snap_height
 	)
@@ -578,12 +545,12 @@ draw_text_slice :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size :
 			font, 
 			entry, 
 			px_upscale,
-			font_scale_upscale, 
+			font_scale, 
 			shaper_shape_text_uncached_advanced
 		)
 		shapes[id] = shape
 	}
-	generate_shapes_draw_list(ctx, font, colour, entry, font_scale_upscale, position, scale, shapes )
+	generate_shapes_draw_list(ctx, font, colour, entry, font_scale, position, scale, shapes )
 }
 
 
@@ -631,12 +598,12 @@ draw_text_shape :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size :
 	downscale          := scale * (1 / ctx.px_scalar)
 	font_scale_upscale := parser_scale( entry.parser_info, px_upscale )
 
-	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, 
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, ctx.px_scalar,
 		colour, 
 		entry, 
-		font_scale_upscale, 
+		font_scale, 
 		position, 
-		downscale, 
+		scale, 
 		ctx.snap_width, 
 		ctx.snap_height
 	)

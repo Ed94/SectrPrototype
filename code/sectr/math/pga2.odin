@@ -17,7 +17,12 @@ Rotor2 :: struct {
 
 rotor2_to_complex64 :: #force_inline proc( rotor : Rotor2 ) -> complex64 { return transmute(complex64) rotor; }
 
-vec2 :: #force_inline proc "contextless" ( x, y : f32 ) -> Vec2 { return {x, y} }
+vec2_from_f32s    :: #force_inline proc "contextless" ( x, y : f32 ) -> Vec2 { return {x, y} }
+vec2_from_scalar  :: #force_inline proc "contextless" ( scalar : f32   ) -> Vec2    { return { scalar, scalar }}
+vec2_from_vec2i   :: #force_inline proc "contextless" ( v2i    : Vec2i ) -> Vec2    { return { f32(v2i.x), f32(v2i.y) }}
+vec2i_from_vec2   :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2i   { return { i32(v2.x), i32(v2.y) }}
+
+// vec2_64_from_vec2 :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
 
 dot_vec2 :: proc "contextless" ( a, b : Vec2 ) -> (s : f32) {
 	x := a.x * b.x

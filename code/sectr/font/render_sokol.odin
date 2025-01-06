@@ -12,13 +12,13 @@ VE_RenderData :: struct {
 	atlas_shader  : sokol_gfx.Shader,
 	screen_shader : sokol_gfx.Shader,
 
-	// 2k x 512, R8
+	// ve.glyph_buffer.(width, height), R8
 	glyph_rt_color   : sokol_gfx.Image,
 	glyph_rt_depth   : sokol_gfx.Image,
 	// glyph_rt_resolve : sokol_gfx.Image,
 	glyph_rt_sampler : sokol_gfx.Sampler,
 
-	// 4k x 2k, R8
+	// ve.atlas.(width, height), R8
 	atlas_rt_color   : sokol_gfx.Image,
 	atlas_rt_depth   : sokol_gfx.Image,
 	// atlas_rt_resolve : sokol_gfx.Image,
@@ -142,8 +142,8 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		glyph_rt_color = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
 			render_target = true,
-			width         = i32(ve_ctx.glyph_buffer.width),
-			height        = i32(ve_ctx.glyph_buffer.height),
+			width         = i32(ve_ctx.glyph_buffer.size.x),
+			height        = i32(ve_ctx.glyph_buffer.size.y),
 			num_slices    = 1,
 			num_mipmaps   = 1,
 			usage         = .IMMUTABLE,
@@ -157,8 +157,8 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		glyph_rt_depth = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
 			render_target = true,
-			width         = i32(ve_ctx.glyph_buffer.width),
-			height        = i32(ve_ctx.glyph_buffer.height),
+			width         = i32(ve_ctx.glyph_buffer.size.x),
+			height        = i32(ve_ctx.glyph_buffer.size.y),
 			num_slices    = 1,
 			num_mipmaps   = 1,
 			usage         = .IMMUTABLE,
@@ -279,8 +279,8 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		atlas_rt_color = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
 			render_target = true,
-			width         = i32(ve_ctx.atlas.width),
-			height        = i32(ve_ctx.atlas.height),
+			width         = i32(ve_ctx.atlas.size.x),
+			height        = i32(ve_ctx.atlas.size.y),
 			num_slices    = 1,
 			num_mipmaps   = 1,
 			usage         = .IMMUTABLE,
@@ -294,8 +294,8 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 		atlas_rt_depth = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
 			render_target = true,
-			width         = i32(ve_ctx.atlas.width),
-			height        = i32(ve_ctx.atlas.height),
+			width         = i32(ve_ctx.atlas.size.x),
+			height        = i32(ve_ctx.atlas.size.y),
 			num_slices    = 1,
 			num_mipmaps   = 1,
 			usage         = .IMMUTABLE,

@@ -118,14 +118,20 @@ font_load :: proc(path_file : string,
 
 font_provider_set_alpha_sharpen :: #force_inline proc( scalar : f32 ) {
 	ve.set_alpha_scalar( & get_state().font_provider_ctx.ve_ctx, scalar )
+	// ve.clear_atlas_region_caches(& ctx.ve_ctx)
+	// ve.clear_shape_cache(& ctx.ve_ctx)
 }
 
 font_provider_set_px_scalar :: #force_inline proc( scalar : f32 ) {
 	ve.set_px_scalar( & get_state().font_provider_ctx.ve_ctx, scalar )
+	// ve.clear_atlas_region_caches(& ctx.ve_ctx)
+	// ve.clear_shape_cache(& ctx.ve_ctx)
 }
 
 font_provider_set_snap_glyph_pos :: #force_inline proc( should_snap : b32 ) {
 	ve.set_snap_glyph_pos( & get_state().font_provider_ctx.ve_ctx, should_snap )
+	// ve.clear_atlas_region_caches(& ctx.ve_ctx)
+	// ve.clear_shape_cache(& ctx.ve_ctx)
 }
 
 Font_Use_Default_Size :: f32(0.0)

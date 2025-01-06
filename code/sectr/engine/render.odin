@@ -316,6 +316,12 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 	screen_width  := u32(screen_extent.x * 2)
 	screen_height := u32(screen_extent.y * 2)
 
+	atlas        := & ve_ctx.atlas
+	glyph_buffer := & ve_ctx.glyph_buffer
+
+	atlas_size     : Vec2 = vec2(atlas.size)
+	glyph_buf_size : Vec2 = vec2(glyph_buffer.size)
+
 	for & draw_call in calls_layer_slice
 	{
 		watch := draw_call
@@ -333,8 +339,8 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 					continue
 				}
 
-				width  := ve_ctx.glyph_buffer.width
-				height := ve_ctx.glyph_buffer.height
+				width  := ve_ctx.glyph_buffer.size.x
+				height := ve_ctx.glyph_buffer.size.y
 
 				pass := glyph_pass
 				if draw_call.clear_before_draw {
@@ -368,8 +374,8 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 					continue
 				}
 
-				width  := ve_ctx.atlas.width
-				height := ve_ctx.atlas.height
+				width  := ve_ctx.atlas.size.x
+				height := ve_ctx.atlas.size.y
 
 				pass := atlas_pass
 				if draw_call.clear_before_draw {
@@ -383,7 +389,11 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 
 				gfx.apply_pipeline( atlas_pipeline )
 
-				fs_uniform := Ve_Blit_Atlas_Fs_Params { region = cast(i32) draw_call.region }
+				fs_uniform := Ve_Blit_Atlas_Fs_Params {
+					glyph_buffer_size = glyph_buf_size,
+					over_sample       = glyph_buffer.over_sample.x,
+					region            = cast(i32) draw_call.region,
+				}
 				gfx.apply_uniforms( UB_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(Ve_Blit_Atlas_Fs_Params) })
 
 				gfx.apply_bindings(Bindings {
@@ -420,12 +430,13 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 				src_sampler := atlas_rt_sampler
 
 				fs_target_uniform := Ve_Draw_Text_Fs_Params {
-					down_sample = 0,
-					colour      = draw_call.colour,
+					// glyph_buffer_size = glyph_buf_size,
+					over_sample       = glyph_buffer.over_sample.x,
+					colour            = draw_call.colour,
 				}
 
 				if draw_call.pass == .Target_Uncached {
-					fs_target_uniform.down_sample = 1
+					// fs_target_uniform.over_sample = 1.0
 					src_rt      = glyph_rt_color
 					src_sampler = glyph_rt_sampler
 				}

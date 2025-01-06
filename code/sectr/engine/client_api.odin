@@ -528,8 +528,8 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	debug.draw_ui_padding_bounds    = false
 	debug.draw_ui_content_bounds    = false
 
-	font_provider_set_alpha_sharpen(0.45)
-	font_provider_set_snap_glyph_pos(true)
+	font_provider_set_alpha_sharpen(0.15)
+	font_provider_set_snap_glyph_pos(false)
 
 	// config.engine_refresh_hz = 165
 

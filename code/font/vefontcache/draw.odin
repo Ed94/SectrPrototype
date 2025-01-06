@@ -99,8 +99,7 @@ Glyph_Batch_Cache :: struct {
 
 Glyph_Draw_Buffer :: struct{
 	over_sample   : Vec2,
-	width         : i32,
-	height        : i32,
+	size          : Vec2i,
 	draw_padding  : f32,
 
 	allocated_x     : i32, // Space used (horizontally) within the glyph buffer
@@ -254,7 +253,7 @@ generate_shapes_draw_list :: proc ( ctx : ^Context, font : Font_ID, colour : Col
 	assert(len(shapes) > 0)
 	for shape in shapes {
 		ctx.cursor_pos = {}
-		ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, 
+		ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, ctx.px_scalar,
 			colour, 
 			entry, 
 			font_scale, 
@@ -269,6 +268,7 @@ generate_shapes_draw_list :: proc ( ctx : ^Context, font : Font_ID, colour : Col
 generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	atlas        : ^Atlas,
 	glyph_buffer : ^Glyph_Draw_Buffer,
+	px_scalar    : f32,
 
 	colour       : Colour,
 	entry        : Entry,
@@ -282,6 +282,9 @@ generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape
 {
 	profile(#procedure)
 
+	font_scale   := font_scale   * px_scalar
+	target_scale := target_scale / px_scalar
+
 	mark_glyph_seen :: #force_inline proc "contextless" ( cache : ^Glyph_Batch_Cache, lru_code : u32 ) {
 		cache.table[lru_code] = true
 		cache.num            += 1
@@ -292,8 +295,8 @@ generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape
 	}
 
 	atlas_glyph_pad   := atlas.glyph_padding
-	atlas_size        := Vec2 { f32(atlas.width),        f32(atlas.height) }
-	glyph_buffer_size := Vec2 { f32(glyph_buffer.width), f32(glyph_buffer.height) }
+	atlas_size        := vec2(atlas.size)
+	glyph_buffer_size := vec2(glyph_buffer.size)
 
 	// Make sure the packs are large enough for the shape
 	glyph_pack := & glyph_buffer.glyph_pack
@@ -477,7 +480,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		quad.dst_pos   = glyph.position + (glyph.bounds_scaled.p0) * target_scale
 		quad.dst_scale =                  (glyph.scale)            * target_scale
 		quad.src_scale =                  (glyph.scale)
-		quad.src_pos   = (glyph.region_pos)
+		quad.src_pos   = (glyph.region_pos) 
 		to_target_space( & quad.src_pos, & quad.src_scale, atlas_size )
 	}
 	for id, index in to_cache
@@ -643,12 +646,12 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			
 			dst_glyph_pos    := glyph.region_pos
 			dst_glyph_size   := glyph.bounds_size_scaled + atlas.glyph_padding
-			dst_glyph_size.y  = ceil(dst_glyph_size.y) // Note(Ed): Seems to improve hinting
+			// dst_glyph_size.y  = ceil(dst_glyph_size.y) // Note(Ed): Seems to improve hinting
 			to_glyph_buffer_space( & dst_glyph_pos, & dst_glyph_size, atlas_size )
 	
 			src_position  := Vec2 { glyph.buffer_x, 0 }
 			src_size      := (glyph.bounds_size_scaled + atlas.glyph_padding) * glyph_buffer.over_sample
-			src_size.y     = ceil(src_size.y) // Note(Ed): Seems to improve hinting
+			// src_size.y     = ceil(src_size.y) // Note(Ed): Seems to improve hinting
 			to_target_space( & src_position, & src_size, glyph_buffer_size )
 			
 			blit_to_atlas : Draw_Call

@@ -643,6 +643,14 @@ to_str_runes_pair :: proc {
 	to_str_runes_pair_via_string,
 }
 
+vec2 :: proc {
+	vec2_from_f32s,
+	vec2_from_scalar,
+	// vec2_64_from_vec2,
+	vec2_from_vec2i,
+	vec2i_from_vec2
+}
+
 vec3 :: proc {
 	vec3_via_f32s,
 	bivec3_to_vec3,

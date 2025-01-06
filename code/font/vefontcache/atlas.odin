@@ -17,8 +17,7 @@ Atlas_Region :: struct {
 	capacity : Vec2i,
 	offset   : Vec2i,
 
-	width  : i32,
-	height : i32,
+	slot_size : Vec2i,
 
 	next_idx : i32,
 }
@@ -31,20 +30,18 @@ Atlas :: struct {
 
 	regions : [5] ^Atlas_Region,
 
-	glyph_padding     : f32, // Padding to add to bounds_<width/height>_scaled for choosing which atlas region.
-	glyph_over_scalar : f32, // Scalar to apply to bounds_<width/height>_scaled for choosing which atlas region.
+	glyph_padding   : f32, // Padding to add to bounds_<width/height>_scaled for choosing which atlas region.
+	size_multiplier : f32, // Grows all text by this multiple.
 
-	width  : i32,
-	height : i32,
+	size : Vec2i,
 }
 
 atlas_region_bbox :: proc( region : Atlas_Region, local_idx : i32 ) -> (position, size: Vec2)
 {
-	size.x = f32(region.width)
-	size.y = f32(region.height)
+	size = vec2(region.slot_size.x)
 
-	position.x = cast(f32) (( local_idx % region.capacity.x ) * region.width)
-	position.y = cast(f32) (( local_idx / region.capacity.x ) * region.height)
+	position.x = cast(f32) (( local_idx % region.capacity.x ) * region.slot_size.x)
+	position.y = cast(f32) (( local_idx / region.capacity.x ) * region.slot_size.y)
 
 	position.x += f32(region.offset.x)
 	position.y += f32(region.offset.y)
@@ -57,7 +54,7 @@ atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_bu
 	glyph_padding_dbl  := atlas.glyph_padding * 2
 	padded_bounds      := bounds_size_scaled + glyph_padding_dbl
 
-	for kind in 1 ..= 4 do if padded_bounds.x <= f32( atlas.regions[kind].width) && padded_bounds.y <= f32(atlas.regions[kind].height) {
+	for kind in 1 ..= 4 do if padded_bounds.x <= f32( atlas.regions[kind].slot_size.x) && padded_bounds.y <= f32(atlas.regions[kind].slot_size.y) {
 		return cast(Atlas_Region_Kind) kind
 	}
 
