@@ -94,6 +94,7 @@ $flag_sanitize_address          = '-sanitize:address'
 $flag_sanitize_memory           = '-sanitize:memory'
 $flag_sanitize_thread           = '-sanitize:thread'
 $flag_subsystem                 = '-subsystem:'
+$flag_show_debug_messages       = '-show-debug-messages'
 $flag_show_timings              = '-show-timings'
 $flag_show_more_timings         = '-show-more-timings'
 $flag_show_system_calls         = '-show-system-calls'
@@ -140,17 +141,20 @@ push-location $path_root
 
 		$path_font = join-path $path_code 'font'
 
+		$module_scripts      = $PSScriptRoot
 		$package_grime       = join-path $path_code 'grime'
 		$package_VEFontCache = join-path $path_font 'VEFontCache'
 		$module_host         = join-path $path_code 'host'
 		$module_sectr        = join-path $path_code 'sectr'
 		if ($force){
+			mark-ModuleDirty $module_scripts
 			mark-ModuleDirty $package_VEFontCache
 			mark-ModuleDirty $package_grime
 			mark-ModuleDirty $module_sectr
 			mark-ModuleDirty $module_host
 		}
 
+		$module_scripts_dirty  = check-ModuleForChanges $module_scripts
 		$pkg_VEFontCache_dirty = check-ModuleForChanges $package_VEFontCache
 		$pkg_grime_dirty       = check-ModuleForChanges $package_grime
 
@@ -170,7 +174,7 @@ push-location $path_root
 
 		function build-sectr
 		{
-			$should_build = (check-ModuleForChanges $module_sectr) -or $pkg_grime_dirty -or $pkg_VEFontCache_dirty
+			$should_build = (check-ModuleForChanges $module_sectr) -or $pkg_grime_dirty -or $pkg_VEFontCache_dirty -or $module_scripts_dirty
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr build, module up to date'
 				return $module_unchanged
@@ -201,10 +205,10 @@ push-location $path_root
 			# $build_args += $flag_micro_architecture_native
 			$build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical
-			# $build_args += $flag_optimize_none
+			$build_args += $flag_optimize_none
 			# $build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
-			$build_args += $falg_optimize_aggressive
+			# $build_args += $falg_optimize_aggressive
 			$build_args += $flag_debug
 			$build_args += $flag_pdb_name + $pdb
 			$build_args += $flag_subsystem + 'windows'
@@ -217,6 +221,8 @@ push-location $path_root
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
+			# $build_args += $flag_show_debug_messages
+			write-host $build_args
 
 			if ( Test-Path $module_dll) {
 				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
@@ -277,8 +283,8 @@ push-location $path_root
 			# $build_args += $flag_micro_architecture_native
 			$build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical
-			# $build_args += $flag_optimize_none
-			$build_args += $flag_optimize_minimal
+			$build_args += $flag_optimize_none
+			# $build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
 			# $build_args += $falg_optimize_aggressive
 			$build_args += $flag_debug

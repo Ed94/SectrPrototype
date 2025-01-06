@@ -18,6 +18,7 @@ The dependencies are:
 * Odin Compiler (Slightly custom [fork](https://github.com/Ed94/Odin))
   * Added #region, #endregion directives support for editors
   * I added support for 'monlithic packages' or 'uniform-across-subdirectories packages'. It allows me to organize the main package with sub-directories.
+  * Added the ability to debug using statements on structs (fields get dumped to the stack as ptr refs)
 * Odin repo's base, core, and vendor(raylib) libaries
 * An ini parser
 * backtrace (not used yet)

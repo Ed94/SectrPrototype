@@ -293,7 +293,7 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 
 					// over_sample : f32 = f32(get_state().config.font_size_canvas_scalar)
 
-					current.computed.text_shape = shape_text_cached_latin( current.text.str, current.style.font, current.layout.font_size, 1.0 )
+					current.computed.text_shape = shape_text_cached( current.text.str, current.style.font, current.layout.font_size, 1.0 )
 				}
 				ui_box_compute_layout( current )
 			}
