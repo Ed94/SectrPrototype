@@ -615,19 +615,14 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			to_glyph_buffer_space( & dst_region_pos, & dst_region_size, atlas_size )
 		
 			clear_target_region : Draw_Call
-			{
-				using clear_target_region
-				pass        = .Atlas
-				region      = .Ignore
-				start_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
-		
-				blit_quad( & glyph_buffer.clear_draw_list,
-					dst_region_pos, dst_region_pos + dst_region_size,
-					{ 1.0, 1.0 },  { 1.0, 1.0 }
-				)
-		
-				end_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
-			}
+			clear_target_region.pass        = .Atlas
+			clear_target_region.region      = .Ignore
+			clear_target_region.start_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
+			blit_quad( & glyph_buffer.clear_draw_list,
+				dst_region_pos, dst_region_pos + dst_region_size,
+				{ 1.0, 1.0 },  { 1.0, 1.0 }
+			)
+			clear_target_region.end_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
 			
 			dst_glyph_pos    := glyph.region_pos
 			dst_glyph_size   := glyph.bounds_size_scaled + atlas.glyph_padding
@@ -638,21 +633,15 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			src_size      := (glyph.bounds_size_scaled + atlas.glyph_padding) *  glyph_buffer.over_sample
 			// src_size.y     = ceil(src_size.y) // Note(Ed): Seems to improve hinting
 			to_target_space( & src_position, & src_size, glyph_buffer_size )
-	
 			
 			blit_to_atlas : Draw_Call
-			{
-				using blit_to_atlas
-				pass        = .Atlas
-				region      = .None
-				start_index = cast(u32) len(glyph_buffer.draw_list.indices)
-	
-				blit_quad( & glyph_buffer.draw_list,
-					dst_glyph_pos, dst_glyph_pos + dst_glyph_size,
-					src_position,  src_position  + src_size )
-	
-				end_index = cast(u32) len(glyph_buffer.draw_list.indices)
-			}
+			blit_to_atlas.pass        = .Atlas
+			blit_to_atlas.region      = .None
+			blit_to_atlas.start_index = cast(u32) len(glyph_buffer.draw_list.indices)
+			blit_quad( & glyph_buffer.draw_list,
+				dst_glyph_pos, dst_glyph_pos + dst_glyph_size,
+				src_position,  src_position  + src_size )
+			blit_to_atlas.end_index = cast(u32) len(glyph_buffer.draw_list.indices)
 	
 			append( & glyph_buffer.clear_draw_list.calls, clear_target_region )
 			append( & glyph_buffer.draw_list.calls,       blit_to_atlas )

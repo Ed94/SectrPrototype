@@ -58,19 +58,17 @@ shaper_shutdown :: proc( ctx : ^Shaper_Context )
 
 shaper_load_font :: #force_inline proc( ctx : ^Shaper_Context, label : string, data : []byte, user_data : rawptr = nil ) -> (info : Shaper_Info)
 {
-	using info
-	blob = harfbuzz.blob_create( raw_data(data), cast(c.uint) len(data), harfbuzz.Memory_Mode.READONLY, user_data, nil )
-	face = harfbuzz.face_create( blob, 0 )
-	font = harfbuzz.font_create( face )
+	info.blob = harfbuzz.blob_create( raw_data(data), cast(c.uint) len(data), harfbuzz.Memory_Mode.READONLY, user_data, nil )
+	info.face = harfbuzz.face_create( info.blob, 0 )
+	info.font = harfbuzz.font_create( info.face )
 	return
 }
 
-shaper_unload_font :: #force_inline proc( ctx : ^Shaper_Info )
+shaper_unload_font :: #force_inline proc( info : ^Shaper_Info )
 {
-	using ctx
-	if blob != nil do harfbuzz.font_destroy( font )
-	if face != nil do harfbuzz.face_destroy( face )
-	if blob != nil do harfbuzz.blob_destroy( blob )
+	if info.blob != nil do harfbuzz.font_destroy( info.font )
+	if info.face != nil do harfbuzz.face_destroy( info.face )
+	if info.blob != nil do harfbuzz.blob_destroy( info.blob )
 }
 
 shaper_shape_harfbuzz :: #force_inline proc( ctx : ^Shaper_Context, text_utf8 : string, entry : Entry, font_px_Size, font_scale : f32, output :^Shaped_Text )

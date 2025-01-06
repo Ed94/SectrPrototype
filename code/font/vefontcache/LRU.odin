@@ -39,18 +39,17 @@ pool_list_init :: proc( pool : ^Pool_List, capacity : i32, dbg_name : string = "
 	pool.capacity = capacity
 
 	pool.dbg_name = dbg_name
-	using pool
 
-	for id in 0 ..< capacity {
-		free_list[id] = i32(id)
-		items[id] = {
+	for id in 0 ..< pool.capacity {
+		pool.free_list[id] = i32(id)
+		pool.items[id] = {
 			prev = -1,
 			next = -1,
 		}
 	}
 
-	front = -1
-	back  = -1
+	pool.front = -1
+	pool.back  = -1
 }
 
 pool_list_free :: proc( pool : ^Pool_List ) {
@@ -65,96 +64,91 @@ pool_list_reload :: proc( pool : ^Pool_List, allocator : Allocator ) {
 
 pool_list_clear :: proc( pool: ^Pool_List )
 {
-	using pool
-	clear(& items)
-	clear(& free_list)
+	clear(& pool.items)
+	clear(& pool.free_list)
 	resize( & pool.items, cap(pool.items) )
 	resize( & pool.free_list, cap(pool.free_list) )
 
-	for id in 0 ..< capacity {
-		free_list[id] = i32(id)
-		items[id] = {
+	for id in 0 ..< pool.capacity {
+		pool.free_list[id] = i32(id)
+		pool.items[id] = {
 			prev = -1,
 			next = -1,
 		}
 	}
 
-	front = -1
-	back  = -1
-	size  = 0
+	pool.front = -1
+	pool.back  = -1
+	pool.size  = 0
 }
 
 pool_list_push_front :: proc( pool : ^Pool_List, value : Pool_ListValue )
 {
-	using pool
-	if size >= capacity do return
+	if pool.size >= pool.capacity do return
 
-	length := len(free_list)
+	length := len(pool.free_list)
 	assert( length > 0 )
-	assert( length == int(capacity - size) )
+	assert( length == int(pool.capacity - pool.size) )
 
-	id := free_list[ len(free_list) - 1 ]
+	id := pool.free_list[ len(pool.free_list) - 1 ]
 	if pool.dbg_name != "" {
 		logf("pool_list: back %v", id)
 	}
-	pop( & free_list )
-	items[ id ].prev  = -1
-	items[ id ].next  = front
-	items[ id ].value = value
+	pop( & pool.free_list )
+	pool.items[ id ].prev  = -1
+	pool.items[ id ].next  = pool.front
+	pool.items[ id ].value = value
 	if pool.dbg_name != "" {
 		logf("pool_list: pushed %v into id %v", value, id)
 	}
 
-	if front != -1 do items[ front ].prev = id
-	if back  == -1 do back = id
-	front  = id
-	size  += 1
+	if pool.front != -1 do pool.items[ pool.front ].prev = id
+	if pool.back  == -1 do pool.back = id
+	pool.front  = id
+	pool.size  += 1
 }
 
 pool_list_erase :: proc( pool : ^Pool_List, iter : Pool_ListIter )
 {
-	using pool
-	if size <= 0 do return
-	assert( iter >= 0 && iter < i32(capacity) )
-	assert( len(free_list) == int(capacity - size) )
+	if pool.size <= 0 do return
+	assert( iter >= 0 && iter < i32(pool.capacity) )
+	assert( len(pool.free_list) == int(pool.capacity - pool.size) )
 
-	iter_node := & items[ iter ]
+	iter_node := & pool.items[ iter ]
 	prev := iter_node.prev
 	next := iter_node.next
 
-	if iter_node.prev != -1 do items[ prev ].next = iter_node.next
-	if iter_node.next != -1 do items[ next ].prev = iter_node.prev
+	if iter_node.prev != -1 do pool.items[ prev ].next = iter_node.next
+	if iter_node.next != -1 do pool.items[ next ].prev = iter_node.prev
 
-	if front == iter do front = iter_node.next
-	if back  == iter do back  = iter_node.prev
+	if pool.front == iter do pool.front = iter_node.next
+	if pool.back  == iter do pool.back  = iter_node.prev
 
 	iter_node.prev  = -1
 	iter_node.next  = -1
 	iter_node.value = 0
-	append( & free_list, iter )
+	append( & pool.free_list, iter )
 
-	size -= 1
-	if size == 0 {
-		back  = -1
-		front = -1
+	pool.size -= 1
+	if pool.size == 0 {
+		pool.back  = -1
+		pool.front = -1
 	}
 }
 
 pool_list_move_to_front :: proc "contextless" ( pool : ^Pool_List, iter : Pool_ListIter )
 {
-	using pool
+	if pool.front == iter do return
 
-	if front == iter do return
+	item := & pool.items[iter]
+	if item.prev != -1   do pool.items[ item.prev ].next = item.next
+	if item.next != -1   do pool.items[ item.next ].prev = item.prev
+	if pool.back == iter do pool.back = item.prev
 
-	item := & items[iter]
-	if item.prev != -1   do items[ item.prev ].next = item.next
-	if item.next != -1   do items[ item.next ].prev = item.prev
-	if back      == iter do back = item.prev
-
-	item.prev           = -1
-	item.next           = front
-	items[ front ].prev = iter
-	front               = iter
+	item.prev                     = -1
+	item.next                     = pool.front
+	pool.items[ pool.front ].prev = iter
+	pool.front                    = iter
 }
 
 pool_list_peek_back :: #force_inline proc ( pool : Pool_List ) -> Pool_ListValue #no_bounds_check {

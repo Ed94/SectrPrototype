@@ -273,8 +273,6 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	Glyph_Buffer_Setup:
 	{
 		glyph_buffer := & ctx.glyph_buffer
-
-		// using glyph_buffer
 		glyph_buffer.over_sample   = glyph_draw_params.over_sample
 		glyph_buffer.width         = atlas.region_d.width  * i32(glyph_buffer.over_sample.x) * i32(glyph_draw_params.buffer_glyph_limit)
 		glyph_buffer.height        = atlas.region_d.height * i32(glyph_buffer.over_sample.y)
@@ -325,10 +323,13 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	assert( ctx != nil )
 	ctx.backing       = allocator
 	context.allocator = ctx.backing
-	using ctx
-	// using ctx.atlas
 
-	reload_array( & entries, allocator )
+	atlas        := & ctx.atlas
+	glyph_buffer := & ctx.glyph_buffer
+	shape_cache  := & ctx.shape_cache
+	draw_list    := & ctx.draw_list
+
+	reload_array( & ctx.entries, allocator )
 
 	reload_array( & glyph_buffer.draw_list.calls,    allocator )
 	reload_array( & glyph_buffer.draw_list.indices,  allocator )
@@ -353,10 +354,9 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 
 	lru_reload( & shape_cache.state, allocator )
 	for idx : i32 = 0; idx < i32(len(shape_cache.storage)); idx += 1 {
-		stroage_entry := & shape_cache.storage[idx]
-		using stroage_entry
-		reload_array( & glyphs,    allocator )
-		reload_array( & positions, allocator )
+		storage_entry := & shape_cache.storage[idx]
+		reload_array( & storage_entry.glyphs,    allocator )
+		reload_array( & storage_entry.positions, allocator )
 	}
 	reload_array( & shape_cache.storage, allocator )
 	
@@ -369,12 +369,16 @@ shutdown :: proc( ctx : ^Context )
 {
 	assert( ctx != nil )
 	context.allocator = ctx.backing
-	using ctx
 
-	for & entry in entries {
+	atlas        := & ctx.atlas
+	glyph_buffer := & ctx.glyph_buffer
+	shape_cache  := & ctx.shape_cache
+	draw_list    := & ctx.draw_list
+
+	for & entry in ctx.entries {
 		unload_font( ctx, entry.id )
 	}
-	delete( entries )
+	delete( ctx.entries )
 	
 	delete( glyph_buffer.draw_list.vertices )
 	delete( glyph_buffer.draw_list.indices )
@@ -398,11 +402,9 @@ shutdown :: proc( ctx : ^Context )
 	lru_free( & atlas.region_d.state )
 
 	for idx : i32 = 0; idx < i32(len(shape_cache.storage)); idx += 1 {
-		stroage_entry := & shape_cache.storage[idx]
-		using stroage_entry
-
-		delete( glyphs )
-		delete( positions )
+		storage_entry := & shape_cache.storage[idx]
+		delete( storage_entry.glyphs )
+		delete( storage_entry.positions )
 	}
 	lru_free( & shape_cache.state )
 	
@@ -410,8 +412,8 @@ shutdown :: proc( ctx : ^Context )
 	delete( draw_list.indices )
 	delete( draw_list.calls )
 
-	shaper_shutdown( & shaper_ctx )
-	parser_shutdown( & parser_ctx )
+	shaper_shutdown( & ctx.shaper_ctx )
+	parser_shutdown( & ctx.parser_ctx )
 }
 
 load_font :: proc( ctx : ^Context, label : string, data : []byte, glyph_curve_quality : u32 = 0 ) -> (font_id : Font_ID, error : Load_Font_Error)
@@ -419,8 +421,9 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, glyph_curve_qu
 	profile(#procedure)
 	assert( ctx != nil )
 	assert( len(data) > 0 )
-	using ctx
-	context.allocator = backing
+	context.allocator = ctx.backing
+
+	entries := & ctx.entries
 
 	id : i32 = -1
 
@@ -430,7 +433,7 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, glyph_curve_qu
 		break
 	}
 	if id == -1 {
-		append_elem( & entries, Entry {})
+		append_elem( entries, Entry {})
 		id = cast(i32) len(entries) - 1
 	}
 	assert( id >= 0 && id < i32(len(entries)) )
@@ -441,12 +444,12 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, glyph_curve_qu
 
 		profile_begin("calling loaders")
 		parser_error : b32
-		entry.parser_info, parser_error = parser_load_font( & parser_ctx, label, data )
+		entry.parser_info, parser_error = parser_load_font( & ctx.parser_ctx, label, data )
 		if parser_error {
 			error = .Parser_Failed
 			return
 		}
-		entry.shaper_info = shaper_load_font( & shaper_ctx, label, data )
+		entry.shaper_info = shaper_load_font( & ctx.shaper_ctx, label, data )
 		profile_end()
 
 		ascent, descent, line_gap := parser_get_font_vertical_metrics(entry.parser_info)
@@ -628,19 +631,17 @@ get_draw_list_layer :: #force_inline proc( ctx : ^Context, optimize_before_retur
 
 flush_draw_list :: #force_inline proc( ctx : ^Context ) {
 	assert( ctx != nil )
-	using ctx
-	clear_draw_list( & draw_list )
-	draw_layer.vertices_offset = 0
-	draw_layer.indices_offset  = 0
-	draw_layer.calls_offset    = 0
+	clear_draw_list( & ctx.draw_list )
+	ctx.draw_layer.vertices_offset = 0
+	ctx.draw_layer.indices_offset  = 0
+	ctx.draw_layer.calls_offset    = 0
 }
 
 flush_draw_list_layer :: #force_inline proc( ctx : ^Context ) {
 	assert( ctx != nil )
-	using ctx
-	draw_layer.vertices_offset = len(draw_list.vertices)
-	draw_layer.indices_offset  = len(draw_list.indices)
-	draw_layer.calls_offset    = len(draw_list.calls)
+	ctx.draw_layer.vertices_offset = len(ctx.draw_list.vertices)
+	ctx.draw_layer.indices_offset  = len(ctx.draw_list.indices)
+	ctx.draw_layer.calls_offset    = len(ctx.draw_list.calls)
 }
 
 //#endregion("drawing")
@@ -759,19 +760,13 @@ clear_atlas_region_caches :: proc(ctx : ^Context)
 // Can be used with hot-reload
 clear_shape_cache :: proc (ctx : ^Context)
 {
-	using ctx
-	lru_clear(& shape_cache.state)
-	for idx : i32 = 0; idx < cast(i32) cap(shape_cache.storage); idx += 1
-	{
-		stroage_entry := & shape_cache.storage[idx]
-		using stroage_entry
-		end_cursor_pos = {}
-		size           = {}
-		clear(& glyphs)
-		clear(& positions)
-		clear(& draw_list.calls)
-		clear(& draw_list.indices)
-		clear(& draw_list.vertices)
+	lru_clear(& ctx.shape_cache.state)
+	for idx : i32 = 0; idx < cast(i32) cap(ctx.shape_cache.storage); idx += 1 {
+		stroage_entry := & ctx.shape_cache.storage[idx]
+		stroage_entry.end_cursor_pos = {}
+		stroage_entry.size           = {}
+		clear(& stroage_entry.glyphs)
+		clear(& stroage_entry.positions)
 	}
 	ctx.shape_cache.next_cache_id = 0
 }
