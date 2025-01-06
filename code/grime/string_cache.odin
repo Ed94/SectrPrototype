@@ -18,10 +18,7 @@ import "core:strings"
 StringKey   :: distinct u64
 RunesCached :: []rune
 
-// TODO(Ed): There doesn't seem to be a need for caching the runes.
-// It seems like no one has had a bottleneck just iterating through the code points on demand when needed.
-// So we should problably scrap storing them that way.
-
+// Note(Ed): No longer using for caching but could still be useful in the future
 StrRunesPair :: struct {
 	str   : string,
 	runes : []rune,
@@ -29,9 +26,11 @@ StrRunesPair :: struct {
 to_str_runes_pair_via_string :: #force_inline proc ( content : string ) -> StrRunesPair { return { content, to_runes(content) }  }
 to_str_runes_pair_via_runes  :: #force_inline proc ( content : []rune ) -> StrRunesPair { return { to_string(content), content } }
 
+StrCached :: string
+
 StringCache :: struct {
 	slab      : Slab,
-	table     : HMapChained(StrRunesPair),
+	table     : HMapChained(StrCached),
 }
 
 // This is the default string cache for the runtime module.
@@ -44,9 +43,9 @@ str_cache_init :: proc( table_allocator, slabs_allocator : Allocator ) -> (cache
 
 	policy     : SlabPolicy
 	policy_ptr := & policy
-	// push( policy_ptr, SlabSizeClass {  64 * Kilobyte,              8, alignment })
-	// push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             16, alignment })
-	// push( policy_ptr, SlabSizeClass { 128 * Kilobyte,             32, alignment })
+	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,              8, alignment })
+	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,             16, alignment })
+	push( policy_ptr, SlabSizeClass { 128 * Kilobyte,             32, alignment })
 	push( policy_ptr, SlabSizeClass { 640 * Kilobyte,             64, alignment })
 	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,            128, alignment })
 	push( policy_ptr, SlabSizeClass {  64 * Kilobyte,            256, alignment })
@@ -71,7 +70,7 @@ str_cache_init :: proc( table_allocator, slabs_allocator : Allocator ) -> (cache
 	cache.slab, alloc_error = slab_init( & policy, allocator = slabs_allocator, dbg_name = dbg_name )
 	verify(alloc_error == .None, "Failed to initialize the string cache" )
 
-	cache.table, alloc_error = make( HMapChained(StrRunesPair), 1 * Kilo, table_allocator, dbg_name = dbg_name )
+	cache.table, alloc_error = make( HMapChained(StrCached), 1 * Kilo, table_allocator, dbg_name = dbg_name )
 	return
 }
 
@@ -82,11 +81,11 @@ str_cache_reload :: #force_inline proc ( cache : ^StringCache, table_allocator, 
 
 str_cache_set_module_ctx :: #force_inline proc "contextless" ( cache : ^StringCache ) { Module_String_Cache = cache }
 str_intern_key           :: #force_inline proc( content : string ) ->  StringKey      { return cast(StringKey) crc32( transmute([]byte) content ) }
-str_intern_lookup        :: #force_inline proc( key : StringKey )  -> (^StrRunesPair) { return hmap_chained_get( Module_String_Cache.table, transmute(u64) key ) }
+str_intern_lookup        :: #force_inline proc( key : StringKey )  -> (^StrCached)    { return hmap_chained_get( Module_String_Cache.table, transmute(u64) key ) }
 
-str_intern :: proc( content : string ) -> StrRunesPair
+str_intern :: #force_inline proc( content : string ) -> StrCached
 {
-	// profile(#procedure)
+	profile(#procedure)
 	cache  := Module_String_Cache
 	key    := str_intern_key(content)
 	result := hmap_chained_get( cache.table, transmute(u64) key )
@@ -100,19 +99,14 @@ str_intern :: proc( content : string ) -> StrRunesPair
 
 	copy_non_overlapping( raw_data(str_mem), raw_data(content), length )
 
-	runes : []rune
-	runes, alloc_error = to_runes( content, slab_allocator(cache.slab) )
-	verify( alloc_error == .None, "String cache had a backing allocator error" )
-	// slab_validate_pools( cache.slab.backing )
-
-	result, alloc_error = hmap_chained_set( cache.table, transmute(u64) key, StrRunesPair { transmute(string) str_mem, runes } )
+	result, alloc_error = hmap_chained_set( cache.table, transmute(u64) key, transmute(StrCached) str_mem )
 	verify( alloc_error == .None, "String cache had a backing allocator error" )
 	// slab_validate_pools( cache.slab.backing )
 
 	return (result ^)
 }
 
-str_intern_fmt :: #force_inline proc( format : string, args : ..any, allocator := context.allocator ) -> StrRunesPair {
+str_intern_fmt :: #force_inline proc( format : string, args : ..any, allocator := context.allocator ) -> StrCached {
 	return str_intern(str_fmt(format, args, allocator = allocator))
 }
 

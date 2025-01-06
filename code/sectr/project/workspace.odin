@@ -7,7 +7,7 @@ or frame tiling towards the application's screenspace.
 package sectr
 
 Workspace :: struct {
-	name : StrRunesPair,
+	name : StrCached,
 
 	cam         : Camera,
 	zoom_target : f32,

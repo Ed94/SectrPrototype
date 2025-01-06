@@ -237,7 +237,7 @@ ui_graph_build_begin :: proc( ui : ^ UI_State, bounds : Vec2 = {} )
 	}
 
 	ui.built_box_count = 0
-	root = ui_box_make( {}, str_intern(str_fmt("%s: root#001", ui == & state.screen_ui ? "Screen" : "Workspace" )).str)
+	root = ui_box_make( {}, str_intern(str_fmt("%s: root#001", ui == & state.screen_ui ? "Screen" : "Workspace" )))
 	if ui == & state.screen_ui {
 		root.layout.size = range2(Vec2(state.app_window.extent) * 2, {})
 	}
@@ -283,7 +283,8 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 
 			if ! current.computed.fresh
 			{
-				if len(current.text.str) > 0 {
+				if len(current.text) > 0 {
+					profile("text shape")
 					// app_window       := get_state().app_window
 					// screen_extent    := app_window.extent
 					// screen_size      := screen_extent * 2
@@ -293,7 +294,7 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 
 					// over_sample : f32 = f32(get_state().config.font_size_canvas_scalar)
 
-					current.computed.text_shape = shape_text_cached( current.text.str, current.style.font, current.layout.font_size, 1.0 )
+					current.computed.text_shape = shape_text_cached( current.text, current.style.font, current.layout.font_size, 1.0 )
 				}
 				ui_box_compute_layout( current )
 			}
@@ -301,6 +302,8 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			if ! intersects_range2(ui_view_bounds(ui), current.computed.bounds) {
 				continue
 			}
+
+			profile("render queue resolution")
 
 			different_ancestory := b8(current.ancestors != previous_layer)
 
@@ -318,7 +321,7 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			// if len(current.text.str) > 0
 			// {
 				entry_text := UI_RenderTextInfo {
-					text      = current.text.str,
+					text      = current.text,
 					shape     = current.computed.text_shape,
 					position  = current.computed.text_pos,
 					color     = current.style.text_color,

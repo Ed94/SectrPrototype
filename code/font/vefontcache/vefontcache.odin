@@ -21,11 +21,12 @@ Load_Font_Error :: enum(i32) {
 }
 
 Entry :: struct {
-	parser_info   : Parser_Font_Info,
-	shaper_info   : Shaper_Info,
-	id            : Font_ID,
-	used          : b32,
-	curve_quality : f32,
+	parser_info    : Parser_Font_Info,
+	shaper_info    : Shaper_Info,
+	id             : Font_ID,
+	used           : b32,
+	curve_quality  : f32,
+	// snap_glyph_pos : 
 
 	ascent   : f32,
 	descent  : f32,
@@ -98,26 +99,26 @@ Init_Atlas_Params :: struct {
 }
 
 Init_Atlas_Params_Default :: Init_Atlas_Params {
-	width             = 4096,
-	height            = 2048,
+	width             = 4096 * 2,
+	height            = 2048 * 2,
 	glyph_padding     = 1,
 	glyph_over_scalar = 1,
 
 	region_a = {
-		width  = 32,
-		height = 32,
+		width  = 32 * 2,
+		height = 32 * 2,
 	},
 	region_b = {
-		width  = 32,
-		height = 64,
+		width  = 32 * 2,
+		height = 64 * 2,
 	},
 	region_c = {
-		width  = 64,
-		height = 64,
+		width  = 64 * 2,
+		height = 64 * 2,
 	},
 	region_d = {
-		width  = 128,
-		height = 128,
+		width  = 128 * 2,
+		height = 128 * 2,
 	}
 }
 
@@ -224,10 +225,10 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 			error : Allocator_Error
 			lru_init( & region.state, region.capacity.x * region.capacity.y )
 		}
-		init_atlas_region( & atlas.region_a, atlas_params, atlas_params.region_a, { 4, 2}, 1024 )
-		init_atlas_region( & atlas.region_b, atlas_params, atlas_params.region_b, { 4, 2}, 512 )
-		init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c, { 4, 1}, 512 )
-		init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d, { 2, 1}, 256 )
+		init_atlas_region( & atlas.region_a, atlas_params, atlas_params.region_a, { 4, 2}, 1024 * 4 )
+		init_atlas_region( & atlas.region_b, atlas_params, atlas_params.region_b, { 4, 2}, 512 * 4 )
+		init_atlas_region( & atlas.region_c, atlas_params, atlas_params.region_c, { 4, 1}, 512 * 4 )
+		init_atlas_region( & atlas.region_d, atlas_params, atlas_params.region_d, { 2, 1}, 256 * 4 )
 
 		atlas.width             = i32(atlas_params.width)
 		atlas.height            = i32(atlas_params.height)
@@ -494,10 +495,15 @@ configure_snap :: #force_inline proc( ctx : ^Context, snap_width, snap_height : 
 	ctx.snap_height = f32(snap_height)
 }
 
-get_cursor_pos   :: #force_inline proc( ctx : ^Context                  ) -> Vec2 { assert(ctx != nil); return ctx.cursor_pos      }
-set_alpha_scalar :: #force_inline proc( ctx : ^Context, scalar : f32    )         { assert(ctx != nil); ctx.alpha_sharpen = scalar }
-set_px_scalar    :: #force_inline proc( ctx : ^Context, scalar : f32    )         { assert(ctx != nil); ctx.px_scalar     = scalar } 
-set_colour       :: #force_inline proc( ctx : ^Context, colour : Colour )         { assert(ctx != nil); ctx.colour        = colour }
+get_cursor_pos     :: #force_inline proc( ctx : ^Context                  ) -> Vec2 { assert(ctx != nil); return ctx.cursor_pos      }
+set_alpha_scalar   :: #force_inline proc( ctx : ^Context, scalar : f32    )         { assert(ctx != nil); ctx.alpha_sharpen = scalar }
+set_px_scalar      :: #force_inline proc( ctx : ^Context, scalar : f32    )         { assert(ctx != nil); ctx.px_scalar     = scalar } 
+set_colour         :: #force_inline proc( ctx : ^Context, colour : Colour )         { assert(ctx != nil); ctx.colour        = colour }
+
+set_snap_glyph_pos :: #force_inline proc( ctx : ^Context, should_snap : b32 ) { 
+	assert(ctx != nil)
+	ctx.shaper_ctx.snap_glyph_position = should_snap
+}
 
 draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, position, scale : Vec2, text_utf8 : string )
 {
@@ -540,6 +546,46 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, 
 		ctx.snap_height
 	)
 }
+
+draw_text_slice :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, position, scale : Vec2, texts : []string )
+{
+	profile(#procedure)
+	assert( ctx != nil )
+	assert( font >= 0 && int(font) < len(ctx.entries) )
+	assert( len(texts) > 0 )
+
+	entry := ctx.entries[ font ]
+
+	ctx.cursor_pos = {}
+
+	position := position
+	position.x = ceil(position.x * ctx.snap_width ) / ctx.snap_width
+	position.y = ceil(position.y * ctx.snap_height) / ctx.snap_height
+
+	colour   := ctx.colour
+	colour.a  = 1.0 + ctx.alpha_sharpen
+
+	font_scale := parser_scale( entry.parser_info, px_size )
+
+	px_upscale         := px_size * ctx.px_scalar
+	downscale          := scale * (1 / ctx.px_scalar)
+	font_scale_upscale := parser_scale( entry.parser_info, px_upscale )
+
+	shapes := make( []Shaped_Text, len(texts) )
+	for str, id in texts {
+		assert( len(str) > 0 )
+		shape := shaper_shape_text_cached( str, & ctx.shaper_ctx, & ctx.shape_cache, 
+			font, 
+			entry, 
+			px_upscale,
+			font_scale_upscale, 
+			shaper_shape_text_uncached_advanced
+		)
+		shapes[id] = shape
+	}
+	generate_shapes_draw_list(ctx, font, colour, entry, font_scale_upscale, position, scale, shapes )
+}
+
 
 // draw_text_no_snap :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, position, scale : Vec2, text_utf8 : string )
 // {

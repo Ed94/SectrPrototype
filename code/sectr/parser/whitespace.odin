@@ -63,7 +63,7 @@ PWS_LexResult :: struct {
 PWS_Token :: struct {
 	type         : PWS_TokenType,
 	line, column : u32,
-	content      : StrRunesPair,
+	content      : StrCached,
 }
 
 PWS_AST_Type :: enum u32 {
@@ -80,7 +80,7 @@ PWS_AST :: struct {
 	type        : PWS_AST_Type,
 
 	line, column : u32,
-	content      : StrRunesPair,
+	content      : StrCached,
 }
 
 PWS_ParseError :: struct {

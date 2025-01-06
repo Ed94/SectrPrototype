@@ -46,14 +46,14 @@ font_provider_startup :: proc( ctx : ^FontProviderContext )
 	verify( error == AllocatorError.None, "Failed to allocate font_cache" )
 
 	ve.startup( & ve_ctx, .STB_TrueType, allocator = persistent_slab_allocator() )
-	ve_ctx.glyph_buffer.over_sample = { 4,4 }
+	// ve_ctx.glyph_buffer.over_sample = { 4,4 }
 	log("VEFontCached initialized")
 	font_provider_setup_sokol_gfx_objects( & render, ve_ctx )
 }
 
 font_provider_reload :: proc( ctx : ^FontProviderContext )
 {
-	ctx.ve_ctx.glyph_buffer.over_sample = { 4,4 } * 1.0
+	// ctx.ve_ctx.glyph_buffer.over_sample = { 4,4 } * 2
 	hmap_chained_reload( ctx.font_cache, persistent_allocator())
 	ve.hot_reload( & ctx.ve_ctx, persistent_slab_allocator() )
 	ve.clear_atlas_region_caches(& ctx.ve_ctx)
@@ -116,8 +116,16 @@ font_load :: proc(path_file : string,
 	return fid
 }
 
+font_provider_set_alpha_sharpen :: #force_inline proc( scalar : f32 ) {
+	ve.set_alpha_scalar( & get_state().font_provider_ctx.ve_ctx, scalar )
+}
+
 font_provider_set_px_scalar :: #force_inline proc( scalar : f32 ) {
 	ve.set_px_scalar( & get_state().font_provider_ctx.ve_ctx, scalar )
+}
+
+font_provider_set_snap_glyph_pos :: #force_inline proc( should_snap : b32 ) {
+	ve.set_snap_glyph_pos( & get_state().font_provider_ctx.ve_ctx, should_snap )
 }
 
 Font_Use_Default_Size :: f32(0.0)

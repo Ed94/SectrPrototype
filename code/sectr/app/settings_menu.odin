@@ -137,10 +137,10 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 			if ! dd_app_config.is_open do break app_config_closed
 			ui_size_to_content_y( dd_app_config.vbox)
 
-			ui_settings_entry_inputbox :: proc( input_box : ^UI_TextInputBox, is_even : bool, label : string, setting_title : StrRunesPair, input_policy : UI_TextInput_Policy )
+			ui_settings_entry_inputbox :: proc( input_box : ^UI_TextInputBox, is_even : bool, label : string, setting_title : StrCached, input_policy : UI_TextInput_Policy )
 			{
 				scope( theme_table_row(is_even))
-				hb := ui_hbox(.Left_To_Right, str_intern_fmt("%v.hb", label).str); {
+				hb := ui_hbox(.Left_To_Right, str_fmt("%v.hb", label)); {
 					using hb
 
 					layout.size.min  = {0, 25}
@@ -149,14 +149,14 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				}
 
 				scope(theme_text)
-				title := ui_text(str_intern_fmt("%v.title", label).str, setting_title); {
+				title := ui_text(str_fmt("%v.title", label), setting_title); {
 					using title
 					layout.anchor.ratio.x = 1.0
 					layout.margins.left   = 10
 					layout.font_size      = 12
 				}
 
-				ui_text_input_box( input_box, str_intern_fmt("%v.input_box", label).str, allocator = persistent_slab_allocator(), policy = input_policy )
+				ui_text_input_box( input_box, str_fmt("%v.input_box", label), policy = input_policy, allocator = persistent_slab_allocator() )
 				{
 					using input_box
 					layout.flags          |= {.Fixed_Width}
@@ -357,7 +357,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 					{
 						ui_parent(dd_app_config.vbox)
 						scope(theme_button)
-						btn := ui_button(str_intern_fmt("settings_menu.cam_zoom_mode.%s.btn", entry).str)
+						btn := ui_button(str_fmt("settings_menu.cam_zoom_mode.%s.btn", entry))
 						{
 								using btn
 								layout.size.min     = {100, 25}
@@ -368,7 +368,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 
 								ui_parent(btn)
 								scope(theme_text)
-								text_widget := ui_text(str_intern_fmt("settings_menu.cam_zoom_mode.%s.text", entry).str, str_intern_fmt("%s", entry))
+								text_widget := ui_text(str_fmt("settings_menu.cam_zoom_mode.%s.text", entry), str_intern_fmt("%s", entry))
 						}
 
 						if btn.pressed {
@@ -535,6 +535,35 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 						digit_min              = 0.01,
 						digit_max              = 9999,
 						max_length             = 5,
+					}
+				)
+				using font_size_canvas_scalar_input
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0.001, 9999.0)
+						config.font_size_canvas_scalar = value
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes(str_fmt("%v", config.font_size_canvas_scalar)))
+				}
+			}
+		
+			Text_Alpha_Sharpen:
+			{
+				ui_settings_entry_inputbox( & font_size_canvas_scalar_input, false, "settings_menu.font_size_canvas_scalar", str_intern("Font: Size Canvas Scalar"),
+					UI_TextInput_Policy {
+						digits_only            = true,
+						disallow_leading_zeros = false,
+						disallow_decimal       = false,
+						digit_min              = 0.001,
+						digit_max              = 10,
+						max_length             = 4,
 					}
 				)
 				using font_size_canvas_scalar_input

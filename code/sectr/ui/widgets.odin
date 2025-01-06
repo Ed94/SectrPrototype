@@ -11,14 +11,14 @@ UI_Widget :: struct {
 	using signal : UI_Signal,
 }
 
-ui_widget :: proc( label : string, flags : UI_BoxFlags ) -> (widget : UI_Widget)
+ui_widget :: #force_inline proc( label : string, flags : UI_BoxFlags ) -> (widget : UI_Widget)
 {
 	widget.box    = ui_box_make( flags, label )
 	widget.signal = ui_signal_from_box( widget.box )
 	return
 }
 
-ui_button :: proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widget)
+ui_button :: #force_inline proc( label : string, flags : UI_BoxFlags = {} ) -> (btn : UI_Widget)
 {
 	btn_flags := UI_BoxFlags { .Mouse_Clickable }
 	btn.box    = ui_box_make( btn_flags | flags, label )
@@ -36,7 +36,7 @@ UI_DropDown :: struct {
 }
 
 @(deferred_out = ui_drop_down_end_auto)
-ui_drop_down :: proc( drop_down : ^UI_DropDown, label : string, title_text : StrRunesPair,
+ui_drop_down :: proc( drop_down : ^UI_DropDown, label : string, title_text : StrCached,
 	direction         := UI_LayoutDirection_Y.Top_To_Bottom,
 	btn_flags         := UI_BoxFlags{},
 	vb_flags          := UI_BoxFlags{},
@@ -54,7 +54,7 @@ ui_drop_down :: proc( drop_down : ^UI_DropDown, label : string, title_text : Str
 }
 
 // Its assumed that the drop down has a vertical box parent already pushed
-ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text : StrRunesPair,
+ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text : StrCached,
 	direction := UI_LayoutDirection_Y.Top_To_Bottom,
 	btn_flags := UI_BoxFlags{},
 	vb_flags  := UI_BoxFlags{},
@@ -68,7 +68,7 @@ ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text
 	if btn_theme == nil do push(theme_drop_down_btn)
 	else                do push(btn_theme ^)
 	defer                  ui_theme_pop()
-	btn = ui_button( str_intern_fmt("%s.btn", label).str );
+	btn = ui_button( str_fmt("%s.btn", label) );
 	{
 		btn.layout.padding.left = 4
 		ui_parent(btn)
@@ -76,7 +76,7 @@ ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text
 		if title_theme == nil do push(theme_text)
 		else                  do push(title_theme ^)
 		defer                    ui_theme_pop()
-		title = ui_text( str_intern_fmt("%s.btn.title", label).str, title_text)
+		title = ui_text( str_fmt("%s.btn.title", label), title_text)
 	}
 
 	if btn.pressed {
@@ -91,7 +91,7 @@ ui_drop_down_begin :: proc( drop_down : ^UI_DropDown, label : string, title_text
 	if vb_parent != nil {
 		ui_parent_push(vb_parent)
 	}
-	vbox = ui_vbox_begin( direction, str_intern_fmt("%v.vbox", label).str, flags = {.Mouse_Clickable}, compute_layout = vb_compute_layout )
+	vbox = ui_vbox_begin( direction, str_fmt("%v.vbox", label), flags = {.Mouse_Clickable}, compute_layout = vb_compute_layout )
 	vbox.layout.anchor.ratio.y = 1.0
 
 	if vb_parent != nil {
@@ -328,7 +328,7 @@ ui_resizable_handles :: #force_no_inline proc( parent : ^UI_Widget, pos : ^Vec2,
 
 	name :: proc( label : string ) -> string {
 		parent_label := (transmute(^string) context.user_ptr) ^
-		return str_intern(str_fmt("%v.%v", parent_label, label )).str
+		return str_fmt("%v.%v", parent_label, label )
 	}
 	context.user_ptr = & parent.label
 
@@ -523,9 +523,9 @@ ui_scroll_box :: proc( label : string, flags : UI_BoxFlags ) -> (scroll_box : UI
 }
 
 #region("Text")
-ui_text :: proc( label : string, content : StrRunesPair, flags : UI_BoxFlags = {} ) -> UI_Widget
+ui_text :: #force_inline proc( label : string, content : StrCached, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
-	// profile(#procedure)
+	profile(#procedure)
 	state := get_state(); using state
 
 	box    := ui_box_make( flags, label )
@@ -535,9 +535,9 @@ ui_text :: proc( label : string, content : StrRunesPair, flags : UI_BoxFlags = {
 	return { box, signal }
 }
 
-ui_text_spaces :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
+ui_text_spaces :: #force_inline proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
-	// profile(#procedure)
+	profile(#procedure)
 	state := get_state(); using state
 
 	// TODO(Ed) : Move this somwhere in state.
@@ -550,9 +550,9 @@ ui_text_spaces :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 	return { box, signal }
 }
 
-ui_text_tabs :: proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
+ui_text_tabs :: #force_inline proc( label : string, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
-	// profile(#procedure)
+	profile(#procedure)
 	state   := get_state(); using state
 
 	// TODO(Ed) : Move this somwhere in state.
@@ -595,8 +595,8 @@ ui_text_input_box_reload :: #force_inline proc ( text_box : ^UI_TextInputBox, al
 
 ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 	flags     : UI_BoxFlags = {.Mouse_Clickable, .Focusable, .Click_To_Focus},
-	allocator := context.allocator,
-	policy    : UI_TextInput_Policy = {}
+	policy    : UI_TextInput_Policy = {},
+	allocator : Allocator,
 )
 {
 	// state        := get_state()
@@ -619,6 +619,7 @@ ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 		input_str, error = make( Array(rune), Kilo, allocator )
 		ensure(error == AllocatorError.None, "Failed to allocate array for input_str of input_box")
 	}
+	input_str.backing = allocator // Always assign allocator for hot-reload purposes
 
 	if active
 	{
@@ -706,19 +707,19 @@ ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 	ui_parent(text_input_box)
 	name :: proc( label : string ) -> string {
 		parent_label := (transmute(^string) context.user_ptr) ^
-		return str_intern(str_fmt("%v: %v", parent_label, label )).str
+		return str_intern(str_fmt("%v: %v", parent_label, label ))
 	}
 	context.user_ptr = & parent.label
 
 	// TODO(Ed): Allow for left and center alignment of text
 	value_txt : UI_Widget; {
 		scope(theme_text)
-		value_txt = ui_text(name("input_str"), to_str_runes_pair(array_to_slice(input_str)))
+		value_txt = ui_text(name("input_str"), str_intern(to_string(array_to_slice(input_str))))
 		using value_txt
 		layout.alignment      = {0.0, 0.0}
 		layout.text_alignment = {1.0, 0.5}
 		layout.anchor.left    = 0.0
-		layout.size.min       = cast(Vec2) measure_text_size( text.str, style.font, layout.font_size, 0 )
+		layout.size.min       = cast(Vec2) measure_text_size( text, style.font, layout.font_size, 0 )
 
 		if active {
 			ui_parent(value_txt)

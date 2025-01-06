@@ -238,11 +238,11 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
 			active_box := ui_box_from_key( ui.curr_cache, ui.active )
 			if hot_box != nil {
-				debug_text("Worksapce Hot    Box   : %v", hot_box.label.str )
+				debug_text("Worksapce Hot    Box   : %v", hot_box.label )
 				debug_text("Workspace Hot    Range2: %v", hot_box.computed.bounds.pts)
 			}
 			if active_box != nil{
-				debug_text("Workspace Active Box: %v", active_box.label.str )
+				debug_text("Workspace Active Box: %v", active_box.label )
 			}
 		}
 
@@ -255,11 +255,11 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			hot_box    := ui_box_from_key( ui.curr_cache, ui.hot )
 			active_box := ui_box_from_key( ui.curr_cache, ui.active )
 			if hot_box != nil {
-				debug_text("Hot    Box   : %v", hot_box.label.str )
+				debug_text("Hot    Box   : %v", hot_box.label )
 				debug_text("Hot    Range2: %v", hot_box.computed.bounds.pts)
 			}
 			if active_box != nil{
-				debug_text("Active Box: %v", active_box.label.str )
+				debug_text("Active Box: %v", active_box.label )
 			}
 		}
 
@@ -590,7 +590,7 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 		box_layer_done : b32 = false
 		for box_id < cast(i32) len(box_list) && ! box_layer_done
 		{
-			profile("GP_Render")
+			// profile("GP_Render")
 			box_layer_done = b32(box_id > 0) && box_list[ box_id - 1 ].layer_signal
 
 			entry := box_list[box_id]
@@ -629,7 +629,7 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 		}
 
 		if shape_enqueued {
-			profile("render ui box_layer")
+			// profile("render ui box_layer")
 			render_flush_gp()
 			shape_enqueued = false
 		}
@@ -638,7 +638,7 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 		text_layer_done : b32 = false
 		for text_id < cast(i32) len(text_list) && ! text_layer_done
 		{
-			profile("Text_Render")
+			// profile("Text_Render")
 			entry := text_list[text_id]
 			font  := entry.font.key != 0 ? entry.font : default_font
 

@@ -22,8 +22,8 @@ UI_NavLinks :: struct {
 UI_Box :: struct {
 	// Cache ID
 	key   : UI_Key,
-	label : StrRunesPair,
-	text  : StrRunesPair,
+	label : StrCached,
+	text  : StrCached,
 
 	// Regenerated per frame.
 	nav : UI_NavLinks,
@@ -67,7 +67,7 @@ ui_box_from_key :: #force_inline proc ( cache : ^HMapChained(UI_Box), key : UI_K
 
 ui_box_make :: proc( flags : UI_BoxFlags, label : string ) -> (^ UI_Box)
 {
-	// profile(#procedure)
+	profile(#procedure)
 	using ui := get_state().ui_context
 	key := ui_key_from_string( label )
 

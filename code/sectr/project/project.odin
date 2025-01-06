@@ -15,8 +15,8 @@ ProjectConfig :: struct {
 }
 
 Project :: struct {
-	path : StrRunesPair,
-	name : StrRunesPair,
+	path : StrCached,
+	name : StrCached,
 
 	config   : ProjectConfig,
 	codebase : CodeBase,

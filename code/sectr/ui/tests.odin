@@ -61,8 +61,8 @@ test_draggable :: proc()
 	draggable.layout.pos  = debug.draggable_box_pos
 	draggable.layout.size.min = debug.draggable_box_size
 
-	draggable.text       = { str_fmt("%v", debug.draggable_box_pos), {} }
-	draggable.text.runes = to_runes(draggable.text.str)
+	draggable.text       = str_intern_fmt("%v", debug.draggable_box_pos)
+	// draggable.text.runes = to_runes(draggable.text)
 }
 
 test_parenting :: proc( default_layout : ^UI_Layout, frame_style_default : ^UI_Style )
@@ -195,6 +195,9 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 
 	label_id := 0
 
+	builder : StringBuilder
+	str.builder_init_len_cap( & builder, len = 0, cap = 16 * Kilobyte )
+
 	line_id := 0
 	for line in array_to_slice( debug.lorem_parse.lines )
 	{
@@ -205,11 +208,17 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 		profile("line")
 
 		ui_layout( text_layout )
-		line_hbox := ui_widget(str_fmt( "line %v", line_id ), {.Mouse_Clickable})
 
-		if line_hbox.key == ui.hot && false
+		profile_begin("label fmt")
+		str.builder_reset( & builder)
+		label := str_fmt_builder( & builder, "line %d", line_id )
+		profile_end()
+
+		line_hbox := ui_widget(label, {.Mouse_Clickable})
+
+		if false && line_hbox.key == ui.hot
 		{
-			line_hbox.text = StrRunesPair {}
+			line_hbox.text = StrCached {}
 			ui_parent(line_hbox)
 
 			chunk_layout          := text_layout
@@ -230,33 +239,34 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 				#partial switch head.type
 				{
 					case .Visible:
-						label := str_intern( str_fmt( "%v %v", head.content.str, label_id ))
-						widget = ui_text( label.str, head.content )
+						label := str_fmt( "%v %v", head.content, label_id )
+						widget = ui_text( label, head.content )
 						label_id += 1
 
 						chunk_layout.pos.x += size_range2( widget.computed.bounds ).x
 
 					case .Spaces:
-						label := str_intern( str_fmt( "%v %v", "space", label_id ))
-						widget = ui_text_spaces( label.str )
+						label := str_fmt( "%v %v", "space", label_id )
+						widget = ui_text_spaces( label )
 						label_id += 1
 
-						for idx in 1 ..< len( head.content.runes )
-						{
+						// for idx in 1 ..< len( head.content.runes )
+						// {
 							// TODO(Ed): VIRTUAL WHITESPACE
 							// widget.style.layout.size.x += range2_size( widget.computed.bounds )
-						}
+						// }
 						chunk_layout.pos.x += size_range2( widget.computed.bounds ).x
 
 					case .Tabs:
-						label := str_intern( str_fmt( "%v %v", "tab", label_id ))
-						widget = ui_text_tabs( label.str )
+						label := str_fmt( "%v %v", "tab", label_id )
+						widget = ui_text_tabs( label )
 						label_id += 1
 
-						for idx in 1 ..< len( head.content.runes )
-						{
+						// for idx in 1 ..< len( head.content.runes )
+						// {
+							// TODO(Ed): VIRTUAL WHITESPACE
 							// widget.style.layout.size.x += range2_size( widget.computed.bounds )
-						}
+						// }
 						chunk_layout.pos.x += size_range2( widget.computed.bounds ).x
 				}
 
@@ -268,30 +278,31 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 		}
 		else
 		{
-			builder_backing : [16 * Kilobyte] byte
-			builder         := str.builder_from_bytes( builder_backing[:] )
+			profile("line (single-box)")
 
 			line_hbox.layout.flags |= { .Size_To_Text }
 
+			str.builder_reset( & builder)
 			head := line.first.next
 			for ; head != nil;
 			{
-				str.write_string( & builder, head.content.str )
+				profile("write ast node")
+				str.write_string( & builder, head.content )
 				head = head.next
 			}
 
+			profile("intern")
 			line_hbox.text = str_intern( to_string( builder ) )
-			// if len(line_hbox.text.str) == 0 {
-			// 	line_hbox.text = str_intern( " " )
-			// }
 		}
 
-		if len(line_hbox.text.str) > 0 {
+		if len(line_hbox.text) > 0 {
+			profile("append actual")
 			array_append( widgets_ptr, line_hbox )
 			text_layout.pos.x  = text_layout.pos.x
 			text_layout.pos.y -= size_range2(line_hbox.computed.bounds).y
 		}
 		else {
+			profile("end")
 			widget := & widgets.data[ widgets.num - 1 ]
 			if widget.box != nil {
 				text_layout.pos.y -= size_range2( widget.computed.bounds ).y

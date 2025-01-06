@@ -22,7 +22,7 @@ ui_floating_startup :: proc( self : ^UI_FloatingManager, build_queue_cap, tracke
 	error : AllocatorError
 
 	queue_dbg_name := str_intern(str_fmt("%s: build_queue", dbg_name))
-	self.build_queue, error = make( Array(UI_Floating), build_queue_cap, dbg_name = queue_dbg_name.str, allocator = allocator )
+	self.build_queue, error = make( Array(UI_Floating), build_queue_cap, dbg_name = queue_dbg_name, allocator = allocator )
 	if error != AllocatorError.None
 	{
 		ensure(false, "Failed to allocate the build_queue")

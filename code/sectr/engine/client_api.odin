@@ -354,8 +354,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
-		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
-		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/ve_fontcache.h", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/ve_fontcache.h", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
 		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
@@ -521,14 +521,15 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	context.allocator      = frame_slab_allocator()
 	context.temp_allocator = transient_allocator()
 
-	// rl.PollInputEvents()
-
 	config := & get_state().config
 	debug  := & get_state().debug
 
 	debug.draw_ui_box_bounds_points = false
 	debug.draw_ui_padding_bounds    = false
 	debug.draw_ui_content_bounds    = false
+
+	font_provider_set_alpha_sharpen(0.45)
+	font_provider_set_snap_glyph_pos(true)
 
 	// config.engine_refresh_hz = 165
 
@@ -550,7 +551,6 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	should_close |= update( host_delta_time_ms )
 	render()
 
-	// rl.SwapScreenBuffer()
 	return should_close
 }
 

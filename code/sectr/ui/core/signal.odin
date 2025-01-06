@@ -30,7 +30,7 @@ UI_Signal :: struct {
 
 ui_signal_from_box :: proc ( box : ^ UI_Box, update_style := true, update_deltas := true ) -> UI_Signal
 {
-	// profile(#procedure)
+	profile(#procedure)
 	ui    := get_state().ui_context
 	input := get_state().input
 

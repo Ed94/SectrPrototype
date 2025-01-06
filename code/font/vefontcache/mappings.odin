@@ -90,6 +90,7 @@ make :: proc {
 	make_dynamic_array,
 	make_dynamic_array_len,
 	make_dynamic_array_len_cap,
+	make_slice,
 	make_map,
 	make_map_cap,
 }

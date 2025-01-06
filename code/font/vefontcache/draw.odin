@@ -249,6 +249,23 @@ generate_glyph_pass_draw_list :: proc(draw_list : ^Draw_List, path : ^[dynamic]V
 	}
 }
 
+generate_shapes_draw_list :: proc ( ctx : ^Context, font : Font_ID, colour : Colour, entry : Entry, font_scale : f32, position, scale : Vec2, shapes : []Shaped_Text )
+{
+	assert(len(shapes) > 0)
+	for shape in shapes {
+		ctx.cursor_pos = {}
+		ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, 
+			colour, 
+			entry, 
+			font_scale, 
+			position,
+			scale, 
+			ctx.snap_width, 
+			ctx.snap_height
+		)
+	}
+}
+
 generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	atlas        : ^Atlas,
 	glyph_buffer : ^Glyph_Draw_Buffer,
@@ -626,12 +643,12 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			
 			dst_glyph_pos    := glyph.region_pos
 			dst_glyph_size   := glyph.bounds_size_scaled + atlas.glyph_padding
-			// dst_glyph_size.y  = ceil(dst_glyph_size.y) // Note(Ed): Seems to improve hinting
+			dst_glyph_size.y  = ceil(dst_glyph_size.y) // Note(Ed): Seems to improve hinting
 			to_glyph_buffer_space( & dst_glyph_pos, & dst_glyph_size, atlas_size )
 	
 			src_position  := Vec2 { glyph.buffer_x, 0 }
-			src_size      := (glyph.bounds_size_scaled + atlas.glyph_padding) *  glyph_buffer.over_sample
-			// src_size.y     = ceil(src_size.y) // Note(Ed): Seems to improve hinting
+			src_size      := (glyph.bounds_size_scaled + atlas.glyph_padding) * glyph_buffer.over_sample
+			src_size.y     = ceil(src_size.y) // Note(Ed): Seems to improve hinting
 			to_target_space( & src_position, & src_size, glyph_buffer_size )
 			
 			blit_to_atlas : Draw_Call

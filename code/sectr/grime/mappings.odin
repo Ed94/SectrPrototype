@@ -305,8 +305,8 @@ import "codebase:grime"
 	to_bytes                 :: grime.to_bytes
 
 	// strings
-	StrRunesPair :: grime.StrRunesPair
-	StringCache  :: grime.StringCache
+	StrCached   :: grime.StrCached
+	StringCache :: grime.StringCache
 
 	str_cache_init           :: grime.str_cache_init
 	str_cache_reload         :: grime.str_cache_reload

@@ -27,7 +27,7 @@ UI_Window_ChildLayout :: enum(i32) {
 
 @(deferred_in=ui_window_end_auto)
 ui_window :: proc (window : ^UI_Window, label : string,
-	title       : StrRunesPair = {},
+	title       : StrCached = {},
 	closable    := true,
 	maximizable := true,
 	draggable   := true,
@@ -41,7 +41,7 @@ ui_window :: proc (window : ^UI_Window, label : string,
 }
 
 ui_window_begin :: proc( window : ^UI_Window, label : string,
-	title        : StrRunesPair = {},
+	title        : StrCached = {},
 	closable     := true,
 	maximizable  := true, 
 	draggable    := true,
@@ -83,7 +83,7 @@ ui_window_begin :: proc( window : ^UI_Window, label : string,
 	scope(theme_transparent)
 	vb = ui_vbox(.Top_To_Bottom, str_fmt_tmp("%s.vb", label))
 
-	if len(title.str) > 0 || closable || maximizable || draggable {
+	if len(title) > 0 || closable || maximizable || draggable {
 		dragged, maximized, closed = ui_window_bar(window, title, closable, maximizable, draggable)
 	}
 
@@ -109,7 +109,7 @@ ui_window_end :: proc (window : ^UI_Window)
 }
 
 ui_window_end_auto :: proc( window : ^UI_Window, label : string,
-	title        : StrRunesPair = {},
+	title        : StrCached = {},
 	closable     := true,
 	maximizable  := true,
 	draggable    := true,
@@ -121,7 +121,7 @@ ui_window_end_auto :: proc( window : ^UI_Window, label : string,
 }
 
 ui_window_bar :: proc( window : ^UI_Window,
-	title       : StrRunesPair = {},
+	title       : StrCached = {},
 	closable    := true,
 	maximizable := true,
 	draggable   := true,
@@ -132,13 +132,13 @@ ui_window_bar :: proc( window : ^UI_Window,
 	draggable_flag : UI_BoxFlags = draggable ? {.Mouse_Clickable} : {}
 
 	scope(theme_window_bar)
-	bar = ui_hbox(.Left_To_Right, str_fmt_tmp("%s.bar", frame.label.str), draggable_flag);
+	bar = ui_hbox(.Left_To_Right, str_fmt_tmp("%s.bar", frame.label), draggable_flag);
 	ui_parent(bar)
 
-	if len(title.str) > 0
+	if len(title) > 0
 	{
 		scope(theme_text)
-		tile_text = ui_text( str_fmt_tmp("%s.title_text", bar.label.str), title, {.Disabled}); {
+		tile_text = ui_text( str_fmt_tmp("%s.title_text", bar.label), title, {.Disabled}); {
 			using tile_text
 			layout.anchor.ratio.x = 1.0
 			layout.margins        = { 0, 0, 15, 0}
@@ -149,7 +149,7 @@ ui_window_bar :: proc( window : ^UI_Window,
 	scope(theme_window_bar_btn)
 	if maximizable 
 	{
-		maximize_btn = ui_button( str_fmt_tmp("%v.maximize_btn", bar.label.str) ); {
+		maximize_btn = ui_button( str_fmt_tmp("%v.maximize_btn", bar.label) ); {
 			using maximize_btn
 			if maximize_btn.pressed {
 				is_maximized = ~is_maximized
