@@ -470,18 +470,18 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		f32_allocated_x := cast(f32) glyph_buffer.allocated_x
 
 		// Resolve how much space this glyph will allocate in the buffer
-		buffer_size   := (glyph.bounds_size_scaled + glyph_buffer.draw_padding) * glyph_buffer.over_sample + glyph.over_sample
+		buffer_size   := (glyph.bounds_size_scaled + glyph_buffer.draw_padding) * glyph_buffer.over_sample
 		// Allocate a glyph glyph render target region (FBO)
-		to_allocate_x := buffer_size.x
+		to_allocate_x := buffer_size.x + 2.0
 
 		// If allocation would exceed buffer's bounds the buffer must be flush before this glyph can be rendered.
 		glyph.flush_glyph_buffer = i32(f32_allocated_x + to_allocate_x) >= i32(glyph_buffer_size.x)
-		glyph.buffer_x           = glyph.flush_glyph_buffer ? 0 : f32_allocated_x
+		glyph.buffer_x           = f32_allocated_x * f32( i32( ! glyph.flush_glyph_buffer ) )
 
 		// The glyph buffer space transform for generate_glyph_pass_draw_list
 		draw_transform       := & glyph.draw_transform
 		draw_transform.scale  = font_scale * glyph_buffer.over_sample
-		draw_transform.pos    = -1 * (glyph.bounds.p0) * draw_transform.scale + atlas.glyph_padding
+		draw_transform.pos    = -1 * (glyph.bounds.p0) * draw_transform.scale + glyph_buffer.draw_padding
 		draw_transform.pos.x += glyph.buffer_x
 		to_glyph_buffer_space( & draw_transform.pos, & draw_transform.scale, glyph_buffer_size )
 
@@ -506,20 +506,15 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 
 		f32_allocated_x := cast(f32) glyph_buffer.allocated_x
 		// Resolve how much space this glyph will allocate in the buffer
-		buffer_size   := (glyph.bounds_size_scaled + glyph_buffer.draw_padding) * glyph.over_sample + glyph.over_sample
+		buffer_size   := (glyph.bounds_size_scaled + glyph_buffer.draw_padding) * glyph.over_sample
 
 		// Allocate a glyph glyph render target region (FBO)
-		to_allocate_x            := buffer_size.x
+		to_allocate_x            := buffer_size.x + 2.0
 		glyph_buffer.allocated_x += i32(to_allocate_x)
 
 		// If allocation would exceed buffer's bounds the buffer must be flush before this glyph can be rendered.
 		glyph.flush_glyph_buffer = i32(f32_allocated_x + to_allocate_x) >= i32(glyph_buffer_size.x)
-		// glyph.buffer_x           = f32_allocated_x * f32( i32( glyph.flush_glyph_buffer ) )
-		glyph.buffer_x           = glyph.flush_glyph_buffer ? 0 : f32_allocated_x
-	// }
-	// for id, index in oversized
-	// {
-		// glyph := & glyph_pack[id]
+		glyph.buffer_x           = f32_allocated_x * f32( i32( ! glyph.flush_glyph_buffer ) )
 
 		// Quad to for drawing atlas slot to target
 		draw_quad := & glyph.draw_quad
@@ -531,9 +526,9 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		draw_quad.dst_scale =                  (glyph.bounds_size_scaled + glyph_padding) * target_scale
 		
 		// The glyph buffer space transform for generate_glyph_pass_draw_list
-		draw_transform      := & glyph.draw_transform
-		draw_transform.scale = font_scale * glyph.over_sample 
-		draw_transform.pos   = -1 * glyph.bounds.p0 * draw_transform.scale + vec2(atlas.glyph_padding)
+		draw_transform       := & glyph.draw_transform
+		draw_transform.scale  = font_scale * glyph.over_sample 
+		draw_transform.pos    = -1 * glyph.bounds.p0 * draw_transform.scale + vec2(atlas.glyph_padding)
 		draw_transform.pos.x += glyph.buffer_x
 		to_glyph_buffer_space( & draw_transform.pos, & draw_transform.scale, glyph_buffer_size )
 
@@ -615,8 +610,8 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 				& glyph_buffer.allocated_x
 			)
 	
-			dst_region_pos  := glyph.region_pos
-			dst_region_size := glyph.region_size
+			dst_region_pos    := glyph.region_pos
+			dst_region_size   := glyph.region_size
 			to_glyph_buffer_space( & dst_region_pos, & dst_region_size, atlas_size )
 		
 			clear_target_region : Draw_Call
@@ -634,12 +629,14 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 				end_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
 			}
 			
-			dst_glyph_pos  := glyph.region_pos
-			dst_glyph_size := (glyph.bounds_size_scaled) + atlas.glyph_padding
-			to_glyph_buffer_space( & dst_glyph_pos, & dst_glyph_size,  atlas_size )
+			dst_glyph_pos    := glyph.region_pos
+			dst_glyph_size   := glyph.bounds_size_scaled + atlas.glyph_padding
+			// dst_glyph_size.y  = ceil(dst_glyph_size.y) // Note(Ed): Seems to improve hinting
+			to_glyph_buffer_space( & dst_glyph_pos, & dst_glyph_size, atlas_size )
 	
-			src_position := Vec2 { glyph.buffer_x, 0 }
-			src_size     := (glyph.bounds_size_scaled + atlas.glyph_padding) *  glyph_buffer.over_sample
+			src_position  := Vec2 { glyph.buffer_x, 0 }
+			src_size      := (glyph.bounds_size_scaled + atlas.glyph_padding) *  glyph_buffer.over_sample
+			// src_size.y     = ceil(src_size.y) // Note(Ed): Seems to improve hinting
 			to_target_space( & src_position, & src_size, glyph_buffer_size )
 	
 			

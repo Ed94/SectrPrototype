@@ -152,8 +152,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		color_theme = App_Thm_Dusk
 
-		font_size_screen_scalar = 2.0
-		font_size_canvas_scalar = 2.0
+		font_size_screen_scalar = 1.0
+		font_size_canvas_scalar = 1.0
 	}
 
 	Desired_OS_Scheduler_MS :: 1
@@ -265,43 +265,44 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	if true
 	{
 		font_provider_startup( & font_provider_ctx )
-		path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
-		font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, 16.0, "RecMonoSemiCasual_Regular" )
 
-		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
-		// font_squidgy_slimes = font_load( path_squidgy_slimes, 32.0, "Squidgy_Slime" )
+		// Load default font
+		path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
+		font_fira_cousine  = font_load( path_fira_cousine, "Fira Cousine", 16.0 )
+		default_font = font_fira_cousine
+
+		// Aysnc load the others
+
+		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
+		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, "Arial_Unicode_MS", 16.0 )
 
 		// path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
-		// font_firacode  = font_load( path_firacode, 16.0, "FiraCode" )
-		
-		path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
-		font_fira_cousine  = font_load( path_fira_cousine, 16.0, "Fira Cousine" )
-
-		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
-		// font_open_sans  = font_load( path_open_sans, 16.0, "OpenSans" )
-
-		// path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
-		// font_noto_sans  = font_load( path_noto_sans, 16.0, "NotoSans" )
+		// font_firacode  = font_load( path_firacode, "FiraCode", 16.0 )
 
 		// path_neodgm_code := strings.concatenate( { Path_Assets, "neodgm_code.ttf"} )
-		// font_neodgm_code  = font_load( path_neodgm_code, 32.0, "NeoDunggeunmo Code" )
+		// font_neodgm_code  = font_load( path_neodgm_code, "NeoDunggeunmo Code", 32.0 )
+
+		// path_noto_sans := strings.concatenate( { Path_Assets, "NotoSans-Regular.ttf" } )
+		// font_noto_sans  = font_load( path_noto_sans, "NotoSans", 16.0 )
+
+		// path_open_sans := strings.concatenate( { Path_Assets, "OpenSans-Regular.ttf" } )
+		// font_open_sans  = font_load( path_open_sans, "OpenSans", 16.0 )
 
 		// path_rec_mono_linear := strings.concatenate( { Path_Assets, "RecMonoLinear-Regular-1.084.ttf" })
-		// font_rec_mono_linear  = font_load( path_rec_mono_linear, 16.0, "RecMonoLinear Regular" )
+		// font_rec_mono_linear  = font_load( path_rec_mono_linear, "RecMonoLinear Regular", 32.0 )
 
 		// path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
-		// font_roboto_regular  = font_load( path_roboto_regular, 32.0, "Roboto Regular" )
+		// font_roboto_regular  = font_load( path_roboto_regular, "Roboto Regular", 32.0 )
 
 		// path_roboto_mono_regular := strings.concatenate( { Path_Assets, "RobotoMono-Regular.ttf"} )
-		// font_roboto_mono_regular  = font_load( path_roboto_mono_regular, 32.0, "Roboto Mono Regular" )
+		// font_roboto_mono_regular  = font_load( path_roboto_mono_regular, "Roboto Mono Regular", 32.0 )
 
-		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
-		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
+		// path_rec_mono_semicasual_reg := strings.concatenate( { Path_Assets, "RecMonoSemicasual-Regular-1.084.ttf" })
+		// font_rec_mono_semicasual_reg  = font_load( path_rec_mono_semicasual_reg, "RecMonoSemiCasual_Regular", 16 )
 
-		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
-		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, 16.0, "Arial_Unicode_MS" )
+		// path_squidgy_slimes := strings.concatenate( { Path_Assets, "Squidgy Slimes.ttf" } )
+		// font_squidgy_slimes = font_load( path_squidgy_slimes, "Squidgy_Slime", 32.0 )
 
-		default_font = font_fira_cousine
 		log( "Default font loaded" )
 	}
 
@@ -451,6 +452,9 @@ hot_reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_
 
 	slab_reload( persistent_slab, persistent_allocator() )
 
+	str_cache_reload( & string_cache, persistent_allocator(), persistent_allocator() )
+	str_cache_set_module_ctx( & string_cache )
+
 	// input_reload()
 	{
 		using input_events
@@ -462,9 +466,6 @@ hot_reload :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_
 	}
 
 	font_provider_reload( & font_provider_ctx )
-
-	str_cache_reload( & string_cache, persistent_allocator(), persistent_allocator() )
-	str_cache_set_module_ctx( & string_cache )
 
 	slab_reload( frame_slab, frame_allocator())
 	slab_reload( transient_slab, transient_allocator())
@@ -532,8 +533,8 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	// config.engine_refresh_hz = 165
 
 	// config.color_theme = App_Thm_Light
-	config.color_theme = App_Thm_Dusk
-	// config.color_theme = App_Thm_Dark
+	// config.color_theme = App_Thm_Dusk
+	config.color_theme = App_Thm_Dark
 
 	sokol_width  := sokol_app.widthf()
 	sokol_height := sokol_app.heightf()

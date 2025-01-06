@@ -74,23 +74,22 @@ parser_shutdown :: proc( ctx : ^Parser_Context ) {
 	// TODO(Ed): Implement
 }
 
-parser_load_font :: proc( ctx : ^Parser_Context, label : string, data : []byte ) -> (font : Parser_Font_Info)
+parser_load_font :: proc( ctx : ^Parser_Context, label : string, data : []byte ) -> (font : Parser_Font_Info, error : b32)
 {
 	// switch ctx.kind
 	// {
 	// 	case .Freetype:
 	// 		when ODIN_OS == .Windows {
-	// 			error := freetype.new_memory_face( ctx.ft_library, raw_data(data), cast(i32) len(data), 0, & font.freetype_info )
-	// 			if error != .Ok do return
+	// 			error_status := freetype.new_memory_face( ctx.ft_library, raw_data(data), cast(i32) len(data), 0, & font.freetype_info )
+	// 			if error != .Ok do error = true
 	// 		}
 	// 		else when ODIN_OS == .Linux {
 	// 			error := freetype.new_memory_face( ctx.ft_library, raw_data(data), cast(i64) len(data), 0, & font.freetype_info )
-	// 			if error != .Ok do return
+	// 			if error_status != .Ok do error = true
 	// 		}
 
 	// 	case .STB_TrueType:
-			success := stbtt.InitFont( & font.stbtt_info, raw_data(data), 0 )
-			if ! success do return
+	error = ! stbtt.InitFont( & font.stbtt_info, raw_data(data), 0 )
 	// }
 
 	font.label = label
@@ -298,10 +297,8 @@ parser_is_glyph_empty :: #force_inline proc "contextless" ( font : Parser_Font_I
 parser_scale :: #force_inline proc "contextless" ( font : Parser_Font_Info, size : f32 ) -> f32
 {
 	profile(#procedure)
-	size_scale := size < 0.0 ?                            \
-		parser_scale_for_pixel_height( font, -size )        \
-	: parser_scale_for_mapping_em_to_pixels( font, size )
-	// size_scale = 1.0
+	// size_scale := size < 0.0 ? parser_scale_for_pixel_height( font, -size ) : parser_scale_for_mapping_em_to_pixels( font, size )
+	size_scale := size > 0.0 ? parser_scale_for_pixel_height( font, size ) : parser_scale_for_mapping_em_to_pixels( font, -size )
 	return size_scale
 }
 

@@ -221,7 +221,7 @@ State :: struct {
 	staged_input_events : Array(InputEvent),
 	// TODO(Ed): Add a multi-threaded guard for accessing or mutating staged_input_events.
 
-	debug  : DebugData,
+	debug  : ScratchData,
 
 	project : Project,
 
@@ -252,7 +252,6 @@ State :: struct {
 	font_rec_mono_semicasual_reg : FontID,
 	default_font                 : FontID,
 
-
 	// Context tracking
 	// These are used as implicit contextual states when doing immediate mode interfaces
 	// or for event callbacks that need their context assigned
@@ -281,7 +280,7 @@ frametime_delta32 :: #force_inline proc "contextless" () -> f32 {
 
 app_config       :: #force_inline proc "contextless" () -> AppConfig     { return get_state().config }
 app_color_theme  :: #force_inline proc "contextless" () -> AppColorTheme { return get_state().config.color_theme }
-debug_data       :: #force_inline proc "contextless" () -> DebugData     { return get_state().debug }
+debug_data       :: #force_inline proc "contextless" () -> ScratchData   { return get_state().debug }
 get_frametime    :: #force_inline proc "contextless" () -> FrameTime     { return get_state().frametime }
 get_default_font :: #force_inline proc "contextless" () -> FontID        { return get_state().default_font }
 get_input_state  :: #force_inline proc "contextless" () -> InputState    { return (get_state().input ^) }

@@ -82,7 +82,7 @@ shaper_shape_harfbuzz :: #force_inline proc( ctx : ^Shaper_Context, text_utf8 : 
 
 	ascent   := entry.ascent
 	descent  := entry.descent
-	line_gap :=entry.line_gap
+	line_gap := entry.line_gap
 	
 	max_line_width := f32(0)
 	line_count     := 1
@@ -226,7 +226,13 @@ shaper_shape_harfbuzz :: #force_inline proc( ctx : ^Shaper_Context, text_utf8 : 
 	return
 }
 
-shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Shaper_Context, entry : Entry, font_px_size : f32, font_scale : f32, text_utf8 : string, output : ^Shaped_Text )
+shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Shaper_Context, 
+	entry        : Entry, 
+	font_px_size : f32, 
+	font_scale   : f32, 
+	text_utf8    : string, 
+	output       : ^Shaped_Text
+)
 {
 	profile(#procedure)
 	assert( ctx != nil )
@@ -237,7 +243,13 @@ shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Shaper_Context
 	shaper_shape_harfbuzz( ctx, text_utf8, entry, font_px_size, font_scale, output )
 }
 
-shaper_shape_text_latin :: #force_inline proc( ctx : ^Shaper_Context, entry : Entry, font_px_Size, font_scale : f32, text_utf8 : string, output : ^Shaped_Text )
+shaper_shape_text_latin :: #force_inline proc( ctx : ^Shaper_Context, 
+	entry        : Entry, 
+	font_px_Size : f32, 
+	font_scale   : f32, 
+	text_utf8    : string, 
+	output       : ^Shaped_Text
+)
 {	
 	profile(#procedure)
 	assert( ctx != nil )
@@ -278,8 +290,8 @@ shaper_shape_text_latin :: #force_inline proc( ctx : ^Shaper_Context, entry : En
 		{
 			append( & output.glyphs, glyph_index)
 			append( & output.positions, Vec2 {
-				floor(position.x),
-				floor(position.y)
+				ceil(position.x),
+				ceil(position.y)
 			})
 		}
 

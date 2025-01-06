@@ -302,11 +302,13 @@ update :: proc( delta_time : f64 ) -> b32
 
 	// TODO(Ed): We need input buffer so that we can consume input actions based on the UI with priority
 
+	font_provider_set_px_scalar( app_config().font_size_screen_scalar )
 	ui_screen_tick( & get_state().screen_ui )
 
 	//region WorkspaceImgui Tick
 	if true
 	{
+		font_provider_set_px_scalar( app_config().font_size_canvas_scalar )
 		profile("Workspace Imgui")
 
 		// Creates the root box node, set its as the first parent.

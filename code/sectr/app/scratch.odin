@@ -4,7 +4,7 @@ package sectr
 
 import sokol_gfx "thirdparty:sokol/gfx"
 
-DebugData :: struct {
+ScratchData :: struct {
 	square_size : i32,
 	square_pos  : Vec2,
 
@@ -33,11 +33,4 @@ DebugData :: struct {
 	path_lorem    : string,
 	lorem_content : []byte,
 	lorem_parse   : PWS_ParseResult,
-
-	gfx_clear_demo_pass_action : sokol_gfx.Pass_Action,
-	gfx_tri_demo_state : struct {
-		pipeline    : sokol_gfx.Pipeline,
-    bindings    : sokol_gfx.Bindings,
-    pass_action : sokol_gfx.Pass_Action,
-	},
 }

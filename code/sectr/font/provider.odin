@@ -66,8 +66,8 @@ font_provider_shutdown :: proc(  ctx : ^FontProviderContext )
 }
 
 font_load :: proc(path_file : string,
+	desired_id   : string = Font_Load_Gen_ID,
 	default_size : i32    = Font_Load_Use_Default_Size,
-	desired_id   : string = Font_Load_Gen_ID
 ) -> FontID
 {
 	provider_data := & get_state().font_provider_ctx; using provider_data
@@ -108,12 +108,16 @@ font_load :: proc(path_file : string,
 		// logf("Loading at size %v", font_size)
 		id    := (font_size / Font_Size_Interval) + (font_size % Font_Size_Interval)
 		ve_id := & def.size_table[id - 1]
-		ve_ret_id := ve.load_font( & ve_ctx, desired_id, font_data, f32(font_size) )
+		ve_ret_id, error := ve.load_font( & ve_ctx, desired_id, font_data )
 		(ve_id^) = ve_ret_id
 	}
 
 	fid := FontID { key, desired_id }
 	return fid
+}
+
+font_provider_set_px_scalar :: #force_inline proc( scalar : f32 ) {
+	ve.set_px_scalar( & get_state().font_provider_ctx.ve_ctx, scalar )
 }
 
 Font_Use_Default_Size :: f32(0.0)
