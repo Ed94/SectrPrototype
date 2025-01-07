@@ -14,8 +14,7 @@ Shape_Key :: u32
 	its position should be used for rendering.
 
 	For this library's case it also involes keeping any content 
-	that does not have to be resolved up once again in a later stage of
-	preparing it for rendering.
+	that does not have to be resolved once again in the later stage of processing.
 
 	Ideally the user should resolve this shape once and cache/store it on their side.
 	They have the best ability to avoid costly lookups to streamline 

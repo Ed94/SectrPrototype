@@ -584,19 +584,19 @@ pop_zoom           :: #force_inline proc( ctx : ^Context                      ) 
 auto_pop_zoom      :: #force_inline proc( ctx : ^Context, zoom      : f32     ) { pop(& ctx.stack.zoom)     }
 
 @(deferred_in = auto_pop_vpz)
-scope_vpz :: #force_inline proc( ctx : ^Context, camera : VPZ_Transform  ) { 
+scope_vpz    :: #force_inline proc( ctx : ^Context, camera : VPZ_Transform  ) { 
 	assert(ctx != nil)
 	append(& ctx.stack.view,     camera.view     )
 	append(& ctx.stack.position, camera.position )
 	append(& ctx.stack.zoom,     camera.zoom     )
 }
-push_vpz  :: #force_inline proc( ctx : ^Context, camera : VPZ_Transform  ) { 
+push_vpz     :: #force_inline proc( ctx : ^Context, camera : VPZ_Transform  ) { 
 	assert(ctx != nil)
 	append(& ctx.stack.view,     camera.view     )
 	append(& ctx.stack.position, camera.position )
 	append(& ctx.stack.zoom,     camera.zoom     )
 }
-pop_vpz   :: #force_inline proc( ctx : ^Context ) {
+pop_vpz      :: #force_inline proc( ctx : ^Context ) {
 	assert(ctx != nil)
 	pop(& ctx.stack.view    )
 	pop(& ctx.stack.position)
@@ -664,18 +664,19 @@ draw_text_shape_normalized_space :: #force_inline proc( ctx : ^Context,
 
 	font_scale := parser_scale( entry.parser_info, px_size )
 
-	px_upscale         := px_size * ctx.px_scalar
-	downscale          := scale * (1 / ctx.px_scalar)
-	font_scale_upscale := parser_scale( entry.parser_info, px_upscale )
+	target_px_size     := px_size * ctx.px_scalar
+	target_scale       := scale * (1 / ctx.px_scalar)
+	target_font_scale  := parser_scale( entry.parser_info, target_px_size )
 
-	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, ctx.px_scalar,
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
+		ctx.px_scalar,
 		ctx.enable_draw_type_visualization,
 		adjusted_colour, 
 		entry, 
-		px_upscale,
-		font_scale_upscale, 
+		target_px_size,
+		target_font_scale, 
 		position, 
-		downscale, 
+		target_scale, 
 	)
 }
 
@@ -719,7 +720,8 @@ draw_text_normalized_space :: #force_inline proc( ctx : ^Context,
 		target_font_scale, 
 		shaper_shape_text_uncached_advanced
 	)
-	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, ctx.px_scalar,
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
+		ctx.px_scalar,
 		ctx.enable_draw_type_visualization,
 		colour, 
 		entry, 
@@ -833,7 +835,6 @@ flush_draw_list :: #force_inline proc( ctx : ^Context ) {
 	ctx.draw_layer.indices_offset  = 0
 	ctx.draw_layer.calls_offset    = 0
 }
-
 
 flush_draw_list_layer :: #force_inline proc( ctx : ^Context ) {
 	assert( ctx != nil )

@@ -302,7 +302,7 @@ generate_shapes_draw_list :: #force_inline proc ( ctx : ^Context, font : Font_ID
 	* Resolve glyph bounds and scale
 	* Resolve atlas region the glyph is associated with
 	* Segregate the glyphs into three slices: oversized, to_cache, cached. 
-	  * If oversized is not necessary for your use case and your hitting a bottle neck, remove it in a derivative procedure.
+	  * If oversized is not necessary for your use case and your hitting a bottleneck, remove it in a derivative procedure.
 		  * You have to to be drawing a px font size > ~140 px for it to trigger.
 			* The atlas can be scaled with the size_multiplier parameter of startup so that it becomes more irrelevant if processing a larger atlas is a non-issue.
 		* The segregation will not allow slices to exceed the batch_cache capacity of the glyph_buffer (configurable within startup params)
@@ -503,7 +503,7 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	Order: Oversized first, then to_cache, then cached.
 
 	Oversized and to_cache will both enqueue operations for rendering glyphs to the glyph buffer render target.
-	The compute section will have operations reguarding how many glyphs they made alloate before a flush must occur.
+	The compute section will have operations reguarding how many glyphs they may alloate before a flush must occur.
 	A flush will force one of the following:
 	  * Oversized will have a draw call setup to blit directly from the glyph buffer to the target.
 		* to_cache will blit the glyphs rendered to the buffer to the atlas.
@@ -530,42 +530,16 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	colour := colour
 
 	profile_begin("glyph buffer transform & draw quads compute")
-	for id, index in oversized
+	for id, index in cached
 	{
-		glyph := & glyph_pack[id]
-
-		f32_allocated_x := cast(f32) glyph_buffer.allocated_x
-		// Resolve how much space this glyph will allocate in the buffer
-		buffer_size   := (glyph.bounds_size_scaled + glyph_buffer.draw_padding) * glyph.over_sample
-
-		// Allocate a glyph glyph render target region (FBO)
-		to_allocate_x            := buffer_size.x + 2.0
-		glyph_buffer.allocated_x += i32(to_allocate_x)
-
-		// If allocation would exceed buffer's bounds the buffer must be flush before this glyph can be rendered.
-		glyph.flush_glyph_buffer = i32(f32_allocated_x + to_allocate_x) >= i32(glyph_buffer_size.x)
-		glyph.buffer_x           = f32_allocated_x * f32( i32( ! glyph.flush_glyph_buffer ) )
-
 		// Quad to for drawing atlas slot to target
-		draw_quad := & glyph.draw_quad
-
-		glyph_padding := vec2(glyph_buffer.draw_padding)
-
-		// Target position (draw_list's target image)
-		draw_quad.dst_pos   = glyph.position + (glyph.bounds_scaled.p0   - glyph_padding) * target_scale
-		draw_quad.dst_scale =                  (glyph.bounds_size_scaled + glyph_padding) * target_scale
-		
-		// The glyph buffer space transform for generate_glyph_pass_draw_list
-		draw_transform       := & glyph.draw_transform
-		draw_transform.scale  = font_scale * glyph.over_sample 
-		draw_transform.pos    = -1 * glyph.bounds.p0 * draw_transform.scale + vec2(atlas.glyph_padding)
-		draw_transform.pos.x += glyph.buffer_x
-		to_glyph_buffer_space( & draw_transform.pos, & draw_transform.scale, glyph_buffer_size )
-
-
-		draw_quad.src_pos   = Vec2 { glyph.buffer_x, 0 }
-		draw_quad.src_scale = glyph.bounds_size_scaled * glyph.over_sample + glyph_padding
-		to_target_space( & draw_quad.src_pos, & draw_quad.src_scale, glyph_buffer_size )
+		glyph := & glyph_pack[id]
+		quad  := & glyph.draw_quad
+		quad.dst_pos   = glyph.position + (glyph.bounds_scaled.p0) * target_scale
+		quad.dst_scale =                  (glyph.scale)            * target_scale
+		quad.src_scale =                  (glyph.scale)
+		quad.src_pos   = (glyph.region_pos) 
+		to_target_space( & quad.src_pos, & quad.src_scale, atlas_size )
 	}
 	for id, index in to_cache
 	{
@@ -604,25 +578,51 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		draw_quad.src_pos   = (glyph.region_pos)
 		to_target_space( & draw_quad.src_pos, & draw_quad.src_scale, atlas_size )
 	}
-	for id, index in cached
+	for id, index in oversized
 	{
-		// Quad to for drawing atlas slot to target
 		glyph := & glyph_pack[id]
-		quad  := & glyph.draw_quad
-		quad.dst_pos   = glyph.position + (glyph.bounds_scaled.p0) * target_scale
-		quad.dst_scale =                  (glyph.scale)            * target_scale
-		quad.src_scale =                  (glyph.scale)
-		quad.src_pos   = (glyph.region_pos) 
-		to_target_space( & quad.src_pos, & quad.src_scale, atlas_size )
+
+		f32_allocated_x := cast(f32) glyph_buffer.allocated_x
+		// Resolve how much space this glyph will allocate in the buffer
+		buffer_size   := (glyph.bounds_size_scaled + glyph_buffer.draw_padding) * glyph.over_sample
+
+		// Allocate a glyph glyph render target region (FBO)
+		to_allocate_x            := buffer_size.x + 2.0
+		glyph_buffer.allocated_x += i32(to_allocate_x)
+
+		// If allocation would exceed buffer's bounds the buffer must be flush before this glyph can be rendered.
+		glyph.flush_glyph_buffer = i32(f32_allocated_x + to_allocate_x) >= i32(glyph_buffer_size.x)
+		glyph.buffer_x           = f32_allocated_x * f32( i32( ! glyph.flush_glyph_buffer ) )
+
+		// Quad to for drawing atlas slot to target
+		draw_quad := & glyph.draw_quad
+
+		glyph_padding := vec2(glyph_buffer.draw_padding)
+
+		// Target position (draw_list's target image)
+		draw_quad.dst_pos   = glyph.position + (glyph.bounds_scaled.p0   - glyph_padding) * target_scale
+		draw_quad.dst_scale =                  (glyph.bounds_size_scaled + glyph_padding) * target_scale
+		
+		// The glyph buffer space transform for generate_glyph_pass_draw_list
+		draw_transform       := & glyph.draw_transform
+		draw_transform.scale  = font_scale * glyph.over_sample 
+		draw_transform.pos    = -1 * glyph.bounds.p0 * draw_transform.scale + vec2(atlas.glyph_padding)
+		draw_transform.pos.x += glyph.buffer_x
+		to_glyph_buffer_space( & draw_transform.pos, & draw_transform.scale, glyph_buffer_size )
+
+
+		draw_quad.src_pos   = Vec2 { glyph.buffer_x, 0 }
+		draw_quad.src_scale = glyph.bounds_size_scaled * glyph.over_sample + glyph_padding
+		to_target_space( & draw_quad.src_pos, & draw_quad.src_scale, glyph_buffer_size )
 	}
 	profile_end()
 
 	profile_begin("generate oversized glyphs draw_list")
 	if len(oversized) > 0
 	{
-		colour.r = max(colour.a, enable_debug_vis_type)
-		colour.g = max(colour.g, enable_debug_vis_type)
-		colour.b = colour.b * f32(cast(i32) ! b32(cast(i32) enable_debug_vis_type))
+		// colour.r = max(colour.a, enable_debug_vis_type)
+		// colour.g = max(colour.g, enable_debug_vis_type)
+		// colour.b = colour.b * f32(cast(i32) ! b32(cast(i32) enable_debug_vis_type))
 		for id, index in oversized {
 			error : Allocator_Error
 			glyph_pack[id].shape, error = parser_get_glyph_shape(entry.parser_info, glyph_pack[id].index)
@@ -754,22 +754,22 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			)
 		}
 
-		profile_begin("generate_cached_draw_list: cached")
-		colour.r = max(colour.r, 1.0 * enable_debug_vis_type)
-		colour.g = max(colour.g, 1.0 * enable_debug_vis_type)
-		colour.b = max(colour.b, 1.0 * enable_debug_vis_type)
-		generate_cached_draw_list( draw_list, glyph_pack[:], cached, colour )
-		profile_end()
-
 		flush_glyph_buffer_draw_list(draw_list, & glyph_buffer.draw_list, & glyph_buffer.clear_draw_list, & glyph_buffer.allocated_x)
 		for id, index in to_cache do parser_free_shape(entry.parser_info, glyph_pack[id].shape)
+
+		profile_begin("generate_cached_draw_list: cached")
+		// colour.r = max(colour.r, 1.0 * enable_debug_vis_type)
+		// colour.g = max(colour.g, 1.0 * enable_debug_vis_type)
+		// colour.b = max(colour.b, 1.0 * enable_debug_vis_type)
+		generate_cached_draw_list( draw_list, glyph_pack[:], cached, colour )
+		profile_end()
 	}
 	profile_end()
 
 	profile_begin("generate_cached_draw_list: to_cache")
-	colour.r = max(colour.r, 0.80 * enable_debug_vis_type)
-	colour.g = max(colour.g, 0.25 * enable_debug_vis_type)
-	colour.b = max(colour.b, 0.25 * enable_debug_vis_type)
+	// colour.r = max(colour.r, 0.80 * enable_debug_vis_type)
+	// colour.g = max(colour.g, 0.25 * enable_debug_vis_type)
+	// colour.b = max(colour.b, 0.25 * enable_debug_vis_type)
 	generate_cached_draw_list( draw_list, glyph_pack[:], to_cache, colour )
 	profile_end()
 }

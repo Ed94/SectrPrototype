@@ -52,7 +52,7 @@ to_bytes :: #force_inline proc "contextless" ( typed_data : ^$Type ) -> []byte {
 @(optimization_mode="favor_size")
 djb8_hash :: #force_inline proc "contextless" ( hash : ^$Type, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + Type(value) }
 
-RGBA8   :: [4]f32
+RGBA8   :: [4]u8
 RGBAN   :: [4]f32
 Vec2    :: [2]f32
 Vec2i   :: [2]i32
