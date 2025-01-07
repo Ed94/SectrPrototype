@@ -123,6 +123,8 @@ UI_State :: struct {
 	// build_arenas : [2]Arena,
 	// build_arena  : ^ Arena,
 
+	zoom_scale : f32,
+
 	built_box_count : i32,
 
 	caches     : [2] HMapChained( UI_Box ),
@@ -285,15 +287,6 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			{
 				if len(current.text) > 0 {
 					profile("text shape")
-					// app_window       := get_state().app_window
-					// screen_extent    := app_window.extent
-					// screen_size      := screen_extent * 2
-					// screen_size_norm := 1 / screen_size
-
-					font_size_screen_scalar := app_config().font_size_screen_scalar
-
-					// over_sample : f32 = f32(get_state().config.font_size_canvas_scalar)
-
 					current.computed.text_shape = shape_text_cached( current.text, current.style.font, current.layout.font_size, 1.0 )
 				}
 				ui_box_compute_layout( current )

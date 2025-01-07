@@ -1,5 +1,6 @@
-package vefontcache
+package vetext
 
+import "base:builtin"
 import "base:runtime"
 import "core:hash"
 	ginger16 :: hash.ginger16
@@ -50,34 +51,34 @@ append_soa :: proc {
 }
 
 ceil :: proc {
-	ceil_f16,
-	ceil_f16le,
-	ceil_f16be,
-	ceil_f32,
-	ceil_f32le,
-	ceil_f32be,
-	ceil_f64,
-	ceil_f64le,
-	ceil_f64be,
+	math.ceil_f16,
+	math.ceil_f16le,
+	math.ceil_f16be,
+	math.ceil_f32,
+	math.ceil_f32le,
+	math.ceil_f32be,
+	math.ceil_f64,
+	math.ceil_f64le,
+	math.ceil_f64be,
 
 	ceil_vec2,
 }
 
 clear :: proc {
-	clear_dynamic_array,
-	clear_map,
+	builtin.clear_dynamic_array,
+	builtin.clear_map,
 }
 
 floor :: proc {
-	floor_f16,
-	floor_f16le,
-	floor_f16be,
-	floor_f32,
-	floor_f32le,
-	floor_f32be,
-	floor_f64,
-	floor_f64le,
-	floor_f64be,
+	math.floor_f16,
+	math.floor_f16le,
+	math.floor_f16be,
+	math.floor_f32,
+	math.floor_f32le,
+	math.floor_f32be,
+	math.floor_f64,
+	math.floor_f64le,
+	math.floor_f64be,
 
 	floor_vec2,
 }
@@ -87,21 +88,30 @@ fill :: proc {
 }
 
 make :: proc {
-	make_dynamic_array,
-	make_dynamic_array_len,
-	make_dynamic_array_len_cap,
-	make_slice,
-	make_map,
-	make_map_cap,
+	builtin.make_dynamic_array,
+	builtin.make_dynamic_array_len,
+	builtin.make_dynamic_array_len_cap,
+	builtin.make_slice,
+	builtin.make_map,
+	builtin.make_map_cap,
 }
 
 make_soa :: proc {
-	make_soa_dynamic_array_len_cap,
-	make_soa_slice,
+	builtin.make_soa_dynamic_array_len_cap,
+	builtin.make_soa_slice,
+}
+
+peek :: proc {
+	peek_array,
+}
+
+pop_array :: proc {
+	builtin.pop,
+	// pop_safe,
 }
 
 resize :: proc {
-	resize_dynamic_array,
+	builtin.resize_dynamic_array,
 }
 
 vec2 :: proc {

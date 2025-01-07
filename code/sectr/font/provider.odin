@@ -140,6 +140,12 @@ font_provider_resolve_draw_id :: #force_inline proc( id : FontID, size := Font_U
 	return
 }
 
+measure_text_shape :: #force_inline proc( shape : ShapedText ) -> Vec2
+{
+	measured    := ve.measure_shape_size( & get_state().font_provider_ctx.ve_ctx, shape )
+	return measured
+}
+
 measure_text_size :: #force_inline proc( text : string, font : FontID, font_size := Font_Use_Default_Size, spacing : f32 ) -> Vec2
 {
 	ve_id, size := font_provider_resolve_draw_id( font, font_size )

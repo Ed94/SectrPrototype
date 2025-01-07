@@ -1,10 +1,19 @@
-package vefontcache
+package vetext
+
+/*
+	Didn't want to splinter this into more files..
+	Just a bunch of utilities.
+*/
 
 import "base:runtime"
 import "core:simd"
 import "core:math"
 
 import core_log "core:log"
+
+peek_array :: #force_inline proc "contextless" ( self : [dynamic]$Type ) -> Type {
+	return self[ len(self) - 1 ]
+}
 
 reload_array :: #force_inline proc( self : ^[dynamic]$Type, allocator : Allocator ) {
 	raw          := transmute( ^runtime.Raw_Dynamic_Array) self
@@ -43,7 +52,8 @@ to_bytes :: #force_inline proc "contextless" ( typed_data : ^$Type ) -> []byte {
 @(optimization_mode="favor_size")
 djb8_hash :: #force_inline proc "contextless" ( hash : ^$Type, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + Type(value) }
 
-Colour  :: [4]f32
+RGBA8   :: [4]f32
+RGBAN   :: [4]f32
 Vec2    :: [2]f32
 Vec2i   :: [2]i32
 Vec2_64 :: [2]f64

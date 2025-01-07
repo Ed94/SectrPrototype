@@ -302,18 +302,19 @@ update :: proc( delta_time : f64 ) -> b32
 
 	// TODO(Ed): We need input buffer so that we can consume input actions based on the UI with priority
 
-	font_provider_set_px_scalar( app_config().font_size_screen_scalar )
 	ui_screen_tick( & get_state().screen_ui )
 
 	//region WorkspaceImgui Tick
 	if true
 	{
-		font_provider_set_px_scalar( app_config().font_size_canvas_scalar )
+		font_provider_set_px_scalar( app_config().text_size_canvas_scalar )
 		profile("Workspace Imgui")
 
 		// Creates the root box node, set its as the first parent.
 		ui_graph_build( & state.project.workspace.ui )
 		ui := ui_context
+
+		ui.zoom_scale = state.project.workspace.cam.zoom
 
 		frame_style_flags : UI_LayoutFlags = {
 			.Fixed_Position_X, .Fixed_Position_Y,

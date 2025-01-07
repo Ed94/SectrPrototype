@@ -26,6 +26,9 @@ ui_screen_reload :: proc( screen_ui : ^UI_ScreenState ) {
 ui_screen_tick :: proc( screen_ui : ^UI_ScreenState ) {
 	profile("Screenspace Imgui")
 
+	font_provider_set_px_scalar( app_config().text_size_screen_scalar )
+	// screen_ui.zoom_scale = 1.0
+
 	ui_graph_build( screen_ui )
 	ui_floating_manager( & screen_ui.floating )
 	ui_floating("Menu Bar",      & screen_ui.menu_bar,      ui_screen_menu_bar_builder)

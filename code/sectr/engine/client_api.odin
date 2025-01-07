@@ -152,8 +152,10 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		color_theme = App_Thm_Dusk
 
-		font_size_screen_scalar = 1.0
-		font_size_canvas_scalar = 1.0
+		text_snap_glyph_positions = true
+		text_size_screen_scalar   = 2.0
+		text_size_canvas_scalar   = 2.0
+		text_alpha_sharpen        = 0.25
 	}
 
 	Desired_OS_Scheduler_MS :: 1
@@ -354,7 +356,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
-		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/ve_fontcache.h", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool

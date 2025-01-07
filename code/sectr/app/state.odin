@@ -161,8 +161,10 @@ AppConfig :: struct {
 
 	color_theme : AppColorTheme,
 
-	font_size_screen_scalar : f32,
-	font_size_canvas_scalar : f32,
+	text_snap_glyph_positions : b32,
+	text_size_screen_scalar   : f32,
+	text_size_canvas_scalar   : f32,
+	text_alpha_sharpen        : f32,
 }
 
 AppWindow :: struct {

@@ -1,4 +1,4 @@
-package vefontcache
+package vetext
 
 when false {
 // TODO(Ed): Freetype support

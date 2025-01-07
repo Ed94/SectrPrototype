@@ -1,5 +1,7 @@
-package vefontcache
+package vetext
 
+// There are only 4 actual regions of the atlas. E represents the atlas_decide_region detecting an oversized glyph.
+// Note(Ed): None should never really occur anymore. So its safe to most likely add an assert when its detected.
 Atlas_Region_Kind :: enum u8 {
 	None   = 0x00,
 	A      = 0x01,
@@ -10,8 +12,13 @@ Atlas_Region_Kind :: enum u8 {
 	Ignore = 0xFF, // ve_fontcache_cache_glyph_to_atlas uses a -1 value in clear draw call
 }
 
+// Note(Ed): Using 16 bit hash had collision failures and no observable performance improvement (tried several 16-bit hashers)
 Atlas_Region_Key :: u32
 
+// TODO(Ed) It might perform better with a tailored made hashtable implementation for the LRU_Cache or dedicated array struct/procs for the Atlas.
+/* Essentially a sub-atlas of the atlas. There is a state cache per region that tracks the glyph inventory (what slot they occupy).
+	Unlike the shape cache this one's fixed capacity (natrually) and the next avail slot is tracked.
+*/
 Atlas_Region :: struct {
 	state : LRU_Cache(Atlas_Region_Key),
 
@@ -24,6 +31,14 @@ Atlas_Region :: struct {
 	next_idx : i32,
 }
 
+/* There are four regions each succeeding region holds larger sized slots.
+	The generator pipeline for draw lists utilizes the regions array for info lookup.
+
+	Note(Ed):
+	Padding can techncially be larger than 1, however recently I haven't had any artififact issues...
+	size_multiplier usage isn't fully resolved. Intent was to further setup over_sampling or just having 
+	a more massive cache for content that used more than the usual common glyphs.
+*/
 Atlas :: struct {
 	region_a : Atlas_Region,
 	region_b : Atlas_Region,
@@ -38,7 +53,7 @@ Atlas :: struct {
 	size : Vec2i,
 }
 
-
+// Hahser for the atlas.
 atlas_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, px_size : f32, glyph_index : Glyph ) -> (lru_code : Atlas_Region_Key) {
 	// lru_code = u32(glyph_index) + ( ( 0x10000 * u32(font) ) & 0xFFFF0000 )
 	font        := font

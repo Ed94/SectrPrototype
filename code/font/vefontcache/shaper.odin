@@ -1,4 +1,4 @@
-package vefontcache
+package vetext
 /*
 Note(Ed): The only reason I didn't directly use harfbuzz is because hamza exists and seems to be under active development as an alternative.
 */
@@ -8,28 +8,51 @@ import "thirdparty:harfbuzz"
 
 Shape_Key :: u32
 
+/*  A text whose codepoints have had their relevant glyphs and 
+	associated data resolved for processing in a draw list generation stage.
+	Traditionally a shape only refers to resolving which glyph and 
+	its position should be used for rendering.
+
+	For this library's case it also involes keeping any content 
+	that does not have to be resolved up once again in a later stage of
+	preparing it for rendering.
+
+	Ideally the user should resolve this shape once and cache/store it on their side.
+	They have the best ability to avoid costly lookups to streamline 
+	a hot path to only focusing on draw list generation that must be computed every frame.
+
+	For ease of use the cache does a relatively good job and only adds a 
+	few hundred nano-seconds to resolve a shape's lookup from its source specification.
+	If your doing something heavy though (where there is thousands, or tens-of thousands)
+	your not going to be satisfied with keeping that in the iteration).
+*/
 Shaped_Text :: struct {
 	glyphs             : [dynamic]Glyph,
 	positions          : [dynamic]Vec2,
+	// bounds             : [dynamic]Range2,            // TODO(Ed): Test tracking/resolving the bounds here, its expensive to resolve at the draw list generation stage.
+	// region_kinds       : [dynamic]Atlas_Region_Kind, // TODO(ed): test tracking/resolving the assigne atlas region here, for some reason as ^^.
 	end_cursor_pos     : Vec2,
 	size               : Vec2,
-	entry              : ^Entry,
-	font               : Font_ID,
 }
 
+// Ease of use cache, can handle thousands of lookups per frame with ease.
+// TODO(Ed) It might perform better with a tailored made hashtable implementation for the LRU_Cache or dedicated array struct/procs for the Shaped_Text.
 Shaped_Text_Cache :: struct {
 	storage       : [dynamic]Shaped_Text,
 	state         : LRU_Cache(Shape_Key),
 	next_cache_id : i32,
 }
 
+// Used by shaper_shape_text_cached, allows user to specify their own proc at compile-time without having to rewrite the caching implementation.
 Shaper_Shape_Text_Uncached_Proc :: #type proc( ctx : ^Shaper_Context, entry : Entry, font_px_Size, font_scale : f32, text_utf8 : string, output : ^Shaped_Text )
 
+// Note(Ed): Not used..
 Shaper_Kind :: enum {
-	Naive    = 0,
+	Latin    = 0,
 	Harfbuzz = 1,
 }
 
+//  Not much here other than just keep track of a harfbuzz var and deciding to keep runtime config here used by the shapers.
 Shaper_Context :: struct {
 	hb_buffer : harfbuzz.Buffer,
 
@@ -37,6 +60,7 @@ Shaper_Context :: struct {
 	adv_snap_small_font_threshold : f32,
 }
 
+// Only used with harbuzz for now. Resolved during load_font for a font Entry.
 Shaper_Info :: struct {
 	blob : harfbuzz.Blob,
 	face : harfbuzz.Face,
@@ -71,6 +95,8 @@ shaper_unload_font :: #force_inline proc( info : ^Shaper_Info )
 	if info.blob != nil do harfbuzz.blob_destroy( info.blob )
 }
 
+// Recommended shaper. Very performant.
+// TODO(Ed): Would be nice to properly support vertical shaping, right now its strictly just horizontal...
 @(optimization_mode="favor_size")
 shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry : Entry, font_px_Size, font_scale : f32, output :^Shaped_Text )
 {
@@ -141,7 +167,7 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 			}
 			if abs( font_px_size ) <= adv_snap_small_font_threshold
 			{
-				(position^) = ceil( position^ )
+				(position^) =  ceil( position^ )
 			}
 
 			glyph_pos := position^
@@ -244,6 +270,7 @@ shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Shaper_Context
 	shaper_shape_harfbuzz( ctx, text_utf8, entry, font_px_size, font_scale, output )
 }
 
+// Basic western alphabet based shaping. Not that much faster than harfbuzz if at all.
 shaper_shape_text_latin :: proc( ctx : ^Shaper_Context, 
 	entry        : Entry, 
 	font_px_Size : f32, 
@@ -308,6 +335,12 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 	output.size.y = f32(line_count) * line_height
 }
 
+// Shapes are tracked by the library's context using the shape cache 
+// and the key is resolved using the font, the desired pixel size, and the text bytes to be shaped.
+// Thus this procedures cost will be proporitonal to how muh text it has to sift through.
+// djb8_hash is used as its been pretty good for thousands of hashed lines that around 6-120 charactes long
+// (and its very fast).
+@(optimization_mode="favor_size")
 shaper_shape_text_cached :: proc( text_utf8 : string, 
 	ctx                 : ^Shaper_Context,
 	shape_cache         : ^Shaped_Text_Cache, 

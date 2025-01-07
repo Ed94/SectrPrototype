@@ -57,7 +57,7 @@ render_mode_2d_workspace :: proc( screen_extent : Vec2, cam : Camera, input : In
 	screen_size    := screen_extent * 2
 
 	// TODO(Ed): Eventually will be the viewport extents
-	ve.set_px_scalar( ve_ctx, app_config().font_size_canvas_scalar )
+	font_provider_set_px_scalar( app_config().text_size_canvas_scalar )
 	ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
 	// ve.configure_snap( ve_ctx, 0, 0 )
 
@@ -123,7 +123,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 	screen_size   := screen_extent * 2
 	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
 
-	ve.set_px_scalar( ve_ctx, app_config().font_size_screen_scalar )
+	font_provider_set_px_scalar( app_config().text_size_canvas_scalar )
 	ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
 
 	render_screen_ui( screen_extent, screen_ui, ve_ctx, ve_render )
@@ -263,14 +263,6 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 			if active_box != nil{
 				debug_text("Active Box: %v", active_box.label )
 			}
-		}
-
-		if true {
-			zoom_adjust_size := 16 * state.project.workspace.cam.zoom
-			over_sample      := f32(state.config.font_size_canvas_scalar)
-			debug_text("font_size_canvas_scalar: %v", config.font_size_canvas_scalar)
-			ve_id, resolved_size := font_provider_resolve_draw_id( default_font, zoom_adjust_size * over_sample )
-			debug_text("font_size resolved: %v px", resolved_size)
 		}
 
 		render_text_layer( screen_extent, ve_ctx, ve_render )
@@ -663,6 +655,7 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 
 			if cam != nil {
 				draw_text_string_pos_extent_zoomed( entry.text, font, entry.font_size, entry.position, cam_offset, screen_size, screen_size_norm, cam.zoom, entry.color )
+				// draw_text_shape_pos_extent_zoomed( entry.shape, font, entry.font_size, entry.position, cam_offset, screen_size, screen_size_norm, cam.zoom, entry.color )
 			}
 			else {
 				draw_text_string_pos_extent( entry.text, font, entry.font_size, entry.position, entry.color )
@@ -987,10 +980,6 @@ draw_text_string_pos_extent_zoomed :: #force_inline proc( text : string, id : Fo
 
 	zoom_adjust_size := size * zoom
 
-	// Over-sample font-size for any render under a camera
-	// over_sample : f32 = f32(config.font_size_canvas_scalar)
-	// zoom_adjust_size *= over_sample
-
 	pos_offset     := (pos + cam_offset)
 	render_pos     := ws_view_to_render_pos(pos)
 	normalized_pos := render_pos * screen_size_norm
@@ -1007,11 +996,7 @@ draw_text_string_pos_extent_zoomed :: #force_inline proc( text : string, id : Fo
 		text_scale.y = clamp( text_scale.y, 0, screen_size.y )
 	}
 
-	// Down-sample back
-	// text_scale  /= over_sample
-
 	color_norm := normalize_rgba8(color)
-	// ve.set_px_scalar( & get_state().font_provider_ctx.ve_ctx, config.font_size_canvas_scalar )
 	ve.set_colour( & get_state().font_provider_ctx.ve_ctx, color_norm )
 	ve.draw_text( & get_state().font_provider_ctx.ve_ctx, ve_id, f32(resolved_size), normalized_pos, text_scale, text )
 }

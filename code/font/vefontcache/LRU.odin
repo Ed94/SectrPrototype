@@ -1,7 +1,15 @@
-package vefontcache
+package vetext
 
-/*
-The choice was made to keep the LRU cache implementation as close to the original as possible.
+/* Note(Ed):
+	Original implementation has been changed moderately.
+	Notably the LRU is now type generic for its key value.
+	This was done to profile between using u64, u32, and u16.
+
+	What ended up happening was using u32 for both the atlas and the shape cache 
+	yielded a several ms save for processing thousands of draw text calls.
+
+	There was an attempt at an optimization pass but the directives done here (other than force_inline)
+	are marginal changes at best.
 */
 
 import "base:runtime"
@@ -177,7 +185,7 @@ pool_list_pop_back :: #force_inline proc( pool : ^Pool_List($V_Type) ) -> V_Type
 	return value
 }
 
-LRU_Link :: struct {
+LRU_Link :: struct #packed {
 	value : i32,
 	ptr   : Pool_ListIter,
 }

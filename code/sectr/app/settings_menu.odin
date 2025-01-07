@@ -496,7 +496,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				}
 			}
 
-			Font_Size_Screen_Scalar:
+			Text_Size_Screen_Scalar:
 			{
 				ui_settings_entry_inputbox( & font_size_screen_scalar_input, false, "settings_menu.font_size_screen_scalar", str_intern("Font: Size Screen Scalar"),
 					UI_TextInput_Policy {
@@ -515,17 +515,46 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 					value, success := parse_f32(to_string(array_to_slice(input_str)))
 					if success {
 						value = clamp(value, 0.001, 9999.0)
-						config.font_size_screen_scalar = value
+						config.text_size_screen_scalar = value
 					}
 				}
 				else
 				{
 					clear( input_str )
-					append( & input_str, to_runes(str_fmt("%v", config.font_size_screen_scalar)))
+					append( & input_str, to_runes(str_fmt("%v", config.text_size_screen_scalar)))
 				}
 			}
 
-			Font_Size_Canvas_Scalar:
+			Text_Snap_Glyph_Positions:
+			{
+				ui_settings_entry_inputbox( & font_size_canvas_scalar_input, false, "settings_menu.font_size_canvas_scalar", str_intern("Font: Size Canvas Scalar"),
+				UI_TextInput_Policy {
+					digits_only            = true,
+					disallow_leading_zeros = false,
+					disallow_decimal       = false,
+					digit_min              = 0,
+					digit_max              = 1,
+					max_length             = 1,
+				}
+				)
+				using font_size_canvas_scalar_input
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0, 1)
+						config.text_snap_glyph_positions = cast(b32) i32(value)
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes(str_fmt("%v", config.text_size_canvas_scalar)))
+				}
+			}
+
+			Text_Size_Canvas_Scalar:
 			{
 				ui_settings_entry_inputbox( & font_size_canvas_scalar_input, false, "settings_menu.font_size_canvas_scalar", str_intern("Font: Size Canvas Scalar"),
 					UI_TextInput_Policy {
@@ -544,19 +573,19 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 					value, success := parse_f32(to_string(array_to_slice(input_str)))
 					if success {
 						value = clamp(value, 0.001, 9999.0)
-						config.font_size_canvas_scalar = value
+						config.text_size_canvas_scalar = value
 					}
 				}
 				else
 				{
 					clear( input_str )
-					append( & input_str, to_runes(str_fmt("%v", config.font_size_canvas_scalar)))
+					append( & input_str, to_runes(str_fmt("%v", config.text_size_canvas_scalar)))
 				}
 			}
 		
 			Text_Alpha_Sharpen:
 			{
-				ui_settings_entry_inputbox( & font_size_canvas_scalar_input, false, "settings_menu.font_size_canvas_scalar", str_intern("Font: Size Canvas Scalar"),
+				ui_settings_entry_inputbox( & font_size_canvas_scalar_input, false, "settings_menu.text_alpha_sharpen", str_intern("Text: Alpha Sharpen"),
 					UI_TextInput_Policy {
 						digits_only            = true,
 						disallow_leading_zeros = false,
@@ -572,14 +601,14 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				{
 					value, success := parse_f32(to_string(array_to_slice(input_str)))
 					if success {
-						value = clamp(value, 0.001, 9999.0)
-						config.font_size_canvas_scalar = value
+						value = clamp(value, 0.001, 10.0)
+						config.text_alpha_sharpen = value
 					}
 				}
 				else
 				{
 					clear( input_str )
-					append( & input_str, to_runes(str_fmt("%v", config.font_size_canvas_scalar)))
+					append( & input_str, to_runes(str_fmt("%v", config.text_size_canvas_scalar)))
 				}
 			}
 		}

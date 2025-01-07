@@ -1,9 +1,8 @@
-VEFontCache Odin Port
+VE Text Rendering Library
 Copyright 2024 Edward R. Gonzalez
 
 This project is based on Vertex Engine GPU Font Cache
-by Xi Chen (https://github.com/hypernewbie/VEFontCache). It has been substantially
-rewritten and redesigned for the Odin programming language.
+by Xi Chen (https://github.com/hypernewbie/VEFontCache). It has been substantially overhauled from its original implementation.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,

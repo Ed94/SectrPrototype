@@ -73,7 +73,7 @@ ui_box_compute_layout :: proc( box : ^UI_Box,
 	text_size : Vec2
 	if len(box.text) > 0
 	{
-		text_size = computed.text_shape.size
+		text_size = measure_text_shape( computed.text_shape )
 		// if layout.font_size == computed.text_size.y {
 		// 	text_size = computed.text_size
 		// }

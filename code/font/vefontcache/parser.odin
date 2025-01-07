@@ -1,12 +1,18 @@
-package vefontcache
+package vetext
 
 /*
 Notes:
+This is a minimal wrapper I originally did incase something than stb_truetype is introduced in the future.
+Otherwise, its essentially 1:1 with it.
 
-Freetype will do memory allocations and has an interface the user can implement.
-That interface is not exposed from this parser but could be added to parser_init.
+Freetype isn't really supported and its not a high priority (pretty sure its too slow).
+~~Freetype will do memory allocations and has an interface the user can implement.~~
+~~That interface is not exposed from this parser but could be added to parser_init.~~
 
-STB_Truetype has macros for its allocation unfortuantely
+STB_Truetype:
+* Has macros for its allocation unfortuantely. 
+TODO(Ed): Just keep a local version of stb_truetype and modify it to support a sokol/odin compatible allocator.
+Already wanted to do so anyway to evaluate the shape generation implementation.
 */
 
 import "base:runtime"
