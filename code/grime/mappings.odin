@@ -35,7 +35,8 @@ import "core:container/queue"
 import "core:dynlib"
 
 import "core:hash"
-	crc32  :: hash.crc32
+  ginger16 :: hash.ginger16
+	crc32    :: hash.crc32
 
 import "core:hash/xxhash"
 	xxh32 :: xxhash.XXH32

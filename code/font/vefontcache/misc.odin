@@ -21,13 +21,27 @@ reload_map :: #force_inline proc( self : ^map [$KeyType] $EntryType, allocator :
 	raw.allocator = allocator
 }
 
-font_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, glyph_index : Glyph ) -> (lru_code : u32) {
-	lru_code = u32(glyph_index) + ( ( 0x10000 * u32(font) ) & 0xFFFF0000 )
-	return
-}
+to_bytes :: #force_inline proc "contextless" ( typed_data : ^$Type ) -> []byte { return slice_ptr( transmute(^byte) typed_data, size_of(Type) ) }
 
-djb8_hash_32 :: #force_inline proc "contextless" ( hash : ^u32, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + u32(value) }
-djb8_hash    :: #force_inline proc "contextless" ( hash : ^u64, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + u64(value) }
+// Provides the nearest prime number value for the given capacity
+// closest_prime :: proc( capacity : uint ) -> uint
+// {
+// 	prime_table : []uint = {
+// 		53, 97, 193, 389, 769, 1543, 3079, 6151, 12289, 24593,
+// 		49157, 98317, 196613, 393241, 786433, 1572869, 3145739,
+// 		6291469, 12582917, 25165843, 50331653, 100663319,
+// 		201326611, 402653189, 805306457, 1610612741, 3221225473, 6442450941
+// 	};
+// 	for slot in prime_table {
+// 		if slot >= capacity {
+// 			return slot
+// 		}
+// 	}
+// 	return prime_table[len(prime_table) - 1]
+// }
+
+@(optimization_mode="favor_size")
+djb8_hash :: #force_inline proc "contextless" ( hash : ^$Type, bytes : []byte ) { for value in bytes do (hash^) = (( (hash^) << 8) + (hash^) ) + Type(value) }
 
 Colour  :: [4]f32
 Vec2    :: [2]f32
@@ -44,24 +58,25 @@ vec2i_from_vec2   :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2
 
 // This buffer is used below excluisvely to prevent any allocator recusion when verbose logging from allocators.
 // This means a single line is limited to 4k buffer
-Logger_Allocator_Buffer : [4 * Kilobyte]u8
+// Logger_Allocator_Buffer : [4 * Kilobyte]u8
 
 log :: proc( msg : string, level := core_log.Level.Info, loc := #caller_location ) {
-	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
-	context.allocator      = arena_allocator(& temp_arena)
-	context.temp_allocator = arena_allocator(& temp_arena)
+	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+	// context.allocator      = arena_allocator(& temp_arena)
+	// context.temp_allocator = arena_allocator(& temp_arena)
 
 	core_log.log( level, msg, location = loc )
 }
 
 logf :: proc( fmt : string, args : ..any,  level := core_log.Level.Info, loc := #caller_location  ) {
-	temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
-	context.allocator      = arena_allocator(& temp_arena)
-	context.temp_allocator = arena_allocator(& temp_arena)
+	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
+	// context.allocator      = arena_allocator(& temp_arena)
+	// context.temp_allocator = arena_allocator(& temp_arena)
 
 	core_log.logf( level, fmt, ..args, location = loc )
 }
 
+@(optimization_mode="favor_size")
 to_glyph_buffer_space :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
 {
 	pos      := position^
@@ -75,6 +90,7 @@ to_glyph_buffer_space :: #force_inline proc "contextless" ( #no_alias position, 
 	(scale^)    = scale_32
 }
 
+@(optimization_mode="favor_size")
 to_target_space :: #force_inline proc "contextless" ( #no_alias position, scale : ^Vec2, size : Vec2 )
 {
 	quotient : Vec2 = 1.0 / size
@@ -126,14 +142,17 @@ else
 {
 	Vec2_SIMD :: simd.f32x4
 
+	@(optimization_mode="favor_size")
 	vec2_to_simd :: #force_inline proc "contextless" (v: Vec2) -> Vec2_SIMD {
 		return Vec2_SIMD{v.x, v.y, 0, 0}
 	}
 
+	@(optimization_mode="favor_size")
 	simd_to_vec2 :: #force_inline proc "contextless" (v: Vec2_SIMD) -> Vec2 {
 		return Vec2{ simd.extract(v, 0), simd.extract(v, 1) }
 	}
 
+	@(optimization_mode="favor_size")
 	eval_point_on_bezier3 :: #force_inline proc "contextless" (p0, p1, p2: Vec2, alpha: f32) -> Vec2
 	{
 		simd_p0 := vec2_to_simd(p0)
@@ -157,6 +176,7 @@ else
 		return simd_to_vec2(result)
 	}
 
+	@(optimization_mode="favor_size")
 	eval_point_on_bezier4 :: #force_inline proc "contextless" (p0, p1, p2, p3: Vec2, alpha: f32) -> Vec2
 	{
 		simd_p0 := vec2_to_simd(p0)

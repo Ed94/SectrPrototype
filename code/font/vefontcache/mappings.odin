@@ -2,7 +2,7 @@ package vefontcache
 
 import "base:runtime"
 import "core:hash"
-	fnv64a :: hash.fnv64a
+	ginger16 :: hash.ginger16
 import "core:math"
 	ceil_f16   :: math.ceil_f16
 	ceil_f16le :: math.ceil_f16le

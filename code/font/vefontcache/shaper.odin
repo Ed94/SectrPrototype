@@ -6,7 +6,7 @@ Note(Ed): The only reason I didn't directly use harfbuzz is because hamza exists
 import "core:c"
 import "thirdparty:harfbuzz"
 
-shape_lru_code :: djb8_hash_32
+Shape_Key :: u32
 
 Shaped_Text :: struct {
 	glyphs             : [dynamic]Glyph,
@@ -19,7 +19,7 @@ Shaped_Text :: struct {
 
 Shaped_Text_Cache :: struct {
 	storage       : [dynamic]Shaped_Text,
-	state         : LRU_Cache,
+	state         : LRU_Cache(Shape_Key),
 	next_cache_id : i32,
 }
 
@@ -71,7 +71,8 @@ shaper_unload_font :: #force_inline proc( info : ^Shaper_Info )
 	if info.blob != nil do harfbuzz.blob_destroy( info.blob )
 }
 
-shaper_shape_harfbuzz :: #force_inline proc( ctx : ^Shaper_Context, text_utf8 : string, entry : Entry, font_px_Size, font_scale : f32, output :^Shaped_Text )
+@(optimization_mode="favor_size")
+shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry : Entry, font_px_Size, font_scale : f32, output :^Shaped_Text )
 {
 	profile(#procedure)
 	current_script := harfbuzz.Script.UNKNOWN
@@ -87,6 +88,8 @@ shaper_shape_harfbuzz :: #force_inline proc( ctx : ^Shaper_Context, text_utf8 : 
 	line_height    := ((ascent - descent + line_gap) * font_scale)
 
 	position : Vec2
+
+	@(optimization_mode="favor_size")
 	shape_run :: proc( output : ^Shaped_Text,
 		entry  : Entry, 
 		buffer : harfbuzz.Buffer,
@@ -241,7 +244,7 @@ shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Shaper_Context
 	shaper_shape_harfbuzz( ctx, text_utf8, entry, font_px_size, font_scale, output )
 }
 
-shaper_shape_text_latin :: #force_inline proc( ctx : ^Shaper_Context, 
+shaper_shape_text_latin :: proc( ctx : ^Shaper_Context, 
 	entry        : Entry, 
 	font_px_Size : f32, 
 	font_scale   : f32, 
@@ -305,7 +308,7 @@ shaper_shape_text_latin :: #force_inline proc( ctx : ^Shaper_Context,
 	output.size.y = f32(line_count) * line_height
 }
 
-shaper_shape_text_cached :: #force_inline proc( text_utf8 : string, 
+shaper_shape_text_cached :: proc( text_utf8 : string, 
 	ctx                 : ^Shaper_Context,
 	shape_cache         : ^Shaped_Text_Cache, 
 	font                : Font_ID,
@@ -316,13 +319,16 @@ shaper_shape_text_cached :: #force_inline proc( text_utf8 : string,
 ) -> (shaped_text : Shaped_Text)
 {
 	profile(#procedure)
-	font        := font
-	font_bytes  := slice_ptr( transmute(^byte) & font,  size_of(Font_ID) )
-	text_bytes  := transmute( []byte) text_utf8
+	font         := font
+	font_px_size := font_px_size
+	font_bytes   := to_bytes( & font )
+	size_bytes   := to_bytes( & font_px_size )
+	text_bytes   := transmute( []byte) text_utf8
 
-	lru_code : u32
-	shape_lru_code( & lru_code, font_bytes )
-	shape_lru_code( & lru_code, text_bytes )
+	lru_code : Shape_Key
+	djb8_hash( & lru_code, font_bytes )
+	djb8_hash( & lru_code, size_bytes )
+	djb8_hash( & lru_code, text_bytes )
 
 	state := & shape_cache.state
 
@@ -337,7 +343,7 @@ shaper_shape_text_cached :: #force_inline proc( text_utf8 : string,
 		else
 		{
 			next_evict_idx := lru_get_next_evicted( state ^ )
-			assert( next_evict_idx != 0xFFFFFFFF )
+			assert( next_evict_idx != LRU_Fail_Mask_32 )
 
 			shape_cache_idx = lru_peek( state ^, next_evict_idx, must_find = true )
 			assert( shape_cache_idx != - 1 )

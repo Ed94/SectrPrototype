@@ -34,7 +34,7 @@ Glyph_Pack_Entry :: struct {
 	position           : Vec2,
 
 	index              : Glyph,
-	lru_code           : u32,
+	lru_code           : Atlas_Region_Key,
 	atlas_index        : i32,
 	in_atlas           : b8,
 	should_cache       : b8,
@@ -92,7 +92,7 @@ Frame_Buffer_Pass :: enum u32 {
 }
 
 Glyph_Batch_Cache :: struct {
-	table : map[u32]b8,
+	table : map[Atlas_Region_Key]b8,
 	num   : i32,
 	cap   : i32,
 }
@@ -115,6 +115,7 @@ Glyph_Draw_Buffer :: struct{
 	cached     : [dynamic]i32,
 }
 
+@(optimization_mode="favor_size")
 blit_quad :: #force_inline proc ( draw_list : ^Draw_List, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}, uv0 : Vec2 = {0, 0}, uv1 : Vec2 = {1, 1} )
 {
 	// profile(#procedure)
@@ -149,12 +150,13 @@ blit_quad :: #force_inline proc ( draw_list : ^Draw_List, p0 : Vec2 = {0, 0}, p1
 }
 
 // Constructs a triangle fan to fill a shape using the provided path outside_point represents the center point of the fan.
-construct_filled_path :: #force_inline proc( draw_list : ^Draw_List, 
+@(optimization_mode="favor_size")
+construct_filled_path :: proc( draw_list : ^Draw_List, 
 	outside_point : Vec2, 
 	path          : []Vertex,
 	scale         := Vec2 { 1, 1 },
 	translate     := Vec2 { 0, 0 }
-)
+) #no_bounds_check
 {
 	// profile(#procedure)
 	v_offset := cast(u32) len(draw_list.vertices)
@@ -185,12 +187,13 @@ construct_filled_path :: #force_inline proc( draw_list : ^Draw_List,
 	}
 }
 
+@(optimization_mode="favor_size")
 generate_glyph_pass_draw_list :: proc(draw_list : ^Draw_List, path : ^[dynamic]Vertex,
 	glyph_shape      : Parser_Glyph_Shape, 
 	curve_quality    : f32, 
 	bounds           : Range2, 
 	translate, scale : Vec2
-)
+) #no_bounds_check
 {
 	profile(#procedure)
 	outside := Vec2{bounds.p0.x - 21, bounds.p0.y - 33}
@@ -248,14 +251,15 @@ generate_glyph_pass_draw_list :: proc(draw_list : ^Draw_List, path : ^[dynamic]V
 	}
 }
 
-generate_shapes_draw_list :: proc ( ctx : ^Context, font : Font_ID, colour : Colour, entry : Entry, font_scale : f32, position, scale : Vec2, shapes : []Shaped_Text )
+generate_shapes_draw_list :: proc ( ctx : ^Context, font : Font_ID, colour : Colour, entry : Entry, px_size, font_scale : f32, position, scale : Vec2, shapes : []Shaped_Text )
 {
 	assert(len(shapes) > 0)
 	for shape in shapes {
 		ctx.cursor_pos = {}
 		ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, ctx.px_scalar,
 			colour, 
-			entry, 
+			entry,
+			px_size,
 			font_scale, 
 			position,
 			scale, 
@@ -265,13 +269,15 @@ generate_shapes_draw_list :: proc ( ctx : ^Context, font : Font_ID, colour : Col
 	}
 }
 
-generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape : Shaped_Text,
+@(optimization_mode="favor_size")
+generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	atlas        : ^Atlas,
 	glyph_buffer : ^Glyph_Draw_Buffer,
 	px_scalar    : f32,
 
 	colour       : Colour,
 	entry        : Entry,
+	px_size      : f32,
 	font_scale   : f32,
 
 	target_position : Vec2,
@@ -282,10 +288,10 @@ generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape
 {
 	profile(#procedure)
 
-	font_scale   := font_scale   * px_scalar
-	target_scale := target_scale / px_scalar
+	// font_scale   := font_scale   * px_scalar
+	// target_scale := target_scale / px_scalar
 
-	mark_glyph_seen :: #force_inline proc "contextless" ( cache : ^Glyph_Batch_Cache, lru_code : u32 ) {
+	mark_glyph_seen :: #force_inline proc "contextless" ( cache : ^Glyph_Batch_Cache, lru_code : Atlas_Region_Key ) {
 		cache.table[lru_code] = true
 		cache.num            += 1
 	}
@@ -317,7 +323,7 @@ generate_shape_draw_list :: #force_no_inline proc( draw_list : ^Draw_List, shape
 	for & glyph, index in glyph_pack
 	{
 		glyph.index    = shape.glyphs[ index ]
-		glyph.lru_code = font_glyph_lru_code(entry.id, glyph.index)
+		glyph.lru_code = atlas_glyph_lru_code(entry.id, px_size, glyph.index)
 	}
 	profile_end()
 
@@ -463,7 +469,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	colour            : Colour,
 	font_scale        : Vec2,
 	target_scale      : Vec2,
-)
+) #no_bounds_check
 {
 	profile(#procedure)
 
@@ -558,7 +564,6 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		to_target_space( & draw_quad.src_pos, & draw_quad.src_scale, glyph_buffer_size )
 	}
 	profile_end()
-
 
 	profile_begin("generate oversized glyphs draw_list")
 	{
@@ -722,7 +727,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 }
 
 // Flush the content of the glyph_buffers draw lists to the main draw list
-flush_glyph_buffer_draw_list :: #force_inline proc( #no_alias draw_list, glyph_buffer_draw_list,  glyph_buffer_clear_draw_list : ^Draw_List, allocated_x : ^i32 )
+flush_glyph_buffer_draw_list :: proc( #no_alias draw_list, glyph_buffer_draw_list,  glyph_buffer_clear_draw_list : ^Draw_List, allocated_x : ^i32 )
 {
 	profile(#procedure)
 	// if len(glyph_buffer_clear_draw_list.calls) == 0 || len(glyph_buffer_draw_list.calls) == 0 do return
@@ -743,6 +748,7 @@ flush_glyph_buffer_draw_list :: #force_inline proc( #no_alias draw_list, glyph_b
 }
 
 // ve_fontcache_clear_Draw_List
+@(optimization_mode="favor_size")
 clear_draw_list :: #force_inline proc ( draw_list : ^Draw_List ) {
 	clear( & draw_list.calls )
 	clear( & draw_list.indices )
@@ -750,7 +756,8 @@ clear_draw_list :: #force_inline proc ( draw_list : ^Draw_List ) {
 }
 
 // ve_fontcache_merge_Draw_List
-merge_draw_list :: proc ( #no_alias dst, src : ^Draw_List )
+@(optimization_mode="favor_size")
+merge_draw_list :: proc ( #no_alias dst, src : ^Draw_List ) #no_bounds_check
 {
 	profile(#procedure)
 	error : Allocator_Error
@@ -776,7 +783,7 @@ merge_draw_list :: proc ( #no_alias dst, src : ^Draw_List )
 	}
 }
 
-optimize_draw_list :: #force_inline proc (draw_list: ^Draw_List, call_offset: int)
+optimize_draw_list :: proc (draw_list: ^Draw_List, call_offset: int)  #no_bounds_check
 {
 	profile(#procedure)
 	assert(draw_list != nil)

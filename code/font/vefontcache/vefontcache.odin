@@ -87,7 +87,7 @@ Init_Atlas_Params :: struct {
 }
 
 Init_Atlas_Params_Default :: Init_Atlas_Params {
-	size_multiplier = 2,
+	size_multiplier = 1,
 	glyph_padding   = 1,
 }
 
@@ -273,7 +273,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		batch_cache    := & glyph_buffer.batch_cache
 		batch_cache.cap = i32(glyph_draw_params.batch_glyph_limit)
 		batch_cache.num = 0
-		batch_cache.table, error = make( map[u32]b8, uint(glyph_draw_params.shape_gen_scratch_reserve) )
+		batch_cache.table, error = make( map[Atlas_Region_Key]b8, uint(glyph_draw_params.shape_gen_scratch_reserve) )
 		assert(error == .None, "VEFontCache.init : Failed to allocate batch_cache")
 
 		glyph_buffer.glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte )
@@ -472,6 +472,7 @@ set_snap_glyph_pos :: #force_inline proc( ctx : ^Context, should_snap : b32 ) {
 	ctx.shaper_ctx.snap_glyph_position = should_snap
 }
 
+@(optimization_mode="favor_size")
 draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, position, scale : Vec2, text_utf8 : string )
 {
 	profile(#procedure)
@@ -499,16 +500,17 @@ draw_text :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, 
 	shape := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, 
 		font, 
 		entry, 
-		px_size,
-		font_scale, 
+		px_upscale,
+		font_scale_upscale, 
 		shaper_shape_text_uncached_advanced
 	)
 	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, ctx.px_scalar,
 		colour, 
 		entry, 
-		font_scale, 
+		px_upscale,
+		font_scale_upscale, 
 		position,
-		scale, 
+		downscale, 
 		ctx.snap_width, 
 		ctx.snap_height
 	)
@@ -543,14 +545,15 @@ draw_text_slice :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size :
 		assert( len(str) > 0 )
 		shape := shaper_shape_text_cached( str, & ctx.shaper_ctx, & ctx.shape_cache, 
 			font, 
-			entry, 
+			entry,
 			px_upscale,
-			font_scale, 
+			font_scale_upscale, 
 			shaper_shape_text_uncached_advanced
 		)
 		shapes[id] = shape
 	}
-	generate_shapes_draw_list(ctx, font, colour, entry, font_scale, position, scale, shapes )
+
+	generate_shapes_draw_list(ctx, font, colour, entry, px_upscale, font_scale_upscale, position, downscale, shapes )
 }
 
 
@@ -578,6 +581,7 @@ draw_text_slice :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size :
 // }
 
 // Resolve the shape and track it to reduce iteration overhead
+@(optimization_mode="favor_size")
 draw_text_shape :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, position, scale : Vec2, shape : Shaped_Text )
 {
 	profile(#procedure)
@@ -601,9 +605,10 @@ draw_text_shape :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size :
 	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer, ctx.px_scalar,
 		colour, 
 		entry, 
-		font_scale, 
+		px_upscale,
+		font_scale_upscale, 
 		position, 
-		scale, 
+		downscale, 
 		ctx.snap_width, 
 		ctx.snap_height
 	)
@@ -668,11 +673,12 @@ measure_text_size :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
 	entry := ctx.entries[font]
+
+	font_scale := parser_scale( entry.parser_info, px_size )
 	
 	px_size_upscaled    := px_size * ctx.px_scalar
 	font_scale_upscaled := parser_scale( entry.parser_info, px_size_upscaled )
 
-	// font_scale := parser_scale( entry.parser_info, px_size )
 	shaped     := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, font, entry, px_size_upscaled, font_scale_upscaled, shaper_shape_text_uncached_advanced )
 	return shaped.size
 }
@@ -714,7 +720,7 @@ shape_text_latin :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size 
 	return shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, 
 		font, 
 		entry, 
-		px_size_upscaled, 
+		px_size, 
 		font_scale_upscaled, 
 		shaper_shape_text_latin
 	)
@@ -734,7 +740,7 @@ shape_text_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, px_si
 	return shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache,
 		font, 
 		entry, 
-		px_size_upscaled, 
+		px_size, 
 		font_scale_upscaled, 
 		shaper_shape_text_uncached_advanced
 	)

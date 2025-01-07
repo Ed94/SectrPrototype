@@ -10,8 +10,10 @@ Atlas_Region_Kind :: enum u8 {
 	Ignore = 0xFF, // ve_fontcache_cache_glyph_to_atlas uses a -1 value in clear draw call
 }
 
+Atlas_Region_Key :: u32
+
 Atlas_Region :: struct {
-	state : LRU_Cache,
+	state : LRU_Cache(Atlas_Region_Key),
 
 	size     : Vec2i,
 	capacity : Vec2i,
@@ -36,7 +38,19 @@ Atlas :: struct {
 	size : Vec2i,
 }
 
-atlas_region_bbox :: proc( region : Atlas_Region, local_idx : i32 ) -> (position, size: Vec2)
+
+atlas_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, px_size : f32, glyph_index : Glyph ) -> (lru_code : Atlas_Region_Key) {
+	// lru_code = u32(glyph_index) + ( ( 0x10000 * u32(font) ) & 0xFFFF0000 )
+	font        := font
+	glyph_index := glyph_index
+	px_size     := px_size
+	djb8_hash( & lru_code, to_bytes( & font) )
+	djb8_hash( & lru_code, to_bytes( & glyph_index ) )
+	djb8_hash( & lru_code, to_bytes( & px_size ) )
+	return
+}
+
+atlas_region_bbox :: #force_inline proc( region : Atlas_Region, local_idx : i32 ) -> (position, size: Vec2)
 {
 	size = vec2(region.slot_size.x)
 
@@ -65,7 +79,7 @@ atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_bu
 }
 
 // Grab an atlas LRU cache slot.
-atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u32 ) -> (atlas_index : i32)
+atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : Atlas_Region_Key ) -> (atlas_index : i32)
 {
 	if region.next_idx < region.state.capacity
 	{
@@ -77,7 +91,7 @@ atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : u3
 	else
 	{
 		next_evict_codepoint := lru_get_next_evicted( region.state )
-		assert( next_evict_codepoint != 0xFFFFFFFF)
+		assert( next_evict_codepoint != LRU_Fail_Mask_16)
 
 		atlas_index = lru_peek( region.state, next_evict_codepoint, must_find = true )
 		assert( atlas_index != -1 )

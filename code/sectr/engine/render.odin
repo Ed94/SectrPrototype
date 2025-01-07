@@ -57,6 +57,7 @@ render_mode_2d_workspace :: proc( screen_extent : Vec2, cam : Camera, input : In
 	screen_size    := screen_extent * 2
 
 	// TODO(Ed): Eventually will be the viewport extents
+	ve.set_px_scalar( ve_ctx, app_config().font_size_canvas_scalar )
 	ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
 	// ve.configure_snap( ve_ctx, 0, 0 )
 
@@ -122,6 +123,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 	screen_size   := screen_extent * 2
 	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
 
+	ve.set_px_scalar( ve_ctx, app_config().font_size_screen_scalar )
 	ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
 
 	render_screen_ui( screen_extent, screen_ui, ve_ctx, ve_render )
@@ -917,12 +919,18 @@ draw_text_string_pos_norm :: #force_inline proc( text : string, id : FontID, fon
 	width  := app_window.extent.x * 2
 	height := app_window.extent.y * 2
 
-	ve_id, resolved_size := font_provider_resolve_draw_id( id, font_size )
+	// over_sample : f32 = f32(config.font_size_screen_scalar)
+
+	target_size := font_size
+	// target_size *= over_sample
+
+	ve_id, resolved_size := font_provider_resolve_draw_id( id, target_size )
 	color_norm           := normalize_rgba8(color)
 
 	screen_size_norm := 1 / Vec2 { width, height }
 
 	draw_scale := screen_size_norm * scale 
+	// draw_scale /= over_sample
 
 	// ve.set_px_scalar( & font_provider_ctx.ve_ctx, config.font_size_screen_scalar )
 	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
@@ -938,6 +946,7 @@ draw_text_string_pos_extent :: #force_inline proc( text : string, id : FontID, f
 	screen_size    := app_window.extent * 2
 	render_pos     := screen_to_render_pos(pos)
 	normalized_pos := render_pos * (1.0 / screen_size)
+
 	draw_text_string_pos_norm( text, id, font_size, normalized_pos, color )
 }
 

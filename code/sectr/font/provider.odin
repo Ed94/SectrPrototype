@@ -23,7 +23,8 @@ FontID  :: struct {
 FontDef :: struct {
 	path_file    : string,
 	default_size : i32,
-	size_table   : [Font_Largest_Px_Size / Font_Size_Interval] ve.Font_ID,
+	ve_id        : ve.Font_ID
+	// size_table   : [Font_Largest_Px_Size / Font_Size_Interval] ve.Font_ID,
 }
 
 FontProviderContext :: struct
@@ -76,6 +77,7 @@ font_load :: proc(path_file : string,
 	profile(msg)
 	log(msg)
 
+
 	font_data, read_succeded : = os.read_entire_file( path_file, persistent_allocator() )
 	verify( b32(read_succeded), str_fmt("Failed to read font file for: %v", path_file) )
 	font_data_size := cast(i32) len(font_data)
@@ -103,14 +105,8 @@ font_load :: proc(path_file : string,
 	def.path_file    = path_file
 	def.default_size = default_size
 
-	for font_size : i32 = clamp( Font_Size_Interval, 2, Font_Size_Interval ); font_size <= Font_Largest_Px_Size; font_size += Font_Size_Interval
-	{
-		// logf("Loading at size %v", font_size)
-		id    := (font_size / Font_Size_Interval) + (font_size % Font_Size_Interval)
-		ve_id := & def.size_table[id - 1]
-		ve_ret_id, error := ve.load_font( & ve_ctx, desired_id, font_data )
-		(ve_id^) = ve_ret_id
-	}
+	error : ve.Load_Font_Error
+	def.ve_id, error = ve.load_font( & ve_ctx, desired_id, font_data )
 
 	fid := FontID { key, desired_id }
 	return fid
@@ -118,20 +114,14 @@ font_load :: proc(path_file : string,
 
 font_provider_set_alpha_sharpen :: #force_inline proc( scalar : f32 ) {
 	ve.set_alpha_scalar( & get_state().font_provider_ctx.ve_ctx, scalar )
-	// ve.clear_atlas_region_caches(& ctx.ve_ctx)
-	// ve.clear_shape_cache(& ctx.ve_ctx)
 }
 
 font_provider_set_px_scalar :: #force_inline proc( scalar : f32 ) {
 	ve.set_px_scalar( & get_state().font_provider_ctx.ve_ctx, scalar )
-	// ve.clear_atlas_region_caches(& ctx.ve_ctx)
-	// ve.clear_shape_cache(& ctx.ve_ctx)
 }
 
 font_provider_set_snap_glyph_pos :: #force_inline proc( should_snap : b32 ) {
 	ve.set_snap_glyph_pos( & get_state().font_provider_ctx.ve_ctx, should_snap )
-	// ve.clear_atlas_region_caches(& ctx.ve_ctx)
-	// ve.clear_shape_cache(& ctx.ve_ctx)
 }
 
 Font_Use_Default_Size :: f32(0.0)
@@ -146,7 +136,7 @@ font_provider_resolve_draw_id :: #force_inline proc( id : FontID, size := Font_U
 	resolved_size  = clamp( i32( even_size), 2, Font_Largest_Px_Size )
 
 	id    := (resolved_size / Font_Size_Interval) + (resolved_size % Font_Size_Interval)
-	ve_id  = def.size_table[ id - 1 ]
+	ve_id = def.ve_id
 	return
 }
 
