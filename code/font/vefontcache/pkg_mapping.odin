@@ -1,6 +1,7 @@
 package vetext
 
 import "base:builtin"
+	resize_soa_non_zero :: non_zero_resize_soa
 import "base:runtime"
 import "core:hash"
 	ginger16 :: hash.ginger16
@@ -103,11 +104,6 @@ make_soa :: proc {
 
 peek :: proc {
 	peek_array,
-}
-
-pop_array :: proc {
-	builtin.pop,
-	// pop_safe,
 }
 
 resize :: proc {

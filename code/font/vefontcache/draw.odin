@@ -286,8 +286,8 @@ generate_shapes_draw_list :: #force_inline proc ( ctx : ^Context, font : Font_ID
 
 /* Core generator pipeline for shapes
 
-	If you'd like to make a custom draw procedure, this may either be directly used, or 
-	should be straight forward to make an augmented derivative for a specific codepath.
+	If you'd like to make a custom draw procedure, this can either be used directly or 
+    modified to create an augmented derivative for a specific code path.
 
 	This procedure has no awareness of layers. That should be handled by a higher-order codepath. 
 	For this level of codepaths what matters is maximizing memory locality for:
@@ -348,7 +348,7 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	oversized  := & glyph_buffer.oversized
 	to_cache   := & glyph_buffer.to_cache
 	cached     := & glyph_buffer.cached
-	non_zero_resize_soa(glyph_pack, len(shape.glyphs))
+	resize_soa_non_zero(glyph_pack, len(shape.glyphs))
 
 	append_sub_pack :: #force_inline proc ( pack : ^[dynamic]i32, entry : i32 )
 	{
@@ -754,12 +754,10 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			)
 		}
 
-		profile_begin("generate_cached_draw_list: to_cache")
-		if enable_debug_vis_tyeps {
-			colour.r = 1.0
-			colour.g = 1.0
-			colour.b = 1.0
-		}
+		profile_begin("generate_cached_draw_list: cached")
+		colour.r = max(colour.r, 1.0 * enable_debug_vis_type)
+		colour.g = max(colour.g, 1.0 * enable_debug_vis_type)
+		colour.b = max(colour.b, 1.0 * enable_debug_vis_type)
 		generate_cached_draw_list( draw_list, glyph_pack[:], cached, colour )
 		profile_end()
 
@@ -769,11 +767,9 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	profile_end()
 
 	profile_begin("generate_cached_draw_list: to_cache")
-	if enable_debug_vis_tyeps {
-		colour.r = 0.80
-		colour.g = 0.25
-		colour.b = 0.25
-	}
+	colour.r = max(colour.r, 0.80 * enable_debug_vis_type)
+	colour.g = max(colour.g, 0.25 * enable_debug_vis_type)
+	colour.b = max(colour.b, 0.25 * enable_debug_vis_type)
 	generate_cached_draw_list( draw_list, glyph_pack[:], to_cache, colour )
 	profile_end()
 }
