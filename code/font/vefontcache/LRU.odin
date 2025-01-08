@@ -24,7 +24,7 @@ Pool_ListIter  :: i32
 // Pool_ListValue :: LRU_Key
 
 // Pool_List_Item :: struct( $V_Type : typeid ) #packed {
-Pool_List_Item :: struct( $V_Type : typeid ) {
+Pool_List_Item :: struct( $V_Type : typeid ) #packed {
 	prev  : Pool_ListIter,
 	next  : Pool_ListIter,
 	value : V_Type,
@@ -56,7 +56,7 @@ pool_list_init :: proc( pool : ^Pool_List($V_Type), capacity : i32, dbg_name : s
 	pool.dbg_name = dbg_name
 
 	for id in 0 ..< pool.capacity {
-		pool.free_list[id] = i32(id)
+		pool.free_list[id] = Pool_ListIter(id)
 		pool.items[id] = {
 			prev = -1,
 			next = -1,
@@ -85,7 +85,7 @@ pool_list_clear :: proc( pool: ^Pool_List($V_Type) )
 	resize( & pool.free_list, cap(pool.free_list) )
 
 	for id in 0 ..< pool.capacity {
-		pool.free_list[id] = i32(id)
+		pool.free_list[id] = Pool_ListIter(id)
 		pool.items[id] = {
 			prev = -1,
 			next = -1,
@@ -128,7 +128,7 @@ pool_list_push_front :: proc( pool : ^Pool_List($V_Type), value : V_Type ) #no_b
 pool_list_erase :: proc( pool : ^Pool_List($V_Type), iter : Pool_ListIter ) #no_bounds_check
 {
 	if pool.size <= 0 do return
-	assert( iter >= 0 && iter < i32(pool.capacity) )
+	assert( iter >= 0 && iter < Pool_ListIter(pool.capacity) )
 	assert( len(pool.free_list) == int(pool.capacity - pool.size) )
 
 	iter_node := & pool.items[ iter ]
