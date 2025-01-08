@@ -54,6 +54,7 @@ Atlas :: struct {
 }
 
 // Hahser for the atlas.
+@(optimization_mode="favor_size")
 atlas_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, px_size : f32, glyph_index : Glyph ) -> (lru_code : Atlas_Key) {
 	// lru_code = u32(glyph_index) + ( ( 0x10000 * u32(font) ) & 0xFFFF0000 )
 	font        := font
@@ -131,7 +132,7 @@ atlas_decide_region_branchless :: #force_inline proc "contextless" (
 	which_ab     := min(score_a, score_b)
 	which_cd     := min(score_c, score_d)
 	which_region := min(which_ab, which_cd)
-	resolved     := min(which_region, score_buffer)  + 6
+	resolved     := min(which_region, score_buffer) + 6
 	return Atlas_Region_Kind(resolved)
 }
 

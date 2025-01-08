@@ -58,6 +58,18 @@ Vec2    :: [2]f32
 Vec2i   :: [2]i32
 Vec2_64 :: [2]f64
 
+Transform :: struct {
+	pos   : Vec2,
+	scale : Vec2,
+}
+
+Range2 :: struct {
+	p0, p1 : Vec2,
+}
+
+mul_range2_vec2 :: #force_inline proc "contextless" ( range : Range2, v : Vec2 ) -> Range2 { return { range.p0 * v, range.p1 * v } }
+size_range2     :: #force_inline proc "contextless" ( range : Range2           ) -> Vec2   { return range.p1 - range.p0 }
+
 vec2_from_scalar  :: #force_inline proc "contextless" ( scalar : f32   ) -> Vec2    { return { scalar, scalar }}
 vec2_64_from_vec2 :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2_64 { return { f64(v2.x), f64(v2.y) }}
 vec2_from_vec2i   :: #force_inline proc "contextless" ( v2i    : Vec2i ) -> Vec2    { return { f32(v2i.x), f32(v2i.y) }}

@@ -21,15 +21,6 @@ Vertex :: struct {
 	u, v : f32,
 }
 
-Transform :: struct {
-	pos   : Vec2,
-	scale : Vec2,
-}
-
-Range2 :: struct {
-	p0, p1 : Vec2,
-}
-
 Glyph_Bounds_Mat :: matrix[2, 2] f32
 
 Glyph_Draw_Quad :: struct {
@@ -44,21 +35,21 @@ Glyph_Draw_Quad :: struct {
 Glyph_Pack_Entry :: struct #packed {
 	position           : Vec2,
 
-	index              : Glyph,
-	lru_code           : Atlas_Key,
+	// index              : Glyph,
+	// lru_code           : Atlas_Key,
 	atlas_index        : i32,
 	in_atlas           : b8,
 	should_cache       : b8,
-	region_kind        : Atlas_Region_Kind,
+	// region_kind        : Atlas_Region_Kind,
 	region_pos         : Vec2,
 	region_size        : Vec2,
 
-	bounds               : Range2,
-	bounds_scaled        : Range2,
-	bounds_size          : Vec2,
-	bounds_size_scaled   : Vec2,
+	// bounds               : Range2,
+	// bounds_scaled        : Range2,
+	// bounds_size          : Vec2,
+	// bounds_size_scaled   : Vec2,
 	over_sample          : Vec2,
-	scale                : Vec2,
+	// scale                : Vec2,
 
 	shape             : Parser_Glyph_Shape,
 	draw_transform    : Transform,
@@ -358,38 +349,9 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	}
 	sub_slice :: #force_inline proc "contextless" ( pack : ^[dynamic]i32) -> []i32 { return pack[:] }
 
-	profile_begin("index")
-	for & glyph, index in glyph_pack
-	{
-		glyph.index    = shape.glyph_id[ index ]
-		glyph.lru_code = atlas_glyph_lru_code(entry.id, px_size, glyph.index)
-	}
-	profile_end()
-
 	profile_begin("translate")
-	for & glyph, index in glyph_pack
-	{
+	for & glyph, index in glyph_pack {
 		glyph.position = target_position + (shape.position[index]) * target_scale
-	}
-	profile_end()
-
-	profile_begin("bounds")
-	for & glyph, index in glyph_pack
-	{
-		glyph.bounds             = parser_get_bounds( entry.parser_info, glyph.index )
-		glyph.bounds_scaled      = { glyph.bounds.p0 * font_scale, glyph.bounds.p1 * font_scale }
-		glyph.bounds_size        = glyph.bounds.p1          - glyph.bounds.p0
-		glyph.bounds_size_scaled = glyph.bounds_size        * font_scale
-		glyph.scale              = glyph.bounds_size_scaled + atlas.glyph_padding
-	}
-	profile_end()
-
-	glyph_padding_dbl  := atlas.glyph_padding * 2
-
-	profile_begin("region")
-	for & glyph, index in glyph_pack
-	{
-		glyph.region_kind = atlas_decide_region( atlas ^, glyph_buffer_size, glyph.bounds_size_scaled )
 	}
 	profile_end()
 
@@ -401,15 +363,20 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 
 	for & glyph, index in glyph_pack
 	{
-		if glyph.region_kind == .None { 
+		atlas_key          := shape.atlas_lru_code[index]
+		region_kind        := shape.region_kind[index]
+		bounds             := shape.bounds[index]
+		bounds_size_scaled := size(bounds) * font_scale
+
+		if region_kind == .None { 
 			assert(false, "FAILED TO ASSGIN REGION")
 			continue
 	 	}
-		if glyph.region_kind == .E
+		if region_kind == .E
 		{
 			glyph.over_sample = \
-				glyph.bounds_size_scaled.x <= glyph_buffer_size.x / 2 &&
-				glyph.bounds_size_scaled.y <= glyph_buffer_size.y / 2 ? \
+				bounds_size_scaled.x <= glyph_buffer_size.x / 2 &&
+				bounds_size_scaled.y <= glyph_buffer_size.y / 2 ? \
 					{2.0, 2.0} \
 				: {1.0, 1.0}
 			append_sub_pack(oversized, cast(i32) index)
@@ -417,8 +384,8 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 		}
 
 		glyph.over_sample = glyph_buffer.over_sample
-		region           := atlas.regions[glyph.region_kind]
-		glyph.atlas_index =  lru_get( & region.state, glyph.lru_code )
+		region           := atlas.regions[region_kind]
+		glyph.atlas_index =  lru_get( & region.state, atlas_key )
 
 		// Glyphs are prepared in batches based on the capacity of the batch cache.
 		Prepare_For_Batch:
@@ -441,22 +408,22 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 				}
 
 				profile("append to_cache")
-				glyph.atlas_index = atlas_reserve_slot(region, glyph.lru_code)
+				glyph.atlas_index = atlas_reserve_slot(region, atlas_key)
 				glyph.region_pos, glyph.region_size = atlas_region_bbox(region ^, glyph.atlas_index)
 				append_sub_pack(to_cache, cast(i32) index)
-				mark_glyph_seen(& glyph_buffer.batch_cache, glyph.lru_code)
+				mark_glyph_seen(& glyph_buffer.batch_cache, atlas_key)
 				continue
 			}
 
 			profile("append cached")
 			glyph.region_pos, glyph.region_size = atlas_region_bbox(region ^, glyph.atlas_index)
 			append_sub_pack(cached, cast(i32) index)
-			mark_glyph_seen(& glyph_buffer.batch_cache, glyph.lru_code)
+			mark_glyph_seen(& glyph_buffer.batch_cache, atlas_key)
 			continue
 		}
 
 		// Batch has been prepared for a set of glyphs time to generate glyphs.
-		batch_generate_glyphs_draw_list( draw_list, glyph_pack, sub_slice(cached), sub_slice(to_cache), sub_slice(oversized),
+		batch_generate_glyphs_draw_list( draw_list, shape, glyph_pack, sub_slice(cached), sub_slice(to_cache), sub_slice(oversized),
 			atlas, 
 			glyph_buffer, 
 			atlas_size, 
@@ -478,7 +445,7 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	if len(oversized) > 0 || glyph_buffer.batch_cache.num > 0
 	{
 		// Last batch pass
-		batch_generate_glyphs_draw_list( draw_list, glyph_pack, sub_slice(cached), sub_slice(to_cache), sub_slice(oversized),
+		batch_generate_glyphs_draw_list( draw_list, shape, glyph_pack, sub_slice(cached), sub_slice(to_cache), sub_slice(oversized),
 			atlas, 
 			glyph_buffer, 
 			atlas_size, 
@@ -508,7 +475,9 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	  * Oversized will have a draw call setup to blit directly from the glyph buffer to the target.
 		* to_cache will blit the glyphs rendered to the buffer to the atlas.
 */
+@(optimization_mode = "favor_size")
 batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
+	shape      : Shaped_Text,
 	glyph_pack : ^#soa[dynamic]Glyph_Pack_Entry,
 	cached     : []i32, 
 	to_cache   : []i32, 
@@ -533,22 +502,29 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	for id, index in cached
 	{
 		// Quad to for drawing atlas slot to target
-		glyph := & glyph_pack[id]
+		glyph         := & glyph_pack[id]
+		bounds        := shape.bounds[id]
+		bounds_scaled := mul(bounds, font_scale)
+		glyph_scale   := size(bounds_scaled) + atlas.glyph_padding
+
 		quad  := & glyph.draw_quad
-		quad.dst_pos   = glyph.position + (glyph.bounds_scaled.p0) * target_scale
-		quad.dst_scale =                  (glyph.scale)            * target_scale
-		quad.src_scale =                  (glyph.scale)
+		quad.dst_pos   = glyph.position + (bounds_scaled.p0) * target_scale
+		quad.dst_scale =                  (glyph_scale)      * target_scale
+		quad.src_scale =                  (glyph_scale)
 		quad.src_pos   = (glyph.region_pos) 
 		to_target_space( & quad.src_pos, & quad.src_scale, atlas_size )
 	}
 	for id, index in to_cache
 	{
-		glyph := & glyph_pack[id]
+		glyph         := & glyph_pack[id]
+		bounds        := shape.bounds[id]
+		bounds_scaled := mul(bounds, font_scale)
+		glyph_scale   := size(bounds_scaled) + glyph_buffer.draw_padding
 
 		f32_allocated_x := cast(f32) glyph_buffer.allocated_x
 
 		// Resolve how much space this glyph will allocate in the buffer
-		buffer_size   := (glyph.bounds_size_scaled + glyph_buffer.draw_padding) * glyph_buffer.over_sample
+		buffer_size   := glyph_scale * glyph_buffer.over_sample
 		// Allocate a glyph glyph render target region (FBO)
 		to_allocate_x := buffer_size.x + 2.0
 
@@ -559,7 +535,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		// The glyph buffer space transform for generate_glyph_pass_draw_list
 		draw_transform       := & glyph.draw_transform
 		draw_transform.scale  = font_scale * glyph_buffer.over_sample
-		draw_transform.pos    = -1 * (glyph.bounds.p0) * draw_transform.scale + glyph_buffer.draw_padding
+		draw_transform.pos    = -1 * (bounds.p0) * draw_transform.scale + glyph_buffer.draw_padding
 		draw_transform.pos.x += glyph.buffer_x
 		to_glyph_buffer_space( & draw_transform.pos, & draw_transform.scale, glyph_buffer_size )
 
@@ -570,21 +546,25 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		draw_quad := & glyph.draw_quad
 
 		// Destination  (draw_list's target image)
-		draw_quad.dst_pos   = glyph.position + (glyph.bounds_scaled.p0) * target_scale
-		draw_quad.dst_scale =                  (glyph.scale)            * target_scale
+		draw_quad.dst_pos   = glyph.position + (bounds_scaled.p0) * target_scale
+		draw_quad.dst_scale =                  (glyph_scale)      * target_scale
 
 		// UV Coordinates for sampling the atlas
-		draw_quad.src_scale = (glyph.scale)
+		draw_quad.src_scale = (glyph_scale)
 		draw_quad.src_pos   = (glyph.region_pos)
 		to_target_space( & draw_quad.src_pos, & draw_quad.src_scale, atlas_size )
 	}
-	for id, index in oversized
+	when ENABLE_OVERSIZED_GLYPHS do for id, index in oversized
 	{
-		glyph := & glyph_pack[id]
+		glyph_padding      := vec2(glyph_buffer.draw_padding)
+		glyph              := & glyph_pack[id]
+		bounds             := shape.bounds[id]
+		bounds_scaled      := mul(bounds, font_scale)
+		bounds_size_scaled := size(bounds_scaled)
 
 		f32_allocated_x := cast(f32) glyph_buffer.allocated_x
 		// Resolve how much space this glyph will allocate in the buffer
-		buffer_size   := (glyph.bounds_size_scaled + glyph_buffer.draw_padding) * glyph.over_sample
+		buffer_size     := (bounds_size_scaled + glyph_padding) * glyph.over_sample
 
 		// Allocate a glyph glyph render target region (FBO)
 		to_allocate_x            := buffer_size.x + 2.0
@@ -597,40 +577,40 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		// Quad to for drawing atlas slot to target
 		draw_quad := & glyph.draw_quad
 
-		glyph_padding := vec2(glyph_buffer.draw_padding)
 
 		// Target position (draw_list's target image)
-		draw_quad.dst_pos   = glyph.position + (glyph.bounds_scaled.p0   - glyph_padding) * target_scale
-		draw_quad.dst_scale =                  (glyph.bounds_size_scaled + glyph_padding) * target_scale
+		draw_quad.dst_pos   = glyph.position + (bounds_scaled.p0   - glyph_padding) * target_scale
+		draw_quad.dst_scale =                  (bounds_size_scaled + glyph_padding) * target_scale
 		
 		// The glyph buffer space transform for generate_glyph_pass_draw_list
 		draw_transform       := & glyph.draw_transform
 		draw_transform.scale  = font_scale * glyph.over_sample 
-		draw_transform.pos    = -1 * glyph.bounds.p0 * draw_transform.scale + vec2(atlas.glyph_padding)
+		draw_transform.pos    = -1 * bounds.p0 * draw_transform.scale + vec2(atlas.glyph_padding)
 		draw_transform.pos.x += glyph.buffer_x
 		to_glyph_buffer_space( & draw_transform.pos, & draw_transform.scale, glyph_buffer_size )
 
 
 		draw_quad.src_pos   = Vec2 { glyph.buffer_x, 0 }
-		draw_quad.src_scale = glyph.bounds_size_scaled * glyph.over_sample + glyph_padding
+		draw_quad.src_scale = bounds_size_scaled * glyph.over_sample + glyph_padding
 		to_target_space( & draw_quad.src_pos, & draw_quad.src_scale, glyph_buffer_size )
 	}
 	profile_end()
 
 	profile_begin("generate oversized glyphs draw_list")
-	if len(oversized) > 0
+	when ENABLE_OVERSIZED_GLYPHS do if len(oversized) > 0
 	{
 		// colour.r = max(colour.a, enable_debug_vis_type)
 		// colour.g = max(colour.g, enable_debug_vis_type)
 		// colour.b = colour.b * f32(cast(i32) ! b32(cast(i32) enable_debug_vis_type))
-		for id, index in oversized {
+		for pack_id, index in oversized {
 			error : Allocator_Error
-			glyph_pack[id].shape, error = parser_get_glyph_shape(entry.parser_info, glyph_pack[id].index)
+			glyph_pack[pack_id].shape, error = parser_get_glyph_shape(entry.parser_info, shape.glyph_id[pack_id])
 			assert(error == .None)
 		}
 		for id, index in oversized
 		{
-			glyph := & glyph_pack[id]
+			glyph  := & glyph_pack[id]
+			bounds := shape.bounds[id]
 			if glyph.flush_glyph_buffer do flush_glyph_buffer_draw_list(draw_list, 
 				& glyph_buffer.draw_list, 
 				& glyph_buffer.clear_draw_list, 
@@ -640,7 +620,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			generate_glyph_pass_draw_list( draw_list, & glyph_buffer.shape_gen_scratch,
 				glyph_pack[id].shape, 
 				entry.curve_quality, 
-				glyph_pack[id].bounds, 
+				bounds, 
 				glyph_pack[id].draw_transform.pos,
 				glyph_pack[id].draw_transform.scale
 			)
@@ -691,16 +671,19 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	profile_begin("to_cache: caching to atlas")
 	if len(to_cache) > 0
 	{
-		for id, index in to_cache {
+		for pack_id, index in to_cache {
 			error : Allocator_Error
-			glyph_pack[id].shape, error = parser_get_glyph_shape(entry.parser_info, glyph_pack[id].index)
+			glyph_pack[pack_id].shape, error = parser_get_glyph_shape(entry.parser_info, shape.glyph_id[pack_id])
 			assert(error == .None)
 		}
 
 		for id, index in to_cache
 		{
 			profile("glyph")
-			glyph := & glyph_pack[id]
+			glyph              := & glyph_pack[id]
+			bounds             := shape.bounds[id]
+			bounds_scaled      := mul(bounds, font_scale)
+			bounds_size_scaled := size(bounds_scaled)
 
 			if glyph.flush_glyph_buffer do flush_glyph_buffer_draw_list( draw_list, 
 				& glyph_buffer.draw_list,
@@ -723,12 +706,12 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			clear_target_region.end_index = cast(u32) len(glyph_buffer.clear_draw_list.indices)
 			
 			dst_glyph_pos    := glyph.region_pos
-			dst_glyph_size   := glyph.bounds_size_scaled + atlas.glyph_padding
+			dst_glyph_size   := bounds_size_scaled + atlas.glyph_padding
 			dst_glyph_size.y  = max(dst_glyph_size.y, ceil(dst_glyph_size.y) * glyph_buffer.snap_glyph_height)  // Note(Ed): Seems to improve hinting
 			to_glyph_buffer_space( & dst_glyph_pos, & dst_glyph_size, atlas_size )
 	
 			src_position  := Vec2 { glyph.buffer_x, 0 }
-			src_size      := (glyph.bounds_size_scaled + atlas.glyph_padding) * glyph_buffer.over_sample
+			src_size      := (bounds_size_scaled + atlas.glyph_padding) * glyph_buffer.over_sample
 			src_size.y     = max(src_size.y, ceil(src_size.y) * glyph_buffer.snap_glyph_height) // Note(Ed): Seems to improve hinting
 			to_target_space( & src_position, & src_size, glyph_buffer_size )
 			
@@ -748,7 +731,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			generate_glyph_pass_draw_list( draw_list, & glyph_buffer.shape_gen_scratch, 
 				glyph.shape, 
 				entry.curve_quality, 
-				glyph.bounds, 
+				bounds, 
 				glyph.draw_transform.pos, 
 				glyph.draw_transform.scale 
 			)

@@ -102,12 +102,20 @@ make_soa :: proc {
 	builtin.make_soa_slice,
 }
 
+mul :: proc {
+	mul_range2_vec2,
+}
+
 peek :: proc {
 	peek_array,
 }
 
 resize :: proc {
 	builtin.resize_dynamic_array,
+}
+
+size :: proc {
+	size_range2,
 }
 
 vec2 :: proc {

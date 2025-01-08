@@ -25,12 +25,15 @@ Shape_Key :: u32
 	If your doing something heavy though (where there is thousands, or tens-of thousands)
 	your not going to be satisfied with keeping that in the iteration).
 */
-Shaped_Text :: struct {
+Shaped_Text :: struct #packed {
 	glyph_id           : [dynamic]Glyph,
 	position           : [dynamic]Vec2,
 	atlas_lru_code     : [dynamic]Atlas_Key,
 	region_kind        : [dynamic]Atlas_Region_Kind,
-	bound              : [dynamic]Range2,            
+	bounds             : [dynamic]Range2,            
+	// bounds_scaled      : [dynamic]Range2,            
+	// bounds_size        : [dynamic]Vec2,
+	// bounds_size_Scaled : [dynamic]Vec2,
 	end_cursor_pos     : Vec2,
 	size               : Vec2,
 }
@@ -281,28 +284,41 @@ shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Shaper_Context
 	
 	// Resolve each glyphs: bounds, atlas lru, and the atlas region as we have everything we need now.
 
+	resize( & output.atlas_lru_code, len(output.glyph_id) )
+	resize( & output.region_kind,    len(output.glyph_id) )
+	resize( & output.bounds,         len(output.glyph_id) )
+	// resize( & output.bounds_scaled,  len(output.glyph_id) )
+
 	profile_begin("bounds")
 	for id, index in output.glyph_id
 	{
-		// glyph.bounds             = parser_get_bounds( entry.parser_info, glyph.index )
-		// glyph.bounds_scaled      = { glyph.bounds.p0 * font_scale, glyph.bounds.p1 * font_scale }
-		// glyph.bounds_size        = glyph.bounds.p1          - glyph.bounds.p0
-		// glyph.bounds_size_scaled = glyph.bounds_size        * font_scale
-		// glyph.scale              = glyph.bounds_size_scaled + atlas.glyph_padding
+		bounds             := & output.bounds[index]
+		// bounds_scaled      := & output.bounds_scaled[index]
+		// bounds_size        := & output.bounds_size[index]
+		// bounds_size_scaled := & output.bounds_size_scaled[index]
+		// scale              := & output.scale[index]
+		(bounds ^)         = parser_get_bounds( entry.parser_info, id )
+		// (bounds_scaled ^)  = { bounds.p0 * font_scale, bounds.p1 * font_scale }
+		// bounds_size        = bounds.p1   - bounds.p0
+		// bounds_size_scaled = bounds_size * font_scale
+		// scale              = glyph.bounds_size_scaled + atlas.glyph_padding
 	}
 	profile_end()
 
-	profile_begin("index")
+	profile_begin("atlas_lru_code")
 	for id, index in output.glyph_id
 	{
-		// output.atlas_lru_code[index] = atlas_glyph_lru_code(entry.id, px_size, glyph.index)
+		output.atlas_lru_code[index] = atlas_glyph_lru_code(entry.id, font_px_size, id)
 	}
 	profile_end()
 
 	profile_begin("region")
 	for id, index in output.glyph_id
 	{
-		// output.region_kind[index] = atlas_decide_region_branchless( atlas ^, glyph_buffer_size, glyph.bounds_size_scaled )
+		bounds             := & output.bounds[index]
+		bounds_size_scaled := (bounds.p1 - bounds.p0) * font_scale
+
+		output.region_kind[index] = atlas_decide_region( atlas, glyph_buffer_size, bounds_size_scaled )
 	}
 	profile_end()
 }
