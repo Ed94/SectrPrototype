@@ -758,19 +758,19 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		for id, index in to_cache do parser_free_shape(entry.parser_info, glyph_pack[id].shape)
 
 		profile_begin("generate_cached_draw_list: cached")
-		// colour.r = max(colour.r, 1.0 * enable_debug_vis_type)
-		// colour.g = max(colour.g, 1.0 * enable_debug_vis_type)
-		// colour.b = max(colour.b, 1.0 * enable_debug_vis_type)
-		generate_cached_draw_list( draw_list, glyph_pack[:], cached, colour )
+		colour.r = max(colour.r, 1.0 * enable_debug_vis_type)
+		colour.g = max(colour.g, 1.0 * enable_debug_vis_type)
+		colour.b = max(colour.b, 1.0 * enable_debug_vis_type)
+		generate_cached_draw_list( draw_list, glyph_pack[:], to_cache, colour )
 		profile_end()
 	}
 	profile_end()
 
 	profile_begin("generate_cached_draw_list: to_cache")
-	// colour.r = max(colour.r, 0.80 * enable_debug_vis_type)
-	// colour.g = max(colour.g, 0.25 * enable_debug_vis_type)
-	// colour.b = max(colour.b, 0.25 * enable_debug_vis_type)
-	generate_cached_draw_list( draw_list, glyph_pack[:], to_cache, colour )
+	colour.r = max(colour.r, 0.80 * enable_debug_vis_type)
+	colour.g = max(colour.g, 0.25 * enable_debug_vis_type)
+	colour.b = max(colour.b, 0.25 * enable_debug_vis_type)
+	generate_cached_draw_list( draw_list, glyph_pack[:], cached, colour )
 	profile_end()
 }
 
