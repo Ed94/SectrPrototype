@@ -26,10 +26,11 @@ Shape_Key :: u32
 	your not going to be satisfied with keeping that in the iteration).
 */
 Shaped_Text :: struct {
-	glyphs             : [dynamic]Glyph,
-	positions          : [dynamic]Vec2,
-	// bounds             : [dynamic]Range2,            // TODO(Ed): Test tracking/resolving the bounds here, its expensive to resolve at the draw list generation stage.
-	// region_kinds       : [dynamic]Atlas_Region_Kind, // TODO(ed): test tracking/resolving the assigne atlas region here, for some reason as ^^.
+	glyph_id           : [dynamic]Glyph,
+	position           : [dynamic]Vec2,
+	atlas_lru_code     : [dynamic]Atlas_Key,
+	region_kind        : [dynamic]Atlas_Region_Kind,
+	bound              : [dynamic]Range2,            
 	end_cursor_pos     : Vec2,
 	size               : Vec2,
 }
@@ -43,7 +44,15 @@ Shaped_Text_Cache :: struct {
 }
 
 // Used by shaper_shape_text_cached, allows user to specify their own proc at compile-time without having to rewrite the caching implementation.
-Shaper_Shape_Text_Uncached_Proc :: #type proc( ctx : ^Shaper_Context, entry : Entry, font_px_Size, font_scale : f32, text_utf8 : string, output : ^Shaped_Text )
+Shaper_Shape_Text_Uncached_Proc :: #type proc( ctx : ^Shaper_Context,
+	atlas             : Atlas, 
+	glyph_buffer_size : Vec2,
+	entry             : Entry, 
+	font_px_Size      : f32, 
+	font_scale        : f32, 
+	text_utf8         : string, 
+	output            : ^Shaped_Text 
+)
 
 // Note(Ed): Not used..
 Shaper_Kind :: enum {
@@ -186,8 +195,8 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 
 			is_empty := parser_is_glyph_empty(entry.parser_info, glyph_id)
 			if ! is_empty {
-				append( & output.glyphs, glyph_id )
-				append( & output.positions, glyph_pos)
+				append( & output.glyph_id, glyph_id )
+				append( & output.position, glyph_pos)
 			}
 		}
 
@@ -253,36 +262,67 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 }
 
 shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Shaper_Context, 
-	entry        : Entry, 
-	font_px_size : f32, 
-	font_scale   : f32, 
-	text_utf8    : string, 
-	output       : ^Shaped_Text
+	atlas             : Atlas, 
+	glyph_buffer_size : Vec2,
+	entry             : Entry, 
+	font_px_size      : f32, 
+	font_scale        : f32, 
+	text_utf8         : string, 
+	output            : ^Shaped_Text
 )
 {
 	profile(#procedure)
 	assert( ctx != nil )
 
-	clear( & output.glyphs )
-	clear( & output.positions )
+	clear( & output.glyph_id )
+	clear( & output.position )
 
 	shaper_shape_harfbuzz( ctx, text_utf8, entry, font_px_size, font_scale, output )
+	
+	// Resolve each glyphs: bounds, atlas lru, and the atlas region as we have everything we need now.
+
+	profile_begin("bounds")
+	for id, index in output.glyph_id
+	{
+		// glyph.bounds             = parser_get_bounds( entry.parser_info, glyph.index )
+		// glyph.bounds_scaled      = { glyph.bounds.p0 * font_scale, glyph.bounds.p1 * font_scale }
+		// glyph.bounds_size        = glyph.bounds.p1          - glyph.bounds.p0
+		// glyph.bounds_size_scaled = glyph.bounds_size        * font_scale
+		// glyph.scale              = glyph.bounds_size_scaled + atlas.glyph_padding
+	}
+	profile_end()
+
+	profile_begin("index")
+	for id, index in output.glyph_id
+	{
+		// output.atlas_lru_code[index] = atlas_glyph_lru_code(entry.id, px_size, glyph.index)
+	}
+	profile_end()
+
+	profile_begin("region")
+	for id, index in output.glyph_id
+	{
+		// output.region_kind[index] = atlas_decide_region_branchless( atlas ^, glyph_buffer_size, glyph.bounds_size_scaled )
+	}
+	profile_end()
 }
 
 // Basic western alphabet based shaping. Not that much faster than harfbuzz if at all.
-shaper_shape_text_latin :: proc( ctx : ^Shaper_Context, 
-	entry        : Entry, 
-	font_px_Size : f32, 
-	font_scale   : f32, 
-	text_utf8    : string, 
-	output       : ^Shaped_Text
+shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
+	atlas             : Atlas, 
+	glyph_buffer_size : Vec2,
+	entry             : Entry, 
+	font_px_Size      : f32, 
+	font_scale        : f32, 
+	text_utf8         : string, 
+	output            : ^Shaped_Text
 )
 {	
 	profile(#procedure)
 	assert( ctx != nil )
 
-	clear( & output.glyphs )
-	clear( & output.positions )
+	clear( & output.glyph_id )
+	clear( & output.position )
 
 	line_height := (entry.ascent - entry.descent + entry.line_gap) * font_scale
 
@@ -315,8 +355,8 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 		is_glyph_empty := parser_is_glyph_empty( entry.parser_info, glyph_index )
 		if ! is_glyph_empty
 		{
-			append( & output.glyphs, glyph_index)
-			append( & output.positions, Vec2 {
+			append( & output.glyph_id, glyph_index)
+			append( & output.position, Vec2 {
 				ceil(position.x),
 				ceil(position.y)
 			})
@@ -343,6 +383,8 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 shaper_shape_text_cached :: proc( text_utf8 : string, 
 	ctx                 : ^Shaper_Context,
 	shape_cache         : ^Shaped_Text_Cache, 
+	atlas               : Atlas,
+	glyph_buffer_size   : Vec2,
 	font                : Font_ID,
 	entry               : Entry, 
 	font_px_size        : f32, 
@@ -384,7 +426,7 @@ shaper_shape_text_cached :: proc( text_utf8 : string,
 		}
 
 		storage_entry := & shape_cache.storage[ shape_cache_idx ]
-		shape_text_uncached( ctx, entry, font_px_size, font_scale, text_utf8, storage_entry )
+		shape_text_uncached( ctx, atlas, glyph_buffer_size, entry, font_px_size, font_scale, text_utf8, storage_entry )
 
 		shaped_text = storage_entry ^
 		return

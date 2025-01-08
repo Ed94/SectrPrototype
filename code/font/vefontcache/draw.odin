@@ -41,11 +41,11 @@ Glyph_Draw_Quad :: struct {
 
 // This is used by generate_shape_draw_list & batch_generate_glyphs_draw_list 
 // to track relevant glyph data in soa format for pipelined processing
-Glyph_Pack_Entry :: struct {
+Glyph_Pack_Entry :: struct #packed {
 	position           : Vec2,
 
 	index              : Glyph,
-	lru_code           : Atlas_Region_Key,
+	lru_code           : Atlas_Key,
 	atlas_index        : i32,
 	in_atlas           : b8,
 	should_cache       : b8,
@@ -103,7 +103,7 @@ Frame_Buffer_Pass :: enum u32 {
 }
 
 Glyph_Batch_Cache :: struct {
-	table : map[Atlas_Region_Key]b8,
+	table : map[Atlas_Key]b8,
 	num   : i32,
 	cap   : i32,
 }
@@ -128,7 +128,7 @@ Glyph_Draw_Buffer :: struct{
 	cached     : [dynamic]i32,
 }
 
-// Contructs a 
+// Contructs a quad mesh for bliting a texture from one render target (src uv0 & 1) to the destination rendertarget (p0, p1)
 @(optimization_mode="favor_size")
 blit_quad :: #force_inline proc ( draw_list : ^Draw_List, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}, uv0 : Vec2 = {0, 0}, uv1 : Vec2 = {1, 1} )
 {
@@ -330,7 +330,7 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	// font_scale   := font_scale   * px_scalar
 	// target_scale := target_scale / px_scalar
 
-	mark_glyph_seen :: #force_inline proc "contextless" ( cache : ^Glyph_Batch_Cache, lru_code : Atlas_Region_Key ) {
+	mark_glyph_seen :: #force_inline proc "contextless" ( cache : ^Glyph_Batch_Cache, lru_code : Atlas_Key ) {
 		cache.table[lru_code] = true
 		cache.num            += 1
 	}
@@ -348,7 +348,7 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	oversized  := & glyph_buffer.oversized
 	to_cache   := & glyph_buffer.to_cache
 	cached     := & glyph_buffer.cached
-	resize_soa_non_zero(glyph_pack, len(shape.glyphs))
+	resize_soa_non_zero(glyph_pack, len(shape.glyph_id))
 
 	append_sub_pack :: #force_inline proc ( pack : ^[dynamic]i32, entry : i32 )
 	{
@@ -361,7 +361,7 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	profile_begin("index")
 	for & glyph, index in glyph_pack
 	{
-		glyph.index    = shape.glyphs[ index ]
+		glyph.index    = shape.glyph_id[ index ]
 		glyph.lru_code = atlas_glyph_lru_code(entry.id, px_size, glyph.index)
 	}
 	profile_end()
@@ -369,7 +369,7 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	profile_begin("translate")
 	for & glyph, index in glyph_pack
 	{
-		glyph.position = target_position + (shape.positions[index]) * target_scale
+		glyph.position = target_position + (shape.position[index]) * target_scale
 	}
 	profile_end()
 
@@ -724,12 +724,12 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			
 			dst_glyph_pos    := glyph.region_pos
 			dst_glyph_size   := glyph.bounds_size_scaled + atlas.glyph_padding
-			dst_glyph_size.y  = ceil(dst_glyph_size.y) * glyph_buffer.snap_glyph_height  // Note(Ed): Seems to improve hinting
+			dst_glyph_size.y  = max(dst_glyph_size.y, ceil(dst_glyph_size.y) * glyph_buffer.snap_glyph_height)  // Note(Ed): Seems to improve hinting
 			to_glyph_buffer_space( & dst_glyph_pos, & dst_glyph_size, atlas_size )
 	
 			src_position  := Vec2 { glyph.buffer_x, 0 }
 			src_size      := (glyph.bounds_size_scaled + atlas.glyph_padding) * glyph_buffer.over_sample
-			src_size.y     = ceil(src_size.y) * glyph_buffer.snap_glyph_height // Note(Ed): Seems to improve hinting
+			src_size.y     = max(src_size.y, ceil(src_size.y) * glyph_buffer.snap_glyph_height) // Note(Ed): Seems to improve hinting
 			to_target_space( & src_position, & src_size, glyph_buffer_size )
 			
 			blit_to_atlas : Draw_Call

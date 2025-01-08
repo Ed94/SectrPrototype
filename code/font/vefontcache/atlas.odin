@@ -13,14 +13,14 @@ Atlas_Region_Kind :: enum u8 {
 }
 
 // Note(Ed): Using 16 bit hash had collision failures and no observable performance improvement (tried several 16-bit hashers)
-Atlas_Region_Key :: u32
+Atlas_Key :: u32
 
 // TODO(Ed) It might perform better with a tailored made hashtable implementation for the LRU_Cache or dedicated array struct/procs for the Atlas.
 /* Essentially a sub-atlas of the atlas. There is a state cache per region that tracks the glyph inventory (what slot they occupy).
 	Unlike the shape cache this one's fixed capacity (natrually) and the next avail slot is tracked.
 */
 Atlas_Region :: struct {
-	state : LRU_Cache(Atlas_Region_Key),
+	state : LRU_Cache(Atlas_Key),
 
 	size     : Vec2i,
 	capacity : Vec2i,
@@ -54,7 +54,7 @@ Atlas :: struct {
 }
 
 // Hahser for the atlas.
-atlas_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, px_size : f32, glyph_index : Glyph ) -> (lru_code : Atlas_Region_Key) {
+atlas_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, px_size : f32, glyph_index : Glyph ) -> (lru_code : Atlas_Key) {
 	// lru_code = u32(glyph_index) + ( ( 0x10000 * u32(font) ) & 0xFFFF0000 )
 	font        := font
 	glyph_index := glyph_index
@@ -65,6 +65,7 @@ atlas_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, px_si
 	return
 }
 
+@(optimization_mode="favor_size")
 atlas_region_bbox :: #force_inline proc( region : Atlas_Region, local_idx : i32 ) -> (position, size: Vec2)
 {
 	size = vec2(region.slot_size.x)
@@ -77,13 +78,17 @@ atlas_region_bbox :: #force_inline proc( region : Atlas_Region, local_idx : i32 
 	return
 }
 
+@(optimization_mode="favor_size")
 atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_buffer_size : Vec2, bounds_size_scaled : Vec2 ) -> (region_kind : Atlas_Region_Kind)
 {
 	profile(#procedure)
 	glyph_padding_dbl  := atlas.glyph_padding * 2
 	padded_bounds      := bounds_size_scaled + glyph_padding_dbl
 
-	for kind in 1 ..= 4 do if padded_bounds.x <= f32( atlas.regions[kind].slot_size.x) && padded_bounds.y <= f32(atlas.regions[kind].slot_size.y) {
+	for kind in 1 ..= 4 do if	
+		padded_bounds.x <= f32(atlas.regions[kind].slot_size.x) && 
+	  padded_bounds.y <= f32(atlas.regions[kind].slot_size.y) 
+	{
 		return cast(Atlas_Region_Kind) kind
 	}
 
@@ -93,8 +98,46 @@ atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_bu
 	return .None
 }
 
+@(optimization_mode="favor_size")
+atlas_decide_region_branchless :: #force_inline proc "contextless" (
+	atlas: Atlas,
+	glyph_buffer_size  : Vec2,
+	bounds_size_scaled : Vec2,
+) -> Atlas_Region_Kind
+{
+	profile(#procedure)
+
+	glyph_padding_dbl  := atlas.glyph_padding * 2
+	padded_bounds      := bounds_size_scaled + glyph_padding_dbl
+	
+	slot_size_region_a := vec2(atlas.region_a.slot_size)
+	slot_size_region_b := vec2(atlas.region_b.slot_size)
+	slot_size_region_c := vec2(atlas.region_c.slot_size)
+	slot_size_region_d := vec2(atlas.region_d.slot_size)
+
+	within_a      := padded_bounds.x <= slot_size_region_a.x && padded_bounds.y <= slot_size_region_a.y
+	within_b      := padded_bounds.x <= slot_size_region_b.x && padded_bounds.y <= slot_size_region_b.y
+	within_c      := padded_bounds.x <= slot_size_region_c.x && padded_bounds.y <= slot_size_region_c.y
+	within_d      := padded_bounds.x <= slot_size_region_d.x && padded_bounds.y <= slot_size_region_d.y
+	within_buffer := padded_bounds.x <= glyph_buffer_size.x  && padded_bounds.y <= glyph_buffer_size.y 
+	within_none   := cast(i32) ! (within_a || within_b || within_c || within_d )
+
+	score_a      := i32(within_a)      * -5
+	score_b      := i32(within_b)      * -4
+	score_c      := i32(within_c)      * -3
+	score_d      := i32(within_d)      * -2
+	score_buffer := i32(within_buffer) * -1
+
+	which_ab     := min(score_a, score_b)
+	which_cd     := min(score_c, score_d)
+	which_region := min(which_ab, which_cd)
+	resolved     := min(which_region, score_buffer)  + 6
+	return Atlas_Region_Kind(resolved)
+}
+
 // Grab an atlas LRU cache slot.
-atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : Atlas_Region_Key ) -> (atlas_index : i32)
+@(optimization_mode="favor_size")
+atlas_reserve_slot :: #force_inline proc ( region : ^Atlas_Region, lru_code : Atlas_Key ) -> (atlas_index : i32)
 {
 	if region.next_idx < region.state.capacity
 	{

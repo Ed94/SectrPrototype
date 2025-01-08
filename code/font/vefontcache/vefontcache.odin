@@ -8,7 +8,7 @@ package vetext
 import "base:runtime"
 
 // See: mappings.odin for profiling hookup
-DISABLE_PROFILING    :: true
+DISABLE_PROFILING    :: false
 
 Font_ID :: distinct i32
 Glyph   :: distinct i32
@@ -271,10 +271,10 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		for idx : u32 = 0; idx < shape_cache_params.capacity; idx += 1 {
 			stroage_entry := & shape_cache.storage[idx]
 
-			stroage_entry.glyphs, error = make( [dynamic]Glyph, len = 0, cap = shape_cache_params.reserve )
+			stroage_entry.glyph_id, error = make( [dynamic]Glyph, len = 0, cap = shape_cache_params.reserve )
 			assert( error == .None, "VEFontCache.init : Failed to allocate glyphs array for shape cache storage" )
 
-			stroage_entry.positions, error = make( [dynamic]Vec2, len = 0, cap = shape_cache_params.reserve )
+			stroage_entry.position, error = make( [dynamic]Vec2, len = 0, cap = shape_cache_params.reserve )
 			assert( error == .None, "VEFontCache.init : Failed to allocate positions array for shape cache storage" )
 		}
 	}
@@ -282,10 +282,11 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	Glyph_Buffer_Setup:
 	{
 		glyph_buffer := & ctx.glyph_buffer
-		glyph_buffer.over_sample   = { f32(glyph_draw_params.over_sample), f32(glyph_draw_params.over_sample) }
-		glyph_buffer.size.x        = atlas.region_d.slot_size.x * i32(glyph_buffer.over_sample.x) * i32(glyph_draw_params.buffer_glyph_limit)
-		glyph_buffer.size.y        = atlas.region_d.slot_size.y * i32(glyph_buffer.over_sample.y)
-		glyph_buffer.draw_padding  = cast(f32) glyph_draw_params.draw_padding
+		glyph_buffer.snap_glyph_height = cast(f32) i32(glyph_draw_params.snap_glyph_height)
+		glyph_buffer.over_sample       = { f32(glyph_draw_params.over_sample), f32(glyph_draw_params.over_sample) }
+		glyph_buffer.size.x            = atlas.region_d.slot_size.x * i32(glyph_buffer.over_sample.x) * i32(glyph_draw_params.buffer_glyph_limit)
+		glyph_buffer.size.y            = atlas.region_d.slot_size.y * i32(glyph_buffer.over_sample.y)
+		glyph_buffer.draw_padding      = cast(f32) glyph_draw_params.draw_padding
 
 		buffer_limit := glyph_draw_params.buffer_glyph_limit
 		batch_limit  := glyph_draw_params.batch_glyph_limit
@@ -314,7 +315,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		batch_cache    := & glyph_buffer.batch_cache
 		batch_cache.cap = i32(glyph_draw_params.batch_glyph_limit)
 		batch_cache.num = 0
-		batch_cache.table, error = make( map[Atlas_Region_Key]b8, uint(glyph_draw_params.shape_gen_scratch_reserve) )
+		batch_cache.table, error = make( map[Atlas_Key]b8, uint(glyph_draw_params.shape_gen_scratch_reserve) )
 		assert(error == .None, "VEFontCache.init : Failed to allocate batch_cache")
 
 		glyph_buffer.glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte )
@@ -364,8 +365,8 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	lru_reload( & shape_cache.state, allocator )
 	for idx : i32 = 0; idx < i32(len(shape_cache.storage)); idx += 1 {
 		storage_entry := & shape_cache.storage[idx]
-		reload_array( & storage_entry.glyphs,    allocator )
-		reload_array( & storage_entry.positions, allocator )
+		reload_array( & storage_entry.glyph_id,    allocator )
+		reload_array( & storage_entry.position, allocator )
 	}
 	reload_array( & shape_cache.storage, allocator )
 	
@@ -412,8 +413,8 @@ shutdown :: proc( ctx : ^Context )
 
 	for idx : i32 = 0; idx < i32(len(shape_cache.storage)); idx += 1 {
 		storage_entry := & shape_cache.storage[idx]
-		delete( storage_entry.glyphs )
-		delete( storage_entry.positions )
+		delete( storage_entry.glyph_id )
+		delete( storage_entry.position )
 	}
 	lru_free( & shape_cache.state )
 	
@@ -447,8 +448,8 @@ clear_shape_cache :: proc (ctx : ^Context)
 		stroage_entry := & ctx.shape_cache.storage[idx]
 		stroage_entry.end_cursor_pos = {}
 		stroage_entry.size           = {}
-		clear(& stroage_entry.glyphs)
-		clear(& stroage_entry.positions)
+		clear(& stroage_entry.glyph_id)
+		clear(& stroage_entry.position)
 	}
 	ctx.shape_cache.next_cache_id = 0
 }
@@ -665,7 +666,7 @@ draw_text_shape_normalized_space :: #force_inline proc( ctx : ^Context,
 	font_scale := parser_scale( entry.parser_info, px_size )
 
 	target_px_size     := px_size * ctx.px_scalar
-	target_scale       := scale * (1 / ctx.px_scalar)
+	target_scale       := scale   * (1 / ctx.px_scalar)
 	target_font_scale  := parser_scale( entry.parser_info, target_px_size )
 
 	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
@@ -704,16 +705,17 @@ draw_text_normalized_space :: #force_inline proc( ctx : ^Context,
 	entry := ctx.entries[ font ]
 
 	adjusted_position := get_snapped_position( ctx^, position )
+	
 
 	colour   := ctx.colour
 	colour.a  = 1.0 + ctx.alpha_sharpen
 
 	// Does nothing when px_scalar is 1.0
 	target_px_size     := px_size * ctx.px_scalar
-	target_scale       := scale * (1 / ctx.px_scalar)
+	target_scale       := scale   * (1 / ctx.px_scalar)
 	target_font_scale  := parser_scale( entry.parser_info, target_px_size )
 
-	shape := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, 
+	shape := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, ctx.atlas, vec2(ctx.glyph_buffer.size),
 		font, 
 		entry, 
 		target_px_size,
@@ -782,7 +784,11 @@ draw_text_layer :: #force_inline proc( ctx : ^Context, layer : []Text_Layer_Elem
 			target_font_scale := parser_scale( entry.parser_info, target_px_size )
 
 			assert( len(elem.text) > 0 )
-			shape := shaper_shape_text_cached( elem.text, & ctx.shaper_ctx, & ctx.shape_cache, 
+			shape := shaper_shape_text_cached( elem.text, 
+				& ctx.shaper_ctx, 
+				& ctx.shape_cache,
+				ctx.atlas,
+				vec2(ctx.glyph_buffer.size),
 				elem.font, 
 				entry,
 				target_px_size,
@@ -871,7 +877,17 @@ measure_text_size :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size
 	px_size_upscaled    := px_size * ctx.px_scalar
 	font_scale_upscaled := parser_scale( entry.parser_info, px_size_upscaled )
 
-	shaped := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, font, entry, px_size_upscaled, font_scale_upscaled, shaper_shape_text_uncached_advanced )
+	shaped := shaper_shape_text_cached( text_utf8, 
+		& ctx.shaper_ctx, 
+		& ctx.shape_cache, 
+		ctx.atlas, 
+		vec2(ctx.glyph_buffer.size),
+		font, 
+		entry, 
+		px_size_upscaled, 
+		font_scale_upscaled, 
+		shaper_shape_text_uncached_advanced 
+	)
 	return shaped.size * downscale
 }
 
@@ -905,7 +921,11 @@ shape_text_latin :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size 
 	px_size_upscaled    := px_size * ctx.px_scalar
 	font_scale_upscaled := parser_scale( entry.parser_info, px_size_upscaled )
 
-	return shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, 
+	return shaper_shape_text_cached( text_utf8, 
+		& ctx.shaper_ctx, 
+		& ctx.shape_cache,
+		ctx.atlas,
+		vec2(ctx.glyph_buffer.size),
 		font, 
 		entry, 
 		px_size_upscaled, 
@@ -925,7 +945,11 @@ shape_text_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, px_si
 	px_size_upscaled    := px_size * ctx.px_scalar
 	font_scale_upscaled := parser_scale( entry.parser_info, px_size_upscaled )
 
-	return shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache,
+	return shaper_shape_text_cached( text_utf8, 
+		& ctx.shaper_ctx, 
+		& ctx.shape_cache,
+		ctx.atlas,
+		vec2(ctx.glyph_buffer.size),
 		font, 
 		entry, 
 		px_size_upscaled, 
