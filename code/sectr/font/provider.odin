@@ -61,6 +61,13 @@ font_provider_reload :: proc( ctx : ^FontProviderContext )
 	ve.clear_shape_cache(& ctx.ve_ctx)
 }
 
+font_provider_flush_caches :: proc()
+{
+	ve_ctx := & get_state().font_provider_ctx.ve_ctx
+	ve.clear_atlas_region_caches(ve_ctx)
+	ve.clear_shape_cache(ve_ctx)
+}
+
 font_provider_shutdown :: proc(  ctx : ^FontProviderContext )
 {
 	ve.shutdown( & ctx.ve_ctx )
@@ -120,8 +127,12 @@ font_provider_set_px_scalar :: #force_inline proc( scalar : f32 ) {
 	ve.set_px_scalar( & get_state().font_provider_ctx.ve_ctx, scalar )
 }
 
-font_provider_set_snap_glyph_pos :: #force_inline proc( should_snap : b32 ) {
-	ve.set_snap_glyph_pos( & get_state().font_provider_ctx.ve_ctx, should_snap )
+font_provider_set_snap_glyph_shape_position :: #force_inline proc( should_snap : b32 ) {
+	ve.set_snap_glyph_shape_position( & get_state().font_provider_ctx.ve_ctx, should_snap )
+}
+
+font_provider_set_snap_glyph_render_height :: #force_inline proc( should_snap : b32 ) {
+	ve.set_snap_glyph_render_height( & get_state().font_provider_ctx.ve_ctx, should_snap )
 }
 
 Font_Use_Default_Size :: f32(0.0)

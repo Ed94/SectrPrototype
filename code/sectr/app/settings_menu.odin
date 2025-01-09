@@ -10,8 +10,11 @@ UI_SettingsMenu :: struct
 	zoom_smooth_sensitivity_input  : UI_TextInputBox,
 	zoom_digital_sensitivity_input : UI_TextInputBox,
 	zoom_scroll_delta_scale_input  : UI_TextInputBox,
-	font_size_canvas_scalar_input  : UI_TextInputBox,
-	font_size_screen_scalar_input  : UI_TextInputBox,
+	text_snap_glyph_shape_posiiton : UI_TextInputBox,
+	text_snap_glyph_render_height  : UI_TextInputBox,
+	text_size_canvas_scalar_input  : UI_TextInputBox,
+	text_size_screen_scalar_input  : UI_TextInputBox,
+	text_alpha_sharpen             : UI_TextInputBox,
 	cfg_drop_down                  : UI_DropDown,
 	zoom_mode_drop_down            : UI_DropDown,
 
@@ -496,9 +499,77 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				}
 			}
 
+			Text_Snap_Glyph_Shape_Position:
+			{
+				ui_settings_entry_inputbox( & text_snap_glyph_shape_posiiton, false, "settings_menu.text_snap_glyph_shape_posiiton", str_intern("Text: Snap Glyph Shape Position"),
+					UI_TextInput_Policy {
+						digits_only            = true,
+						disallow_leading_zeros = false,
+						disallow_decimal       = false,
+						digit_min              = 0,
+						digit_max              = 1,
+						max_length             = 1,
+					}
+				)
+				using text_snap_glyph_shape_posiiton
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0, 1)
+						value_b32 := cast(b32) i32(value)
+						if config.text_snap_glyph_shape_position != value_b32 {
+							font_provider_flush_caches()
+							font_provider_set_snap_glyph_shape_position( value_b32 )
+							config.text_snap_glyph_shape_position = value_b32
+						}
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes( str_fmt("%v", i32(config.text_snap_glyph_shape_position) ) ))
+				}
+			}
+
+			Text_Snap_Glyph_Render_Height:
+			{
+				ui_settings_entry_inputbox( & text_snap_glyph_render_height, false, "settings_menu.text_snap_glyph_render_height", str_intern("Text: Snap Glyph Render Height"),
+					UI_TextInput_Policy {
+						digits_only            = true,
+						disallow_leading_zeros = false,
+						disallow_decimal       = false,
+						digit_min              = 0,
+						digit_max              = 1,
+						max_length             = 1,
+					}
+				)
+				using text_snap_glyph_render_height
+
+				if was_active
+				{
+					value, success := parse_f32(to_string(array_to_slice(input_str)))
+					if success {
+						value = clamp(value, 0, 1)
+						value_b32 := cast(b32) i32(value)
+						if config.text_snap_glyph_render_height != value_b32 {
+							font_provider_flush_caches()
+							font_provider_set_snap_glyph_render_height( value_b32 )
+							config.text_snap_glyph_render_height = value_b32
+						}
+					}
+				}
+				else
+				{
+					clear( input_str )
+					append( & input_str, to_runes( str_fmt("%v", i32(config.text_snap_glyph_render_height) ) ))
+				}
+			}
+
 			Text_Size_Screen_Scalar:
 			{
-				ui_settings_entry_inputbox( & font_size_screen_scalar_input, false, "settings_menu.font_size_screen_scalar", str_intern("Font: Size Screen Scalar"),
+				ui_settings_entry_inputbox( & text_size_screen_scalar_input, false, "settings_menu.text_size_screen_scalar", str_intern("Text: Size Screen Scalar"),
 					UI_TextInput_Policy {
 						digits_only            = true,
 						disallow_leading_zeros = false,
@@ -508,7 +579,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 						max_length             = 5,
 					}
 				)
-				using font_size_screen_scalar_input
+				using text_size_screen_scalar_input
 
 				if was_active
 				{
@@ -525,38 +596,9 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 				}
 			}
 
-			Text_Snap_Glyph_Positions:
-			{
-				ui_settings_entry_inputbox( & font_size_canvas_scalar_input, false, "settings_menu.font_size_canvas_scalar", str_intern("Font: Size Canvas Scalar"),
-				UI_TextInput_Policy {
-					digits_only            = true,
-					disallow_leading_zeros = false,
-					disallow_decimal       = false,
-					digit_min              = 0,
-					digit_max              = 1,
-					max_length             = 1,
-				}
-				)
-				using font_size_canvas_scalar_input
-
-				if was_active
-				{
-					value, success := parse_f32(to_string(array_to_slice(input_str)))
-					if success {
-						value = clamp(value, 0, 1)
-						config.text_snap_glyph_positions = cast(b32) i32(value)
-					}
-				}
-				else
-				{
-					clear( input_str )
-					append( & input_str, to_runes(str_fmt("%v", config.text_snap_glyph_positions)))
-				}
-			}
-
 			Text_Size_Canvas_Scalar:
 			{
-				ui_settings_entry_inputbox( & font_size_canvas_scalar_input, false, "settings_menu.font_size_canvas_scalar", str_intern("Font: Size Canvas Scalar"),
+				ui_settings_entry_inputbox( & text_size_canvas_scalar_input, false, "settings_menu.text_size_canvas_scalar", str_intern("Text: Size Canvas Scalar"),
 					UI_TextInput_Policy {
 						digits_only            = true,
 						disallow_leading_zeros = false,
@@ -566,7 +608,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 						max_length             = 5,
 					}
 				)
-				using font_size_canvas_scalar_input
+				using text_size_canvas_scalar_input
 
 				if was_active
 				{
@@ -585,24 +627,25 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 		
 			Text_Alpha_Sharpen:
 			{
-				ui_settings_entry_inputbox( & font_size_canvas_scalar_input, false, "settings_menu.text_alpha_sharpen", str_intern("Text: Alpha Sharpen"),
+				ui_settings_entry_inputbox( & text_alpha_sharpen, false, "settings_menu.text_alpha_sharpen", str_intern("Text: Alpha Sharpen"),
 					UI_TextInput_Policy {
 						digits_only            = true,
 						disallow_leading_zeros = false,
 						disallow_decimal       = false,
 						digit_min              = 0.001,
-						digit_max              = 10,
+						digit_max              = 999,
 						max_length             = 4,
 					}
 				)
-				using font_size_canvas_scalar_input
+				using text_alpha_sharpen
 
 				if was_active
 				{
 					value, success := parse_f32(to_string(array_to_slice(input_str)))
 					if success {
-						value = clamp(value, 0.001, 10.0)
+						value = clamp(value, 0, 10.0)
 						config.text_alpha_sharpen = value
+						font_provider_set_alpha_sharpen(value)
 					}
 				}
 				else

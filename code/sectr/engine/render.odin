@@ -123,7 +123,7 @@ render_mode_screenspace :: proc( screen_extent : Extents2, screen_ui : ^UI_State
 	screen_size   := screen_extent * 2
 	screen_ratio  := screen_size.x * ( 1.0 / screen_size.y )
 
-	font_provider_set_px_scalar( app_config().text_size_canvas_scalar )
+	font_provider_set_px_scalar( app_config().text_size_screen_scalar )
 	ve.configure_snap( ve_ctx, u32(screen_size.x), u32(screen_size.y) )
 
 	render_screen_ui( screen_extent, screen_ui, ve_ctx, ve_render )

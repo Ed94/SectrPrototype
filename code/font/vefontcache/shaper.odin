@@ -6,7 +6,7 @@ Note(Ed): The only reason I didn't directly use harfbuzz is because hamza exists
 import "core:c"
 import "thirdparty:harfbuzz"
 
-Shape_Key :: u32
+Shape_Key :: u64
 
 /*  A text whose codepoints have had their relevant glyphs and 
 	associated data resolved for processing in a draw list generation stage.
@@ -26,14 +26,16 @@ Shape_Key :: u32
 	your not going to be satisfied with keeping that in the iteration).
 */
 Shaped_Text :: struct #packed {
-	glyph_id           : [dynamic]Glyph,
+	glyph              : [dynamic]Glyph,
 	position           : [dynamic]Vec2,
 	atlas_lru_code     : [dynamic]Atlas_Key,
 	region_kind        : [dynamic]Atlas_Region_Kind,
-	bounds             : [dynamic]Range2,            
+	bounds             : [dynamic]Range2,
+	// TODO(Ed): Profile if its worth not doing compute for these per frame.
 	// bounds_scaled      : [dynamic]Range2,            
 	// bounds_size        : [dynamic]Vec2,
 	// bounds_size_Scaled : [dynamic]Vec2,
+	atlas_bbox         : [dynamic]Transform,
 	end_cursor_pos     : Vec2,
 	size               : Vec2,
 }
@@ -165,7 +167,7 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 		{
 			hb_glyph     := glyph_infos[ index ]
 			hb_gposition := glyph_positions[ index ]
-			glyph_id     := cast(Glyph) hb_glyph.codepoint
+			glyph     := cast(Glyph) hb_glyph.codepoint
 
 			if hb_glyph.cluster > 0
 			{
@@ -196,9 +198,9 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 			(position^)          += advance
 			(max_line_width^)     = max(max_line_width^, position.x)
 
-			is_empty := parser_is_glyph_empty(entry.parser_info, glyph_id)
+			is_empty := parser_is_glyph_empty(entry.parser_info, glyph)
 			if ! is_empty {
-				append( & output.glyph_id, glyph_id )
+				append( & output.glyph, glyph )
 				append( & output.position, glyph_pos)
 			}
 		}
@@ -277,47 +279,30 @@ shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Shaper_Context
 	profile(#procedure)
 	assert( ctx != nil )
 
-	clear( & output.glyph_id )
+	clear( & output.glyph )
 	clear( & output.position )
 
 	shaper_shape_harfbuzz( ctx, text_utf8, entry, font_px_size, font_scale, output )
 	
 	// Resolve each glyphs: bounds, atlas lru, and the atlas region as we have everything we need now.
 
-	resize( & output.atlas_lru_code, len(output.glyph_id) )
-	resize( & output.region_kind,    len(output.glyph_id) )
-	resize( & output.bounds,         len(output.glyph_id) )
-	// resize( & output.bounds_scaled,  len(output.glyph_id) )
-
-	profile_begin("bounds")
-	for id, index in output.glyph_id
-	{
-		bounds             := & output.bounds[index]
-		// bounds_scaled      := & output.bounds_scaled[index]
-		// bounds_size        := & output.bounds_size[index]
-		// bounds_size_scaled := & output.bounds_size_scaled[index]
-		// scale              := & output.scale[index]
-		(bounds ^)         = parser_get_bounds( entry.parser_info, id )
-		// (bounds_scaled ^)  = { bounds.p0 * font_scale, bounds.p1 * font_scale }
-		// bounds_size        = bounds.p1   - bounds.p0
-		// bounds_size_scaled = bounds_size * font_scale
-		// scale              = glyph.bounds_size_scaled + atlas.glyph_padding
-	}
-	profile_end()
+	resize( & output.atlas_lru_code, len(output.glyph) )
+	resize( & output.region_kind,    len(output.glyph) )
+	resize( & output.bounds,         len(output.glyph) )
 
 	profile_begin("atlas_lru_code")
-	for id, index in output.glyph_id
+	for id, index in output.glyph
 	{
 		output.atlas_lru_code[index] = atlas_glyph_lru_code(entry.id, font_px_size, id)
 	}
 	profile_end()
 
-	profile_begin("region")
-	for id, index in output.glyph_id
+	profile_begin("bounds & region")
+	for id, index in output.glyph
 	{
-		bounds             := & output.bounds[index]
-		bounds_size_scaled := (bounds.p1 - bounds.p0) * font_scale
-
+		bounds                   := & output.bounds[index]
+		(bounds ^)                = parser_get_bounds( entry.parser_info, id )
+		bounds_size_scaled       := (bounds.p1 - bounds.p0) * font_scale
 		output.region_kind[index] = atlas_decide_region( atlas, glyph_buffer_size, bounds_size_scaled )
 	}
 	profile_end()
@@ -337,7 +322,7 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 	profile(#procedure)
 	assert( ctx != nil )
 
-	clear( & output.glyph_id )
+	clear( & output.glyph )
 	clear( & output.position )
 
 	line_height := (entry.ascent - entry.descent + entry.line_gap) * font_scale
@@ -371,7 +356,7 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 		is_glyph_empty := parser_is_glyph_empty( entry.parser_info, glyph_index )
 		if ! is_glyph_empty
 		{
-			append( & output.glyph_id, glyph_index)
+			append( & output.glyph, glyph_index)
 			append( & output.position, Vec2 {
 				ceil(position.x),
 				ceil(position.y)

@@ -82,7 +82,7 @@ atlas_region_bbox :: #force_inline proc( region : Atlas_Region, local_idx : i32 
 @(optimization_mode="favor_size")
 atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_buffer_size : Vec2, bounds_size_scaled : Vec2 ) -> (region_kind : Atlas_Region_Kind)
 {
-	profile(#procedure)
+	// profile(#procedure)
 	glyph_padding_dbl  := atlas.glyph_padding * 2
 	padded_bounds      := bounds_size_scaled + glyph_padding_dbl
 
@@ -97,43 +97,6 @@ atlas_decide_region :: #force_inline proc "contextless" (atlas : Atlas, glyph_bu
 		return .E
 	}
 	return .None
-}
-
-@(optimization_mode="favor_size")
-atlas_decide_region_branchless :: #force_inline proc "contextless" (
-	atlas: Atlas,
-	glyph_buffer_size  : Vec2,
-	bounds_size_scaled : Vec2,
-) -> Atlas_Region_Kind
-{
-	profile(#procedure)
-
-	glyph_padding_dbl  := atlas.glyph_padding * 2
-	padded_bounds      := bounds_size_scaled + glyph_padding_dbl
-	
-	slot_size_region_a := vec2(atlas.region_a.slot_size)
-	slot_size_region_b := vec2(atlas.region_b.slot_size)
-	slot_size_region_c := vec2(atlas.region_c.slot_size)
-	slot_size_region_d := vec2(atlas.region_d.slot_size)
-
-	within_a      := padded_bounds.x <= slot_size_region_a.x && padded_bounds.y <= slot_size_region_a.y
-	within_b      := padded_bounds.x <= slot_size_region_b.x && padded_bounds.y <= slot_size_region_b.y
-	within_c      := padded_bounds.x <= slot_size_region_c.x && padded_bounds.y <= slot_size_region_c.y
-	within_d      := padded_bounds.x <= slot_size_region_d.x && padded_bounds.y <= slot_size_region_d.y
-	within_buffer := padded_bounds.x <= glyph_buffer_size.x  && padded_bounds.y <= glyph_buffer_size.y 
-	within_none   := cast(i32) ! (within_a || within_b || within_c || within_d )
-
-	score_a      := i32(within_a)      * -5
-	score_b      := i32(within_b)      * -4
-	score_c      := i32(within_c)      * -3
-	score_d      := i32(within_d)      * -2
-	score_buffer := i32(within_buffer) * -1
-
-	which_ab     := min(score_a, score_b)
-	which_cd     := min(score_c, score_d)
-	which_region := min(which_ab, which_cd)
-	resolved     := min(which_region, score_buffer) + 6
-	return Atlas_Region_Kind(resolved)
 }
 
 // Grab an atlas LRU cache slot.

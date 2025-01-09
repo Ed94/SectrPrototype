@@ -114,8 +114,8 @@ UI_Layout_Stack_Size      :: 512
 UI_Style_Stack_Size       :: 512
 UI_Parent_Stack_Size      :: 512
 // UI_Built_Boxes_Array_Size :: 8
-UI_Built_Boxes_Array_Size :: 56 * Kilobyte
-UI_BoxCache_TableSize     :: 8 * Kilobyte
+UI_Built_Boxes_Array_Size :: 128 * Kilobyte
+UI_BoxCache_TableSize     :: 32  * Kilobyte
 
 // TODO(Ed): Rename to UI_Context
 UI_State :: struct {
@@ -381,7 +381,7 @@ ui_hash_part_from_key_string :: proc ( content : string ) -> string {
 ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_Key
 {
 	// profile(#procedure)
-	USE_RAD_DEBUGGERS_METHOD :: true
+	USE_RAD_DEBUGGERS_METHOD :: false
 
 	key : UI_Key
 

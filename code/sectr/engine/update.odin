@@ -302,6 +302,7 @@ update :: proc( delta_time : f64 ) -> b32
 
 	// TODO(Ed): We need input buffer so that we can consume input actions based on the UI with priority
 
+	font_provider_set_px_scalar( app_config().text_size_screen_scalar )
 	ui_screen_tick( & get_state().screen_ui )
 
 	//region WorkspaceImgui Tick

@@ -11,7 +11,7 @@ import "base:runtime"
 DISABLE_PROFILING       :: false
 ENABLE_OVERSIZED_GLYPHS :: true
 
-Font_ID :: distinct i32
+Font_ID :: distinct i16
 Glyph   :: distinct i32
 
 Load_Font_Error :: enum(i32) {
@@ -138,9 +138,9 @@ Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
 	snap_glyph_height               = true,
 	over_sample                     = 4,
 	draw_padding                    = Init_Atlas_Params_Default.glyph_padding,
-	shape_gen_scratch_reserve       = 10 * 1024,
-	buffer_glyph_limit              = 4,
-	batch_glyph_limit               = 512,
+	shape_gen_scratch_reserve       = 4 * 1024,
+	buffer_glyph_limit              = 16,
+	batch_glyph_limit               = 2 * 1024,
 }
 
 Init_Shaper_Params :: struct {
@@ -166,7 +166,7 @@ Init_Shape_Cache_Params :: struct {
 
 Init_Shape_Cache_Params_Default :: Init_Shape_Cache_Params {
 	capacity = 10 * 1024,
-	reserve  = 1024,
+	reserve  = 512,
 }
 
 //#region("lifetime")
@@ -178,8 +178,8 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 	glyph_draw_params           := Init_Glyph_Draw_Params_Default,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
 	shaper_params               := Init_Shaper_Params_Default,
-	alpha_sharpen               : f32 = 0.2,
-	px_scalar                   : f32 = 1.0,
+	alpha_sharpen               : f32 = 0.15,
+	px_scalar                   : f32 = 2.0,
 	
 	// Curve quality to use for a font when unspecified,
 	// Affects step size for bezier curve passes in generate_glyph_pass_draw_list
@@ -226,7 +226,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		slot_region_c := Vec2i {  64,  64 }   * i32(atlas.size_multiplier)
 		slot_region_b := Vec2i {  32,  64 }   * i32(atlas.size_multiplier)
 		slot_region_d := Vec2i { 128, 128 }   * i32(atlas.size_multiplier)
-
+		
 		init_atlas_region :: proc( region : ^Atlas_Region, atlas_size, slot_size : Vec2i, factor : Vec2i )
 		{
 			region.next_idx  = 0;
@@ -274,7 +274,7 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		{
 			stroage_entry := & shape_cache.storage[idx]
 
-			stroage_entry.glyph_id, error = make( [dynamic]Glyph, len = 0, cap = shape_cache_params.reserve )
+			stroage_entry.glyph, error = make( [dynamic]Glyph, len = 0, cap = shape_cache_params.reserve )
 			assert( error == .None, "VEFontCache.init : Failed to allocate glyphs array for shape cache storage" )
 
 			stroage_entry.position, error = make( [dynamic]Vec2, len = 0, cap = shape_cache_params.reserve )
@@ -380,7 +380,7 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	lru_reload( & shape_cache.state, allocator )
 	for idx : i32 = 0; idx < i32(len(shape_cache.storage)); idx += 1 {
 		storage_entry := & shape_cache.storage[idx]
-		reload_array( & storage_entry.glyph_id,       allocator)
+		reload_array( & storage_entry.glyph,       allocator)
 		reload_array( & storage_entry.position,       allocator)
 		reload_array( & storage_entry.atlas_lru_code, allocator)
 		reload_array( & storage_entry.region_kind,    allocator)
@@ -432,7 +432,7 @@ shutdown :: proc( ctx : ^Context )
 
 	for idx : i32 = 0; idx < i32(len(shape_cache.storage)); idx += 1 {
 		storage_entry := & shape_cache.storage[idx]
-		delete( storage_entry.glyph_id )
+		delete( storage_entry.glyph )
 		delete( storage_entry.position )
 		delete( storage_entry.atlas_lru_code)
 		delete( storage_entry.region_kind)
@@ -471,7 +471,7 @@ clear_shape_cache :: proc (ctx : ^Context)
 		stroage_entry := & ctx.shape_cache.storage[idx]
 		stroage_entry.end_cursor_pos = {}
 		stroage_entry.size           = {}
-		clear(& stroage_entry.glyph_id)
+		clear(& stroage_entry.glyph)
 		clear(& stroage_entry.position)
 	}
 	ctx.shape_cache.next_cache_id = 0
@@ -486,18 +486,18 @@ load_font :: proc( ctx : ^Context, label : string, data : []byte, glyph_curve_qu
 
 	entries := & ctx.entries
 
-	id : i32 = -1
+	id : Font_ID = -1
 
 	for index : i32 = 0; index < i32(len(entries)); index += 1 {
 		if entries[index].used do continue
-		id = index
+		id = Font_ID(index)
 		break
 	}
 	if id == -1 {
 		append_elem( entries, Entry {})
-		id = cast(i32) len(entries) - 1
+		id = cast(Font_ID) len(entries) - 1
 	}
-	assert( id >= 0 && id < i32(len(entries)) )
+	assert( id >= 0 && id < Font_ID(len(entries)) )
 
 	entry := & entries[ id ]
 	{
@@ -655,9 +655,14 @@ set_colour                  :: #force_inline proc( ctx : ^Context, colour : RGBA
 set_draw_type_visualization :: #force_inline proc( ctx : ^Context, should_enable : b32 )  { assert(ctx != nil); ctx.enable_draw_type_visualization = cast(f32) i32(should_enable); }
 set_px_scalar               :: #force_inline proc( ctx : ^Context, scalar : f32    )      { assert(ctx != nil); ctx.px_scalar                      = scalar } 
 
-set_snap_glyph_pos :: #force_inline proc( ctx : ^Context, should_snap : b32 ) { 
+set_snap_glyph_shape_position :: #force_inline proc( ctx : ^Context, should_snap : b32 ) {
 	assert(ctx != nil)
 	ctx.shaper_ctx.snap_glyph_position = should_snap
+}
+
+set_snap_glyph_render_height :: #force_inline proc( ctx : ^Context, should_snap : b32 ) { 
+	assert(ctx != nil)
+	ctx.glyph_buffer.snap_glyph_height = cast(f32) i32(should_snap)
 }
 
 // Non-scoping context. The most fundamental interface-level draw shape procedure.
@@ -728,7 +733,6 @@ draw_text_normalized_space :: #force_inline proc( ctx : ^Context,
 	entry := ctx.entries[ font ]
 
 	adjusted_position := get_snapped_position( ctx^, position )
-	
 
 	colour   := ctx.colour
 	colour.a  = 1.0 + ctx.alpha_sharpen
@@ -756,7 +760,6 @@ draw_text_normalized_space :: #force_inline proc( ctx : ^Context,
 		target_scale, 
 	)
 }
-
 
 draw_shape :: #force_inline proc( ctx : ^Context, position, scale : Vec2, shape : Shaped_Text ) {
 	// peek_position

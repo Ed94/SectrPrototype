@@ -136,7 +136,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		resolution_height =  600
 		refresh_rate      =    0
 
-		cam_min_zoom                 = 0.025
+		cam_min_zoom                 = 0.034
 		cam_max_zoom                 = 5.0
 		cam_zoom_mode                = .Digital
 		cam_zoom_smooth_snappiness   = 4.0
@@ -152,10 +152,11 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		color_theme = App_Thm_Dusk
 
-		text_snap_glyph_positions = true
-		text_size_screen_scalar   = 2.0
-		text_size_canvas_scalar   = 2.0
-		text_alpha_sharpen        = 0.25
+		text_snap_glyph_shape_position = false
+		text_snap_glyph_render_height  = false
+		text_size_screen_scalar        = 1.89
+		text_size_canvas_scalar        = 1.89
+		text_alpha_sharpen             = 0.1
 	}
 
 	Desired_OS_Scheduler_MS :: 1
@@ -356,8 +357,9 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
-		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/ve_fontcache.h", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gl.h", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
 		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
@@ -529,9 +531,6 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	debug.draw_ui_box_bounds_points = false
 	debug.draw_ui_padding_bounds    = false
 	debug.draw_ui_content_bounds    = false
-
-	font_provider_set_alpha_sharpen(0.25)
-	font_provider_set_snap_glyph_pos(true)
 
 	// config.engine_refresh_hz = 165
 

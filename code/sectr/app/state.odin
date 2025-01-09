@@ -161,10 +161,11 @@ AppConfig :: struct {
 
 	color_theme : AppColorTheme,
 
-	text_snap_glyph_positions : b32,
-	text_size_screen_scalar   : f32,
-	text_size_canvas_scalar   : f32,
-	text_alpha_sharpen        : f32,
+	text_snap_glyph_shape_position : b32,
+	text_snap_glyph_render_height  : b32,
+	text_size_screen_scalar        : f32,
+	text_size_canvas_scalar        : f32,
+	text_alpha_sharpen             : f32,
 }
 
 AppWindow :: struct {

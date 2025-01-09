@@ -275,7 +275,7 @@ sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, lo
 
 fmt_backing : [16 * Kilobyte] u8
 
-persistent_backing : [2  * Megabyte] byte
+persistent_backing : [32 * Megabyte] byte
 transient_backing  : [32 * Megabyte] byte
 
 main :: proc()
@@ -292,7 +292,7 @@ main :: proc()
 	// Setup profiling
 	profiler : SpallProfiler
 	{
-		buffer_backing := make([]u8, spall.BUFFER_DEFAULT_SIZE)
+		buffer_backing := make([]u8, spall.BUFFER_DEFAULT_SIZE * 20)
 		profiler.ctx    = spall.context_create("sectr.spall")
 		profiler.buffer = spall.buffer_create(buffer_backing)
 	}

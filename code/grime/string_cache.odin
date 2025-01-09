@@ -70,7 +70,7 @@ str_cache_init :: proc( table_allocator, slabs_allocator : Allocator ) -> (cache
 	cache.slab, alloc_error = slab_init( & policy, allocator = slabs_allocator, dbg_name = dbg_name )
 	verify(alloc_error == .None, "Failed to initialize the string cache" )
 
-	cache.table, alloc_error = make( HMapChained(StrCached), 1 * Kilo, table_allocator, dbg_name = dbg_name )
+	cache.table, alloc_error = make( HMapChained(StrCached), 4 * Kilo, table_allocator, dbg_name = dbg_name )
 	return
 }
 

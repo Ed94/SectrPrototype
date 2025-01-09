@@ -118,7 +118,7 @@ parser_unload_font :: proc( font : ^Parser_Font_Info )
 
 parser_find_glyph_index :: #force_inline proc "contextless" ( font : Parser_Font_Info, codepoint : rune ) -> (glyph_index : Glyph)
 {
-	profile(#procedure)
+	// profile(#procedure)
 	// switch font.kind
 	// {
 		// case .Freetype:
@@ -227,8 +227,7 @@ parser_get_font_vertical_metrics :: #force_inline proc "contextless" ( font : Pa
 
 parser_get_bounds :: #force_inline proc "contextless" ( font : Parser_Font_Info, glyph_index : Glyph ) -> (bounds : Range2)
 {
-	profile(#procedure)
-
+	// profile(#procedure)
 	bounds_0, bounds_1 : Vec2i
 
 	// switch font.kind
@@ -302,7 +301,7 @@ parser_is_glyph_empty :: #force_inline proc "contextless" ( font : Parser_Font_I
 
 parser_scale :: #force_inline proc "contextless" ( font : Parser_Font_Info, size : f32 ) -> f32
 {
-	profile(#procedure)
+	// profile(#procedure)
 	// size_scale := size < 0.0 ? parser_scale_for_pixel_height( font, -size ) : parser_scale_for_mapping_em_to_pixels( font, size )
 	size_scale := size > 0.0 ? parser_scale_for_pixel_height( font, size ) : parser_scale_for_mapping_em_to_pixels( font, -size )
 	return size_scale
