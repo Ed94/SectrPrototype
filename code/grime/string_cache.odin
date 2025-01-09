@@ -85,7 +85,7 @@ str_intern_lookup        :: #force_inline proc( key : StringKey )  -> (^StrCache
 
 str_intern :: #force_inline proc( content : string ) -> StrCached
 {
-	profile(#procedure)
+	// profile(#procedure)
 	cache  := Module_String_Cache
 	key    := str_intern_key(content)
 	result := hmap_chained_get( cache.table, transmute(u64) key )

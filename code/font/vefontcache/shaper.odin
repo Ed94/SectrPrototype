@@ -6,7 +6,7 @@ Note(Ed): The only reason I didn't directly use harfbuzz is because hamza exists
 import "core:c"
 import "thirdparty:harfbuzz"
 
-Shape_Key :: u64
+Shape_Key :: u32
 
 /*  A text whose codepoints have had their relevant glyphs and 
 	associated data resolved for processing in a draw list generation stage.

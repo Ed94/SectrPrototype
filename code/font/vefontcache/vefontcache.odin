@@ -135,12 +135,12 @@ Init_Glyph_Draw_Params :: struct {
 }
 
 Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
-	snap_glyph_height               = true,
+	snap_glyph_height               = false,
 	over_sample                     = 4,
 	draw_padding                    = Init_Atlas_Params_Default.glyph_padding,
-	shape_gen_scratch_reserve       = 4 * 1024,
-	buffer_glyph_limit              = 16,
-	batch_glyph_limit               = 2 * 1024,
+	shape_gen_scratch_reserve       = 512,
+	buffer_glyph_limit              = 4,
+	batch_glyph_limit               = 32,
 }
 
 Init_Shaper_Params :: struct {
@@ -152,7 +152,7 @@ Init_Shaper_Params :: struct {
 }
 
 Init_Shaper_Params_Default :: Init_Shaper_Params {
-	snap_glyph_position           = true,
+	snap_glyph_position           = false,
 	adv_snap_small_font_threshold = 0,
 }
 
@@ -166,20 +166,20 @@ Init_Shape_Cache_Params :: struct {
 
 Init_Shape_Cache_Params_Default :: Init_Shape_Cache_Params {
 	capacity = 10 * 1024,
-	reserve  = 512,
+	reserve  = 128,
 }
 
 //#region("lifetime")
 
 // ve_fontcache_init
-startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
+startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType, // Note(Ed): Only sbt_truetype supported for now.
 	allocator                   := context.allocator,
 	atlas_params                := Init_Atlas_Params_Default,
 	glyph_draw_params           := Init_Glyph_Draw_Params_Default,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
 	shaper_params               := Init_Shaper_Params_Default,
-	alpha_sharpen               : f32 = 0.15,
-	px_scalar                   : f32 = 2.0,
+	alpha_sharpen               : f32 = 0.1,
+	px_scalar                   : f32 = 1.89,
 	
 	// Curve quality to use for a font when unspecified,
 	// Affects step size for bezier curve passes in generate_glyph_pass_draw_list
@@ -324,19 +324,19 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType,
 		glyph_buffer.clear_draw_list.calls, error = make( [dynamic]Draw_Call, len = 0, cap = Kilobyte )
 		assert( error == .None, "VEFontCache.init : Failed to allocate calls for calls for clear_draw_list" )
 
-		glyph_buffer.shape_gen_scratch, error = make( [dynamic]Vertex, len = 0, cap = 4 * Kilobyte )
+		glyph_buffer.shape_gen_scratch, error = make( [dynamic]Vertex, len = 0, cap = glyph_draw_params.shape_gen_scratch_reserve )
 		assert(error == .None, "VEFontCache.init : Failed to allocate shape_gen_scratch")
 
 		batch_cache    := & glyph_buffer.batch_cache
 		batch_cache.cap = i32(glyph_draw_params.batch_glyph_limit)
 		batch_cache.num = 0
-		batch_cache.table, error = make( map[Atlas_Key]b8, uint(glyph_draw_params.shape_gen_scratch_reserve) )
+		batch_cache.table, error = make( map[Atlas_Key]b8, uint(glyph_draw_params.batch_glyph_limit) )
 		assert(error == .None, "VEFontCache.init : Failed to allocate batch_cache")
 
-		glyph_buffer.glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = 1 * Kilobyte )
-		glyph_buffer.oversized, error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
-		glyph_buffer.to_cache,  error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
-		glyph_buffer.cached,    error = make( [dynamic]i32, len = 0, cap = 1 * Kilobyte )
+		glyph_buffer.glyph_pack,error = make_soa( #soa[dynamic]Glyph_Pack_Entry, length = 0, capacity = uint(shape_cache_params.reserve) )
+		glyph_buffer.oversized, error = make( [dynamic]i32, len = 0, cap = uint(shape_cache_params.reserve) )
+		glyph_buffer.to_cache,  error = make( [dynamic]i32, len = 0, cap = uint(shape_cache_params.reserve) )
+		glyph_buffer.cached,    error = make( [dynamic]i32, len = 0, cap = uint(shape_cache_params.reserve) )
 	}
 
 	parser_init( & ctx.parser_ctx, parser_kind )

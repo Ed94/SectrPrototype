@@ -292,7 +292,7 @@ main :: proc()
 	// Setup profiling
 	profiler : SpallProfiler
 	{
-		buffer_backing := make([]u8, spall.BUFFER_DEFAULT_SIZE * 20)
+		buffer_backing := make([]u8, spall.BUFFER_DEFAULT_SIZE * 4)
 		profiler.ctx    = spall.context_create("sectr.spall")
 		profiler.buffer = spall.buffer_create(buffer_backing)
 	}

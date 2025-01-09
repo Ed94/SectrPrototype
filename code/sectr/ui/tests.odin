@@ -209,10 +209,10 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 
 		ui_layout( text_layout )
 
-		profile_begin("label fmt")
+		// profile_begin("label fmt")
 		str.builder_reset( & builder)
 		label := str_fmt_builder( & builder, "line %d", line_id )
-		profile_end()
+		// profile_end()
 
 		line_hbox := ui_widget(label, {.Mouse_Clickable})
 
@@ -278,7 +278,7 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 		}
 		else
 		{
-			profile("line (single-box)")
+			// profile("line (single-box)")
 
 			line_hbox.layout.flags |= { .Size_To_Text }
 
@@ -286,23 +286,23 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 			head := line.first.next
 			for ; head != nil;
 			{
-				profile("write ast node")
+				// profile("write ast node")
 				str.write_string( & builder, head.content )
 				head = head.next
 			}
 
-			profile("intern")
+			// profile("intern")
 			line_hbox.text = str_intern( to_string( builder ) )
 		}
 
 		if len(line_hbox.text) > 0 {
-			profile("append actual")
+			// profile("append actual")
 			array_append( widgets_ptr, line_hbox )
 			text_layout.pos.x  = text_layout.pos.x
 			text_layout.pos.y -= size_range2(line_hbox.computed.bounds).y
 		}
 		else {
-			profile("end")
+			// profile("end")
 			widget := & widgets.data[ widgets.num - 1 ]
 			if widget.box != nil {
 				text_layout.pos.y -= size_range2( widget.computed.bounds ).y
