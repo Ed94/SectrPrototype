@@ -74,7 +74,7 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 	verify( sokol_gfx.query_buffer_state( draw_list_vbuf) < ResourceState.FAILED, "Failed to make draw_list_vbuf" )
 
 	draw_list_ibuf = sokol_gfx.make_buffer( BufferDesciption {
-		size  = size_of(u32) * 1 * Mega,
+		size  = size_of(u32) * 3 * Mega,
 		usage = BufferUsage.STREAM,
 		type  = BufferType.INDEXBUFFER,
 	})

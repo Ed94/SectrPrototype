@@ -69,7 +69,7 @@ atlas_glyph_lru_code :: #force_inline proc "contextless" ( font : Font_ID, px_si
 @(optimization_mode="favor_size")
 atlas_region_bbox :: #force_inline proc( region : Atlas_Region, local_idx : i32 ) -> (position, size: Vec2)
 {
-	size = vec2(region.slot_size.x)
+	size = vec2(region.slot_size)
 
 	position.x = cast(f32) (( local_idx % region.capacity.x ) * region.slot_size.x)
 	position.y = cast(f32) (( local_idx / region.capacity.x ) * region.slot_size.y)

@@ -119,6 +119,10 @@ font_load :: proc(path_file : string,
 	return fid
 }
 
+font_provider_set_draw_type_visualization :: #force_inline proc( should_enable : b32 ) {
+	ve.set_draw_type_visualization( & get_state().font_provider_ctx.ve_ctx, should_enable )
+}
+
 font_provider_set_alpha_sharpen :: #force_inline proc( scalar : f32 ) {
 	ve.set_alpha_scalar( & get_state().font_provider_ctx.ve_ctx, scalar )
 }

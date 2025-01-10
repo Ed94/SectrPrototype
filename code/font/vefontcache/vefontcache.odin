@@ -1,6 +1,4 @@
 /*
-A port of (https://github.com/hypernewbie/VEFontCache) to Odin.
-
 See: https://github.com/Ed94/VEFontCache-Odin
 */
 package vetext
@@ -8,7 +6,7 @@ package vetext
 import "base:runtime"
 
 // See: mappings.odin for profiling hookup
-DISABLE_PROFILING       :: false
+DISABLE_PROFILING       :: true
 ENABLE_OVERSIZED_GLYPHS :: true
 
 Font_ID :: distinct i16
@@ -139,8 +137,8 @@ Init_Glyph_Draw_Params_Default :: Init_Glyph_Draw_Params {
 	over_sample                     = 4,
 	draw_padding                    = Init_Atlas_Params_Default.glyph_padding,
 	shape_gen_scratch_reserve       = 512,
-	buffer_glyph_limit              = 4,
-	batch_glyph_limit               = 32,
+	buffer_glyph_limit              = 16,
+	batch_glyph_limit               = 256,
 }
 
 Init_Shaper_Params :: struct {
@@ -223,8 +221,8 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType, // N
 
 		atlas_size    := Vec2i { 4096, 2048 } * i32(atlas.size_multiplier)
 		slot_region_a := Vec2i {  32,  32 }   * i32(atlas.size_multiplier)
-		slot_region_c := Vec2i {  64,  64 }   * i32(atlas.size_multiplier)
 		slot_region_b := Vec2i {  32,  64 }   * i32(atlas.size_multiplier)
+		slot_region_c := Vec2i {  64,  64 }   * i32(atlas.size_multiplier)
 		slot_region_d := Vec2i { 128, 128 }   * i32(atlas.size_multiplier)
 		
 		init_atlas_region :: proc( region : ^Atlas_Region, atlas_size, slot_size : Vec2i, factor : Vec2i )
@@ -302,9 +300,6 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType, // N
 		glyph_buffer.size.x            = atlas.region_d.slot_size.x * i32(glyph_buffer.over_sample.x) * i32(glyph_draw_params.buffer_glyph_limit)
 		glyph_buffer.size.y            = atlas.region_d.slot_size.y * i32(glyph_buffer.over_sample.y)
 		glyph_buffer.draw_padding      = cast(f32) glyph_draw_params.draw_padding
-
-		buffer_limit := glyph_draw_params.buffer_glyph_limit
-		batch_limit  := glyph_draw_params.batch_glyph_limit
 
 		glyph_buffer.draw_list.vertices, error = make( [dynamic]Vertex, len = 0, cap = 8 * Kilobyte )
 		assert( error == .None, "VEFontCache.init : Failed to allocate vertices array for glyph_buffer.draw_list" )
@@ -787,11 +782,11 @@ draw_text_layer :: #force_inline proc( ctx : ^Context, layer : []Text_Layer_Elem
 	assert( ctx != nil )
 	assert( len(layer) > 0 )
 
+	shapes := make( []Shaped_Text, len(layer) )
 	for elem in layer
 	{
 		assert( elem.font >= 0 && int(elem.font) < len(ctx.entries) )
 
-		shapes := make( []Shaped_Text, len(layer) )
 		for elem, id in layer
 		{
 			entry := ctx.entries[ elem.font ]
@@ -823,25 +818,25 @@ draw_text_layer :: #force_inline proc( ctx : ^Context, layer : []Text_Layer_Elem
 			)
 			shapes[id] = shape
 		}
+	}
 
-		for elem, id in layer {
-			entry := ctx.entries[ elem.font ]
+	for elem, id in layer {
+		entry := ctx.entries[ elem.font ]
 
-			ctx.cursor_pos = {}
+		ctx.cursor_pos = {}
 
-			colour   := ctx.colour
-			colour.a  = 1.0 + ctx.alpha_sharpen
+		colour   := ctx.colour
+		colour.a  = 1.0 + ctx.alpha_sharpen
 
-			adjusted_position := get_snapped_position( ctx^, elem.position )
+		adjusted_position := get_snapped_position( ctx^, elem.position )
 
-			// font_scale := parser_scale( entry.parser_info, elem.px_size )
+		// font_scale := parser_scale( entry.parser_info, elem.px_size )
 
-			target_px_size    := elem.px_size * ctx.px_scalar
-			target_scale      := elem.scale * (1 / ctx.px_scalar)
-			target_font_scale := parser_scale( entry.parser_info, target_px_size )
+		target_px_size    := elem.px_size * ctx.px_scalar
+		target_scale      := elem.scale * (1 / ctx.px_scalar)
+		target_font_scale := parser_scale( entry.parser_info, target_px_size )
 
-			generate_shapes_draw_list(ctx, elem.font, elem.colour, entry, target_px_size, target_font_scale, adjusted_position, target_scale, shapes )
-		}
+		generate_shapes_draw_list(ctx, elem.font, elem.colour, entry, target_px_size, target_font_scale, adjusted_position, target_scale, shapes )
 	}
 }
 

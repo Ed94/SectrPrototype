@@ -14,7 +14,10 @@ Shape_Key :: u32
 	its position should be used for rendering.
 
 	For this library's case it also involes keeping any content 
-	that does not have to be resolved once again in the later stage of processing.
+	that does not have to be resolved once again in the later stage of processing:
+		* Resolve atlas lru codes
+		* Resolve glyph bounds and scale
+		* Resolve atlas region the glyph is associated with.
 
 	Ideally the user should resolve this shape once and cache/store it on their side.
 	They have the best ability to avoid costly lookups to streamline 
@@ -22,8 +25,8 @@ Shape_Key :: u32
 
 	For ease of use the cache does a relatively good job and only adds a 
 	few hundred nano-seconds to resolve a shape's lookup from its source specification.
-	If your doing something heavy though (where there is thousands, or tens-of thousands)
-	your not going to be satisfied with keeping that in the iteration).
+	If your doing something very heavy though (tens-of thousands +) your not 
+	going to be satisfied with keeping that in the iteration).
 */
 Shaped_Text :: struct #packed {
 	glyph              : [dynamic]Glyph,
@@ -31,11 +34,6 @@ Shaped_Text :: struct #packed {
 	atlas_lru_code     : [dynamic]Atlas_Key,
 	region_kind        : [dynamic]Atlas_Region_Kind,
 	bounds             : [dynamic]Range2,
-	// TODO(Ed): Profile if its worth not doing compute for these per frame.
-	// bounds_scaled      : [dynamic]Range2,            
-	// bounds_size        : [dynamic]Vec2,
-	// bounds_size_Scaled : [dynamic]Vec2,
-	atlas_bbox         : [dynamic]Transform,
 	end_cursor_pos     : Vec2,
 	size               : Vec2,
 }
