@@ -6,8 +6,10 @@ package vetext
 import "base:runtime"
 
 // See: mappings.odin for profiling hookup
-DISABLE_PROFILING       :: true
-ENABLE_OVERSIZED_GLYPHS :: true
+DISABLE_PROFILING              :: true
+ENABLE_OVERSIZED_GLYPHS        :: true
+// White: Cached Hit, Red: Cache Miss, Yellow: Oversized (Will override user's colors enabled)
+ENABLE_DRAW_TYPE_VISUALIZATION :: false
 
 Font_ID :: distinct i16
 Glyph   :: distinct i32
@@ -102,8 +104,6 @@ Context :: struct {
 	// the draw_list result by the same amount.
 	px_scalar      : f32,   // Improves hinting, positioning, etc. Can make zoomed out text too jagged.
 
-	// White: Cached Hit, Red: Cache Miss, Yellow: Oversized (Will override user's colors when active)
-	enable_draw_type_visualization : f32,
 	default_curve_quality          : i32,
 }
 
@@ -647,7 +647,6 @@ get_snapped_position :: #force_inline proc "contextless" ( ctx : Context, positi
 
 set_alpha_scalar            :: #force_inline proc( ctx : ^Context, scalar : f32    )      { assert(ctx != nil); ctx.alpha_sharpen                  = scalar }
 set_colour                  :: #force_inline proc( ctx : ^Context, colour : RGBAN  )      { assert(ctx != nil); ctx.colour                         = colour }
-set_draw_type_visualization :: #force_inline proc( ctx : ^Context, should_enable : b32 )  { assert(ctx != nil); ctx.enable_draw_type_visualization = cast(f32) i32(should_enable); }
 set_px_scalar               :: #force_inline proc( ctx : ^Context, scalar : f32    )      { assert(ctx != nil); ctx.px_scalar                      = scalar } 
 
 set_snap_glyph_shape_position :: #force_inline proc( ctx : ^Context, should_snap : b32 ) {
@@ -694,7 +693,6 @@ draw_text_shape_normalized_space :: #force_inline proc( ctx : ^Context,
 
 	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
 		ctx.px_scalar,
-		ctx.enable_draw_type_visualization,
 		adjusted_colour, 
 		entry, 
 		target_px_size,
@@ -746,7 +744,6 @@ draw_text_normalized_space :: #force_inline proc( ctx : ^Context,
 	)
 	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
 		ctx.px_scalar,
-		ctx.enable_draw_type_visualization,
 		colour, 
 		entry, 
 		target_px_size,

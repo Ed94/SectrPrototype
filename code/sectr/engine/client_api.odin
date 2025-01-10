@@ -535,8 +535,6 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	debug.draw_ui_padding_bounds    = false
 	debug.draw_ui_content_bounds    = false
 
-	font_provider_set_draw_type_visualization(true)
-
 	// config.engine_refresh_hz = 165
 
 	// config.color_theme = App_Thm_Light
