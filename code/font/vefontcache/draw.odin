@@ -2,8 +2,6 @@ package vetext
 
 /*
 	Note(Ed): This may be seperated in the future into another file dedending on how much is involved with supportin ear-clipping triangulation.
-
-
 */
 
 import "base:runtime"
@@ -113,7 +111,12 @@ Glyph_Draw_Buffer :: struct{
 
 // Contructs a quad mesh for bliting a texture from one render target (src uv0 & 1) to the destination rendertarget (p0, p1)
 @(optimization_mode="favor_size")
-blit_quad :: #force_inline proc ( draw_list : ^Draw_List, p0 : Vec2 = {0, 0}, p1 : Vec2 = {1, 1}, uv0 : Vec2 = {0, 0}, uv1 : Vec2 = {1, 1} )
+blit_quad :: #force_inline proc ( draw_list : ^Draw_List, 
+	p0  : Vec2 = {0, 0}, 
+	p1  : Vec2 = {1, 1}, 
+	uv0 : Vec2 = {0, 0}, 
+	uv1 : Vec2 = {1, 1} 
+)
 {
 	// profile(#procedure)
 	v_offset := cast(u32) len(draw_list.vertices)
@@ -250,7 +253,16 @@ generate_glyph_pass_draw_list :: proc(draw_list : ^Draw_List, path : ^[dynamic]V
 }
 
 // Just a warpper of generate_shape_draw_list for handling an array of shapes
-generate_shapes_draw_list :: #force_inline proc ( ctx : ^Context, font : Font_ID, colour : RGBAN, entry : Entry, px_size, font_scale : f32, position, scale : Vec2, shapes : []Shaped_Text )
+generate_shapes_draw_list :: #force_inline proc ( ctx : ^Context, 
+	font       : Font_ID, 
+	colour     : RGBAN, 
+	entry      : Entry, 
+	px_size    : f32, 
+	font_scale : f32, 
+	position   : Vec2, 
+	scale      : Vec2, 
+	shapes     : []Shaped_Text
+)
 {
 	assert(len(shapes) > 0)
 	for shape in shapes {

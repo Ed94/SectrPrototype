@@ -104,7 +104,7 @@ Context :: struct {
 	// the draw_list result by the same amount.
 	px_scalar      : f32,   // Improves hinting, positioning, etc. Can make zoomed out text too jagged.
 
-	default_curve_quality          : i32,
+	default_curve_quality : i32,
 }
 
 Init_Atlas_Params :: struct {
@@ -336,6 +336,15 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType, // N
 
 	parser_init( & ctx.parser_ctx, parser_kind )
 	shaper_init( & ctx.shaper_ctx )
+
+	// Set the default stack values
+	// Will be popped on shutdown
+	// push_colour(ctx, {1, 1, 1, 1})
+	// push_font_size(ctx, 36)
+	// push_view(ctx, { 0, 0 })
+	// push_position(ctx, {0, 0})
+	// push_scale(ctx, 1.0)
+	// push_zoom(ctx, 1.0)
 }
 
 hot_reload :: proc( ctx : ^Context, allocator : Allocator )
@@ -398,6 +407,13 @@ shutdown :: proc( ctx : ^Context )
 	glyph_buffer := & ctx.glyph_buffer
 	shape_cache  := & ctx.shape_cache
 	draw_list    := & ctx.draw_list
+
+	// pop_colour(ctx)
+	// pop_font_size(ctx)
+	// pop_view(ctx)
+	// pop_position(ctx)
+	// pop_scale(ctx)
+	// pop_zoom(ctx)
 
 	for & entry in ctx.entries {
 		unload_font( ctx, entry.id )
@@ -544,12 +560,6 @@ unload_font :: proc( ctx : ^Context, font : Font_ID )
 
 //#region("scoping")
 
-configure_snap :: #force_inline proc( ctx : ^Context, snap_width, snap_height : u32 ) {
-	assert( ctx != nil )
-	ctx.snap_width  = f32(snap_width)
-	ctx.snap_height = f32(snap_height)
-}
-
 /* Scope stacking ease of use interface.
 
 View: Extents in 2D for the relative space the the text is being drawn within.
@@ -593,7 +603,7 @@ auto_pop_position  :: #force_inline proc( ctx : ^Context, view      : Vec2    ) 
 @(deferred_in = auto_pop_scale)
 scope_scale        :: #force_inline proc( ctx : ^Context, scale     : Vec2    ) { assert(ctx != nil); append(& ctx.stack.scale, scale ) }
 push_scale         :: #force_inline proc( ctx : ^Context, scale     : Vec2    ) { assert(ctx != nil); append(& ctx.stack.scale, scale ) }
-pop_scale          :: #force_inline proc( ctx : ^Context, scale     : Vec2    ) { assert(ctx != nil); pop(& ctx.stack.scale)      }
+pop_scale          :: #force_inline proc( ctx : ^Context,                     ) { assert(ctx != nil); pop(& ctx.stack.scale)      }
 auto_pop_scale     :: #force_inline proc( ctx : ^Context, scale     : Vec2    ) { assert(ctx != nil); pop(& ctx.stack.scale)      }
 
 @(deferred_in = auto_pop_zoom )
@@ -635,19 +645,21 @@ auto_pop_vpz :: #force_inline proc( ctx : ^Context, camera : VPZ_Transform ) {
 get_cursor_pos :: #force_inline proc "contextless" ( ctx : Context ) -> Vec2 { return ctx.cursor_pos }
 
 // Does nothing when view is 1 or 0.
-get_snapped_position :: #force_inline proc "contextless" ( ctx : Context, position : Vec2 ) -> (snapped_position : Vec2) {
-	snap_width        := max(ctx.snap_width,  1)
-	snap_height       := max(ctx.snap_height, 1)
-	snap_quotient     :=  1 / Vec2 { snap_width, snap_height }
+get_snapped_position :: #force_inline proc "contextless" ( position : Vec2, view : Vec2 ) -> (snapped_position : Vec2) {
+	snap_quotient := 1 / Vec2 { max(view.x, 1), max(view.y, 1) }
+	should_snap   := view * snap_quotient
 	snapped_position   = position 
-	snapped_position.x = ceil(position.x * snap_width ) * snap_quotient.x
-	snapped_position.y = ceil(position.y * snap_height) * snap_quotient.y
-	return
+	snapped_position.x = ceil(position.x * view.x) * snap_quotient.x 
+	snapped_position.y = ceil(position.y * view.y) * snap_quotient.y
+	snapped_position  *= should_snap
+	snapped_position.x = max(snapped_position.x, position.x)
+	snapped_position.y = max(snapped_position.y, position.y)
+	return snapped_position
 }
 
-set_alpha_scalar            :: #force_inline proc( ctx : ^Context, scalar : f32    )      { assert(ctx != nil); ctx.alpha_sharpen                  = scalar }
-set_colour                  :: #force_inline proc( ctx : ^Context, colour : RGBAN  )      { assert(ctx != nil); ctx.colour                         = colour }
-set_px_scalar               :: #force_inline proc( ctx : ^Context, scalar : f32    )      { assert(ctx != nil); ctx.px_scalar                      = scalar } 
+set_alpha_scalar :: #force_inline proc( ctx : ^Context, scalar : f32    )      { assert(ctx != nil); ctx.alpha_sharpen = scalar }
+set_colour       :: #force_inline proc( ctx : ^Context, colour : RGBAN  )      { assert(ctx != nil); ctx.colour        = colour }
+set_px_scalar    :: #force_inline proc( ctx : ^Context, scalar : f32    )      { assert(ctx != nil); ctx.px_scalar     = scalar } 
 
 set_snap_glyph_shape_position :: #force_inline proc( ctx : ^Context, should_snap : b32 ) {
 	assert(ctx != nil)
@@ -661,7 +673,6 @@ set_snap_glyph_render_height :: #force_inline proc( ctx : ^Context, should_snap 
 
 // Non-scoping context. The most fundamental interface-level draw shape procedure.
 // (everything else is either batching/pipelining or quality of life warppers)
-// Note: Prefer over draw_text_normalized_space if possible to resolve shape once persistently or at least once per frame or non-dirty state.
 @(optimization_mode="favor_size")
 draw_text_shape_normalized_space :: #force_inline proc( ctx : ^Context,
 	font     : Font_ID,
@@ -670,7 +681,7 @@ draw_text_shape_normalized_space :: #force_inline proc( ctx : ^Context,
 	view     : Vec2,
 	position : Vec2,
 	scale    : Vec2, 
-	zoom     : f32, 
+	zoom     : f32, // TODO(Ed): Implement zoom support
 	shape    : Shaped_Text
 )
 {
@@ -678,14 +689,12 @@ draw_text_shape_normalized_space :: #force_inline proc( ctx : ^Context,
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 
-	adjusted_position := get_snapped_position( ctx^, position )
+	adjusted_position := get_snapped_position( position, view )
 
 	entry := ctx.entries[ font ]
 
 	adjusted_colour   := colour
 	adjusted_colour.a  = 1.0 + ctx.alpha_sharpen
-
-	font_scale := parser_scale( entry.parser_info, px_size )
 
 	target_px_size     := px_size * ctx.px_scalar
 	target_scale       := scale   * (1 / ctx.px_scalar)
@@ -704,15 +713,15 @@ draw_text_shape_normalized_space :: #force_inline proc( ctx : ^Context,
 
 // Non-scoping context. The most fundamental interface-level draw text procedure.
 // (everything else is either batching/pipelining or quality of life warppers)
-// Note: shape lookup can be expensive on high call usage.
-draw_text_normalized_space :: #force_inline proc( ctx : ^Context, 
+@(optimization_mode = "favor_size")
+draw_text_normalized_space :: proc( ctx : ^Context, 
 	font      : Font_ID,
 	px_size   : f32,
 	colour    : RGBAN,
 	view      : Vec2,
 	position  : Vec2,
 	scale     : Vec2, 
-	zoom      : f32,
+	zoom      : f32, // TODO(Ed): Implement Zoom support
 	text_utf8 : string
 )
 {
@@ -720,15 +729,14 @@ draw_text_normalized_space :: #force_inline proc( ctx : ^Context,
 	assert( ctx != nil )
 	assert( font >= 0 && int(font) < len(ctx.entries) )
 	assert( len(text_utf8) > 0 )
-	assert( ctx.snap_width > 0 && ctx.snap_height > 0 )
 
 	ctx.cursor_pos = {}
 	entry := ctx.entries[ font ]
 
-	adjusted_position := get_snapped_position( ctx^, position )
+	adjusted_position := get_snapped_position( position, view )
 
-	colour   := ctx.colour
-	colour.a  = 1.0 + ctx.alpha_sharpen
+	adjusted_colour := colour
+	adjusted_colour.a  = 1.0 + ctx.alpha_sharpen
 
 	// Does nothing when px_scalar is 1.0
 	target_px_size     := px_size * ctx.px_scalar
@@ -744,7 +752,7 @@ draw_text_normalized_space :: #force_inline proc( ctx : ^Context,
 	)
 	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
 		ctx.px_scalar,
-		colour, 
+		adjusted_colour, 
 		entry, 
 		target_px_size,
 		target_font_scale, 
@@ -753,88 +761,210 @@ draw_text_normalized_space :: #force_inline proc( ctx : ^Context,
 	)
 }
 
-draw_shape :: #force_inline proc( ctx : ^Context, position, scale : Vec2, shape : Shaped_Text ) {
-	// peek_position
-}
-
-draw_text :: #force_inline proc( ctx : ^Context, text_utf8 : string, position, scale : Vec2 ) {
-
-}
-
-Text_Layer_Elem :: struct {
-	text     : string,
+// Equivalent to draw_text_shape_normalized_space, however position's units is scaled to view and must be normalized.
+@(optimization_mode="favor_size")
+draw_text_shape_view_space :: #force_inline proc( ctx : ^Context,
+	font     : Font_ID,
+	px_size  : f32, 
+	colour   : RGBAN, 
 	view     : Vec2,
 	position : Vec2,
-	scale    : Vec2,
-	font     : Font_ID,
-	px_size  : f32,
-	zoom     : f32,
-	colour   : RGBAN,
-}
-
-// Batch a layer of text. Use get_draw_list_layer to process the layer immediately after.
-draw_text_layer :: #force_inline proc( ctx : ^Context, layer : []Text_Layer_Elem ) 
+	scale    : Vec2, 
+	zoom     : f32, // TODO(Ed): Implement zoom support
+	shape    : Shaped_Text
+)
 {
 	profile(#procedure)
 	assert( ctx != nil )
-	assert( len(layer) > 0 )
+	assert( font >= 0 && int(font) < len(ctx.entries) )
 
-	shapes := make( []Shaped_Text, len(layer) )
-	for elem in layer
-	{
-		assert( elem.font >= 0 && int(elem.font) < len(ctx.entries) )
+	norm_position := position * (1 / view)
 
-		for elem, id in layer
-		{
-			entry := ctx.entries[ elem.font ]
+	view := view; view.x = max(view.x, 1); view.y = max(view.y, 1)
+	adjusted_position := get_snapped_position( norm_position, view )
 
-			ctx.cursor_pos = {}
+	entry := ctx.entries[ font ]
 
-			// colour   := ctx.colour
-			// colour.a  = 1.0 + ctx.alpha_sharpen
+	adjusted_colour   := colour
+	adjusted_colour.a  = 1.0 + ctx.alpha_sharpen
 
-			// adjusted_position := get_snapped_position( ctx^, elem.position )
+	target_px_size     := px_size * ctx.px_scalar
+	target_scale       := scale   * (1 / ctx.px_scalar)
+	target_font_scale  := parser_scale( entry.parser_info, target_px_size )
 
-			// font_scale := parser_scale( entry.parser_info, elem.px_size )
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
+		ctx.px_scalar,
+		adjusted_colour, 
+		entry, 
+		target_px_size,
+		target_font_scale, 
+		position, 
+		target_scale, 
+	)
+}
 
-			target_px_size    := elem.px_size * ctx.px_scalar
-			// target_scale      := elem.scale * (1 / ctx.px_scalar)
-			target_font_scale := parser_scale( entry.parser_info, target_px_size )
+// Equivalent to draw_text_normalized_space, however position's units is scaled to view and must be normalized.
+@(optimization_mode = "favor_size")
+draw_text_view_space :: proc(ctx : ^Context,
+	font          : Font_ID,
+	px_size       : f32,
+	colour        : RGBAN,
+	view          : Vec2,
+	view_position : Vec2,
+	scale         : Vec2, 
+	zoom          : f32, // TODO(Ed): Implement Zoom support
+	text_utf8     : string
+)
+{
+	profile(#procedure)
+	assert( ctx != nil )
+	assert( font >= 0 && int(font) < len(ctx.entries) )
+	assert( len(text_utf8) > 0 )
 
-			assert( len(elem.text) > 0 )
-			shape := shaper_shape_text_cached( elem.text, 
-				& ctx.shaper_ctx, 
-				& ctx.shape_cache,
-				ctx.atlas,
-				vec2(ctx.glyph_buffer.size),
-				elem.font, 
-				entry,
-				target_px_size,
-				target_font_scale, 
-				shaper_shape_text_uncached_advanced
-			)
-			shapes[id] = shape
-		}
-	}
+	ctx.cursor_pos = {}
+	entry := ctx.entries[ font ]
 
-	for elem, id in layer {
-		entry := ctx.entries[ elem.font ]
+	norm_position := view_position * (1 / view)
 
-		ctx.cursor_pos = {}
+	adjusted_position := get_snapped_position( norm_position, view )
 
-		colour   := ctx.colour
-		colour.a  = 1.0 + ctx.alpha_sharpen
+	adjusted_colour := colour
+	adjusted_colour.a  = 1.0 + ctx.alpha_sharpen
 
-		adjusted_position := get_snapped_position( ctx^, elem.position )
+	// Does nothing when px_scalar is 1.0
+	target_px_size     := px_size * ctx.px_scalar
+	target_scale       := scale   * (1 / ctx.px_scalar)
+	target_font_scale  := parser_scale( entry.parser_info, target_px_size )
 
-		// font_scale := parser_scale( entry.parser_info, elem.px_size )
+	shape := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, ctx.atlas, vec2(ctx.glyph_buffer.size),
+		font, 
+		entry, 
+		target_px_size,
+		target_font_scale, 
+		shaper_shape_text_uncached_advanced
+	)
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
+		ctx.px_scalar,
+		adjusted_colour, 
+		entry, 
+		target_px_size,
+		target_font_scale, 
+		adjusted_position,
+		target_scale, 
+	)
+}
 
-		target_px_size    := elem.px_size * ctx.px_scalar
-		target_scale      := elem.scale * (1 / ctx.px_scalar)
-		target_font_scale := parser_scale( entry.parser_info, target_px_size )
+@(optimization_mode = "favor_size")
+draw_shape :: proc( ctx : ^Context, position, scale : Vec2, shape : Shaped_Text )
+{
+	profile(#procedure)
+	assert( ctx != nil )
 
-		generate_shapes_draw_list(ctx, elem.font, elem.colour, entry, target_px_size, target_font_scale, adjusted_position, target_scale, shapes )
-	}
+	stack := & ctx.stack
+	assert(len(stack.font) > 0)
+	assert(len(stack.view) > 0)
+	assert(len(stack.colour) > 0)
+	assert(len(stack.position) > 0)
+	assert(len(stack.scale) > 0)
+	assert(len(stack.font_size) > 0)
+	assert(len(stack.zoom) > 0)
+
+	// TODO(Ed): This should be taken from the shape instead (you cannot use a different font with a shape)
+	font := peek(stack.font)
+	assert( font >= 0 &&int(font) < len(ctx.entries) )
+
+	view := peek(stack.view);
+
+	ctx.cursor_pos = {}
+	entry := ctx.entries[ font ]
+
+	adjusted_colour := peek(stack.colour)
+	adjusted_colour.a = 1.0 + ctx.alpha_sharpen
+
+	// TODO(Ed): Implement zoom for draw_text
+	zoom := peek(stack.zoom)
+
+	absolute_position := peek(stack.position) + position
+	absolute_scale    := peek(stack.scale)    * scale
+
+	adjusted_position := get_snapped_position( absolute_position, view )
+
+	px_size := peek(stack.font_size)
+
+	// Does nothing when px_scalar is 1.0
+	target_px_size     := px_size        * ctx.px_scalar
+	target_scale       := absolute_scale * (1 / ctx.px_scalar)
+	target_font_scale  := parser_scale( entry.parser_info, target_px_size )
+
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
+		ctx.px_scalar,
+		adjusted_colour, 
+		entry, 
+		target_px_size,
+		target_font_scale, 
+		adjusted_position,
+		target_scale, 
+	)
+}
+
+@(optimization_mode = "favor_size")
+draw_text :: proc( ctx : ^Context, position, scale : Vec2, text_utf8 : string )
+{
+	profile(#procedure)
+	assert( ctx != nil )
+	assert( len(text_utf8) > 0 )
+
+	stack := & ctx.stack
+	assert(len(stack.font) > 0)
+	assert(len(stack.view) > 0)
+	assert(len(stack.colour) > 0)
+	assert(len(stack.position) > 0)
+	assert(len(stack.scale) > 0)
+	assert(len(stack.font_size) > 0)
+	assert(len(stack.zoom) > 0)
+
+	font := peek(stack.font)
+	assert( font >= 0 &&int(font) < len(ctx.entries) )
+
+	view := peek(stack.view);
+
+	ctx.cursor_pos = {}
+	entry := ctx.entries[ font ]
+
+	adjusted_colour := peek(stack.colour)
+	adjusted_colour.a = 1.0 + ctx.alpha_sharpen
+
+	// TODO(Ed): Implement zoom for draw_text
+	zoom := peek(stack.zoom)
+
+	absolute_position := peek(stack.position) + position
+	absolute_scale    := peek(stack.scale)    * scale
+
+	adjusted_position := get_snapped_position( absolute_position, view )
+
+	px_size := peek(stack.font_size)
+
+	// Does nothing when px_scalar is 1.0
+	target_px_size     := px_size        * ctx.px_scalar
+	target_scale       := absolute_scale * (1 / ctx.px_scalar)
+	target_font_scale  := parser_scale( entry.parser_info, target_px_size )
+
+	shape := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, ctx.atlas, vec2(ctx.glyph_buffer.size),
+		font, 
+		entry, 
+		target_px_size,
+		target_font_scale, 
+		shaper_shape_text_uncached_advanced
+	)
+	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
+		ctx.px_scalar,
+		adjusted_colour, 
+		entry, 
+		target_px_size,
+		target_font_scale, 
+		adjusted_position,
+		target_scale, 
+	)
 }
 
 get_draw_list :: #force_inline proc( ctx : ^Context, optimize_before_returning := true ) -> ^Draw_List {
@@ -889,11 +1019,9 @@ measure_text_size :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size
 
 	entry := ctx.entries[font]
 
-	font_scale := parser_scale( entry.parser_info, px_size )
-	
-	downscale           := 1 / ctx.px_scalar
-	px_size_upscaled    := px_size * ctx.px_scalar
-	font_scale_upscaled := parser_scale( entry.parser_info, px_size_upscaled )
+	downscale         := 1 / ctx.px_scalar
+	target_px_size    := px_size * ctx.px_scalar
+	target_font_scale := parser_scale( entry.parser_info, target_px_size )
 
 	shaped := shaper_shape_text_cached( text_utf8, 
 		& ctx.shaper_ctx, 
@@ -902,8 +1030,8 @@ measure_text_size :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size
 		vec2(ctx.glyph_buffer.size),
 		font, 
 		entry, 
-		px_size_upscaled, 
-		font_scale_upscaled, 
+		target_px_size, 
+		target_font_scale, 
 		shaper_shape_text_uncached_advanced 
 	)
 	return shaped.size * downscale
@@ -934,10 +1062,8 @@ shape_text_latin :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size 
 	assert( len(text_utf8) > 0 )
 	entry := ctx.entries[ font ]
 
-	font_scale := parser_scale( entry.parser_info, px_size )
-
-	px_size_upscaled    := px_size * ctx.px_scalar
-	font_scale_upscaled := parser_scale( entry.parser_info, px_size_upscaled )
+	target_px_size    := px_size * ctx.px_scalar
+	target_font_scale := parser_scale( entry.parser_info, target_px_size )
 
 	return shaper_shape_text_cached( text_utf8, 
 		& ctx.shaper_ctx, 
@@ -946,8 +1072,8 @@ shape_text_latin :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size 
 		vec2(ctx.glyph_buffer.size),
 		font, 
 		entry, 
-		px_size_upscaled, 
-		font_scale_upscaled, 
+		target_px_size, 
+		target_font_scale, 
 		shaper_shape_text_latin
 	)
 }
@@ -958,10 +1084,8 @@ shape_text_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, px_si
 	assert( len(text_utf8) > 0 )
 	entry := ctx.entries[ font ]
 
-	font_scale := parser_scale( entry.parser_info, px_size )
-
-	px_size_upscaled    := px_size * ctx.px_scalar
-	font_scale_upscaled := parser_scale( entry.parser_info, px_size_upscaled )
+	target_px_size    := px_size * ctx.px_scalar
+	target_font_scale := parser_scale( entry.parser_info, target_px_size )
 
 	return shaper_shape_text_cached( text_utf8, 
 		& ctx.shaper_ctx, 
@@ -970,25 +1094,55 @@ shape_text_advanced :: #force_inline proc( ctx : ^Context, font : Font_ID, px_si
 		vec2(ctx.glyph_buffer.size),
 		font, 
 		entry, 
-		px_size_upscaled, 
-		font_scale_upscaled, 
+		target_px_size, 
+		target_font_scale, 
 		shaper_shape_text_uncached_advanced
 	)
 }
 
 // User handled shaped text. Will not be cached
 // @(disabled = true)
-shape_text_latin_uncached :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, shape : ^Shaped_Text )
+shape_text_latin_uncached :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size: f32, text_utf8 : string, shape : ^Shaped_Text )
 {
-	assert(false)
+	profile(#procedure)
+	assert( len(text_utf8) > 0 )
+	entry := ctx.entries[ font ]
+
+	target_px_size    := px_size * ctx.px_scalar
+	target_font_scale := parser_scale( entry.parser_info, target_px_size )
+
+	shaper_shape_text_latin(& ctx.shaper_ctx, 
+		ctx.atlas, 
+		vec2(ctx.glyph_buffer.size), 
+		entry, 
+		target_px_size, 
+		target_font_scale, 
+		text_utf8, 
+		shape
+	) 
 	return
 }
 
 // User handled shaped text. Will not be cached
 // @(disabled = true)
-shape_text_advanced_uncahed :: #force_inline proc( ctx : ^Context, font : Font_ID, text_utf8 : string, entry : ^Entry, shape : ^Shaped_Text )
+shape_text_advanced_uncached :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size: f32, text_utf8 : string, shape : ^Shaped_Text )
 {
-	assert(false)
+	profile(#procedure)
+	assert( len(text_utf8) > 0 )
+	entry := ctx.entries[ font ]
+
+	target_px_size    := px_size * ctx.px_scalar
+	target_font_scale := parser_scale( entry.parser_info, target_px_size )
+
+	shaper_shape_text_uncached_advanced(& ctx.shaper_ctx, 
+		ctx.atlas, 
+		vec2(ctx.glyph_buffer.size), 
+		entry, 
+		target_px_size, 
+		target_font_scale, 
+		text_utf8, 
+		shape
+	) 
 	return
 }
 

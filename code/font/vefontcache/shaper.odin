@@ -22,11 +22,6 @@ Shape_Key :: u32
 	Ideally the user should resolve this shape once and cache/store it on their side.
 	They have the best ability to avoid costly lookups to streamline 
 	a hot path to only focusing on draw list generation that must be computed every frame.
-
-	For ease of use the cache does a relatively good job and only adds a 
-	few hundred nano-seconds to resolve a shape's lookup from its source specification.
-	If your doing something very heavy though (tens-of thousands +) your not 
-	going to be satisfied with keeping that in the iteration).
 */
 Shaped_Text :: struct #packed {
 	glyph              : [dynamic]Glyph,
@@ -36,6 +31,8 @@ Shaped_Text :: struct #packed {
 	bounds             : [dynamic]Range2,
 	end_cursor_pos     : Vec2,
 	size               : Vec2,
+	font_id            : Font_ID, 
+	// TODO(Ed): We need to track the font here for usage in user interface when directly drawing the shape.
 }
 
 // Ease of use cache, can handle thousands of lookups per frame with ease.

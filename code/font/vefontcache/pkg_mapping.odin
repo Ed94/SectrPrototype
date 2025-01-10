@@ -88,6 +88,11 @@ fill :: proc {
 	slice.fill,
 }
 
+max :: proc {
+	linalg.max_single,
+	linalg.max_double,
+}
+
 make :: proc {
 	builtin.make_dynamic_array,
 	builtin.make_dynamic_array_len,
