@@ -1,7 +1,7 @@
 /*
 See: https://github.com/Ed94/VEFontCache-Odin
 */
-package vetext
+package vefontcache
 
 import "base:runtime"
 
@@ -761,6 +761,7 @@ draw_text_normalized_space :: proc( ctx : ^Context,
 	)
 }
 
+// TODO(Ed): Use this in sectr over normalized space
 // Equivalent to draw_text_shape_normalized_space, however position's units is scaled to view and must be normalized.
 @(optimization_mode="favor_size")
 draw_text_shape_view_space :: #force_inline proc( ctx : ^Context,
@@ -803,6 +804,7 @@ draw_text_shape_view_space :: #force_inline proc( ctx : ^Context,
 	)
 }
 
+// TODO(Ed): Use this in sectr over normalized space
 // Equivalent to draw_text_normalized_space, however position's units is scaled to view and must be normalized.
 @(optimization_mode = "favor_size")
 draw_text_view_space :: proc(ctx : ^Context,

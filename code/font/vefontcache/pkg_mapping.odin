@@ -1,4 +1,4 @@
-package vetext
+package vefontcache
 
 import "base:builtin"
 	resize_soa_non_zero :: non_zero_resize_soa

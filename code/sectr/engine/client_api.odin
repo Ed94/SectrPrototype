@@ -272,20 +272,21 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		// Load default font
 
-		path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
-		font_roboto_regular  = font_load( path_roboto_regular, "Roboto Regular", 32.0 )
+		path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
+		font_firacode  = font_load( path_firacode, "FiraCode", 16.0 )
+
+		// path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
+		// font_roboto_regular  = font_load( path_roboto_regular, "Roboto Regular", 32.0 )
 
 		// path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
 		// font_fira_cousine  = font_load( path_fira_cousine, "Fira Cousine", 16.0 )
-		default_font = font_roboto_regular
+		default_font = font_firacode
 
 		// Aysnc load the others
 
 		// path_arial_unicode_ms := strings.concatenate( { Path_Assets, "Arial Unicode MS.ttf" } )
 		// font_arial_unicode_ms  = font_load( path_arial_unicode_ms, "Arial_Unicode_MS", 16.0 )
 
-		// path_firacode := strings.concatenate( { Path_Assets, "FiraCode-Regular.ttf" } )
-		// font_firacode  = font_load( path_firacode, "FiraCode", 16.0 )
 
 		// path_neodgm_code := strings.concatenate( { Path_Assets, "neodgm_code.ttf"} )
 		// font_neodgm_code  = font_load( path_neodgm_code, "NeoDunggeunmo Code", 32.0 )
@@ -298,7 +299,6 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		// path_rec_mono_linear := strings.concatenate( { Path_Assets, "RecMonoLinear-Regular-1.084.ttf" })
 		// font_rec_mono_linear  = font_load( path_rec_mono_linear, "RecMonoLinear Regular", 32.0 )
-
 
 		// path_roboto_mono_regular := strings.concatenate( { Path_Assets, "RobotoMono-Regular.ttf"} )
 		// font_roboto_mono_regular  = font_load( path_roboto_mono_regular, "Roboto Mono Regular", 32.0 )

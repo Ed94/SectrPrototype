@@ -1,4 +1,4 @@
-package vetext
+package vefontcache
 
 // There are only 4 actual regions of the atlas. E represents the atlas_decide_region detecting an oversized glyph.
 // Note(Ed): None should never really occur anymore. So its safe to most likely add an assert when its detected.

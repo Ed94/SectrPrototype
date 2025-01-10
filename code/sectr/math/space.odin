@@ -212,8 +212,8 @@ screen_to_ws_view_pos :: #force_inline proc "contextless" (pos: Vec2) -> Vec2 {
 
 // Centered screen space to conventional screen space used for rendering
 screen_to_render_pos :: #force_inline proc "contextless" (pos : Vec2) -> Vec2 {
-	screen_extent := transmute(Vec2) get_state().app_window.extent
-	return pos * {1, 1} + { screen_extent.x, screen_extent.y }
+	screen_extent := transmute(Vec2) get_screen_extent()
+	return pos + screen_extent
 }
 
 // TODO(Ed): These should assume a cam_context or have the ability to provide it in params

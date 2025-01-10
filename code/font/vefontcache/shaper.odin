@@ -1,4 +1,4 @@
-package vetext
+package vefontcache
 /*
 Note(Ed): The only reason I didn't directly use harfbuzz is because hamza exists and seems to be under active development as an alternative.
 */
@@ -190,8 +190,8 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 				f32(hb_gposition.x_advance) * font_scale, 
 				f32(hb_gposition.y_advance) * font_scale
 			}
-			(position^)          += advance
-			(max_line_width^)     = max(max_line_width^, position.x)
+			(position^)      += advance
+			(max_line_width^) = max(max_line_width^, position.x)
 
 			is_empty := parser_is_glyph_empty(entry.parser_info, glyph)
 			if ! is_empty {
