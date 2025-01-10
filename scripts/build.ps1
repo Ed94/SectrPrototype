@@ -222,9 +222,10 @@ push-location $path_root
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
 			# $build_args += $flag_show_debug_messages
-			foreach ($arg in $build_args) {
-				write-host `t $arg  -ForegroundColor Cyan
-			}
+
+			# foreach ($arg in $build_args) {
+			# 	write-host `t $arg  -ForegroundColor Cyan
+			# }
 
 			if ( Test-Path $module_dll) {
 				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
@@ -301,9 +302,10 @@ push-location $path_root
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
-			foreach ($arg in $build_args) {
-				write-host `t $arg  -ForegroundColor Cyan
-			}
+			
+			# foreach ($arg in $build_args) {
+			# 	write-host `t $arg  -ForegroundColor Cyan
+			# }
 
 			if ( Test-Path $executable) {
 				$executable_pre_build_hash = get-filehash -path $executable -Algorithm MD5
