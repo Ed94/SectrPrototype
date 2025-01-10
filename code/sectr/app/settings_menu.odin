@@ -246,9 +246,9 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 					digits_only            = true
 					disallow_leading_zeros = false
 					disallow_decimal       = false
-					digit_min              = 0.001
+					digit_min              = 0.00001
 					digit_max              = 1.0
-					max_length             = 6
+					max_length             = 7
 				}
 				ui_text_input_box( & min_zoom_inputbox, "settings_menu.cam_min_zoom.input_box", allocator = persistent_slab_allocator() )
 				{
@@ -263,7 +263,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 					{
 						value, success := parse_f32(to_string(array_to_slice(input_str)))
 						if success {
-							value = clamp(value, 0.0001, 1.0)
+							value = clamp(value, 0.000001, 1.0)
 							config.cam_min_zoom = value
 						}
 					}

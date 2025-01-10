@@ -89,6 +89,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		push( policy_ptr, SlabSizeClass {   32 * Megabyte,  32 * Megabyte, alignment })
 		push( policy_ptr, SlabSizeClass {   64 * Megabyte,  64 * Megabyte, alignment })
 		push( policy_ptr, SlabSizeClass { 128 * Megabyte,  128 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 256 * Megabyte,  256 * Megabyte, alignment })
 		// Anything above 128 meg needs to have its own setup looked into.
 
 		alloc_error : AllocatorError
@@ -136,13 +137,13 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		resolution_height =  600
 		refresh_rate      =    0
 
-		cam_min_zoom                 = 0.034
+		cam_min_zoom                 = 0.001
 		cam_max_zoom                 = 5.0
-		cam_zoom_mode                = .Digital
+		cam_zoom_mode                = .Smooth
 		cam_zoom_smooth_snappiness   = 4.0
+		cam_zoom_sensitivity_smooth  = 0.5
 		cam_zoom_sensitivity_digital = 0.25
 		cam_zoom_scroll_delta_scale  = 0.25
-		cam_zoom_sensitivity_smooth  = 2.0
 
 		engine_refresh_hz = 0
 
@@ -154,8 +155,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		text_snap_glyph_shape_position = false
 		text_snap_glyph_render_height  = false
-		text_size_screen_scalar        = 1.89
-		text_size_canvas_scalar        = 1.89
+		text_size_screen_scalar        = 2
+		text_size_canvas_scalar        = 0.2
 		text_alpha_sharpen             = 0.1
 	}
 
@@ -257,8 +258,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 	// Setup sokol_gp
 	{
 		desc := sokol_gp.Desc {
-			max_vertices = 2 * Mega + 640 * Kilo,
-			max_commands = 1 * Mega,
+			max_vertices = 1 * Mega,
+			max_commands = 500 * Kilo,
 		}
 		sokol_gp.setup(desc)
 		verify( cast(b32) sokol_gp.is_valid(), "Failed to setup sokol gp (graphics painter)" )
@@ -270,9 +271,13 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		font_provider_startup( & font_provider_ctx )
 
 		// Load default font
-		path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
-		font_fira_cousine  = font_load( path_fira_cousine, "Fira Cousine", 16.0 )
-		default_font = font_fira_cousine
+
+		path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
+		font_roboto_regular  = font_load( path_roboto_regular, "Roboto Regular", 32.0 )
+
+		// path_fira_cousine := strings.concatenate( { Path_Assets, "FiraCousine-Regular.ttf" } )
+		// font_fira_cousine  = font_load( path_fira_cousine, "Fira Cousine", 16.0 )
+		default_font = font_roboto_regular
 
 		// Aysnc load the others
 
@@ -294,8 +299,6 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		// path_rec_mono_linear := strings.concatenate( { Path_Assets, "RecMonoLinear-Regular-1.084.ttf" })
 		// font_rec_mono_linear  = font_load( path_rec_mono_linear, "RecMonoLinear Regular", 32.0 )
 
-		// path_roboto_regular := strings.concatenate( { Path_Assets, "Roboto-Regular.ttf"} )
-		// font_roboto_regular  = font_load( path_roboto_regular, "Roboto Regular", 32.0 )
 
 		// path_roboto_mono_regular := strings.concatenate( { Path_Assets, "RobotoMono-Regular.ttf"} )
 		// font_roboto_mono_regular  = font_load( path_roboto_mono_regular, "Roboto Mono Regular", 32.0 )
@@ -531,6 +534,8 @@ tick_work_frame :: #force_inline proc( host_delta_time_ms : f64 ) -> b32
 	debug.draw_ui_box_bounds_points = false
 	debug.draw_ui_padding_bounds    = false
 	debug.draw_ui_content_bounds    = false
+
+	font_provider_set_draw_type_visualization(true)
 
 	// config.engine_refresh_hz = 165
 
