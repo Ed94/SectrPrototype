@@ -311,7 +311,7 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 	atlas             : Atlas, 
 	glyph_buffer_size : Vec2,
 	entry             : Entry, 
-	font_px_Size      : f32, 
+	font_px_size      : f32, 
 	font_scale        : f32, 
 	text_utf8         : string, 
 	output            : ^Shaped_Text
@@ -346,7 +346,7 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 			prev_codepoint = rune(0)
 			continue
 		}
-		if abs( font_px_Size ) <= ctx.adv_snap_small_font_threshold {
+		if abs( font_px_size ) <= ctx.adv_snap_small_font_threshold {
 			position.x = ceil(position.x)
 		}
 
@@ -371,6 +371,29 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 
 	output.size.x = max_line_width
 	output.size.y = f32(line_count) * line_height
+
+	// Resolve each glyphs: bounds, atlas lru, and the atlas region as we have everything we need now.
+
+	resize( & output.atlas_lru_code, len(output.glyph) )
+	resize( & output.region_kind,    len(output.glyph) )
+	resize( & output.bounds,         len(output.glyph) )
+
+	profile_begin("atlas_lru_code")
+	for id, index in output.glyph
+	{
+		output.atlas_lru_code[index] = atlas_glyph_lru_code(entry.id, font_px_size, id)
+	}
+	profile_end()
+
+	profile_begin("bounds & region")
+	for id, index in output.glyph
+	{
+		bounds                   := & output.bounds[index]
+		(bounds ^)                = parser_get_bounds( entry.parser_info, id )
+		bounds_size_scaled       := (bounds.p1 - bounds.p0) * font_scale
+		output.region_kind[index] = atlas_decide_region( atlas, glyph_buffer_size, bounds_size_scaled )
+	}
+	profile_end()
 }
 
 // Shapes are tracked by the library's context using the shape cache 

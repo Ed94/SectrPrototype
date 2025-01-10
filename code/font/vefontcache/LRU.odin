@@ -21,10 +21,9 @@ LRU_Fail_Mask_32 :: 0xFFFFFFFF
 LRU_Fail_Mask_64 :: 0xFFFFFFFFFFFFFFFF
 
 Pool_ListIter  :: i32
-// Pool_ListValue :: LRU_Key
 
-// Pool_List_Item :: struct( $V_Type : typeid ) #packed {
 Pool_List_Item :: struct( $V_Type : typeid ) #packed {
+// Pool_List_Item :: struct( $V_Type : typeid ) {
 	prev  : Pool_ListIter,
 	next  : Pool_ListIter,
 	value : V_Type,
