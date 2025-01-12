@@ -869,10 +869,8 @@ draw_text_string_pos_norm :: #force_inline proc( text : string, id : FontID, fon
 		ve_id, 
 		f32(resolved_size), 
 		color_norm, 
-		screen_size, 
 		pos, 
 		draw_scale, 
-		1.0, 
 		text 
 	)
 	return
@@ -886,9 +884,12 @@ draw_text_shape_pos_norm :: #force_inline proc( shape : ShapedText, id : FontID,
 
 	screen_size_norm := 1 / get_screen_extent() * 0.5
 
-	// ve.set_px_scalar( & font_provider_ctx.ve_ctx, config.font_size_screen_scalar )
-	// ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
-	ve.draw_text_shape_normalized_space( & get_state().font_provider_ctx.ve_ctx, ve_id, f32(resolved_size), color_norm, {}, pos, screen_size_norm * scale, 1.0, shape )
+	ve.draw_shape_normalized_space( & get_state().font_provider_ctx.ve_ctx, 
+		color_norm, 
+		pos, 
+		screen_size_norm * scale, 
+		shape
+	)
 	return
 }
 
@@ -947,14 +948,10 @@ draw_text_shape_pos_extent_zoomed :: #force_inline proc( shape : ShapedText, id 
 
 	color_norm := normalize_rgba8(color)
 	// ve.set_px_scalar( & get_state().font_provider_ctx.ve_ctx, config.font_size_canvas_scalar )
-	ve.draw_text_shape_normalized_space( & font_provider_ctx.ve_ctx, 
-		ve_id, 
-		f32_resolved_size, 
+	ve.draw_shape_normalized_space( & font_provider_ctx.ve_ctx, 
 		color_norm, 
-		screen_size, 
 		normalized_pos, 
 		text_scale, 
-		1.0, 
 		shape
 	)
 }
@@ -988,10 +985,8 @@ draw_text_string_pos_extent_zoomed :: #force_inline proc( text : string, id : Fo
 		ve_id, 
 		f32(resolved_size), 
 		color_norm, 
-		screen_size, 
 		normalized_pos, 
 		text_scale, 
-		1.0, 
 		text
 	)
 }

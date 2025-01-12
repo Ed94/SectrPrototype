@@ -153,7 +153,7 @@ font_provider_resolve_draw_id :: #force_inline proc( id : FontID, size := Font_U
 
 measure_text_shape :: #force_inline proc( shape : ShapedText ) -> Vec2
 {
-	measured    := ve.measure_shape_size( & get_state().font_provider_ctx.ve_ctx, shape )
+	measured    := ve.measure_shape_size( get_state().font_provider_ctx.ve_ctx, shape )
 	return measured
 }
 
@@ -167,20 +167,20 @@ measure_text_size :: #force_inline proc( text : string, font : FontID, font_size
 get_font_vertical_metrics :: #force_inline proc ( font : FontID, font_size := Font_Use_Default_Size ) -> ( ascent, descent, line_gap : f32 )
 {
 	ve_id, size := font_provider_resolve_draw_id( font, font_size )
-	ascent, descent, line_gap = ve.get_font_vertical_metrics( & get_state().font_provider_ctx.ve_ctx, ve_id, font_size )
+	ascent, descent, line_gap = ve.get_font_vertical_metrics( get_state().font_provider_ctx.ve_ctx, ve_id, font_size )
 	return
 }
 
 shape_text_cached_latin :: #force_inline proc( text : string, font : FontID, font_size := Font_Use_Default_Size, scalar : f32 ) -> ShapedText
 {
 	ve_id, size := font_provider_resolve_draw_id( font, font_size * scalar )
-	shape       := ve.shape_text_latin( & get_state().font_provider_ctx.ve_ctx, ve_id, f32(size), text )
+	shape       := ve.shape_text( & get_state().font_provider_ctx.ve_ctx, ve_id, f32(size), text, ve.shaper_shape_text_latin )
 	return shape
 }
 
 shape_text_cached :: #force_inline proc( text : string, font : FontID, font_size := Font_Use_Default_Size, scalar : f32 ) -> ShapedText
 {
 	ve_id, size := font_provider_resolve_draw_id( font, font_size * scalar )
-	shape       := ve.shape_text_advanced( & get_state().font_provider_ctx.ve_ctx, ve_id, f32(size), text )
+	shape       := ve.shape_text( & get_state().font_provider_ctx.ve_ctx, ve_id, f32(size), text )
 	return shape
 }
