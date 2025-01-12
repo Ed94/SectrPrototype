@@ -12,8 +12,6 @@ package vefontcache
 	are marginal changes at best.
 */
 
-import "base:runtime"
-
 // 16-bit hashing was attempted, however it seems to get collisions with djb8_hash_16
 
 LRU_Fail_Mask_16 :: 0xFFFF
@@ -43,11 +41,11 @@ pool_list_init :: proc( pool : ^Pool_List($V_Type), capacity : i32, dbg_name : s
 {
 	error : Allocator_Error
 	pool.items, error = make( [dynamic]Pool_List_Item(V_Type), int(capacity) )
-	assert( error == .None, "VEFontCache.pool_list_init : Failed to allocate items array")
+	assert( error == .None, "VEFontCache.pool_list_inits: Failed to allocate items array")
 	resize( & pool.items, capacity )
 
 	pool.free_list, error = make( [dynamic]Pool_ListIter, len = 0, cap = int(capacity) )
-	assert( error == .None, "VEFontCache.pool_list_init : Failed to allocate free_list array")
+	assert( error == .None, "VEFontCache.pool_list_init: Failed to allocate free_list array")
 	resize( & pool.free_list, capacity )
 
 	pool.capacity = capacity
@@ -106,16 +104,16 @@ pool_list_push_front :: proc( pool : ^Pool_List($V_Type), value : V_Type ) #no_b
 	assert( length == int(pool.capacity - pool.size) )
 
 	id := pool.free_list[ len(pool.free_list) - 1 ]
-	if pool.dbg_name != "" {
-		logf("pool_list: back %v", id)
-	}
+	// if pool.dbg_name != "" {
+	// 	logf("pool_list: back %v", id)
+	// }
 	pop( & pool.free_list )
 	pool.items[ id ].prev  = -1
 	pool.items[ id ].next  = pool.front
 	pool.items[ id ].value = value
-	if pool.dbg_name != "" {
-		logf("pool_list: pushed %v into id %v", value, id)
-	}
+	// if pool.dbg_name != "" {
+	// 	logf("pool_list: pushed %v into id %v", value, id)
+	// }
 
 	if pool.front != -1 do pool.items[ pool.front ].prev = id
 	if pool.back  == -1 do pool.back = id

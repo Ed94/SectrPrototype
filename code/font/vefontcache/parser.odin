@@ -2,10 +2,10 @@ package vefontcache
 
 /*
 Notes:
-This is a minimal wrapper I originally did incase something than stb_truetype is introduced in the future.
+This is a minimal wrapper I originally did incase a font parser other than stb_truetype is introduced in the future.
 Otherwise, its essentially 1:1 with it.
 
-Freetype isn't really supported and its not a high priority (pretty sure its too slow).
+Freetype isn't really supported and its not a high priority.
 ~~Freetype will do memory allocations and has an interface the user can implement.~~
 ~~That interface is not exposed from this parser but could be added to parser_init.~~
 
@@ -15,11 +15,8 @@ TODO(Ed): Just keep a local version of stb_truetype and modify it to support a s
 Already wanted to do so anyway to evaluate the shape generation implementation.
 */
 
-import "base:runtime"
 import "core:c"
-import "core:math"
-import "core:slice"
-import stbtt    "vendor:stb/truetype"
+import stbtt    "thirdparty:stb/truetype"
 // import freetype "thirdparty:freetype"
 
 Parser_Kind :: enum u32 {
@@ -31,7 +28,7 @@ Parser_Font_Info :: struct {
 	label : string,
 	kind  : Parser_Kind,
 	using _ : struct #raw_union {
-		stbtt_info    : stbtt.fontinfo,
+		stbtt_info : stbtt.fontinfo,
 		// freetype_info : freetype.Face
 	},
 	data : []byte,
@@ -57,13 +54,46 @@ Parser_Glyph_Vertex :: struct {
 Parser_Glyph_Shape :: [dynamic]Parser_Glyph_Vertex
 
 Parser_Context :: struct {
-	kind       : Parser_Kind,
+	lib_backing : Allocator,
+	kind        : Parser_Kind,
 	// ft_library : freetype.Library,
 }
 
-parser_init :: proc( ctx : ^Parser_Context, kind : Parser_Kind )
+parser_stbtt_allocator_proc :: proc(
+	allocator_data : rawptr, 
+	type           : stbtt.gbAllocationType, 
+	size           : c.ssize_t, 
+	alignment      : c.ssize_t, 
+	old_memory     : rawptr, 
+	old_size       : c.ssize_t, 
+	flags          : c.ulonglong
+) -> rawptr
 {
-	ctx.kind = kind
+	allocator := transmute(^Allocator) allocator_data
+	result, error := allocator.procedure( allocator.data, cast(Allocator_Mode) type, cast(int) size, cast(int) alignment, old_memory, cast(int) old_size )
+	assert(error == .None)
+
+	if type == .Alloc || type == .Resize {
+		raw := transmute(Raw_Slice) result
+		// assert(raw.len > 0, "Allocation is 0 bytes?")
+		return transmute(rawptr) raw.data
+	}
+	else do return nil
+}
+
+parser_init :: proc( ctx : ^Parser_Context, kind : Parser_Kind, allocator := context.allocator )
+{
+	ctx.kind        = kind
+	ctx.lib_backing = allocator
+
+	stbtt_allocator := stbtt.gbAllocator { parser_stbtt_allocator_proc, & ctx.lib_backing }
+	stbtt.SetAllocator( stbtt_allocator )
+}
+
+parser_reload :: proc( ctx : ^Parser_Context, allocator := context.allocator) {
+	ctx.lib_backing = allocator
+	stbtt_allocator := stbtt.gbAllocator { parser_stbtt_allocator_proc, & ctx.lib_backing }
+	stbtt.SetAllocator( stbtt_allocator )
 }
 
 parser_shutdown :: proc( ctx : ^Parser_Context ) {
@@ -94,7 +124,9 @@ parser_find_glyph_index :: #force_inline proc "contextless" ( font : Parser_Font
 
 parser_free_shape :: #force_inline proc( font : Parser_Font_Info, shape : Parser_Glyph_Shape )
 {
-	stbtt.FreeShape( font.stbtt_info, transmute( [^]stbtt.vertex) raw_data(shape) )
+	shape     := shape
+	shape_raw := transmute( ^Raw_Dynamic_Array) & shape
+	stbtt.FreeShape( font.stbtt_info, transmute( [^]stbtt.vertex) shape_raw.data )
 }
 
 parser_get_codepoint_horizontal_metrics :: #force_inline proc "contextless" ( font : Parser_Font_Info, codepoint : rune ) -> ( advance, to_left_side_glyph : i32 )
@@ -134,11 +166,11 @@ parser_get_glyph_shape :: #force_inline proc ( font : Parser_Font_Info, glyph_in
 	stb_shape : [^]stbtt.vertex
 	nverts    := stbtt.GetGlyphShape( font.stbtt_info, cast(i32) glyph_index, & stb_shape )
 
-	shape_raw          := transmute( ^runtime.Raw_Dynamic_Array) & shape
+	shape_raw          := transmute( ^Raw_Dynamic_Array) & shape
 	shape_raw.data      = stb_shape
 	shape_raw.len       = int(nverts)
 	shape_raw.cap       = int(nverts)
-	shape_raw.allocator = runtime.nil_allocator()
+	shape_raw.allocator = nil_allocator()
 	error = Allocator_Error.None
 	return
 }
@@ -151,7 +183,7 @@ parser_is_glyph_empty :: #force_inline proc "contextless" ( font : Parser_Font_I
 parser_scale :: #force_inline proc "contextless" ( font : Parser_Font_Info, size : f32 ) -> f32
 {
 	// profile(#procedure)
-	size_scale := size > 0.0 ? parser_scale_for_pixel_height( font, size ) : parser_scale_for_mapping_em_to_pixels( font, -size )
+	size_scale := size > 0.0 ? parser_scale_for_mapping_em_to_pixels( font, size ) :  parser_scale_for_pixel_height( font, -size )
 	return size_scale
 }
 

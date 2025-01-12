@@ -3,6 +3,11 @@ package vefontcache
 import "base:builtin"
 	resize_soa_non_zero :: non_zero_resize_soa
 import "base:runtime"
+	Raw_Dynamic_Array :: runtime.Raw_Dynamic_Array
+	Raw_Map           :: runtime.Raw_Map
+	Raw_Slice         :: runtime.Raw_Slice
+	raw_soa_footer    :: runtime.raw_soa_footer
+	nil_allocator     :: runtime.nil_allocator
 import "core:hash"
 	ginger16 :: hash.ginger16
 import "core:math"
@@ -32,6 +37,7 @@ import "core:mem"
 
 	Allocator       :: mem.Allocator
 	Allocator_Error :: mem.Allocator_Error
+	Allocator_Mode  :: mem.Allocator_Mode
 
 	Arena           :: mem.Arena
 	arena_allocator :: mem.arena_allocator
@@ -48,7 +54,7 @@ append :: proc {
 }
 
 append_soa :: proc {
-	append_soa_elem
+	append_soa_elem,
 }
 
 ceil :: proc {
@@ -119,6 +125,10 @@ resize :: proc {
 	builtin.resize_dynamic_array,
 }
 
+round :: proc {
+	math.round_f32,
+}
+
 size :: proc {
 	size_range2,
 }
@@ -136,22 +146,4 @@ vec2_64 :: proc {
 	vec2_64_from_vec2,
 }
 
-import "../../grime"
-
-@(deferred_none = profile_end, disabled = DISABLE_PROFILING)
-profile :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {
-	grime.profile_begin(name, loc)
-}
-
-@(disabled = DISABLE_PROFILING)
-profile_begin :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {
-	grime.profile_begin(name, loc)
-}
-
-@(disabled = DISABLE_PROFILING)
-profile_end :: #force_inline proc "contextless" () {
-	grime.profile_end()
-}
-
 //#endregion("Proc overload mappings")
-

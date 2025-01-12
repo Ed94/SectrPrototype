@@ -5,9 +5,7 @@ package vefontcache
 	Just a bunch of utilities.
 */
 
-import "base:runtime"
 import "core:simd"
-import "core:math"
 
 import core_log "core:log"
 
@@ -16,17 +14,17 @@ peek_array :: #force_inline proc "contextless" ( self : [dynamic]$Type ) -> Type
 }
 
 reload_array :: #force_inline proc( self : ^[dynamic]$Type, allocator : Allocator ) {
-	raw          := transmute( ^runtime.Raw_Dynamic_Array) self
+	raw          := transmute( ^Raw_Dynamic_Array) self
 	raw.allocator = allocator
 }
 
 reload_array_soa :: #force_inline proc( self : ^#soa[dynamic]$Type, allocator : Allocator ) {
-	raw          := runtime.raw_soa_footer(self)
+	raw          := raw_soa_footer(self)
 	raw.allocator = allocator
 }
 
 reload_map :: #force_inline proc( self : ^map [$KeyType] $EntryType, allocator : Allocator ) {
-	raw          := transmute( ^runtime.Raw_Map) self
+	raw          := transmute( ^Raw_Map) self
 	raw.allocator = allocator
 }
 
@@ -61,7 +59,7 @@ vec2i_from_vec2   :: #force_inline proc "contextless" ( v2     : Vec2  ) -> Vec2
 @(require_results) ceil_vec2  :: proc "contextless" ( v : Vec2 ) -> Vec2 { return { ceil_f32(v.x), ceil_f32(v.y) } }
 @(require_results) floor_vec2 :: proc "contextless" ( v : Vec2 ) -> Vec2 { return { floor_f32(v.x), floor_f32(v.y) } }
 
-// This buffer is used below excluisvely to prevent any allocator recusion when verbose logging from allocators.
+// This buffer is used below excluisvely to prevent any allocator recursion when verbose logging from allocators.
 // This means a single line is limited to 4k buffer
 // Logger_Allocator_Buffer : [4 * Kilobyte]u8
 

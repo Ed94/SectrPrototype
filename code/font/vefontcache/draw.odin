@@ -4,10 +4,7 @@ package vefontcache
 	Note(Ed): This may be seperated in the future into another file dedending on how much is involved with supportin ear-clipping triangulation.
 */
 
-import "base:runtime"
-import "base:intrinsics"
-import "core:slice"
-import "thirdparty:freetype"
+// import "thirdparty:freetype"
 
 Glyph_Trianglation_Method :: enum(i32) {
 	Ear_Clipping,
@@ -32,21 +29,13 @@ Glyph_Draw_Quad :: struct {
 // to track relevant glyph data in soa format for pipelined processing
 Glyph_Pack_Entry :: struct #packed {
 	position           : Vec2,
-
 	atlas_index        : i32,
-	in_atlas           : b8,
-	should_cache       : b8,
 	region_pos         : Vec2,
 	region_size        : Vec2,
-
 	over_sample        : Vec2, // Only used for oversized glyphs
-
-	shape             : Parser_Glyph_Shape,
-	draw_transform    : Transform,
-
+	shape              : Parser_Glyph_Shape,
+	draw_transform     : Transform,
 	draw_quad          : Glyph_Draw_Quad,
-	draw_atlas_quad    : Glyph_Draw_Quad,
-	draw_quad_clear    : Glyph_Draw_Quad,
 	buffer_x           : f32,
 	flush_glyph_buffer : b8,
 }
@@ -109,7 +98,7 @@ Glyph_Draw_Buffer :: struct{
 	cached     : [dynamic]i32,
 }
 
-// Contructs a quad mesh for bliting a texture from one render target (src uv0 & 1) to the destination rendertarget (p0, p1)
+// Contructs a quad mesh for bliting a texture from source render target (src uv0 & 1) to the destination render target (p0, p1)
 @(optimization_mode="favor_size")
 blit_quad :: #force_inline proc ( draw_list : ^Draw_List, 
 	p0  : Vec2 = {0, 0}, 
@@ -279,34 +268,25 @@ generate_shapes_draw_list :: #force_inline proc ( ctx : ^Context,
 }
 
 /* Generator pipeline for shapes
-
-	If you'd like to make a custom draw procedure, this can either be used directly or 
-    modified to create an augmented derivative for a specific code path.
-
 	This procedure has no awareness of layers. That should be handled by a higher-order codepath. 
-	For this level of codepaths what matters is maximizing memory locality for:
-	  * Dealing with shaping (essentially minimizing having to ever deal with it in a hot path if possible)
-		* Dealing with atlas regioning (the expensive region resolution & parser calls are done on the shape pass)
 
 	Pipleine order:
 	* Resolve the glyph's position offset from the target position
 	* Segregate the glyphs into three slices: oversized, to_cache, cached. 
-	  * If oversized is not necessary for your use case and your hitting a bottleneck, omit it with setting ENABLE_OVERSIZED_GLYPHS to false.
-		  * You have to to be drawing a px font size > ~140 px for it to trigger.
-			* The atlas can be scaled with the size_multiplier parameter of startup so that it becomes more irrelevant if processing a larger atlas is a non-issue.
+		* If oversized is not necessary for your use case and your hitting a bottleneck, omit it with setting ENABLE_OVERSIZED_GLYPHS to false.
 		* The segregation will not allow slices to exceed the batch_cache capacity of the glyph_buffer (configurable within startup params)
-		  * When The capacity is reached batch_generate_glyphs_draw_list will be called which will do futher compute and then finally draw_list generation.
-	* This may perform better with smaller shapes vs larger shapes, but having more shapes has a cache lookup penatly so keep that in mind.
+		* When The capacity is reached batch_generate_glyphs_draw_list will be called which will do futher compute and then finally draw_list generation.
+	* This may perform better with smaller shapes vs larger shapes, but having more shapes has a cache lookup penatly (if done per frame) so keep that in mind.
 */
 generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	atlas        : ^Atlas,
 	glyph_buffer : ^Glyph_Draw_Buffer,
 	px_scalar    : f32,
 
-	colour           : RGBAN,
-	entry            : Entry,
-	px_size          : f32,
-	font_scale       : f32,
+	colour     : RGBAN,
+	entry      : Entry,
+	px_size    : f32,
+	font_scale : f32,
 
 	target_position : Vec2,
 	target_scale    : Vec2,
@@ -332,11 +312,21 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	oversized  := & glyph_buffer.oversized
 	to_cache   := & glyph_buffer.to_cache
 	cached     := & glyph_buffer.cached
-	resize_soa_non_zero(glyph_pack, len(shape.glyph))
+	resize_soa_non_zero(glyph_pack, len(shape.visible))
+	
+	profile_begin("batching & segregating glyphs")
+	// We do any reservation up front as appending to the array's will not check.
+	reserve(oversized, len(shape.visible))
+	reserve(to_cache,  len(shape.visible))
+	reserve(cached,    len(shape.visible))
+	clear(oversized)
+	clear(to_cache)
+	clear(cached)
+	reset_batch( & glyph_buffer.batch_cache)
 
 	append_sub_pack :: #force_inline proc ( pack : ^[dynamic]i32, entry : i32 )
 	{
-		raw := cast(^runtime.Raw_Dynamic_Array) pack
+		raw := cast(^Raw_Dynamic_Array) pack
 		raw.len            += 1
 		pack[len(pack) - 1] = entry
 	}
@@ -344,27 +334,22 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 
 	profile_begin("translate")
 	for & glyph, index in glyph_pack {
-		glyph.position = target_position + (shape.position[index]) * target_scale
+		// Throughout the draw list generation vis_id will need to be used over index as 
+		// not all glyphs or positions for the shape are visibly rendered.
+		vis_id        := shape.visible[index]
+		glyph.position = target_position + (shape.position[vis_id]) * target_scale
 	}
 	profile_end()
 
-	profile_begin("batching & segregating glyphs")
-	clear(oversized)
-	clear(to_cache)
-	clear(cached)
-	reset_batch( & glyph_buffer.batch_cache)
-
 	for & glyph, index in glyph_pack
 	{
+		// atlas_lru_code, region_kind, and bounds are all 1:1 with shape.visible
 		atlas_key          := shape.atlas_lru_code[index]
 		region_kind        := shape.region_kind[index]
 		bounds             := shape.bounds[index]
 		bounds_size_scaled := size(bounds) * font_scale
 
-		if region_kind == .None { 
-			assert(false, "FAILED TO ASSGIN REGION")
-			continue
-	 	}
+		assert(region_kind != .None, "FAILED TO ASSGIN REGION")
 		when ENABLE_OVERSIZED_GLYPHS
 		{
 			if region_kind == .E
@@ -463,16 +448,20 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 
 /*
 	The glyphs types have been segregated by this point into a batch slice of indices to the glyph_pack
-	The transform and draw quads are computed first (getting the math done in one spot as possible...)
-	Some of the math from to_cache pass for glyph generation was not moved over (it could be but I'm not sure its worth it...)
+	The transform and draw quads are computed first (getting the math done in one spot as possible)
+	Some of the math from to_cache pass for glyph generation was not moved over (it could be but I'm not sure its worth it)
 
-	Order: Oversized first, then to_cache, then cached.
+	Order    : Oversized first, then to_cache, then cached.
+	Important: These slices store ids for glyph_pack which matches shape.visible in index. 
+	shape.position and shape.glyph DO NOT.
+
+	There are only two places this matters for: getting glyph shapes when doing glyph pass generation for oversized and to_cache iterations.
 
 	Oversized and to_cache will both enqueue operations for rendering glyphs to the glyph buffer render target.
-	The compute section will have operations reguarding how many glyphs they may alloate before a flush must occur.
+	The compute section will have operations regarding how many glyphs they may alloate before a flush must occur.
 	A flush will force one of the following:
 	  * Oversized will have a draw call setup to blit directly from the glyph buffer to the target.
-		* to_cache will blit the glyphs rendered to the buffer to the atlas.
+		* to_cache will blit the glyphs rendered from the buffer to the atlas.
 */
 @(optimization_mode = "favor_size")
 batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
@@ -487,10 +476,10 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	atlas_size        : Vec2,
 	glyph_buffer_size : Vec2,
 
-	entry                 : Entry,
-	colour                : RGBAN,
-	font_scale            : Vec2,
-	target_scale          : Vec2,
+	entry        : Entry,
+	colour       : RGBAN,
+	font_scale   : Vec2,
+	target_scale : Vec2,
 ) #no_bounds_check
 {
 	profile(#procedure)
@@ -602,9 +591,11 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 			colour.b = 0.0
 		}
 		for pack_id, index in oversized {
+			vis_id := shape.visible[pack_id]
 			error : Allocator_Error
-			glyph_pack[pack_id].shape, error = parser_get_glyph_shape(entry.parser_info, shape.glyph[pack_id])
+			glyph_pack[pack_id].shape, error = parser_get_glyph_shape(entry.parser_info, shape.glyph[vis_id])
 			assert(error == .None)
+			assert(glyph_pack[pack_id].shape != nil)
 		}
 		for id, index in oversized
 		{
@@ -615,7 +606,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 				& glyph_buffer.clear_draw_list, 
 				& glyph_buffer.allocated_x
 			)
-			
+
 			generate_glyph_pass_draw_list( draw_list, & glyph_buffer.shape_gen_scratch,
 				glyph_pack[id].shape, 
 				entry.curve_quality, 
@@ -642,7 +633,10 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		}
 
 		flush_glyph_buffer_draw_list(draw_list, & glyph_buffer.draw_list, & glyph_buffer.clear_draw_list, & glyph_buffer.allocated_x)
-		for id, index in oversized do parser_free_shape(entry.parser_info, glyph_pack[id].shape)
+		for pack_id, index in oversized {
+			assert(glyph_pack[pack_id].shape != nil)
+			parser_free_shape(entry.parser_info, glyph_pack[pack_id].shape)
+		}
 	}
 	profile_end()
 
@@ -672,9 +666,11 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	if len(to_cache) > 0
 	{
 		for pack_id, index in to_cache {
+			vis_id := shape.visible[pack_id]
 			error : Allocator_Error
-			glyph_pack[pack_id].shape, error = parser_get_glyph_shape(entry.parser_info, shape.glyph[pack_id])
+			glyph_pack[pack_id].shape, error = parser_get_glyph_shape(entry.parser_info, shape.glyph[vis_id])
 			assert(error == .None)
+			assert(glyph_pack[pack_id].shape != nil)
 		}
 
 		for id, index in to_cache
@@ -728,7 +724,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	
 			append( & glyph_buffer.clear_draw_list.calls, clear_target_region )
 			append( & glyph_buffer.draw_list.calls,       blit_to_atlas )
-	
+
 			// Render glyph to glyph render target (FBO)
 			generate_glyph_pass_draw_list( draw_list, & glyph_buffer.shape_gen_scratch, 
 				glyph.shape, 
@@ -740,7 +736,10 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 		}
 
 		flush_glyph_buffer_draw_list(draw_list, & glyph_buffer.draw_list, & glyph_buffer.clear_draw_list, & glyph_buffer.allocated_x)
-		for id, index in to_cache do parser_free_shape(entry.parser_info, glyph_pack[id].shape)
+		for pack_id, index in to_cache {
+			assert(glyph_pack[pack_id].shape != nil)
+			parser_free_shape(entry.parser_info, glyph_pack[pack_id].shape)
+		} 
 
 		profile_begin("gen_cached_draw_list: to_cache")
 		when ENABLE_DRAW_TYPE_VISUALIZATION {

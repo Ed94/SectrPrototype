@@ -1,6 +1,8 @@
 package vefontcache
 /*
-Note(Ed): The only reason I didn't directly use harfbuzz is because hamza exists and seems to be under active development as an alternative.
+Note(Ed): The only reason I didn't directly use harfbuzz is:
+https://github.com/saidwho12/hamza 
+and seems to be under active development as an alternative.
 */
 
 import "core:c"
@@ -13,26 +15,26 @@ Shape_Key :: u32
 	Traditionally a shape only refers to resolving which glyph and 
 	its position should be used for rendering.
 
-	For this library's case it also involes keeping any content 
-	that does not have to be resolved once again in the later stage of processing:
-		* Resolve atlas lru codes
-		* Resolve glyph bounds and scale
-		* Resolve atlas region the glyph is associated with.
+	For this library's case it also resolves any content that does not have to be done 
+	on a per-frame basis for draw list generation:
+		* atlas lru codes
+		* glyph bounds and scale
+		* atlas region the glyph is associated with.
 
 	Ideally the user should resolve this shape once and cache/store it on their side.
-	They have the best ability to avoid costly lookups to streamline 
-	a hot path to only focusing on draw list generation that must be computed every frame.
+	They have the best ability to avoid costly lookups.
 */
 Shaped_Text :: struct #packed {
-	glyph              : [dynamic]Glyph,
-	position           : [dynamic]Vec2,
-	atlas_lru_code     : [dynamic]Atlas_Key,
-	region_kind        : [dynamic]Atlas_Region_Kind,
-	bounds             : [dynamic]Range2,
-	end_cursor_pos     : Vec2,
-	size               : Vec2,
-	font_id            : Font_ID, 
-	// TODO(Ed): We need to track the font here for usage in user interface when directly drawing the shape.
+	glyph          : [dynamic]Glyph,
+	position       : [dynamic]Vec2,
+	visible        : [dynamic]i32,
+	atlas_lru_code : [dynamic]Atlas_Key,
+	region_kind    : [dynamic]Atlas_Region_Kind,
+	bounds         : [dynamic]Range2,
+	end_cursor_pos : Vec2,
+	size           : Vec2,
+	font           : Font_ID, 
+	px_size        : f32,
 }
 
 // Ease of use cache, can handle thousands of lookups per frame with ease.
@@ -47,6 +49,7 @@ Shaped_Text_Cache :: struct {
 Shaper_Shape_Text_Uncached_Proc :: #type proc( ctx : ^Shaper_Context,
 	atlas             : Atlas, 
 	glyph_buffer_size : Vec2,
+	font              : Font_ID,
 	entry             : Entry, 
 	font_px_Size      : f32, 
 	font_scale        : f32, 
@@ -81,7 +84,7 @@ shaper_init :: proc( ctx : ^Shaper_Context )
 	assert( ctx.hb_buffer != nil, "VEFontCache.shaper_init: Failed to create harfbuzz buffer")
 }
 
-shaper_shutdown :: proc( ctx : ^Shaper_Context )
+shaper_shutdown :: proc( ctx : ^Shaper_Context ) 
 {
 	if ctx.hb_buffer != nil {
 		harfbuzz.buffer_destroy( ctx.hb_buffer )
@@ -98,17 +101,33 @@ shaper_load_font :: #force_inline proc( ctx : ^Shaper_Context, label : string, d
 
 shaper_unload_font :: #force_inline proc( info : ^Shaper_Info )
 {
-	if info.blob != nil do harfbuzz.font_destroy( info.font )
+	if info.font != nil do harfbuzz.font_destroy( info.font )
 	if info.face != nil do harfbuzz.face_destroy( info.face )
 	if info.blob != nil do harfbuzz.blob_destroy( info.blob )
 }
 
+// TODO(Ed): Allow the user to override snap_glyph_position of the shaper context on a per-call basis (as a param)
 // Recommended shaper. Very performant.
 // TODO(Ed): Would be nice to properly support vertical shaping, right now its strictly just horizontal...
 @(optimization_mode="favor_size")
-shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry : Entry, font_px_Size, font_scale : f32, output :^Shaped_Text )
+shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, 
+	atlas             : Atlas, 
+	glyph_buffer_size : Vec2,
+	font              : Font_ID,
+	entry             : Entry, 
+	font_px_size      : f32, 
+	font_scale        : f32, 
+	text_utf8         : string, 
+	output            : ^Shaped_Text
+)
 {
 	profile(#procedure)
+	assert( ctx != nil )
+
+	clear( & output.glyph )
+	clear( & output.position )
+	clear( & output.visible )
+
 	current_script := harfbuzz.Script.UNKNOWN
 	hb_ucfunc      := harfbuzz.unicode_funcs_get_default()
 	harfbuzz.buffer_clear_contents( ctx.hb_buffer )
@@ -141,11 +160,9 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 	)
 	{
 		profile(#procedure)
-		// Set script and direction. We use the system's default langauge.
-		// script = HB_SCRIPT_LATIN
-		harfbuzz.buffer_set_script( buffer, script )
+		harfbuzz.buffer_set_script   ( buffer, script )
 		harfbuzz.buffer_set_direction( buffer, harfbuzz.script_get_horizontal_direction( script ))
-		harfbuzz.buffer_set_language( buffer, harfbuzz.language_get_default() )
+		harfbuzz.buffer_set_language ( buffer, harfbuzz.language_get_default() )
 
 		// Perform the actual shaping of this run using HarfBuzz.
 		harfbuzz.buffer_set_content_type( buffer, harfbuzz.Buffer_Content_Type.UNICODE )
@@ -158,24 +175,26 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 
 		line_height := (entry.ascent - entry.descent + entry.line_gap) * font_scale
 
+		last_cluster := u32(0)
 		for index : i32; index < i32(glyph_count); index += 1
 		{
-			hb_glyph     := glyph_infos[ index ]
+			hb_glyph     := glyph_infos    [ index ]
 			hb_gposition := glyph_positions[ index ]
-			glyph     := cast(Glyph) hb_glyph.codepoint
+			glyph        := cast(Glyph) hb_glyph.codepoint
 
 			if hb_glyph.cluster > 0
 			{
-				(max_line_width^)     = max( max_line_width^, position.x )
-				position.x            = 0.0
-				position.y           -= line_height
-				position.y            = floor(position.y)
-				(line_count^)         += 1
+				(max_line_width^) = max( max_line_width^, position.x )
+				position.x        = 0.0
+				position.y       -= line_height
+				position.y        = floor(position.y)
+				(line_count^)    += 1
+
+				last_cluster = hb_glyph.cluster
 				continue
 			}
-			if abs( font_px_size ) <= adv_snap_small_font_threshold
-			{
-				(position^) =  ceil( position^ )
+			if abs( font_px_size ) <= adv_snap_small_font_threshold {
+				(position^) = ceil( position^ )
 			}
 
 			glyph_pos := position^
@@ -193,10 +212,15 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 			(position^)      += advance
 			(max_line_width^) = max(max_line_width^, position.x)
 
-			is_empty := parser_is_glyph_empty(entry.parser_info, glyph)
-			if ! is_empty {
-				append( & output.glyph, glyph )
-				append( & output.position, glyph_pos)
+			// We track all glyphs so that user can use the shape for navigation purposes.
+			append( & output.glyph, glyph )
+			append( & output.position, glyph_pos)
+
+			// We don't accept all glyphs for rendering, harfbuzz preserves positions of non-visible codepoints (as .notdef glyphs)
+			// We also double check to make sure the glyph isn't detected for drawing by the parser.
+			visible_glyph := glyph != 0 && ! parser_is_glyph_empty(entry.parser_info, glyph)
+			if visible_glyph {
+				append( & output.visible, cast(i32) len(output.glyph) - 1 )
 			}
 		}
 
@@ -217,14 +241,23 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 		// Can we continue the current run?
 		ScriptKind :: harfbuzz.Script
 
-		special_script : b32 = script == ScriptKind.UNKNOWN || script == ScriptKind.INHERITED || script == ScriptKind.COMMON
-		if special_script || script == current_script || byte_offset == 0 {
+		// These scripts don't break runs because they don't represent script transitions - they adapt to their context. 
+		// Maintaining the current shaping run for these scripts ensures correct processing of marks, numbers, 
+		// and punctuation within the primary text flow.
+		is_neutral_script := script == ScriptKind.UNKNOWN || script == ScriptKind.INHERITED || script == ScriptKind.COMMON
+
+		// Essentially if the script is neutral, or the same as current, 
+		// or this is the first codepoint: add it to the buffer and continue the loop.
+		if is_neutral_script             \
+		|| script      == current_script \
+		|| byte_offset == 0 
+		{
 			harfbuzz.buffer_add( ctx.hb_buffer, hb_codepoint, codepoint == '\n' ? 1 : 0 )
-			current_script = special_script ? current_script : script
+			current_script = is_neutral_script ? current_script : script
 			continue
 		}
 
-		// End current run since we've encountered a script change.
+		// End current run since we've encountred a significant script change.
 		shape_run( output,
 			entry, 
 			ctx.hb_buffer, 
@@ -232,7 +265,7 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 			& position, 
 			& max_line_width, 
 			& line_count, 
-			font_px_Size, 
+			font_px_size, 
 			font_scale, 
 			ctx.snap_glyph_position, 
 			ctx.adv_snap_small_font_threshold
@@ -249,7 +282,7 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 		& position, 
 		& max_line_width, 
 		& line_count, 
-		font_px_Size, 
+		font_px_size, 
 		font_scale, 
 		ctx.snap_glyph_position, 
 		ctx.adv_snap_small_font_threshold
@@ -258,55 +291,43 @@ shaper_shape_harfbuzz :: proc( ctx : ^Shaper_Context, text_utf8 : string, entry 
 	// Set the final size
 	output.size.x = max_line_width
 	output.size.y = f32(line_count) * line_height
-	return
-}
 
-shaper_shape_text_uncached_advanced :: #force_inline proc( ctx : ^Shaper_Context, 
-	atlas             : Atlas, 
-	glyph_buffer_size : Vec2,
-	entry             : Entry, 
-	font_px_size      : f32, 
-	font_scale        : f32, 
-	text_utf8         : string, 
-	output            : ^Shaped_Text
-)
-{
-	profile(#procedure)
-	assert( ctx != nil )
-
-	clear( & output.glyph )
-	clear( & output.position )
-
-	shaper_shape_harfbuzz( ctx, text_utf8, entry, font_px_size, font_scale, output )
-	
 	// Resolve each glyphs: bounds, atlas lru, and the atlas region as we have everything we need now.
 
-	resize( & output.atlas_lru_code, len(output.glyph) )
-	resize( & output.region_kind,    len(output.glyph) )
-	resize( & output.bounds,         len(output.glyph) )
+	resize( & output.atlas_lru_code, len(output.visible) )
+	resize( & output.region_kind,    len(output.visible) )
+	resize( & output.bounds,         len(output.visible) )
 
 	profile_begin("atlas_lru_code")
-	for id, index in output.glyph
-	{
-		output.atlas_lru_code[index] = atlas_glyph_lru_code(entry.id, font_px_size, id)
+	for vis_id, index in output.visible {
+		glyph_id                    := output.glyph[vis_id]
+		output.atlas_lru_code[index] = atlas_glyph_lru_code(entry.id, font_px_size, glyph_id)
+		// atlas_lru_code is 1:1 with visible index
 	}
 	profile_end()
 
 	profile_begin("bounds & region")
-	for id, index in output.glyph
-	{
+	for vis_id, index in output.visible {
+		glyph_id                 := output.glyph[vis_id]
 		bounds                   := & output.bounds[index]
-		(bounds ^)                = parser_get_bounds( entry.parser_info, id )
+		(bounds ^)                = parser_get_bounds( entry.parser_info, glyph_id )
 		bounds_size_scaled       := (bounds.p1 - bounds.p0) * font_scale
 		output.region_kind[index] = atlas_decide_region( atlas, glyph_buffer_size, bounds_size_scaled )
+		// bounds & region_kind are 1:1 with visible index
 	}
 	profile_end()
+
+	output.font    = font
+	output.px_size = font_px_size
+	return
 }
 
+// TODO(Ed): Allow the user to override snap_glyph_position of the shaper context on a per-call basis (as an param)
 // Basic western alphabet based shaping. Not that much faster than harfbuzz if at all.
 shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 	atlas             : Atlas, 
 	glyph_buffer_size : Vec2,
+	font              : Font_ID,
 	entry             : Entry, 
 	font_px_size      : f32, 
 	font_scale        : f32, 
@@ -319,6 +340,7 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 
 	clear( & output.glyph )
 	clear( & output.position )
+	clear( & output.visible )
 
 	line_height := (entry.ascent - entry.descent + entry.line_gap) * font_scale
 
@@ -349,13 +371,16 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 
 		glyph_index    := parser_find_glyph_index( entry.parser_info, codepoint )
 		is_glyph_empty := parser_is_glyph_empty( entry.parser_info, glyph_index )
-		if ! is_glyph_empty
-		{
-			append( & output.glyph, glyph_index)
-			append( & output.position, Vec2 {
-				ceil(position.x),
-				ceil(position.y)
-			})
+
+		if ctx.snap_glyph_position {
+			position.x = ceil(position.x)
+			position.y = ceil(position.y)
+		}
+		append( & output.glyph, glyph_index)
+		append( & output.position, position)
+
+		if ! is_glyph_empty {
+			append( & output.visible, cast(i32) len(output.glyph) - 1 )
 		}
 
 		advance, _ := parser_get_codepoint_horizontal_metrics( entry.parser_info, codepoint )
@@ -376,27 +401,32 @@ shaper_shape_text_latin :: proc( ctx : ^Shaper_Context,
 	resize( & output.bounds,         len(output.glyph) )
 
 	profile_begin("atlas_lru_code")
-	for id, index in output.glyph
-	{
-		output.atlas_lru_code[index] = atlas_glyph_lru_code(entry.id, font_px_size, id)
+	for vis_id, index in output.visible {
+		glyph_id                    := output.glyph[vis_id]
+		output.atlas_lru_code[index] = atlas_glyph_lru_code(entry.id, font_px_size, glyph_id)
+		// atlas_lru_code is 1:1 with visible index
 	}
 	profile_end()
 
 	profile_begin("bounds & region")
-	for id, index in output.glyph
-	{
+	for vis_id, index in output.visible {
+		glyph_id                 := output.glyph[vis_id]
 		bounds                   := & output.bounds[index]
-		(bounds ^)                = parser_get_bounds( entry.parser_info, id )
+		(bounds ^)                = parser_get_bounds( entry.parser_info, glyph_id )
 		bounds_size_scaled       := (bounds.p1 - bounds.p0) * font_scale
 		output.region_kind[index] = atlas_decide_region( atlas, glyph_buffer_size, bounds_size_scaled )
+		// bounds & region_kind are 1:1 with visible index
 	}
 	profile_end()
+
+	output.font    = font
+	output.px_size = font_px_size
 }
 
 // Shapes are tracked by the library's context using the shape cache 
 // and the key is resolved using the font, the desired pixel size, and the text bytes to be shaped.
-// Thus this procedures cost will be proporitonal to how muh text it has to sift through.
-// djb8_hash is used as its been pretty good for thousands of hashed lines that around 6-120 charactes long
+// Thus this procedures cost will be proporitonal to how much text it has to sift through.
+// djb8_hash is used as its been pretty good for thousands of hashed lines that around 6-250 charactes long
 // (and its very fast).
 @(optimization_mode="favor_size")
 shaper_shape_text_cached :: proc( text_utf8 : string, 
@@ -428,12 +458,12 @@ shaper_shape_text_cached :: proc( text_utf8 : string,
 	shape_cache_idx := lru_get( state, lru_code )
 	if shape_cache_idx == -1
 	{
-		if shape_cache.next_cache_id < i32(state.capacity) {
+		if shape_cache.next_cache_id < i32(state.capacity){
 			shape_cache_idx            = shape_cache.next_cache_id
 			shape_cache.next_cache_id += 1
 			evicted := lru_put( state, lru_code, shape_cache_idx )
 		}
-		else
+		else 
 		{
 			next_evict_idx := lru_get_next_evicted( state ^ )
 			assert( next_evict_idx != LRU_Fail_Mask_32 )
@@ -445,7 +475,7 @@ shaper_shape_text_cached :: proc( text_utf8 : string,
 		}
 
 		storage_entry := & shape_cache.storage[ shape_cache_idx ]
-		shape_text_uncached( ctx, atlas, glyph_buffer_size, entry, font_px_size, font_scale, text_utf8, storage_entry )
+		shape_text_uncached( ctx, atlas, glyph_buffer_size, font, entry, font_px_size, font_scale, text_utf8, storage_entry )
 
 		shaped_text = storage_entry ^
 		return
