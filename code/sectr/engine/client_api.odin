@@ -155,8 +155,8 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 
 		text_snap_glyph_shape_position = false
 		text_snap_glyph_render_height  = false
-		text_size_screen_scalar        = 2
-		text_size_canvas_scalar        = 2
+		text_size_screen_scalar        = 1.4
+		text_size_canvas_scalar        = 1.4
 		text_alpha_sharpen             = 0.1
 	}
 

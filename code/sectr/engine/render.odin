@@ -289,176 +289,6 @@ render_screen_ui :: proc( screen_extent : Extents2, ui : ^UI_State, ve_ctx : ^ve
 	}
 }
 
-render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : VE_RenderData )
-{
-	profile("VEFontCache: render text layer")
-	using render
-
-	Bindings    :: gfx.Bindings
-	Range       :: gfx.Range
-	ShaderStage :: gfx.Shader_Stage
-
-	vbuf_layer_slice, ibuf_layer_slice, calls_layer_slice := ve.get_draw_list_layer( ve_ctx )
-
-	vbuf_ve_range := Range{ raw_data(vbuf_layer_slice), cast(uint) len(vbuf_layer_slice) * size_of(ve.Vertex) }
-	ibuf_ve_range := Range{ raw_data(ibuf_layer_slice), cast(uint) len(ibuf_layer_slice) * size_of(u32)       }
-
-	gfx.append_buffer( draw_list_vbuf, vbuf_ve_range )
-	gfx.append_buffer( draw_list_ibuf, ibuf_ve_range )
-
-	ve.flush_draw_list_layer( ve_ctx )
-
-	screen_width  := u32(screen_extent.x * 2)
-	screen_height := u32(screen_extent.y * 2)
-
-	atlas        := & ve_ctx.atlas
-	glyph_buffer := & ve_ctx.glyph_buffer
-
-	atlas_size     : Vec2 = vec2(atlas.size)
-	glyph_buf_size : Vec2 = vec2(glyph_buffer.size)
-
-	for & draw_call in calls_layer_slice
-	{
-		watch := draw_call
-		// profile("VEFontCache: draw call")
-
-		num_indices := draw_call.end_index - draw_call.start_index
-
-		switch draw_call.pass
-		{
-			// 1. Do the glyph rendering pass
-			// Glyphs are first rendered to an intermediate 2k x 512px R8 texture
-			case .Glyph:
-				// profile("VEFontCache: draw call: glyph")
-				if num_indices == 0 && ! draw_call.clear_before_draw {
-					continue
-				}
-
-				width  := ve_ctx.glyph_buffer.size.x
-				height := ve_ctx.glyph_buffer.size.y
-
-				pass := glyph_pass
-				if draw_call.clear_before_draw {
-					pass.action.colors[0].load_action   = .CLEAR
-					pass.action.colors[0].clear_value.a = 1.0
-				}
-				gfx.begin_pass( pass )
-
-				gfx.apply_viewport    ( 0,0, width, height, origin_top_left = true )
-				gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
-
-				gfx.apply_pipeline( glyph_pipeline )
-
-				bindings := Bindings {
-					vertex_buffers = {
-						0 = draw_list_vbuf,
-					},
-					vertex_buffer_offsets = {
-						0 = 0,
-					},
-					index_buffer        = draw_list_ibuf,
-					index_buffer_offset = 0,
-				}
-				gfx.apply_bindings( bindings )
-
-			// 2. Do the atlas rendering pass
-			// A simple 16-tap box downsample shader is then used to blit from this intermediate texture to the final atlas location
-			case .Atlas:
-				// profile("VEFontCache: draw call: atlas")
-				if num_indices == 0 && ! draw_call.clear_before_draw {
-					continue
-				}
-
-				width  := ve_ctx.atlas.size.x
-				height := ve_ctx.atlas.size.y
-
-				pass := atlas_pass
-				if draw_call.clear_before_draw {
-					pass.action.colors[0].load_action   = .CLEAR
-					pass.action.colors[0].clear_value.a = 1.0
-				}
-				gfx.begin_pass( pass )
-
-				gfx.apply_viewport    ( 0, 0, width, height, origin_top_left = true )
-				gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
-
-				gfx.apply_pipeline( atlas_pipeline )
-
-				fs_uniform := Ve_Blit_Atlas_Fs_Params {
-					glyph_buffer_size = glyph_buf_size,
-					over_sample       = glyph_buffer.over_sample.x,
-					region            = cast(i32) draw_call.region,
-				}
-				gfx.apply_uniforms( UB_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(Ve_Blit_Atlas_Fs_Params) })
-
-				gfx.apply_bindings(Bindings {
-					vertex_buffers = {
-						0 = draw_list_vbuf,
-					},
-					vertex_buffer_offsets = {
-						0 = 0,
-					},
-					index_buffer        = draw_list_ibuf,
-					index_buffer_offset = 0,
-					images              = { IMG_ve_blit_atlas_src_texture = glyph_rt_color,   },
-					samplers            = { SMP_ve_blit_atlas_src_sampler = glyph_rt_sampler, },
-				})
-
-			// 3. Use the atlas to then render the text.
-			case .None, .Target, .Target_Uncached:
-				if num_indices == 0 && ! draw_call.clear_before_draw {
-					continue
-				}
-
-				// profile("VEFontCache: draw call: target")
-
-				pass := screen_pass
-				pass.swapchain = sokol_glue.swapchain()
-				gfx.begin_pass( pass )
-
-				gfx.apply_viewport    ( 0, 0, screen_width, screen_height, origin_top_left = true )
-				gfx.apply_scissor_rect( 0, 0, screen_width, screen_height, origin_top_left = true )
-
-				gfx.apply_pipeline( screen_pipeline )
-
-				src_rt      := atlas_rt_color
-				src_sampler := atlas_rt_sampler
-
-				fs_target_uniform := Ve_Draw_Text_Fs_Params {
-					// glyph_buffer_size = glyph_buf_size,
-					over_sample       = glyph_buffer.over_sample.x,
-					colour            = draw_call.colour,
-				}
-
-				if draw_call.pass == .Target_Uncached {
-					// fs_target_uniform.over_sample = 1.0
-					src_rt      = glyph_rt_color
-					src_sampler = glyph_rt_sampler
-				}
-				gfx.apply_uniforms( UB_ve_draw_text_fs_params, Range { & fs_target_uniform, size_of(Ve_Draw_Text_Fs_Params) })
-
-				gfx.apply_bindings(Bindings {
-					vertex_buffers = {
-						0 = draw_list_vbuf,
-					},
-					vertex_buffer_offsets = {
-						0 = 0,
-					},
-					index_buffer        = draw_list_ibuf,
-					index_buffer_offset = 0,
-					images              = { IMG_ve_draw_text_src_texture = src_rt, },
-					samplers            = { SMP_ve_draw_text_src_sampler = src_sampler, },
-				})
-		}
-
-		if num_indices != 0 {
-			gfx.draw( draw_call.start_index, num_indices, 1 )
-		}
-
-		gfx.end_pass()
-	}
-}
-
 when false {
 render_ui_via_box_tree :: proc( ui : ^UI_State, screen_extent : Vec2, ve_ctx : ^ve.Context, ve_render : VE_RenderData, cam : ^Camera = nil )
 {
@@ -673,60 +503,174 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 	}
 }
 
-when false {
-render_gp_layer :: proc (  )
+render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : VE_RenderData )
 {
-	profile("GP_Render")
+	profile("VEFontCache: render text layer")
+	using render
 
-	shape_enqueued : b32 = false
-	box_layer_done : b32 = false
-	for box_id < cast(i32) len(box_list) && ! box_layer_done
+	Bindings    :: gfx.Bindings
+	Range       :: gfx.Range
+	ShaderStage :: gfx.Shader_Stage
+
+	vbuf_layer_slice, ibuf_layer_slice, calls_layer_slice := ve.get_draw_list_layer( ve_ctx )
+
+	vbuf_ve_range := Range{ raw_data(vbuf_layer_slice), cast(uint) len(vbuf_layer_slice) * size_of(ve.Vertex) }
+	ibuf_ve_range := Range{ raw_data(ibuf_layer_slice), cast(uint) len(ibuf_layer_slice) * size_of(u32)       }
+
+	gfx.append_buffer( draw_list_vbuf, vbuf_ve_range )
+	gfx.append_buffer( draw_list_ibuf, ibuf_ve_range )
+
+	ve.flush_draw_list_layer( ve_ctx )
+
+	screen_width  := u32(screen_extent.x * 2)
+	screen_height := u32(screen_extent.y * 2)
+
+	atlas        := & ve_ctx.atlas
+	glyph_buffer := & ve_ctx.glyph_buffer
+
+	atlas_size     : Vec2 = vec2(atlas.size)
+	glyph_buf_size : Vec2 = vec2(glyph_buffer.size)
+
+	for & draw_call in calls_layer_slice
 	{
-		profile("GP_Render")
-		box_layer_done = b32(box_id > 0) && box_list[ box_id - 1 ].layer_signal
+		watch := draw_call
+		// profile("VEFontCache: draw call")
 
-		entry := box_list[box_id]
+		num_indices := draw_call.end_index - draw_call.start_index
 
-		corner_radii_total : f32 = 0
-		for radius in entry.corner_radii do corner_radii_total += radius
-
-		if entry.bg_color.a != 0
+		switch draw_call.pass
 		{
-			render_set_color( entry.bg_color )
-			if corner_radii_total > 0 do draw_rect_rounded( entry.bounds, entry.corner_radii, 16 )
-			else                      do draw_rect( entry.bounds)
-			shape_enqueued = true
+			// 1. Do the glyph rendering pass
+			// Glyphs are first rendered to an intermediate 2k x 512px R8 texture
+			case .Glyph:
+				// profile("VEFontCache: draw call: glyph")
+				if num_indices == 0 && ! draw_call.clear_before_draw {
+					continue
+				}
+
+				width  := ve_ctx.glyph_buffer.size.x
+				height := ve_ctx.glyph_buffer.size.y
+
+				pass := glyph_pass
+				if draw_call.clear_before_draw {
+					pass.action.colors[0].load_action   = .CLEAR
+					pass.action.colors[0].clear_value.a = 1.0
+				}
+				gfx.begin_pass( pass )
+
+				gfx.apply_viewport    ( 0,0, width, height, origin_top_left = true )
+				gfx.apply_scissor_rect( 0,0, width, height, origin_top_left = true )
+
+				gfx.apply_pipeline( glyph_pipeline )
+
+				bindings := Bindings {
+					vertex_buffers = {
+						0 = draw_list_vbuf,
+					},
+					vertex_buffer_offsets = {
+						0 = 0,
+					},
+					index_buffer        = draw_list_ibuf,
+					index_buffer_offset = 0,
+				}
+				gfx.apply_bindings( bindings )
+
+			// 2. Do the atlas rendering pass
+			// A simple 16-tap box downsample shader is then used to blit from this intermediate texture to the final atlas location
+			case .Atlas:
+				// profile("VEFontCache: draw call: atlas")
+				if num_indices == 0 && ! draw_call.clear_before_draw {
+					continue
+				}
+
+				width  := ve_ctx.atlas.size.x
+				height := ve_ctx.atlas.size.y
+
+				pass := atlas_pass
+				if draw_call.clear_before_draw {
+					pass.action.colors[0].load_action   = .CLEAR
+					pass.action.colors[0].clear_value.a = 1.0
+				}
+				gfx.begin_pass( pass )
+
+				gfx.apply_viewport    ( 0, 0, width, height, origin_top_left = true )
+				gfx.apply_scissor_rect( 0, 0, width, height, origin_top_left = true )
+
+				gfx.apply_pipeline( atlas_pipeline )
+
+				fs_uniform := Ve_Blit_Atlas_Fs_Params {
+					glyph_buffer_size = glyph_buf_size,
+					over_sample       = glyph_buffer.over_sample.x,
+					region            = cast(i32) draw_call.region,
+				}
+				gfx.apply_uniforms( UB_ve_blit_atlas_fs_params, Range { & fs_uniform, size_of(Ve_Blit_Atlas_Fs_Params) })
+
+				gfx.apply_bindings(Bindings {
+					vertex_buffers = {
+						0 = draw_list_vbuf,
+					},
+					vertex_buffer_offsets = {
+						0 = 0,
+					},
+					index_buffer        = draw_list_ibuf,
+					index_buffer_offset = 0,
+					images              = { IMG_ve_blit_atlas_src_texture = glyph_rt_color,   },
+					samplers            = { SMP_ve_blit_atlas_src_sampler = glyph_rt_sampler, },
+				})
+
+			// 3. Use the atlas to then render the text.
+			case .None, .Target, .Target_Uncached:
+				if num_indices == 0 && ! draw_call.clear_before_draw {
+					continue
+				}
+
+				// profile("VEFontCache: draw call: target")
+
+				pass := screen_pass
+				pass.swapchain = sokol_glue.swapchain()
+				gfx.begin_pass( pass )
+
+				gfx.apply_viewport    ( 0, 0, screen_width, screen_height, origin_top_left = true )
+				gfx.apply_scissor_rect( 0, 0, screen_width, screen_height, origin_top_left = true )
+
+				gfx.apply_pipeline( screen_pipeline )
+
+				src_rt      := atlas_rt_color
+				src_sampler := atlas_rt_sampler
+
+				fs_target_uniform := Ve_Draw_Text_Fs_Params {
+					// glyph_buffer_size = glyph_buf_size,
+					over_sample       = glyph_buffer.over_sample.x,
+					colour            = draw_call.colour,
+				}
+
+				if draw_call.pass == .Target_Uncached {
+					// fs_target_uniform.over_sample = 1.0
+					src_rt      = glyph_rt_color
+					src_sampler = glyph_rt_sampler
+				}
+				gfx.apply_uniforms( UB_ve_draw_text_fs_params, Range { & fs_target_uniform, size_of(Ve_Draw_Text_Fs_Params) })
+
+				gfx.apply_bindings(Bindings {
+					vertex_buffers = {
+						0 = draw_list_vbuf,
+					},
+					vertex_buffer_offsets = {
+						0 = 0,
+					},
+					index_buffer        = draw_list_ibuf,
+					index_buffer_offset = 0,
+					images              = { IMG_ve_draw_text_src_texture = src_rt, },
+					samplers            = { SMP_ve_draw_text_src_sampler = src_sampler, },
+				})
 		}
 
-		if entry.border_color.a != 0 && entry.border_width > 0
-		{
-			render_set_color( entry.border_color )
-
-			if corner_radii_total > 0 do draw_rect_rounded_border( entry.bounds, entry.corner_radii, entry.border_width, 16 )
-			else                      do draw_rect_border( entry.bounds, entry.border_width )
-			shape_enqueued = true
+		if num_indices != 0 {
+			gfx.draw( draw_call.start_index, num_indices, 1 )
 		}
 
-		if debug.draw_ui_box_bounds_points
-		{
-			render_set_color(Color_Red)
-			draw_filled_circle(entry.bounds.min.x, entry.bounds.min.y, circle_radius, 24)
-
-			render_set_color(Color_Blue)
-			draw_filled_circle(entry.bounds.max.x, entry.bounds.max.y, circle_radius, 24)
-			shape_enqueued = true
-		}
-
-		box_id += 1
+		gfx.end_pass()
 	}
-
-	box_id += 1
-
-	if shape_enqueued {
-		profile("render ui box_layer")
-		render_flush_gp()
-	}
-}
 }
 
 #region("Helpers")
@@ -921,7 +865,6 @@ draw_text_string_pos_norm :: #force_inline proc( text : string, id : FontID, fon
 	draw_scale       := screen_size_norm * scale 
 
 	ve_ctx := & get_state().font_provider_ctx.ve_ctx
-	ve.set_colour(ve_ctx, color_norm )
 	ve.draw_text_normalized_space(ve_ctx, 
 		ve_id, 
 		f32(resolved_size), 
@@ -935,33 +878,17 @@ draw_text_string_pos_norm :: #force_inline proc( text : string, id : FontID, fon
 	return
 }
 
-// Draw text using a string and extent-based screen coordinates
-draw_text_string_pos_extent :: #force_inline proc( text : string, id : FontID, font_size : f32, pos : Vec2, color := Color_White )
-{
-	profile(#procedure)
-	screen_extent  := get_state().app_window.extent // TODO(Ed): Pass this in instead..
-	screen_size    := screen_extent * 2
-	render_pos     := screen_to_render_pos(pos)
-	normalized_pos := render_pos * (1.0 / screen_size)
-
-	draw_text_string_pos_norm( text, id, font_size, normalized_pos, color )
-}
-
 // Draw text using a string and normalized render coordinates
 draw_text_shape_pos_norm :: #force_inline proc( shape : ShapedText, id : FontID, font_size : f32, pos : Vec2, color := Color_White, scale : f32 = 1.0 )
 {
-	state := get_state(); using state
-	width  := app_window.extent.x * 2
-	height := app_window.extent.y * 2
-
 	ve_id, resolved_size := font_provider_resolve_draw_id( id, font_size )
 	color_norm           := normalize_rgba8(color)
 
-	screen_size_norm := Vec2 { 1 / width, 1 / height }
+	screen_size_norm := 1 / get_screen_extent() * 0.5
 
 	// ve.set_px_scalar( & font_provider_ctx.ve_ctx, config.font_size_screen_scalar )
-	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
-	ve.draw_text_shape_normalized_space( & font_provider_ctx.ve_ctx, ve_id, f32(resolved_size), color_norm, {}, pos, screen_size_norm * scale, 1.0, shape )
+	// ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
+	ve.draw_text_shape_normalized_space( & get_state().font_provider_ctx.ve_ctx, ve_id, f32(resolved_size), color_norm, {}, pos, screen_size_norm * scale, 1.0, shape )
 	return
 }
 
@@ -976,42 +903,16 @@ draw_text_shape_pos_extent :: #force_inline proc( shape : ShapedText, id : FontI
 	draw_text_shape_pos_norm( shape, id, font_size, normalized_pos, color )
 }
 
-draw_text_string_pos_extent_zoomed :: #force_inline proc( text : string, id : FontID, size : f32, pos, cam_offset, screen_size, screen_size_norm : Vec2, zoom : f32, color := Color_White )
+// Draw text using a string and extent-based screen coordinates
+draw_text_string_pos_extent :: #force_inline proc( text : string, id : FontID, font_size : f32, pos : Vec2, color := Color_White )
 {
 	profile(#procedure)
-	// state := get_state(); using state // TODO(Ed): Remove usage of direct access to entire mutable state.
-	config := app_config()
+	screen_extent  := get_state().app_window.extent // TODO(Ed): Pass this in instead..
+	screen_size    := screen_extent * 2
+	render_pos     := screen_to_render_pos(pos)
+	normalized_pos := render_pos * (1.0 / screen_size)
 
-	zoom_adjust_size := size * zoom
-
-	pos_offset     := (pos + cam_offset)
-	render_pos     := ws_view_to_render_pos(pos)
-	normalized_pos := render_pos * screen_size_norm
-
-	ve_id, resolved_size := font_provider_resolve_draw_id( id, zoom_adjust_size	)
-	f32_resolved_size    := f32(resolved_size)
-
-	text_scale : Vec2 = screen_size_norm
-	// if config.cam_zoom_mode == .Smooth
-	{
-		diff_scalar := 1 + (zoom_adjust_size - f32_resolved_size) / f32_resolved_size
-		text_scale   = diff_scalar * screen_size_norm
-		text_scale.x = clamp( text_scale.x, 0, screen_size.x )
-		text_scale.y = clamp( text_scale.y, 0, screen_size.y )
-	}
-
-	color_norm := normalize_rgba8(color)
-	ve.set_colour( & get_state().font_provider_ctx.ve_ctx, color_norm )
-	ve.draw_text_normalized_space( & get_state().font_provider_ctx.ve_ctx, 
-		ve_id, 
-		f32(resolved_size), 
-		color_norm, 
-		screen_size, 
-		normalized_pos, 
-		text_scale, 
-		1.0, 
-		text
-	)
+	draw_text_string_pos_norm( text, id, font_size, normalized_pos, color )
 }
 
 draw_text_shape_pos_extent_zoomed :: #force_inline proc( shape : ShapedText, id : FontID, size : f32, pos, cam_offset, screen_size, screen_size_norm : Vec2, zoom : f32, color := Color_White )
@@ -1046,7 +947,6 @@ draw_text_shape_pos_extent_zoomed :: #force_inline proc( shape : ShapedText, id 
 
 	color_norm := normalize_rgba8(color)
 	// ve.set_px_scalar( & get_state().font_provider_ctx.ve_ctx, config.font_size_canvas_scalar )
-	ve.set_colour( & font_provider_ctx.ve_ctx, color_norm )
 	ve.draw_text_shape_normalized_space( & font_provider_ctx.ve_ctx, 
 		ve_id, 
 		f32_resolved_size, 
@@ -1056,6 +956,43 @@ draw_text_shape_pos_extent_zoomed :: #force_inline proc( shape : ShapedText, id 
 		text_scale, 
 		1.0, 
 		shape
+	)
+}
+
+draw_text_string_pos_extent_zoomed :: #force_inline proc( text : string, id : FontID, size : f32, pos, cam_offset, screen_size, screen_size_norm : Vec2, zoom : f32, color := Color_White )
+{
+	profile(#procedure)
+	// state := get_state(); using state // TODO(Ed): Remove usage of direct access to entire mutable state.
+	config := app_config()
+
+	zoom_adjust_size := size * zoom
+
+	pos_offset     := (pos + cam_offset)
+	render_pos     := ws_view_to_render_pos(pos)
+	normalized_pos := render_pos * screen_size_norm
+
+	ve_id, resolved_size := font_provider_resolve_draw_id( id, zoom_adjust_size	)
+	f32_resolved_size    := f32(resolved_size)
+
+	text_scale : Vec2 = screen_size_norm
+	// if config.cam_zoom_mode == .Smooth
+	{
+		diff_scalar := 1 + (zoom_adjust_size - f32_resolved_size) / f32_resolved_size
+		text_scale   = diff_scalar * screen_size_norm
+		text_scale.x = clamp( text_scale.x, 0, screen_size.x )
+		text_scale.y = clamp( text_scale.y, 0, screen_size.y )
+	}
+
+	color_norm := normalize_rgba8(color)
+	ve.draw_text_normalized_space( & get_state().font_provider_ctx.ve_ctx, 
+		ve_id, 
+		f32(resolved_size), 
+		color_norm, 
+		screen_size, 
+		normalized_pos, 
+		text_scale, 
+		1.0, 
+		text
 	)
 }
 
