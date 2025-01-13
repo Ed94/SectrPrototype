@@ -63,8 +63,22 @@ if ( $binaries_dirty -or $true )
 
 	$third_party_dlls = Get-ChildItem -Path $path_sokol_dlls -Filter '*.dll'
 	foreach ($dll in $third_party_dlls) {
-			$destination = join-path $path_build $dll.Name
-			Copy-Item $dll.FullName -Destination $destination -Force
+		$destination = join-path $path_build $dll.Name
+		Copy-Item $dll.FullName -Destination $destination -Force
 	}
 }
+pop-location
+
+$path_helpers  = join-path $PSScriptRoot 'helpers'
+$path_devshell = join-path $path_helpers 'devshell.ps1'
+
+. $path_devshell -arch amd64
+
+$path_stb     = join-path $path_thirdparty 'stb'
+$path_stb_src = join-path $path_stb        'src'
+
+push-location $path_stb_src
+
+& '.\build.bat'
+
 pop-location
