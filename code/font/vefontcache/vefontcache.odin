@@ -271,24 +271,24 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType, // N
 
 		for idx : u32 = 0; idx < shape_cache_params.capacity; idx += 1
 		{
-			stroage_entry := & shape_cache.storage[idx]
+			storage_entry := & shape_cache.storage[idx]
 
-			stroage_entry.glyph, error = make( [dynamic]Glyph, len = 0, cap = shape_cache_params.reserve )
+			storage_entry.glyph, error = make( [dynamic]Glyph, len = 0, cap = shape_cache_params.reserve )
 			assert( error == .None, "VEFontCache.init : Failed to allocate glyphs array for shape cache storage" )
 
-			stroage_entry.position, error = make( [dynamic]Vec2, len = 0, cap = shape_cache_params.reserve )
+			storage_entry.position, error = make( [dynamic]Vec2, len = 0, cap = shape_cache_params.reserve )
 			assert( error == .None, "VEFontCache.init : Failed to allocate positions array for shape cache storage" )
 
-			stroage_entry.visible, error = make( [dynamic]i32, len = 0, cap = shape_cache_params.reserve )
+			storage_entry.visible, error = make( [dynamic]i32, len = 0, cap = shape_cache_params.reserve )
 			assert( error == .None, "VEFontCache.init : Failed to allocate visible array for shape cache storage" )
 
-			stroage_entry.atlas_lru_code, error = make( [dynamic]Atlas_Key, len = 0, cap = shape_cache_params.reserve )
+			storage_entry.atlas_lru_code, error = make( [dynamic]Atlas_Key, len = 0, cap = shape_cache_params.reserve )
 			assert( error == .None, "VEFontCache.init : Failed to allocate atlas_lru_code array for shape cache storage" )
 
-			stroage_entry.region_kind, error = make( [dynamic]Atlas_Region_Kind, len = 0, cap = shape_cache_params.reserve )
+			storage_entry.region_kind, error = make( [dynamic]Atlas_Region_Kind, len = 0, cap = shape_cache_params.reserve )
 			assert( error == .None, "VEFontCache.init : Failed to allocate region_kind array for shape cache storage" )
 
-			stroage_entry.bounds, error = make( [dynamic]Range2, len = 0, cap = shape_cache_params.reserve )
+			storage_entry.bounds, error = make( [dynamic]Range2, len = 0, cap = shape_cache_params.reserve )
 			assert( error == .None, "VEFontCache.init : Failed to allocate bounds array for shape cache storage" )
 		}
 	}
@@ -415,7 +415,7 @@ hot_reload :: proc( ctx : ^Context, allocator : Allocator )
 	lru_reload( & shape_cache.state, allocator )
 	for idx : i32 = 0; idx < i32(len(shape_cache.storage)); idx += 1 {
 		storage_entry := & shape_cache.storage[idx]
-		reload_array( & storage_entry.glyph,          allocator)
+		reload_array( & storage_entry.glyph,       allocator)
 		reload_array( & storage_entry.position,       allocator)
 		reload_array( & storage_entry.visible,        allocator)
 		reload_array( & storage_entry.atlas_lru_code, allocator)
@@ -604,11 +604,11 @@ clear_shape_cache :: proc (ctx : ^Context)
 {
 	lru_clear(& ctx.shape_cache.state)
 	for idx : i32 = 0; idx < cast(i32) cap(ctx.shape_cache.storage); idx += 1 {
-		stroage_entry := & ctx.shape_cache.storage[idx]
-		stroage_entry.end_cursor_pos = {}
-		stroage_entry.size           = {}
-		clear(& stroage_entry.glyph)
-		clear(& stroage_entry.position)
+		storage_entry := & ctx.shape_cache.storage[idx]
+		storage_entry.end_cursor_pos = {}
+		storage_entry.size           = {}
+		clear(& storage_entry.glyph)
+		clear(& storage_entry.position)
 	}
 	ctx.shape_cache.next_cache_id = 0
 }
@@ -1196,6 +1196,10 @@ get_font_vertical_metrics :: #force_inline proc ( ctx : Context, font : Font_ID,
 
 //#region("miscellaneous")
 
+get_font_entry :: #force_inline proc "contextless" ( ctx : ^Context, font : Font_ID ) -> Entry {
+	return ctx.entries[font]
+}
+
 get_cursor_pos :: #force_inline proc "contextless" ( ctx : Context ) -> Vec2 { return ctx.cursor_pos }
 
 // Will normalize the value of the position and scale based on the provided view.
@@ -1203,19 +1207,14 @@ get_cursor_pos :: #force_inline proc "contextless" ( ctx : Context ) -> Vec2 { r
 // (Does nothing if view is 1 or 0)
 get_normalized_position_scale :: #force_inline proc "contextless" ( position, scale, view : Vec2 ) -> (position_norm, scale_norm : Vec2)
 {
-	snap_quotient := 1 / Vec2 { max(view.x, 1), max(view.y, 1) }
-	should_snap   := view * snap_quotient
+	should_snap   := cast(f32) i32(view.x > 0 && view.y > 0)
+	view_quotient := 1 / Vec2 { max(view.x, 1), max(view.y, 1) }
 
-	snapped_position  := position 
-	snapped_position.x = ceil(position.x * view.x) * snap_quotient.x 
-	snapped_position.y = ceil(position.y * view.y) * snap_quotient.y
+	position_snapped := ceil(position) * view_quotient * should_snap
+	position_norm     = position       * view_quotient
 
-	snapped_position  *= should_snap
-	snapped_position.x = max(snapped_position.x, position.x)
-	snapped_position.y = max(snapped_position.y, position.y)
-
-	position_norm = snapped_position
-	scale_norm    = scale * snap_quotient
+	position_norm = max(position_snapped, position_norm)
+	scale_norm    = scale * view_quotient
 	return
 }
 
@@ -1239,6 +1238,25 @@ resolve_zoom_size_scale :: #force_inline proc "contextless" (
 	zoom_scale        = zoom_diff_scalar * scale
 	zoom_scale.x      = clamp(zoom_scale.x, 0, clamp_scale.x)
 	zoom_scale.y      = clamp(zoom_scale.y, 0, clamp_scale.y)
+	return
+}
+
+resolve_px_scalar_size :: #force_inline proc "contextless" ( parser_info : Parser_Font_Info, px_size, px_scalar : f32, norm_scale : Vec2 
+) -> (target_px_size, target_font_scale : f32, target_scale : Vec2 )
+{
+	target_px_size    = px_size    * px_scalar
+	target_scale      = norm_scale * (1 / px_scalar)
+	target_font_scale = parser_scale( parser_info, target_px_size )
+	return
+}
+
+snap_normalized_position_to_view :: #force_inline proc "contextless" ( position, view : Vec2 ) -> (position_snapped : Vec2)
+{
+	should_snap   := cast(f32) i32(view.x > 0 && view.y > 0)
+	view_quotient := 1 / Vec2 { max(view.x, 1), max(view.y, 1) }
+
+	position_snapped = ceil(position * view) * view_quotient * should_snap
+	position_snapped = max(position, position_snapped)
 	return
 }
 
