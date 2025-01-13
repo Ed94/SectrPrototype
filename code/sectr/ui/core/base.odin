@@ -287,7 +287,7 @@ ui_graph_build_end :: proc( ui : ^UI_State )
 			{
 				if len(current.text) > 0 {
 					profile("text shape")
-					current.computed.text_shape = shape_text_cached( current.text, current.style.font, current.layout.font_size, 1.0 )
+					current.computed.text_shape = shape_text_cached( current.text, current.style.font, current.layout.font_size )
 				}
 				ui_box_compute_layout( current )
 			}
