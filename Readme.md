@@ -22,16 +22,19 @@ The dependencies are:
   * Remove implicit assignments for container allocators in the Base and Core packages
     * I did not enjoy bug hunting a memory corruption because I mistakenly didn't properly initialize a core container with their designated initiatizer: new, make, or init.
     * See fork Readme for which procedures were changed..
-* Odin repo's base, core, and vendor(raylib) libaries
-* An ini parser
+* Odin repo's base, core, and some of vendor
+* [VEFontCache-Odin](https://github.com/Ed94/VEFontCache-Odin): Text rendering & shaping library created for this prototype
+* [stb_truetype-odin](https://github.com/Ed94/stb_truetype-odin): Variant of the stb/truetype package in odin's vendor collection made for VEFontCache-Odin
+* [harfbuzz-odin](https://github.com/Ed94/harfbuzz-odin): Custom repo with tailor made bindings for VEFontCache-Odin
+* [sokol-odin (Sectr Fork)](https://github.com/Ed94/sokol-odin)
+* [sokol-tools](https://github.com/floooh/sokol-tools)
+* Powershell (if you want to use my build scripts)
 * backtrace (not used yet)
 * freetype (not used yet)
-* harfbuzz
-* sokol
-* sokol-tools
-* Powershell (if you want to use my build scripts)
+* Eventually some config parser (maybe I'll use metadesk, or [ini](https://github.com/laytan/odin-ini-parser))
 
 The project is so far in a "codebase boostrapping" phase. Most the work being done right now is setting up high performance linear zoom rendering for text and UI.
+Text has recently hit sufficient peformance targets, and now inital UX has become the focus.
 
 The project's is organized into 2 runtime modules sectr_host & sectr.
 The host module loads the main module & its memory. Hot-reloading it's dll when it detects a change.
@@ -43,7 +46,6 @@ Codebase organization:
   * Has the following definitions: startup, shutdown, reload, tick, clean_frame (which host hooks up to when managing the client dll)
   * Will handle async ops.
 * Font Provider: Manages fonts.
-  * Bulk of visualization must be able to render text effectively
   * Bulk of implementation maintained as a separate library: [VEFontCache-Odin](https://github.com/Ed94/VEFontCache-Odin)
 * Grime: Name speaks for itself, stuff not directly related to the target features to iterate upon for the prototype.
   * Defining dependency aliases or procedure overload tables, rolling own allocator, data structures, etc.

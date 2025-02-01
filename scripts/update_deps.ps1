@@ -77,8 +77,13 @@ $path_devshell = join-path $path_helpers 'devshell.ps1'
 $path_stb     = join-path $path_thirdparty 'stb'
 $path_stb_src = join-path $path_stb        'src'
 
-push-location $path_stb_src
+$pkg_stb_truetype_dirty = check-ModuleForChanges $path_stb
 
-& '.\build.bat'
+if ( $pkg_stb_truetype_dirty)
+{
+	push-location $path_stb_src
 
-pop-location
+	& '.\build.bat'
+
+	pop-location
+}

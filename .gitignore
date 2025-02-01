@@ -9,5 +9,5 @@ Sectr.sublime-project
 Sectr.sublime-workspace
 ols.json
 .vscode/settings.json
-# thirdparty
-# toolchain
+thirdparty
+toolchain

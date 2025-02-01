@@ -141,22 +141,25 @@ push-location $path_root
 
 		$path_font = join-path $path_code 'font'
 
-		$module_scripts      = $PSScriptRoot
-		$package_grime       = join-path $path_code 'grime'
-		$package_VEFontCache = join-path $path_font 'VEFontCache'
-		$module_host         = join-path $path_code 'host'
-		$module_sectr        = join-path $path_code 'sectr'
+		$module_scripts       = $PSScriptRoot
+		$package_grime        = join-path $path_code       'grime'
+		$package_VEFontCache  = join-path $path_font       'VEFontCache'
+		$package_stb_truetype = join-path $path_thirdparty 'stb'
+		$module_host          = join-path $path_code       'host'
+		$module_sectr         = join-path $path_code       'sectr'
 		if ($force){
 			mark-ModuleDirty $module_scripts
 			mark-ModuleDirty $package_VEFontCache
+			mark-ModuleDirty $package_stb_truetype
 			mark-ModuleDirty $package_grime
 			mark-ModuleDirty $module_sectr
 			mark-ModuleDirty $module_host
 		}
 
-		$module_scripts_dirty  = check-ModuleForChanges $module_scripts
-		$pkg_VEFontCache_dirty = check-ModuleForChanges $package_VEFontCache
-		$pkg_grime_dirty       = check-ModuleForChanges $package_grime
+		$module_scripts_dirty   = check-ModuleForChanges $module_scripts
+		$pkg_VEFontCache_dirty  = check-ModuleForChanges $package_VEFontCache
+		$pkg_stb_truetype_dirty = check-ModuleForChanges $package_stb_truetype
+		$pkg_grime_dirty        = check-ModuleForChanges $package_grime
 
 		$pkg_collection_codebase   = 'codebase='   + $path_code
 		$pkg_collection_thirdparty = 'thirdparty=' + $path_thirdparty
@@ -174,7 +177,7 @@ push-location $path_root
 
 		function build-sectr
 		{
-			$should_build = (check-ModuleForChanges $module_sectr) -or $pkg_grime_dirty -or $pkg_VEFontCache_dirty -or $module_scripts_dirty
+			$should_build = (check-ModuleForChanges $module_sectr) -or $pkg_grime_dirty -or $pkg_VEFontCache_dirty -or $pkg_stb_truetype_dirty -or $module_scripts_dirty
 			if ( -not( $should_build)) {
 				write-host 'Skipping sectr build, module up to date'
 				return $module_unchanged
