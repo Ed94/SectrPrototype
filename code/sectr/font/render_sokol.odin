@@ -67,14 +67,14 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 	screen_shader = sokol_gfx.make_shader(ve_draw_text_shader_desc(backend) )
 
 	draw_list_vbuf = sokol_gfx.make_buffer( BufferDesciption {
-		size  = size_of([4]f32) * 2 * Mega,
+		size  = size_of([4]f32) * 4 * Mega,
 		usage = BufferUsage.STREAM,
 		type  = BufferType.VERTEXBUFFER,
 	})
 	verify( sokol_gfx.query_buffer_state( draw_list_vbuf) < ResourceState.FAILED, "Failed to make draw_list_vbuf" )
 
 	draw_list_ibuf = sokol_gfx.make_buffer( BufferDesciption {
-		size  = size_of(u32) * 3 * Mega,
+		size  = size_of(u32) * 6 * Mega,
 		usage = BufferUsage.STREAM,
 		type  = BufferType.INDEXBUFFER,
 	})

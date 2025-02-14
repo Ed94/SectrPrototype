@@ -90,6 +90,7 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 		push( policy_ptr, SlabSizeClass {   64 * Megabyte,  64 * Megabyte, alignment })
 		push( policy_ptr, SlabSizeClass { 128 * Megabyte,  128 * Megabyte, alignment })
 		push( policy_ptr, SlabSizeClass { 256 * Megabyte,  256 * Megabyte, alignment })
+		push( policy_ptr, SlabSizeClass { 512 * Megabyte,  512 * Megabyte, alignment })
 		// Anything above 128 meg needs to have its own setup looked into.
 
 		alloc_error : AllocatorError
@@ -355,19 +356,21 @@ startup :: proc( prof : ^SpallProfiler, persistent_mem, frame_mem, transient_mem
 			// }
 
 			// Setup workspace UI state
-			ui_startup( & workspace.ui, cache_table_size = 8 * Kilo, cache_allocator =  persistent_slab_allocator() )
+			ui_startup( & workspace.ui, cache_table_size = 64 * Kilo, cache_allocator =  persistent_slab_allocator() )
 		}
 
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (197).txt", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/Lorem Ipsum (1022).txt", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/ve_fontcache.h", allocator = persistent_slab_allocator())
-		debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
+		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gp.h", allocator = persistent_slab_allocator())
 		// debug.path_lorem = str_fmt("C:/projects/SectrPrototype/examples/sokol_gl.h", allocator = persistent_slab_allocator())
+		debug.path_lorem = str_fmt("C:\\projects\\SectrPrototype\\examples\\gencpp_singleheader.hpp", allocator = persistent_slab_allocator())
 
 		alloc_error : AllocatorError; success : bool
-		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_slab_allocator() )
+		debug.lorem_content, success = os.read_entire_file( debug.path_lorem, persistent_allocator() )
+		assert(success)
 
-		debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) 	debug.lorem_content, persistent_slab_allocator() )
+		debug.lorem_parse, alloc_error = pws_parser_parse( transmute(string) 	debug.lorem_content, persistent_allocator() )
 		verify( alloc_error == .None, "Faield to parse due to allocation failure" )
 
 		// Render texture test

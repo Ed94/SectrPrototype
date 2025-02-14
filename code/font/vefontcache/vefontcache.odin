@@ -81,9 +81,6 @@ Context :: struct {
 	// debug_print         : b32,
 	// debug_print_verbose : b32,
 
-	// Will enforce even px_size when drawing.
-	even_size_only : f32,
-
 	// Whether or not to snap positioning to the pixel of the view
 	// Helps with hinting
 	snap_to_view_extent : b32,
@@ -176,8 +173,8 @@ startup :: proc( ctx : ^Context, parser_kind : Parser_Kind = .STB_TrueType, // N
 	glyph_draw_params           := Init_Glyph_Draw_Params_Default,
 	shape_cache_params          := Init_Shape_Cache_Params_Default,
 	shaper_params               := Init_Shaper_Params_Default,
-	alpha_sharpen               : f32 = 0.35,
-	px_scalar                   : f32 = 1.6,
+	alpha_sharpen               : f32 = 0.1,
+	px_scalar                   : f32 = 1.4,
 	zoom_px_interval            : i32 = 2,
 	
 	// Curve quality to use for a font when unspecified,
@@ -823,7 +820,7 @@ draw_text_normalized_space :: proc( ctx : ^Context,
 	    zoom    : Will affect the scale similar to how the zoom on a canvas would behave.
 */
 // @(optimization_mode="favor_size")
-draw_shape_view_space :: #force_inline proc( ctx : ^Context,
+draw_shape_view_space :: proc( ctx : ^Context,
 	colour   : RGBAN, 
 	view     : Vec2,
 	position : Vec2,
@@ -849,10 +846,9 @@ draw_shape_view_space :: #force_inline proc( ctx : ^Context,
 	resolved_size,   zoom_scale := resolve_zoom_size_scale( zoom, px_size, scale, ctx.zoom_px_interval, 2, 999.0, view )
 	target_position, norm_scale := get_normalized_position_scale( position, zoom_scale, view )
 
-	// Does nothing if px_scalar is 1.0
-	target_px_size    := resolved_size * ctx.px_scalar
-	target_scale      := norm_scale    * px_scalar_quotient
-	target_font_scale := parser_scale( entry.parser_info, target_px_size )
+	target_px_size, 
+	target_font_scale,
+	target_scale := resolve_px_scalar_size(entry.parser_info, resolved_size, ctx.px_scalar, norm_scale)
 
 	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
 		ctx.px_scalar,
@@ -918,10 +914,9 @@ draw_text_view_space :: proc(ctx : ^Context,
 	resolved_size,   zoom_scale := resolve_zoom_size_scale( zoom, px_size, scale, ctx.zoom_px_interval, 2, 999.0, view )
 	target_position, norm_scale := get_normalized_position_scale( position, zoom_scale, view )
 
-	// Does nothing if px_scalar is 1.0
-	target_px_size    := resolved_size * ctx.px_scalar
-	target_scale      := norm_scale    * (1 / ctx.px_scalar)
-	target_font_scale := parser_scale( entry.parser_info, target_px_size )
+	target_px_size, 
+	target_font_scale,
+	target_scale := resolve_px_scalar_size(entry.parser_info, resolved_size, ctx.px_scalar, norm_scale)
 
 	shape := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, ctx.atlas, vec2(ctx.glyph_buffer.size),
 		font, 
@@ -1002,11 +997,9 @@ draw_shape :: proc( ctx : ^Context, position, scale : Vec2, shape : Shaped_Text 
 	absolute_scale    := peek(stack.scale)    * zoom_scale
 
 	target_position, norm_scale := get_normalized_position_scale( absolute_position, absolute_scale, view )
-
-	// Does nothing when px_scalar is 1.0
-	target_px_size    := resolved_size * ctx.px_scalar
-	target_scale      := norm_scale    * px_scalar_quotient
-	target_font_scale := parser_scale( entry.parser_info, target_px_size )
+	target_px_size, 
+	target_font_scale, 
+	target_scale := resolve_px_scalar_size(entry.parser_info,resolved_size, ctx.px_scalar, norm_scale)
 
 	ctx.cursor_pos = generate_shape_draw_list( & ctx.draw_list, shape, & ctx.atlas, & ctx.glyph_buffer,
 		ctx.px_scalar,
@@ -1082,11 +1075,9 @@ draw_text :: proc( ctx : ^Context, position, scale : Vec2, text_utf8 : string,
 	absolute_scale    := peek(stack.scale)    * scale
 
 	target_position, norm_scale := get_normalized_position_scale( absolute_position, absolute_scale, view )
-
-	// Does nothing when px_scalar is 1.0
-	target_px_size    := resolved_size * ctx.px_scalar
-	target_scale      := norm_scale    * (1 / ctx.px_scalar)
-	target_font_scale := parser_scale( entry.parser_info, target_px_size )
+	target_px_size, 
+	target_font_scale, 
+	target_scale := resolve_px_scalar_size(entry.parser_info, resolved_size, ctx.px_scalar, norm_scale)
 
 	shape := shaper_shape_text_cached( text_utf8, & ctx.shaper_ctx, & ctx.shape_cache, ctx.atlas, vec2(ctx.glyph_buffer.size),
 		font, 
@@ -1150,7 +1141,8 @@ measure_shape_size :: #force_inline proc( ctx : Context, shape : Shaped_Text ) -
 }
 
 // Don't use this if you already have the shape instead use measure_shape_size
-measure_text_size :: #force_inline proc( ctx : ^Context, font : Font_ID, px_size : f32, text_utf8 : string, 
+@(optimization_mode="favor_size")
+measure_text_size :: proc( ctx : ^Context, font : Font_ID, px_size : f32, text_utf8 : string, 
 	shaper_proc : $Shaper_Shape_Text_Uncached_Proc = shaper_shape_harfbuzz
 ) -> (measured : Vec2)
 {
@@ -1241,9 +1233,12 @@ resolve_zoom_size_scale :: #force_inline proc "contextless" (
 	return
 }
 
+// Get the target pixel, font_scale, and scale for the given font pixel size, and scalar multiple to apply. (Normalized space with norm_scale)
+// To derived norm_scale use:  get_normalized_position_scale or just do (scale * (1 / view))
 resolve_px_scalar_size :: #force_inline proc "contextless" ( parser_info : Parser_Font_Info, px_size, px_scalar : f32, norm_scale : Vec2 
 ) -> (target_px_size, target_font_scale : f32, target_scale : Vec2 )
 {
+	// Does nothing when px_scalar is 1.0
 	target_px_size    = px_size    * px_scalar
 	target_scale      = norm_scale * (1 / px_scalar)
 	target_font_scale = parser_scale( parser_info, target_px_size )
@@ -1276,7 +1271,7 @@ set_snap_glyph_render_height :: #force_inline proc( ctx : ^Context, should_snap 
 	ctx.glyph_buffer.snap_glyph_height = cast(f32) i32(should_snap)
 }
 
-//#endregion("misc")
+//#endregion("miscellaneous")
 
 //#region("scope stack")
 

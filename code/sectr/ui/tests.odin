@@ -190,13 +190,13 @@ test_whitespace_ast :: proc( default_layout : ^UI_Layout, frame_style_default : 
 	// index := 0
 	widgets : Array(UI_Widget)
 	// widgets, alloc_error = array_init_reserve( UI_Widget, frame_slab_allocator(), 8 )
-	widgets, alloc_error = make( Array(UI_Widget), 8 * Kilobyte )
+	widgets, alloc_error = make( Array(UI_Widget), 64 * Kilobyte )
 	widgets_ptr := & widgets
 
 	label_id := 0
 
 	builder : StringBuilder
-	str.builder_init_len_cap( & builder, len = 0, cap = 16 * Kilobyte )
+	str.builder_init_len_cap( & builder, len = 0, cap = 64 * Kilobyte )
 
 	line_id := 0
 	for line in array_to_slice( debug.lorem_parse.lines )

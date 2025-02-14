@@ -1,10 +1,11 @@
 /*
-Odin's virtual arena allocator doesn't do what I ideally want for allocation resizing.
-(It was also a nice exercise along with making the other allocators)
+~~Odin's virtual arena allocator doesn't do what I ideally want for allocation resizing.~~
+It was also a nice exercise along with making the other allocators)
 
 So this is a virtual memory backed arena allocator designed
 to take advantage of one large contigous reserve of memory.
 With the expectation that resizes with its interface will only occur using the last allocated block.
+Note(Ed): Odin's mem allocator now has that feature 
 
 All virtual address space memory for this application is managed by a virtual arena.
 No other part of the program will directly touch the vitual memory interface direclty other than it.
