@@ -757,7 +757,7 @@ draw_shape_normalized_space :: #force_inline proc( ctx : ^Context,
     •   position: Anchor point in normalized space (where the bottom-right vertex of the first glyph quad will be positioned)
     <-> scale   : Scale the glyph beyond its default scaling from its px_size.
 */
-@(optimization_mode = "favor_size")
+@(optimization_mode="favor_size")
 draw_text_normalized_space :: proc( ctx : ^Context, 
 	font        : Font_ID,
 	px_size     : f32,

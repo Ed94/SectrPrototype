@@ -32,6 +32,7 @@ $flag_format_odin = '--format=sokol_odin'
 $flag_module      = '--module'
 
 push-location $path_shaders
+write-host 'Compiling shaders'
 & $sokol_shdc --input $shadersrc_ve_blit_atlas     --output $shaderout_ve_blit_atlas     --slang 'hlsl4' $flag_format_odin $flag_module='vefc_blit_atlas'
 & $sokol_shdc --input $shadersrc_ve_render_glyph   --output $shaderout_ve_render_glyph   --slang 'hlsl4' $flag_format_odin $flag_module='vefc_render_glyph'
 & $sokol_shdc --input $shadersrc_ve_draw_text      --output $shaderout_ve_draw_text      --slang 'hlsl4' $flag_format_odin $flag_module='vefc_draw_text'

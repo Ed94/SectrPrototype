@@ -464,7 +464,7 @@ generate_shape_draw_list :: proc( draw_list : ^Draw_List, shape : Shaped_Text,
 	  * Oversized will have a draw call setup to blit directly from the glyph buffer to the target.
 		* to_cache will blit the glyphs rendered from the buffer to the atlas.
 */
-@(optimization_mode = "favor_size")
+@(optimization_mode="favor_size")
 batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	shape      : Shaped_Text,
 	glyph_pack : ^#soa[dynamic]Glyph_Pack_Entry,
@@ -641,7 +641,7 @@ batch_generate_glyphs_draw_list :: proc ( draw_list : ^Draw_List,
 	}
 	profile_end()
 
-	@(optimization_mode = "favor_size")
+	@(optimization_mode="favor_size")
 	generate_blit_from_atlas_draw_list :: #force_inline proc  (draw_list : ^Draw_List, glyph_pack : #soa[]Glyph_Pack_Entry, sub_pack : []i32, colour : RGBAN )
 	{
 		profile(#procedure)

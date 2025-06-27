@@ -42,11 +42,10 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 	BlendState              :: sokol_gfx.Blend_State
 	BorderColor             :: sokol_gfx.Border_Color
 	BufferDesciption        :: sokol_gfx.Buffer_Desc
-	BufferUsage             :: sokol_gfx.Usage
-	BufferType              :: sokol_gfx.Buffer_Type
 	ColorTargetState        :: sokol_gfx.Color_Target_State
 	Filter                  :: sokol_gfx.Filter
 	ImageDesc               :: sokol_gfx.Image_Desc
+	ImageUsage              :: sokol_gfx.Image_Usage
 	PassAction              :: sokol_gfx.Pass_Action
 	Range                   :: sokol_gfx.Range
 	ResourceState           :: sokol_gfx.Resource_State
@@ -68,15 +67,13 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 
 	draw_list_vbuf = sokol_gfx.make_buffer( BufferDesciption {
 		size  = size_of([4]f32) * 4 * Mega,
-		usage = BufferUsage.STREAM,
-		type  = BufferType.VERTEXBUFFER,
+		usage = {vertex_buffer = true, stream_update = true},
 	})
 	verify( sokol_gfx.query_buffer_state( draw_list_vbuf) < ResourceState.FAILED, "Failed to make draw_list_vbuf" )
 
 	draw_list_ibuf = sokol_gfx.make_buffer( BufferDesciption {
 		size  = size_of(u32) * 6 * Mega,
-		usage = BufferUsage.STREAM,
-		type  = BufferType.INDEXBUFFER,
+		usage = {index_buffer = true, stream_update = true},
 	})
 	verify( sokol_gfx.query_buffer_state( draw_list_ibuf) < ResourceState.FAILED, "Failed to make draw_list_iubuf" )
 
@@ -141,12 +138,11 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 	{
 		glyph_rt_color = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
-			render_target = true,
+			usage         = ImageUsage { render_attachment = true, immutable = true },
 			width         = i32(ve_ctx.glyph_buffer.size.x),
 			height        = i32(ve_ctx.glyph_buffer.size.y),
 			num_slices    = 1,
 			num_mipmaps   = 1,
-			usage         = .IMMUTABLE,
 			pixel_format  = .R8,
 			sample_count  = 1,
 			// TODO(Ed): Setup labels for debug tracing/logging
@@ -156,12 +152,11 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 
 		glyph_rt_depth = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
-			render_target = true,
+			usage         = ImageUsage { render_attachment = true, immutable = true },
 			width         = i32(ve_ctx.glyph_buffer.size.x),
 			height        = i32(ve_ctx.glyph_buffer.size.y),
 			num_slices    = 1,
 			num_mipmaps   = 1,
-			usage         = .IMMUTABLE,
 			pixel_format  = .DEPTH,
 			sample_count  = 1,
 		})
@@ -278,12 +273,11 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 	{
 		atlas_rt_color = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
-			render_target = true,
+			usage         = { render_attachment = true, immutable = true },
 			width         = i32(ve_ctx.atlas.size.x),
 			height        = i32(ve_ctx.atlas.size.y),
 			num_slices    = 1,
 			num_mipmaps   = 1,
-			usage         = .IMMUTABLE,
 			pixel_format  = .R8,
 			sample_count  = 1,
 			// TODO(Ed): Setup labels for debug tracing/logging
@@ -293,12 +287,11 @@ font_provider_setup_sokol_gfx_objects :: proc( ctx : ^VE_RenderData, ve_ctx : ve
 
 		atlas_rt_depth = sokol_gfx.make_image( ImageDesc {
 			type          = ._2D,
-			render_target = true,
+			usage         = { render_attachment = true, immutable = true },
 			width         = i32(ve_ctx.atlas.size.x),
 			height        = i32(ve_ctx.atlas.size.y),
 			num_slices    = 1,
 			num_mipmaps   = 1,
-			usage         = .IMMUTABLE,
 			pixel_format  = .DEPTH,
 			sample_count  = 1,
 		})

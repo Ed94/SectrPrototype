@@ -1,0 +1,9 @@
+// raddbg 0.9.18 project file
+
+recent_file: path: "code/host/host.odin"
+target:
+{
+  executable: "build/sectr_host.exe"
+  working_directory: build
+  enabled: 1
+}

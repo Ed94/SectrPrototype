@@ -7,7 +7,6 @@ $path_thirdparty = join-path $path_root 'thirdparty'
 $path_toolchain  = join-path $path_root 'toolchain'
 
 $url_backtrace_repo = 'https://github.com/Ed94/back.git'
-$url_freetype       = 'https://github.com/Ed94/odin-freetype.git'
 $url_harfbuzz       = 'https://github.com/Ed94/harfbuzz-odin.git'
 $url_ini_parser     = 'https://github.com/laytan/odin-ini-parser.git'
 $url_odin_repo      = 'https://github.com/Ed94/Odin.git'
@@ -15,7 +14,6 @@ $url_sokol          = 'https://github.com/Ed94/sokol-odin.git'
 $url_sokol_tools    = 'https://github.com/floooh/sokol-tools-bin.git'
 
 $path_backtrace     = join-path $path_thirdparty 'backtrace'
-$path_freetype      = join-path $path_thirdparty 'freetype'
 $path_harfbuzz      = join-path $path_thirdparty 'harfbuzz'
 $path_ini_parser    = join-path $path_thirdparty 'ini'
 $path_odin          = join-path $path_toolchain  'Odin'
@@ -35,7 +33,6 @@ $result = verify-path $path_toolchain
 $binaries_dirty = $false
 
 clone-gitrepo $path_backtrace   $url_backtrace_repo
-clone-gitrepo $path_freetype    $url_freetype
 clone-gitrepo $path_ini_parser  $url_ini_parser
 clone-gitrepo $path_ini_parser  $url_ini_parser
 clone-gitrepo $path_sokol_tools $url_sokol_tools
@@ -46,7 +43,6 @@ Update-GitRepo -path $path_harfbuzz -url $url_harfbuzz  -build_command '.\script
 
 $path_vendor        = join-path $path_odin          'vendor'
 $path_vendor_raylib = join-path $path_vendor        'raylib'
-$path_freetype_dlls = join-path $path_freetype      'binaries/release'
 $path_harfbuzz_dlls = join-path $path_harfbuzz      'lib/win64'
 $path_raylib_dlls   = join-path $path_vendor_raylib 'windows'
 $path_sokol_dlls    = join-path $path_thirdparty    'sokol'
