@@ -1,15 +1,22 @@
-build/**
-*.exe
-# thirdparty/**
-logs
-.ark
-logs*.zip
-code_flattened
+
 Sectr.sublime-project
 Sectr.sublime-workspace
+
+# binaries
+build/**
+*.exe
+
+# folders
+assets/TX-02-1WN9N6Q8
+thirdparty
+thirdparty/**
+
+# logs
+logs
+logs*.zip
+
+# toolchain
+.ark
 ols.json
 .vscode/settings.json
-thirdparty
-# toolchain
-assets/TX-02-1WN9N6Q8
 *.spall
