@@ -8,8 +8,13 @@ build/**
 
 # folders
 assets/TX-02-1WN9N6Q8
-thirdparty
-thirdparty/**
+thirdparty/backtrace
+thirdparty/harfbuzz
+thirdparty/ini
+thirdparty/sokol
+thirdparty/sokol-tools
+
+toolchain/**
 
 # logs
 logs
