@@ -200,7 +200,7 @@ push-location $path_root
 
 			$build_args = @()
 			$build_args += $command_build
-			$build_args += './sectr'
+			$build_args += 'sectr'
 			$build_args += $flag_build_mode_dll
 			$build_args += $flag_output_path + $module_dll
 			$build_args += ($flag_collection + $pkg_collection_codebase)

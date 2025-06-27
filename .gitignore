@@ -10,4 +10,6 @@ Sectr.sublime-workspace
 ols.json
 .vscode/settings.json
 thirdparty
-toolchain
+# toolchain
+assets/TX-02-1WN9N6Q8
+*.spall
