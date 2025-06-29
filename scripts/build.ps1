@@ -118,7 +118,7 @@ $msvc_link_default_base_address = 0x180000000
 
 push-location $path_root
 	$update_deps   = join-path $path_scripts 'update_deps.ps1'
-	$odin_compiler = join-path $path_odin    'odin.exe'
+	$odin_compiler = join-path $path_odin    'odin_sectr.exe'
 
 	function Invoke-WithColorCodedOutput { param( [scriptblock] $command )
 		& $command 2>&1 | ForEach-Object {
@@ -212,7 +212,7 @@ push-location $path_root
 			# $build_args += $flag_optimize_minimal
 			$build_args += $flag_optimize_speed
 			# $build_args += $falg_optimize_aggressive
-			$build_args += $flag_debug
+			# $build_args += $flag_debug
 			$build_args += $flag_pdb_name + $pdb
 			$build_args += $flag_subsystem + 'windows'
 			# $build_args += $flag_show_system_calls
