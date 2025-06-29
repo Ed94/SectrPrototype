@@ -43,27 +43,17 @@ DLL_NodeFull :: struct ( $ Type : typeid ) {
 	first, last : ^Type,
 	prev, next  : ^Type,
 }
-
-// I have specific members commented out here as the RAD Debugger currently doesn't support transparently exposing using members of a struct (yet).
-
 DLL_NodePN :: struct ( $ Type : typeid ) {
-	// using _ : struct {
-		prev, next : ^Type,
-	// },
-	// using _ : struct {
-		// left, right : ^Type,
-	// },
+	prev, next : ^Type,
 }
-
 DLL_NodeFL :: struct ( $ Type : typeid ) {
-	// using _ : struct {
-		first, last : ^Type,
-	// },
-
-	// TODO(Ed): Review this
-	// using _ : struct {
-		// bottom, top: ^Type,
-	// },
+first, last : ^Type,
+}
+DLL_NodeBT :: struct ($Type: typeid) {
+	bottom, top: ^Type,
+}
+DLL_NodeLR :: struct ($Type: typeid) {
+	left, right: ^Type,
 }
 
 type_is_node :: #force_inline proc  "contextless" ( $ Type : typeid ) -> bool

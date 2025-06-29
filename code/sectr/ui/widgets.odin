@@ -3,9 +3,6 @@ package sectr
 import "base:runtime"
 import lalg "core:math/linalg"
 
-// Problably cursed way to setup a 'scope' for a widget
-// ui_build :: #force_inline proc( captures : $Type, $maker : #type proc(captures : Type) -> $ReturnType ) -> ReturnType { return maker(captures) }
-
 UI_Widget :: struct {
 	using box    : ^UI_Box,
 	using signal : UI_Signal,

@@ -44,14 +44,14 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 	setup_container:
 	{
 		using container
-		if ! is_maximized 
+		if ! is_maximized
 		{
 			layout.flags = {
 				// .Size_To_Content,
-				.Fixed_Width, .Fixed_Height, 
+				.Fixed_Width, .Fixed_Height,
 				// .Min_Size_To_Content_Y,
-				.Fixed_Position_X, .Fixed_Position_Y, 
-				.Origin_At_Anchor_Center 
+				.Fixed_Position_X, .Fixed_Position_Y,
+				.Origin_At_Anchor_Center
 			}
 			layout.pos   = pos
 			layout.size  = range2( size, {})
@@ -61,17 +61,17 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 			layout.flags = {.Origin_At_Anchor_Center }
 			layout.pos   = {}
 		}
-	
+
 		dragged      := ui_resizable_handles( & container, & pos, & size)
 		should_raise |= dragged
-	
+
 		// TODO(Ed): This demonstrated a minimum viable-size window to content, however we still need to support a scroll box and switch this window to that.
 		old_vbox := ui_box_from_key(get_ui_context_mut().prev_cache, ui_key_from_string("Settings Menu: VBox"))
 		if old_vbox != nil
 		{
 			vbox_children_bounds := ui_compute_children_overall_bounds(old_vbox)
 			joined_size          := size_range2( vbox_children_bounds )
-			if ! dragged 
+			if ! dragged
 			{
 				// TODO(Ed): Figure out what this value is
 				extra_padding :: 3
@@ -93,7 +93,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 		ui_parent(vbox)
 
 		Frame_Bar:
-		{	
+		{
 			scope(theme_window_bar)
 			frame_bar := ui_hbox(.Left_To_Right, "Settings Menu: Frame Bar", { .Mouse_Clickable })
 			{
@@ -624,7 +624,7 @@ ui_settings_menu_builder :: proc( captures : rawptr = nil ) -> ( should_raise : 
 					append( & input_str, to_runes(str_fmt("%v", config.text_size_canvas_scalar)))
 				}
 			}
-		
+
 			Text_Alpha_Sharpen:
 			{
 				ui_settings_entry_inputbox( & text_alpha_sharpen, false, "settings_menu.text_alpha_sharpen", str_intern("Text: Alpha Sharpen"),

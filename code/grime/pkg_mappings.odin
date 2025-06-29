@@ -21,6 +21,7 @@ import "base:runtime"
 	Exabyte            :: runtime.Exabyte
 	resize_non_zeroed  :: runtime.non_zero_mem_resize
 	SourceCodeLocation :: runtime.Source_Code_Location
+	Raw_Slice          :: runtime.Raw_Slice
 
 //#endregion("base")
 
