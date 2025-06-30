@@ -6,7 +6,7 @@ import str "core:strings"
 
 import sokol_app "thirdparty:sokol/app"
 
-#region("Sokol App")
+//region Sokol App
 
 sokol_app_init_callback :: proc "c" () {
 	context = get_state().sokol_context
@@ -230,9 +230,9 @@ sokol_app_event_callback :: proc "c" (sokol_event : ^sokol_app.Event)
 	}
 }
 
-#endregion("Sokol App")
+//endregion Sokol App
 
-#region("Sokol GFX")
+//region Sokol GFX
 
 sokol_gfx_alloc :: proc "c" ( size : uint, user_data : rawptr ) -> rawptr {
 	context = get_state().sokol_context
@@ -277,4 +277,4 @@ sokol_gfx_log_callback :: proc "c" (
 	log_fmt( "%-80s %s::%v", cloned_msg, cloned_tag, line_nr, level = odin_level )
 }
 
-#endregion("Sokol GFX")
+//endregion Sokol GFX

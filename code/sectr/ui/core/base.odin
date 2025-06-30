@@ -168,7 +168,7 @@ UI_State :: struct {
 	last_invalid_input_time : Time,
 }
 
-#region("Lifetime")
+//region Lifetime
 
 ui_startup :: proc( ui : ^ UI_State, spacial_indexing_method : UI_SpacialIndexingMethod = .QuadTree, cache_allocator : Allocator, cache_table_size : uint )
 {
@@ -362,9 +362,9 @@ ui_render_entry_tranverse :: proc( entry : ^UI_RenderEntry ) -> ^UI_RenderEntry
 @(deferred_in = ui_graph_build_end)
 ui_graph_build :: #force_inline proc( ui : ^ UI_State ) { ui_graph_build_begin( ui ) }
 
-#endregion("Lifetime")
+//endregion Lifetime
 
-#region("Caching")
+//region Caching 
 // Mainly referenced from RAD Debugger
 
 // TODO(Ed): Need to setup the proper hashing convention for strings the other reference imguis use.
@@ -399,7 +399,7 @@ ui_key_from_string :: #force_inline proc "contextless" ( value : string ) -> UI_
 
 	return key
 }
-#endregion("Caching")
+//endregion Caching
 
 ui_cursor_pos :: #force_inline proc "contextless" () -> Vec2 {
 	using state := get_state()

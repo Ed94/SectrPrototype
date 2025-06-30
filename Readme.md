@@ -16,7 +16,6 @@ https://github.com/user-attachments/assets/0a895478-4a04-4ac6-a0ac-5355ff87ef4e
 The dependencies are:
 
 * Odin Compiler (Slightly custom [fork](https://github.com/Ed94/Odin))
-  * Added #region, #endregion directives support for editors
   * I added support for 'monlithic packages' or 'uniform-across-subdirectories packages'. It allows me to organize the main package with sub-directories.
   * Added the ability to debug using statements on structs (fields get dumped to the stack as ptr refs)
   * Remove implicit assignments for container allocators in the Base and Core packages
@@ -78,3 +77,42 @@ They'll be elaborated in their own documentation
 ![img](docs/assets/sectr_host_2024-05-11_22-34-15.png)
 ![img](docs/assets/sectr_host_2024-05-15_03-32-36.png)
 ![img](docs/assets/Code_2024-05-21_23-15-16.gif)
+
+## Notes
+
+Due to bug with custom ols click file in root of sectr to get full symbol reflection setup on the monolithic package.
+
+For support for regions - grab a region extension and use the following regex:
+
+VS-Code Explicit Folding:
+
+```json
+    "explicitFolding.rules": {
+        "odin": [
+            {
+                "beginRegex": "region\\b",
+                "endRegex": "endregion\\b"
+            },
+            {
+                "beginRegex": "{",
+                "endRegex": "}"
+            },
+            {
+                "beginRegex": "\\[",
+                "endRegex": "\\]"
+            },
+            {
+                "beginRegex": "\\(",
+                "endRegex": "\\)"
+            },
+            {
+                "beginRegex": "\"",
+                "endRegex": "\""
+            },
+            {
+                "beginRegex": "/\\*",
+                "endRegex": "\\*/"
+            }
+        ]
+    },
+```

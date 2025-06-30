@@ -1,7 +1,7 @@
 
 package sectr
 
-#region("base")
+//region base
 
 import "base:builtin"
 	copy       :: builtin.copy
@@ -25,9 +25,9 @@ import "base:runtime"
 	SourceCodeLocation :: runtime.Source_Code_Location
 	debug_trap         :: runtime.debug_trap
 
-#endregion("base")
+//endregion base
 
-#region("core")
+//region core
 
 import c "core:c/libc"
 
@@ -153,14 +153,14 @@ import "core:unicode/utf8"
 	runes_to_string :: utf8.runes_to_string
 	// string_to_runes :: utf8.string_to_runes
 
-#endregion("core")
+//endregion core
 
 import "thirdparty:backtrace"
 	StackTraceData   :: backtrace.Trace_Const
 	stacktrace       :: backtrace.trace
 	stacktrace_lines :: backtrace.lines
 
-#region("codebase")
+//region codebase
 
 import "codebase:grime"
 	// asserts
@@ -345,9 +345,9 @@ import "codebase:grime"
 
 	varena_allocator :: grime.varena_allocator
 
-#endregion("codebase")
+//endregion codebase
 
-#region("Procedure overload mappings")
+//region Procedure overload mappings
 
 // This has to be done on a per-module basis.
 
@@ -717,4 +717,4 @@ wedge :: proc {
 	wedge_bivec3,
 }
 
-#endregion("Proc overload mappings")
+//endregion Proc overload mappings

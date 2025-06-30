@@ -73,7 +73,7 @@ Vec3i   :: [3]i32
 vec2i_to_vec2 :: #force_inline proc "contextless" (v : Vec2i) -> Vec2 {return transmute(Vec2) v}
 vec3i_to_vec3 :: #force_inline proc "contextless" (v : Vec3i) -> Vec3 {return transmute(Vec3) v}
 
-#region("Range2")
+//region Range2
 
 // TODO(Ed): I rather keep the different usages as different types, then type coerece their procedure mappings
 // to support the base p0, p1 range
@@ -148,4 +148,4 @@ size_range2 :: #force_inline proc "contextless" ( value : Range2 ) -> Vec2 {
 	return { abs( value.p1.x - value.p0.x ), abs( value.p0.y - value.p1.y ) }
 }
 
-#endregion("Range2")
+//endregion Range2

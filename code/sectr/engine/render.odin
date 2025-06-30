@@ -670,7 +670,7 @@ render_text_layer :: proc( screen_extent : Vec2, ve_ctx : ^ve.Context, render : 
 	}
 }
 
-#region("Helpers")
+//region Helpers
 
 draw_shape :: proc(color : RGBAN, screen_size, position, scale : Vec2, zoom : f32, shape : ShapedText)
 {
@@ -890,4 +890,4 @@ render_set_view_space :: #force_inline proc( extent : Extents2 )
 	gp.project( -extent.x, extent.x, extent.y, -extent.y )
 }
 
-#endregion("Helpers")
+//endregion Helpers

@@ -23,7 +23,8 @@ ui_button :: #force_inline proc( label : string, flags : UI_BoxFlags = {} ) -> (
 	return
 }
 
-#region("Drop Down")
+//region Drop Down
+
 UI_DropDown :: struct {
 	btn          : UI_Widget,
 	title        : UI_Widget,
@@ -106,9 +107,10 @@ ui_drop_down_end_auto :: proc( drop_down : ^UI_DropDown) {
 	ui_vbox_end(drop_down.vbox, compute_layout = false)
 	ui_parent_pop()
 }
-#endregion("Drop Down")
 
-#region("Horizontal Box")
+//endregion Drop Down
+
+//region Horizontal Box
 /*
 Horizontal Boxes automatically manage a collection of widgets and
 attempt to slot them adjacent to each other along the x-axis.
@@ -166,9 +168,10 @@ ui_hbox_end_auto :: #force_inline proc( direction : UI_LayoutDirection_X, label 
 	ui_hbox_end(hbox, width_ref)
 	ui_parent_pop()
 }
-#endregion("Horizontal Box")
+//endregion Horizontal Box
 
-#region("Resizable")
+//region Resizable
+
 // Parameterized widget def for ui_resizable_handles
 UI_Resizable :: struct {
 	using widget      : UI_Widget,
@@ -497,8 +500,10 @@ ui_resizable_handles :: #force_no_inline proc( parent : ^UI_Widget, pos : ^Vec2,
 	// if drag_signal && compute_layout do ui_box_compute_layout(parent)
 	return
 }
-#endregion("Resizable")
 
+//endregion Resizable
+
+//region Text
 ui_spacer :: proc( label : string ) -> (widget : UI_Widget) {
 	widget.box    = ui_box_make( {.Mouse_Clickable}, label )
 	widget.signal = ui_signal_from_box( widget.box )
@@ -519,7 +524,6 @@ ui_scroll_box :: proc( label : string, flags : UI_BoxFlags ) -> (scroll_box : UI
 	return
 }
 
-#region("Text")
 ui_text :: #force_inline proc( label : string, content : StrCached, flags : UI_BoxFlags = {} ) -> UI_Widget
 {
 	profile(#procedure)
@@ -566,9 +570,10 @@ ui_text_wrap_panel :: proc( parent : ^UI_Widget )
 {
 	fatal("NOT IMPLEMENTED")
 }
-#endregion("Text")
+//endregion Text
 
-#region("Text Input")
+//region Text Input
+
 UI_TextInput_Policy :: struct {
 	disallow_decimal       : b32,
 	disallow_leading_zeros : b32,
@@ -741,9 +746,9 @@ ui_text_input_box :: proc( text_input_box : ^UI_TextInputBox, label : string,
 		}
 	}
 }
-#endregion("Text Input")
+//endregion Text Input
 
-#region("Vertical Box")
+//region Vertical Box
 /*
 Vertical Boxes automatically manage a collection of widgets and
 attempt to slot them adjacent to each other along the y-axis.
@@ -800,4 +805,4 @@ ui_vbox :: #force_inline proc( direction : UI_LayoutDirection_Y, label : string,
 	ui_parent_push(vbox.widget)
 	return
 }
-#endregion("Vertical Box")
+//endregion Vertical Box

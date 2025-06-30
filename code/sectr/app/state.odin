@@ -8,7 +8,7 @@ import "core:os"
 
 Str_App_State := "App State"
 
-#region("Memory")
+//region Memory
 
 Memory_App : Memory
 
@@ -133,9 +133,9 @@ MemoryConfig :: struct {
 	commit_initial_filebuffer : uint,
 }
 
-#endregion("Memory")
+//endregion Memory
 
-#region("State")
+//region State
 
 // ALl nobs available for this application
 AppConfig :: struct {
@@ -292,4 +292,4 @@ get_screen_extent :: #force_inline proc "contextless" () -> Extents2      { retu
 get_ui_context_mut :: #force_inline proc "contextless" ()  -> ^UI_State   { return get_state().ui_context }
 set_ui_context     :: #force_inline proc "contextless" ( ui : ^UI_State ) { get_state().ui_context = ui }
 
-#endregion("State")
+//endregion State
