@@ -5,20 +5,20 @@ An intersive singly & double linked list implementation
 */
 package grime
 
-LL_Node :: struct ( $ Type : typeid ) {
-	next  : ^Type,
+SLL_Node :: struct ($Type: typeid) {
+	next: ^Type,
 }
 
 // ll_push :: proc( list_ptr : ^(^ ($ Type)), node : ^Type ) {
-ll_push :: #force_inline proc "contextless" ( list_ptr : ^(^ ($ Type)), node : ^Type ) {
-	list : ^Type = (list_ptr^)
-	node.next   = list
-	(list_ptr^) = node
+sll_push :: #force_inline proc "contextless" ( list_ptr : ^(^ ($ Type)), node : ^Type, node_next: ^(^Type) ) {
+	list:         = (list_ptr ^)
+	(node_next ^) = list
+	(list_ptr  ^) = node
 }
 
-ll_pop :: #force_inline proc "contextless" ( list_ptr : ^(^ ($ Type)) ) -> ( node : ^Type ) {
-	list : ^Type = (list_ptr^)
-	(list_ptr^) = list.next
+sll_pop :: #force_inline proc "contextless" ( list_ptr: ^(^ ($ Type)), list_next: ^(^Type) ) -> ( node : ^Type ) {
+	list : ^Type = (list_ptr  ^)
+	(list_ptr ^) = (list_next ^)
 	return list
 }
 

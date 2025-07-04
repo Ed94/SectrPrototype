@@ -353,7 +353,7 @@ pool_validate_ownership :: proc( using self : Pool, block : [] byte ) -> b32
 		{
 			misalignment := (block_address - start) % uintptr(block_size)
 			if misalignment != 0 {
-				// TODO(Ed): We cannot use thsi to validate that the data is within the pool bucket as we can provide the user different alignments
+				// TODO(Ed): We cannot use this to validate that the data is within the pool bucket as we can provide the user different alignments
 				// ensure(false, "pool_validate_ownership: This data is within this pool's buckets, however its not aligned to the start of a block")
 				// log(str_fmt("Block address: %p Misalignment: %p closest: %p",
 				// 	transmute(rawptr)block_address,

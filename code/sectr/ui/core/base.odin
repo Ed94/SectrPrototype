@@ -120,7 +120,8 @@ UI_BoxCache_TableSize     :: 32  * Kilobyte
 
 // TODO(Ed): Rename to UI_Context
 UI_State :: struct {
-	// TODO(Ed) : Use these?
+	// TODO(Ed) : Use these? Right now the way our hashtable does things is it implicitly uses a pool allocator.
+	// We could instead use an arena (CR) allocator, if it chains it won't matter because the boxes are only accessed purely as a DAG.
 	// build_arenas : [2]Arena,
 	// build_arena  : ^ Arena,
 
@@ -141,11 +142,13 @@ UI_State :: struct {
 	// render_list          : Array(UI_RenderBoxInfo),
 	render_list_box      : Array(UI_RenderBoxInfo),
 	render_list_text     : Array(UI_RenderTextInfo),
-
+	// TODO(Ed): We can have multiple list sets, one towards working-set, and the one enqueued for rendering (a buffered list matching the framebuffer)
+	// We can back these by arenas? Do we want them persistently on the slab?
+ 
 	null_box : ^UI_Box, // This was used with the Linked list interface...
 	root     : ^UI_Box,
 
-	// TODO(Ed) : Look into using a build arena like Ryan does for these possibly (and thus have a linked-list stack)
+	// TODO(Ed) : Look into using a build arena like Ryan does for these possibly (and thus have a linked-list stack) (Chained Arenas)
 	layout_combo_stack : StackFixed( UI_LayoutCombo, UI_Style_Stack_Size ),
 	style_combo_stack  : StackFixed( UI_StyleCombo,  UI_Style_Stack_Size ),
 	parent_stack       : StackFixed( ^UI_Box, UI_Parent_Stack_Size ),

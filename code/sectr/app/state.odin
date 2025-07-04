@@ -63,11 +63,16 @@ frame_allocator :: proc() -> Allocator {
 	return result
 }
 
+// TODO(Ed): Rethink usage of transient arena
+// We can have it so that all usage of transients are chained 64 mb arenas. The users can clear the scratch and make a free-list on the parent varena.
+// Anything over 64 mb or the chaining threshold should really have dedicated memory.
 transient_allocator :: proc() -> Allocator {
 	result := varena_allocator( Memory_App.transient )
 	return result
 }
 
+// TODO(Ed): This needs to be reviewed as we technically can keep the whole file in buffer, 
+// but are we better off with a storage virtual mapping on-demand requested from the host by the client?
 files_buffer_allocator :: proc() -> Allocator {
 	result := varena_allocator( Memory_App.files_buffer )
 	return result
@@ -84,6 +89,9 @@ frame_slab_allocator :: proc() -> Allocator {
 	return result
 }
 
+// TODO(Ed): Rethink usage of transient arena, slab may still be useful but we need to think of the heursitic when this will be actively used
+// String generation should use a chained arena, they should never exceed 64 mb or the max threshold (correct?)
+// Dynamic arrays that last for a while maybe but are temp for complex workloads? Dynamic hashtables using arrays/arenas?
 transient_slab_allocator :: proc() -> Allocator {
 	result := slab_allocator( get_state().transient_slab )
 	return result

@@ -267,10 +267,10 @@ import "codebase:grime"
 	djb8_hash :: grime.djb8_hash
 
 	// linked lists
-	LL_Node :: grime.LL_Node
+	SLL_Node :: grime.SLL_Node
 
-	ll_push :: grime.ll_push
-	ll_pop  :: grime.ll_pop
+	sll_push :: grime.sll_push
+	sll_pop  :: grime.sll_pop
 
 	DLL_Node     :: grime.DLL_Node
 	DLL_NodeFull :: grime.DLL_NodeFull
