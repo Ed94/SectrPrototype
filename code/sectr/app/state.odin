@@ -216,9 +216,10 @@ State :: struct {
 
 	input_data : [2]InputState,
 	input_prev : ^InputState,
-	input      : ^InputState,
+	input      : ^InputState, // TODO(Ed): Rename to indicate its the device's signal state for the frame?
 
-	input_events : InputEvents,
+	input_events:      InputEvents,
+	input_binds_stack: Array(InputContext),
 
 	// Note(Ed): Do not modify directly, use its interface in app/event.odin
 	staged_input_events : Array(InputEvent),
@@ -291,5 +292,8 @@ get_screen_extent :: #force_inline proc "contextless" () -> Extents2      { retu
 
 get_ui_context_mut :: #force_inline proc "contextless" ()  -> ^UI_State   { return get_state().ui_context }
 set_ui_context     :: #force_inline proc "contextless" ( ui : ^UI_State ) { get_state().ui_context = ui }
+
+get_input_binds       :: #force_inline proc "contextless" () -> InputContext { return array_back(get_state().input_binds_stack) }
+get_input_binds_stack :: #force_inline proc "contextless" () -> []InputContext { return array_to_slice(get_state().input_binds_stack) }
 
 //endregion State

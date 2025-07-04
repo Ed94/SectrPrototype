@@ -48,6 +48,7 @@ UI_InteractState :: struct {
 	disabled_time : f32,
 }
 
+// TODO(Ed): Make the key 128-bit?
 UI_Key :: distinct u64
 
 UI_Scalar :: f32

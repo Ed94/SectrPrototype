@@ -64,7 +64,7 @@ str_cache_init :: proc( table_allocator, slabs_allocator : Allocator ) -> (cache
 
 	@static dbg_name := "StringCache slab"
 
-	// TODO(Ed): Is this nessary (essentially is there a perf impact of using vs not using, which is better because thats all that matters)
+	// TODO(Ed): Is this necessary (essentially is there a perf impact of using vs not using, which is better because thats all that matters)
 	// Interning should only be handled on a growing arena anyway so it doesn't really need this.
 	alloc_error : AllocatorError
 	cache.slab, alloc_error = slab_init( & policy, allocator = slabs_allocator, dbg_name = dbg_name )

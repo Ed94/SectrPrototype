@@ -454,6 +454,13 @@ render_ui_via_box_list :: proc( box_list : []UI_RenderBoxInfo, text_list : []UI_
 				shape_enqueued = true
 			}
 
+			if debug.draw_ui_content_bounds
+			{
+				render_set_color(RGBA8_Debug_UI_Content_Bounds)
+				draw_rect_border(entry.bounds, 1.0)
+				shape_enqueued = true
+			}
+
 			box_id += 1
 		}
 
@@ -890,4 +897,4 @@ render_set_view_space :: #force_inline proc( extent : Extents2 )
 	gp.project( -extent.x, extent.x, extent.y, -extent.y )
 }
 
-//endregion Helpers
+//endregion Helper

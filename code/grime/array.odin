@@ -37,8 +37,8 @@ array_underlying_slice :: proc(slice: []($ Type)) -> Array(Type)
 	return array
 }
 
-array_to_slice          :: #force_inline proc( using self : Array($ Type) ) -> []Type { return slice_ptr( data, int(num))      }
-array_to_slice_capacity :: #force_inline proc( using self : Array($ Type) ) -> []Type { return slice_ptr( data, int(capacity)) }
+array_to_slice          :: #force_inline proc "contextless" ( using self : Array($ Type) ) -> []Type { return slice_ptr( data, int(num))      }
+array_to_slice_capacity :: #force_inline proc "contextless" ( using self : Array($ Type) ) -> []Type { return slice_ptr( data, int(capacity)) }
 
 array_grow_formula :: proc( value : u64 ) -> u64 {
 	result := (2 * value) + 8

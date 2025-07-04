@@ -124,6 +124,8 @@ import "core:os"
 import "core:path/filepath"
 	file_name_from_path :: filepath.short_stem
 
+import "core:slice"
+
 import "core:strconv"
 	parse_f32  :: strconv.parse_f32
 	parse_u64  :: strconv.parse_u64
@@ -194,6 +196,7 @@ import "codebase:grime"
 	array_append_value :: grime.array_append_value
 	array_append_array :: grime.array_append_array
 	array_append_at    :: grime.array_append_at
+	array_back         :: grime.array_back
 	array_clear        :: grime.array_clear
 	array_free         :: grime.array_free
 	array_grow_formula :: grime.array_grow_formula
@@ -366,6 +369,10 @@ append_at :: proc {
 	grime.array_append_at_slice,
 }
 
+back :: proc {
+	grime.array_back,
+}
+
 bivec3 :: proc {
 	bivec3_via_f32s,
 	vec3_to_bivec3,
@@ -426,7 +433,7 @@ floor :: proc {
 	math.floor_f64le,
 	math.floor_f64be,
 
-	linalg.floor
+	linalg.floor,
 }
 
 from_bytes :: proc {
@@ -715,6 +722,10 @@ ui_theme_scope :: proc {
 wedge :: proc {
 	wedge_vec3,
 	wedge_bivec3,
+}
+
+zero :: proc {
+	slice.zero,
 }
 
 //endregion Proc overload mappings
