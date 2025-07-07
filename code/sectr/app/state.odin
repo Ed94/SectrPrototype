@@ -10,7 +10,10 @@ Str_App_State := "App State"
 
 //region Memory
 
+// Data segment Memory for sectr module.
 Memory_App : Memory
+
+// General memory configuration
 
 Memory_Base_Address_Persistent   :: Terabyte * 1
 Memory_Base_Address_Frame        :: Memory_Base_Address_Persistent + Memory_Reserve_Persistent * 2
@@ -29,13 +32,6 @@ Memory_Commit_Initial_Frame      :: 4 * Kilobyte
 Memory_Commit_Initial_Transient  :: 4 * Kilobyte
 Memory_Commit_Initial_Filebuffer :: 4 * Kilobyte
 
-MemorySnapshot :: struct {
-	persistent   : []u8,
-	frame        : []u8,
-	transient    : []u8,
-	// files_buffer cannot be restored from snapshot
-}
-
 Memory :: struct {
 	persistent   : ^VArena,
 	frame        : ^VArena,
@@ -44,14 +40,11 @@ Memory :: struct {
 
 	state   : ^State,
 
-	// Should only be used for small memory allocation iterations
-	// Not for large memory env states
-	snapshot : MemorySnapshot,
-
 	replay   : ReplayState,
 	logger   : Logger,
 	profiler : ^SpallProfiler
 }
+
 
 persistent_allocator :: proc() -> Allocator {
 	result := varena_allocator( Memory_App.persistent )
@@ -95,37 +88,6 @@ frame_slab_allocator :: proc() -> Allocator {
 transient_slab_allocator :: proc() -> Allocator {
 	result := slab_allocator( get_state().transient_slab )
 	return result
-}
-
-// TODO(Ed) : Implment host memory mapping api
-save_snapshot :: proc( snapshot : ^MemorySnapshot )
-{
-	// Make sure the snapshot size is able to hold the current size of the arenas
-	// Grow the files & mapping otherwise
-	{
-		// TODO(Ed) : Implement eventually
-	}
-
-	persistent := Memory_App.persistent
-	mem.copy_non_overlapping( & snapshot.persistent[0], persistent.reserve_start, int(persistent.commit_used) )
-
-	frame := Memory_App.frame
-	mem.copy_non_overlapping( & snapshot.frame[0], frame.reserve_start, int(frame.commit_used) )
-
-	transient := Memory_App.transient
-	mem.copy_non_overlapping( & snapshot.transient[0], transient.reserve_start, int(transient.commit_used) )
-}
-
-// TODO(Ed) : Implment host memory mapping api
-load_snapshot :: proc( snapshot : ^MemorySnapshot ) {
-	persistent := Memory_App.persistent
-	mem.copy_non_overlapping( persistent.reserve_start, & snapshot.persistent[0], int(persistent.commit_used) )
-
-	frame := Memory_App.frame
-	mem.copy_non_overlapping( frame.reserve_start, & snapshot.frame[0], int(frame.commit_used) )
-
-	transient := Memory_App.transient
-	mem.copy_non_overlapping( transient.reserve_start, & snapshot.transient[0], int(transient.commit_used) )
 }
 
 // TODO(Ed) : Implement usage of this
@@ -219,6 +181,8 @@ State :: struct {
 	transinet_clear_lock    : b32,  // Pravents auto-free of transient at designated intervals
 	transient_clear_time    : f32,  // Time in seconds for the usual period to clear transient
 	transient_clear_elapsed : f32,  // Time since last clear
+
+	job_system : JobSystemContext,
 
 	string_cache : StringCache,
 

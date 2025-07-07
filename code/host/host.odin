@@ -71,6 +71,7 @@ import "codebase:grime"
 import "codebase:sectr"
 	VArena                 :: sectr.VArena
 	fatal                  :: sectr.fatal
+	JobSystemContext       :: sectr.JobSystemContext
 	Logger                 :: sectr.Logger
 	logger_init            :: sectr.logger_init
 	LogLevel               :: sectr.LogLevel
@@ -106,6 +107,8 @@ RuntimeState :: struct {
 	running       : b32,
 	client_memory : ClientMemory,
 	sectr_api     : sectr.ModuleAPI,
+
+	job_system: JobSystemContext,
 }
 
 ClientMemory :: struct {

@@ -62,7 +62,10 @@ varena_allocator :: proc( arena : ^VArena ) -> ( allocator : Allocator ) {
 
 // Default growth_policy is nil
 varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
-	growth_policy : VArena_GrowthPolicyProc, allow_any_resize : b32 = false, dbg_name : string, enable_mem_tracking : b32 = false,
+	growth_policy:       VArena_GrowthPolicyProc = nil, 
+	allow_any_resize:    b32                     = false, 
+	dbg_name:            string                  = "", 
+	enable_mem_tracking: b32                     = false,
 ) -> ( arena : VArena, alloc_error : AllocatorError)
 {
 	page_size := uint(virtual_get_page_size())
@@ -78,8 +81,8 @@ varena_init :: proc( base_address : uintptr, to_reserve, to_commit : uint,
 		return
 	}
 
-	arena.vmem             = vmem
-	arena.commit_used      = 0
+	arena.vmem        = vmem
+	arena.commit_used = 0
 
 	if growth_policy == nil {
 		arena.growth_policy = varena_default_growth_policy

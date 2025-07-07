@@ -626,6 +626,7 @@ clean_frame :: proc()
 
 	free_all( frame_allocator() )
 
+	// TODO(Ed): Delete this we are no longer using the temp_allocator this way.
 	transient_clear_elapsed += frametime_delta32()
 	if transient_clear_elapsed >= transient_clear_time && ! transinet_clear_lock
 	{

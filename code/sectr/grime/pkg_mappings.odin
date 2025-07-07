@@ -126,6 +126,9 @@ import "core:path/filepath"
 
 import "core:slice"
 
+import "core:sync"
+	AtomicMutex :: sync.Atomic_Mutex
+
 import "core:strconv"
 	parse_f32  :: strconv.parse_f32
 	parse_u64  :: strconv.parse_u64
@@ -146,6 +149,9 @@ import "core:time"
 	time_diff        :: time.diff
 	time_now         :: time.now
 	Time             :: time.Time
+
+import "core:thread"
+	Thread :: thread.Thread
 
 import "core:unicode"
 	is_white_space  :: unicode.is_white_space
@@ -347,6 +353,8 @@ import "codebase:grime"
 	VirtualMemoryRegion :: grime.VirtualMemoryRegion
 
 	varena_allocator :: grime.varena_allocator
+
+	VArena_GrowthPolicyProc :: grime.VArena_GrowthPolicyProc
 
 //endregion codebase
 
