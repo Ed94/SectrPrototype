@@ -47,7 +47,7 @@ DLL_NodePN :: struct ( $ Type : typeid ) {
 	prev, next : ^Type,
 }
 DLL_NodeFL :: struct ( $ Type : typeid ) {
-first, last : ^Type,
+	first, last : ^Type,
 }
 DLL_NodeBT :: struct ($Type: typeid) {
 	bottom, top: ^Type,

@@ -10,7 +10,7 @@ Currently the prototype has hot-reload always enabled, eventually there will be 
 */
 package sectr_host
 
-//region Grime & Dependencies
+//region pkg_mappings
 import "base:runtime"
 	Byte     :: runtime.Byte
 	Kilobyte :: runtime.Kilobyte
@@ -88,7 +88,7 @@ file_status :: proc {
 to_str :: proc {
 	builder_to_string,
 }
-//endregion Grime & Dependencies
+//endregion pkg_mappings
 
 Path_Snapshot :: "VMemChunk_1.snapshot"
 Path_Logs     :: "../logs"
@@ -110,6 +110,9 @@ RuntimeState :: struct {
 
 	job_system: JobSystemContext,
 }
+
+@thread_local 
+worker_thread: sectr.ThreadWorkerContext
 
 ClientMemory :: struct {
 	persistent        : VArena,
