@@ -69,14 +69,14 @@ append_staged_input_events :: #force_inline proc( event : InputEvent ) {
 	append( & state.staged_input_events, event )
 }
 
-pull_staged_input_events :: proc(  input : ^InputState, input_events : ^InputEvents, staged_events : Array(InputEvent) )
+pull_staged_input_events :: proc(  input : ^InputState, using input_events : ^InputEvents, using staged_events : Array(InputEvent) )
 {
 	// TODO(Ed) : Add guards for multi-threading
 
 	staged_events_slice := array_to_slice(staged_events)
 	push( & input_events.events, staged_events_slice )
 
-	using input_events
+	// using input_events
 
 	for event in staged_events_slice
 	{

@@ -20,10 +20,10 @@ Job :: struct {
 	next:    ^Job,
 	cb:      JobProc,
 	data:    rawptr,
+	// scratch: ^CArena,
 	group:   ^JobGroup,
 	ignored: IgnoredThreads,
 	dbg_lbl: string,
-	// scratch: CArena,
 }
 
 JobList :: struct {
@@ -43,7 +43,7 @@ JobSystemContext :: struct {
 ThreadWorkerContext :: struct {
 	system_ctx: Thread,
 	index:      int,
-}
+}	
 
 WorkerID :: enum u32 {
 	Master_Prepper = 0,

@@ -40,7 +40,7 @@ Memory :: struct {
 
 	state   : ^State,
 
-	replay   : ReplayState,
+	replay   : ReplayState, // TODO(Ed): Were not doing it this way.
 	logger   : Logger,
 	profiler : ^SpallProfiler
 }
@@ -182,7 +182,7 @@ State :: struct {
 	transient_clear_time    : f32,  // Time in seconds for the usual period to clear transient
 	transient_clear_elapsed : f32,  // Time since last clear
 
-	job_system : JobSystemContext,
+	job_system : ^JobSystemContext,
 
 	string_cache : StringCache,
 

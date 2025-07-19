@@ -225,6 +225,7 @@ push-location $path_root
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
 			# $build_args += $flag_show_debug_messages
+			# TODO(Ed): Enforce nil default allocator
 
 			# foreach ($arg in $build_args) {
 			# 	write-host `t $arg  -ForegroundColor Cyan
@@ -287,7 +288,7 @@ push-location $path_root
 			$build_args += ($flag_collection + $pkg_collection_codebase)
 			$build_args += ($flag_collection + $pkg_collection_thirdparty)
 			# $build_args += $flag_micro_architecture_native
-			$build_args += $flag_use_separate_modules
+			# $build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical
 			# $build_args += $flag_optimize_none
 			$build_args += $flag_optimize_minimal
@@ -305,6 +306,7 @@ push-location $path_root
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
+			# TODO(Ed): Enforce nil default allocator
 			
 			# foreach ($arg in $build_args) {
 			# 	write-host `t $arg  -ForegroundColor Cyan

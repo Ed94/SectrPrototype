@@ -114,6 +114,7 @@ RuntimeState :: struct {
 @thread_local 
 worker_thread: sectr.ThreadWorkerContext
 
+// TODO(Ed): Only persisent needs to be allocated by the host.
 ClientMemory :: struct {
 	persistent        : VArena,
 	frame             : VArena,
@@ -278,6 +279,8 @@ sync_sectr_api :: proc( sectr_api : ^sectr.ModuleAPI, memory : ^ClientMemory, lo
 			logger )
 	}
 }
+
+// TODO(Ed): Put data segment memory in a Host_DataSegment struct.
 
 fmt_backing : [16 * Kilobyte] u8
 
