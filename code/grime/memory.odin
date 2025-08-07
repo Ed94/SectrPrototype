@@ -99,3 +99,5 @@ swap :: #force_inline proc "contextless" ( a, b : ^ $Type ) -> ( ^ Type, ^ Type 
 to_bytes :: #force_inline proc "contextless" ( typed_block : ^$Type ) -> []byte {
 	return slice_ptr( transmute(^byte) typed_block, size_of(Type) )
 }
+
+ptr_cursor :: #force_inline proc "contextless" (ptr: ^$Type) -> [^]Type { return transmute([^]Type) ptr }

@@ -270,7 +270,7 @@ import "codebase:grime"
 	file_rewind :: grime.file_rewind
 
 	// hashing
-	djb8_hash :: grime.djb8_hash
+	hash64_djb8 :: grime.hash64_djb8
 
 	// linked lists
 	SLL_Node :: grime.SLL_Node
@@ -664,7 +664,7 @@ vec2 :: proc {
 	vec2_from_scalar,
 	// vec2_64_from_vec2,
 	vec2_from_vec2i,
-	vec2i_from_vec2
+	vec2i_from_vec2,
 }
 
 vec3 :: proc {

@@ -29,6 +29,7 @@ if ( $args ) { $args | ForEach-Object {
 switch ($_){
  "force" { $force = $true }
  "clang" { $clang = $true }
+ "full"  { $full  = $true }
 }
 }}
 #endregion Arguments
@@ -165,7 +166,7 @@ push-location $path_root
 		$pkg_collection_thirdparty = 'thirdparty=' + $path_thirdparty
 
 		$host_process_active = Get-Process | Where-Object {$_.Name -like 'sectr_host*'}
-		if ( -not $host_process_active ) {
+		if ( -not $host_process_active -and $full -eq $true) {
 			# We cannot update thidparty dependencies during hot-reload.
 			& $update_deps
 			write-host

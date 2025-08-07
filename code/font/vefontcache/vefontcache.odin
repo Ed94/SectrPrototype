@@ -3,6 +3,8 @@ See: https://github.com/Ed94/VEFontCache-Odin
 */
 package vefontcache
 
+// TODO(Ed): Provide a way to give the user a memory footprint query for all dyanmic allocations.
+
 // See: mappings.odin for profiling hookup
 DISABLE_PROFILING              :: true
 ENABLE_OVERSIZED_GLYPHS        :: true

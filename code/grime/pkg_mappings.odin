@@ -6,10 +6,12 @@ import "base:builtin"
 	copy :: builtin.copy
 
 import "base:intrinsics"
-	mem_zero       :: intrinsics.mem_zero
-	ptr_sub        :: intrinsics.ptr_sub
-	type_has_field :: intrinsics.type_has_field
-	type_elem_type :: intrinsics.type_elem_type
+	mem_zero                 :: intrinsics.mem_zero
+	mem_copy_non_overlapping :: intrinsics.mem_copy_non_overlapping
+	mem_copy                 :: intrinsics.mem_copy
+	ptr_sub                  :: intrinsics.ptr_sub
+	type_has_field           :: intrinsics.type_has_field
+	type_elem_type           :: intrinsics.type_elem_type
 
 import "base:runtime"
 	Byte               :: runtime.Byte
@@ -142,6 +144,12 @@ array_append :: proc {
 array_append_at :: proc {
 	array_append_at_slice,
 	array_append_at_value,
+}
+
+cursor :: proc {
+	ptr_cursor,
+	slice_cursor,
+	string_cursor,
 }
 
 is_power_of_two :: proc {

@@ -10,6 +10,8 @@ package vefontcache
 
 	There was an attempt at an optimization pass but the directives done here (other than force_inline)
 	are marginal changes at best.
+
+	TODO(Ed): Odin's map rehashes integer values. Maybe bring in a custom KeyTable?
 */
 
 // 16-bit hashing was attempted, however it seems to get collisions with djb8_hash_16
