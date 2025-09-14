@@ -4,7 +4,7 @@ import "core:math"
 import lalg "core:math/linalg"
 import "core:time"
 
-import ve         "codebase:font/VEFontCache"
+import ve         "codebase:VEFontCache"
 import sokol_app  "thirdparty:sokol/app"
 import gfx        "thirdparty:sokol/gfx"
 import sokol_glue "thirdparty:sokol/glue"

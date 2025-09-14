@@ -109,6 +109,8 @@ $flag_vet_semicolon             = '-vet-semicolon'
 $flag_vet_shadow_vars           = '-vet-shadowing'
 $flag_vet_using_stmt            = '-vet-using-stmt'
 
+$flag_microarch_zen5 = "--microarch:znver5"
+
 $flag_msvc_link_disable_dynamic_base = '/DYNAMICBASE:NO'
 $flag_msvc_link_base_address         = '/BASE:'
 $flag_msvc_link_fixed_base_address   = '/FIXED'
@@ -144,10 +146,11 @@ push-location $path_root
 
 		$module_scripts       = $PSScriptRoot
 		$package_grime        = join-path $path_code       'grime'
-		$package_VEFontCache  = join-path $path_font       'VEFontCache'
+		$package_VEFontCache  = join-path $path_code       'VEFontCache'
 		$package_stb_truetype = join-path $path_thirdparty 'stb'
 		$module_host          = join-path $path_code       'host'
 		$module_sectr         = join-path $path_code       'sectr'
+
 		if ($force){
 			mark-ModuleDirty $module_scripts
 			mark-ModuleDirty $package_VEFontCache
@@ -207,21 +210,23 @@ push-location $path_root
 			$build_args += ($flag_collection + $pkg_collection_codebase)
 			$build_args += ($flag_collection + $pkg_collection_thirdparty)
 			# $build_args += $flag_micro_architecture_native
+			$build_args += $flag_microarch_zen5
 			$build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical
-			# $build_args += $flag_optimize_none
+			$build_args += $flag_optimize_none
 			# $build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
-			$build_args += $falg_optimize_aggressive
+			# $build_args += $falg_optimize_aggressive
 			$build_args += $flag_debug
 			$build_args += $flag_pdb_name + $pdb
 			$build_args += $flag_subsystem + 'windows'
 			# $build_args += $flag_show_system_calls
 			$build_args += $flag_show_timings
 			$build_args += ($flag_extra_linker_flags + $linker_args )
+			# $build_args += $flag_no_bounds_check
 			# $build_args += $flag_no_thread_checker
 			# $build_args += $flag_dynamic_map_calls
-			# $build_args += $flag_default_allocator_nil
+			$build_args += $flag_default_allocator_nil
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
@@ -289,10 +294,10 @@ push-location $path_root
 			$build_args += ($flag_collection + $pkg_collection_codebase)
 			$build_args += ($flag_collection + $pkg_collection_thirdparty)
 			# $build_args += $flag_micro_architecture_native
-			# $build_args += $flag_use_separate_modules
+			$build_args += $flag_microarch_zen5
 			$build_args += $flag_thread_count + $CoreCount_Physical
-			# $build_args += $flag_optimize_none
-			$build_args += $flag_optimize_minimal
+			$build_args += $flag_optimize_none
+			# $build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
 			# $build_args += $falg_optimize_aggressive
 			$build_args += $flag_debug
@@ -303,7 +308,7 @@ push-location $path_root
 			# $build_args += $flag_show_system_call
 			# $build_args += $flag_no_bounds_check
 			# $build_args += $flag_no_thread_checker
-			# $build_args += $flag_default_allocator_nil
+			$build_args += $flag_default_allocator_nil
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
@@ -329,7 +334,7 @@ push-location $path_root
 				mark-ModuleDirty $module_host
 			}
 		}
-		build-host
+		$script:sectr_build_host = build-host
 
 		Pop-Location # path_code
 	}

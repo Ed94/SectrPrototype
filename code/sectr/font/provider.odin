@@ -2,7 +2,7 @@ package sectr
 
 import "core:math"
 import "core:os"
-import ve         "codebase:font/VEFontCache"
+import ve         "codebase:VEFontCache"
 import sokol_gfx  "thirdparty:sokol/gfx"
 
 Font_Provider_Use_Freetype :: false

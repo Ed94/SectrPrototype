@@ -1,6 +1,6 @@
 package sectr
 
-import ve         "codebase:font/VEFontCache"
+import ve         "codebase:VEFontCache"
 import sokol_gfx  "thirdparty:sokol/gfx"
 import sokol_glue "thirdparty:sokol/glue"
 
