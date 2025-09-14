@@ -10,7 +10,7 @@ $ini_parser = join-path $PSScriptRoot 'helpers/ini.ps1'
 write-host 'ini.ps1 imported'
 
 $path_root       = git rev-parse --show-toplevel
-$path_code       = join-path $path_root       'code'
+$path_code       = join-path $path_root       'code2'
 $path_build      = join-path $path_root       'build'
 $path_scripts    = join-path $path_root       'scripts'
 $path_thirdparty = join-path $path_root       'thirdparty'
@@ -91,6 +91,7 @@ $flag_optimize_size             = '-o:size'
 $flag_optimize_speed            = '-o:speed'
 $falg_optimize_aggressive       = '-o:aggressive'
 $flag_pdb_name                  = '-pdb-name:'
+$flag_radlink                   = '-radlink'
 $flag_sanitize_address          = '-sanitize:address'
 $flag_sanitize_memory           = '-sanitize:memory'
 $flag_sanitize_thread           = '-sanitize:thread'
@@ -138,11 +139,9 @@ push-location $path_root
 	function build-prototype
 	{
 		push-location $path_code
-		$project_name = 'sectr'
+		$project_name = 'sectr2'
 
 		write-host "`nBuilding Sectr Prototype`n"
-
-		$path_font = join-path $path_code 'font'
 
 		$module_scripts       = $PSScriptRoot
 		$package_grime        = join-path $path_code       'grime'
@@ -196,6 +195,7 @@ push-location $path_root
 			}
 
 			$linker_args = ""
+			# $linker_args += $flag_radlink
 			# $linker_args += ( $flag_msvc_link_debug + ' ' )
 			$linker_args += ( $flag_msvc_link_disable_dynamic_base + ' ' )
 			$linker_args += ( $flag_msvc_link_fixed_base_address   + ' ' )
@@ -284,6 +284,7 @@ push-location $path_root
 
 			write-host 'Building Host Module'
 			$linker_args = ""
+			# $linker_args += $flag_radlink
 			# $linker_args += ( $flag_msvc_link_disable_dynamic_base + ' ' )
 			# $linker_args += ( $flag_msvc_link_stack_size + ' ')
 
