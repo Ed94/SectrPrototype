@@ -163,11 +163,6 @@ import "core:unicode/utf8"
 
 //endregion core
 
-import "thirdparty:backtrace"
-	StackTraceData   :: backtrace.Trace_Const
-	stacktrace       :: backtrace.trace
-	stacktrace_lines :: backtrace.lines
-
 //region codebase
 
 import "codebase:grime"

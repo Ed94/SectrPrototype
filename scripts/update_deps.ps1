@@ -6,14 +6,12 @@ $path_build      = join-path $path_root 'build'
 $path_thirdparty = join-path $path_root 'thirdparty'
 $path_toolchain  = join-path $path_root 'toolchain'
 
-$url_backtrace_repo = 'https://github.com/Ed94/back.git'
 $url_harfbuzz       = 'https://github.com/Ed94/harfbuzz-odin.git'
 $url_ini_parser     = 'https://github.com/laytan/odin-ini-parser.git'
 $url_odin_repo      = 'https://github.com/Ed94/Odin.git'
 $url_sokol          = 'https://github.com/Ed94/sokol-odin.git'
 $url_sokol_tools    = 'https://github.com/floooh/sokol-tools-bin.git'
 
-$path_backtrace     = join-path $path_thirdparty 'backtrace'
 $path_harfbuzz      = join-path $path_thirdparty 'harfbuzz'
 $path_ini_parser    = join-path $path_thirdparty 'ini'
 $path_odin          = join-path $path_toolchain  'Odin'
@@ -32,7 +30,6 @@ $result = verify-path $path_toolchain
 
 $binaries_dirty = $false
 
-clone-gitrepo $path_backtrace   $url_backtrace_repo
 clone-gitrepo $path_ini_parser  $url_ini_parser
 clone-gitrepo $path_ini_parser  $url_ini_parser
 clone-gitrepo $path_sokol_tools $url_sokol_tools
