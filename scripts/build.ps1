@@ -66,10 +66,12 @@ $command_run    = 'run'
 
 $flag_build_mode                = '-build-mode:'
 $flag_build_mode_dll            = '-build-mode:dll'
+$flag_build_diagnostics         = '-build-diagnostics'
 $flag_collection                = '-collection:'
 $flag_debug                     = '-debug'
 $flag_define                    = '-define:'
 $flag_default_allocator_nil     = '-default-to-nil-allocator'
+$flag_default_allocator_panic   = '-default-to-panic-allocator'
 $flag_disable_assert            = '-disable-assert'
 $flag_dynamic_map_calls         = '-dynamic-map-calls'
 $flag_extra_assembler_flags     = '-extra_assembler-flags:'
@@ -139,7 +141,7 @@ push-location $path_root
 	function build-prototype
 	{
 		push-location $path_code
-		$project_name = 'sectr2'
+		$project_name = 'sectr'
 
 		write-host "`nBuilding Sectr Prototype`n"
 
@@ -213,24 +215,26 @@ push-location $path_root
 			$build_args += $flag_microarch_zen5
 			$build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical
-			$build_args += $flag_optimize_none
-			# $build_args += $flag_optimize_minimal
+			# $build_args += $flag_optimize_none
+			$build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
 			# $build_args += $falg_optimize_aggressive
 			$build_args += $flag_debug
 			$build_args += $flag_pdb_name + $pdb
 			$build_args += $flag_subsystem + 'windows'
 			# $build_args += $flag_show_system_calls
-			$build_args += $flag_show_timings
 			$build_args += ($flag_extra_linker_flags + $linker_args )
 			# $build_args += $flag_no_bounds_check
 			# $build_args += $flag_no_thread_checker
 			# $build_args += $flag_dynamic_map_calls
-			$build_args += $flag_default_allocator_nil
+			# $build_args += $flag_default_allocator_nil
+			$build_args += $flag_default_allocator_panic
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
 			# $build_args += $flag_show_debug_messages
+			$build_args += $flag_show_timings
+			# $build_args += $flag_build_diagnostics
 			# TODO(Ed): Enforce nil default allocator
 
 			# foreach ($arg in $build_args) {
@@ -297,8 +301,8 @@ push-location $path_root
 			# $build_args += $flag_micro_architecture_native
 			$build_args += $flag_microarch_zen5
 			$build_args += $flag_thread_count + $CoreCount_Physical
-			$build_args += $flag_optimize_none
-			# $build_args += $flag_optimize_minimal
+			# $build_args += $flag_optimize_none
+			$build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
 			# $build_args += $falg_optimize_aggressive
 			$build_args += $flag_debug
@@ -309,10 +313,11 @@ push-location $path_root
 			# $build_args += $flag_show_system_call
 			# $build_args += $flag_no_bounds_check
 			# $build_args += $flag_no_thread_checker
-			$build_args += $flag_default_allocator_nil
+			$build_args += $flag_default_allocator_panic
 			$build_args += ($flag_max_error_count + '10')
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
+			# $build_args += $flag_build_diagnostics
 			# TODO(Ed): Enforce nil default allocator
 			
 			# foreach ($arg in $build_args) {
