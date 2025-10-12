@@ -41,7 +41,7 @@ JobSystemContext :: struct {
 }
 
 ThreadWorkerContext :: struct {
-	system_ctx: Thread,
+	system_ctx: ^SysThread,
 	id:         WorkerID,
 }
 
@@ -189,7 +189,7 @@ WorkerID :: enum int {
 }
 
 // Hard constraint for Windows
-JOB_SYSTEM_MAX_WORKER_THREADS :: 64
+MAX_THREADS :: 64
 
 /*
 Threads are setup upfront during the client API's startup.

@@ -45,9 +45,11 @@ import grime "codebase:grime"
 	file_copy_sync :: grime.file_copy_sync
 
 import "codebase:sectr"
+	MAX_THREADS  :: sectr.MAX_THREADS
 	Client_API   :: sectr.ModuleAPI
 	HostMemory   :: sectr.HostMemory
 	ThreadMemory :: sectr.ThreadMemory
+	WorkerID     :: sectr.WorkerID
 
 Kilo :: 1024
 Mega :: Kilo * 1024

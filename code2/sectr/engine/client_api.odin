@@ -28,29 +28,23 @@ startup :: proc(host_mem: ^HostMemory, thread_mem: ^ThreadMemory)
 
 	memory = host_mem
 
-	thread_wide_startup()
+	thread_wide_startup(thread_mem)
 }
 
-thread_wide_startup :: proc()
+thread_wide_startup :: proc(thread_mem: ^ThreadMemory)
 {
-	if thread_memory.id == .Master_Prepper
-	{
-		thread_memory.live_lanes = 
-
-		tick_lane_startup() //
+	if thread_mem.id == .Master_Prepper {
+		sync.barrier_init(& memory.client_api_sync_lock, THREAD_TICK_LANES)
 	}
-
-	// TODO(Ed): Spawn helper thraed, then prepp both live threads
-	memory.state.live_threads += 1; // Atomic_Accountant
-	memory.host_api.launch_live_thread()
+	memory.host_api.launch_tick_lane_thread(.Atomic_Accountant)
+	tick_lane_startup(thread_mem)
 }
 
 @export
 tick_lane_startup :: proc(thread_mem: ^ThreadMemory)
 {
-	memory.state.live_threads += 1
-	
-
+	thread_memory            = thread_mem
+	thread_memory.live_lanes = THREAD_TICK_LANES
 	tick_lane()
 }
 
@@ -60,11 +54,11 @@ tick_lane :: proc()
 	for ;;
 	{
 		dummy += 1
-		if thread_memory.index == .Master_Prepper
+		if thread_memory.id == .Master_Prepper
 		{
-			memory.host_api.sync_client_api()
+			memory.host_api.sync_client_module()
 		}
-		
+		leader := sync.barrier_wait(& memory.client_api_sync_lock)
 	}
 }
 

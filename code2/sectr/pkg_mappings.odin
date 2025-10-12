@@ -4,7 +4,7 @@ import "core:sync"
 	AtomicMutex :: sync.Atomic_Mutex
 
 import "core:thread"
-	Thread :: thread.Thread
+	SysThread :: thread.Thread
 
 Kilo :: 1024
 Mega :: Kilo * 1024

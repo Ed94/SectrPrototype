@@ -5,15 +5,17 @@ import "core:sync"
 HostMemory :: struct {
 	host_scratch: [256 * Kilo]byte,
 
-	client_api_sync_lock: sync.Benaphore,
+	threads: [MAX_THREADS](SysThread),
 
-	client_api:     ModuleAPI,
-	client_memory: ^State,
-	host_api:       Host_API,
+	client_api_sync_lock: sync.Barrier,
+
+	client_api:    ModuleAPI,
+	client_memory: State,
+	host_api:      Host_API,
 }
 
 Host_API :: struct {
-	launch_live_thread: #type proc(),
+	launch_tick_lane_thread: #type proc(WorkerID),
 
 	request_virtual_memory: #type proc(),
 	request_virtual_mapped_io: #type proc(),

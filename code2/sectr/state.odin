@@ -9,6 +9,5 @@ thread_memory: ^ThreadMemory
 THREAD_TICK_LANES :: 2
 
 State :: struct {
-	live_threads: int,
 	job_system: JobSystemContext,
 }
