@@ -51,6 +51,9 @@ import "core:mem"
 
 	align_pow2 :: mem.align_forward_int
 
+import "core:mem/virtual"
+	VirtualProtectFlags :: virtual.Protect_Flags
+
 import core_os "core:os"
 	FS_Open_Readonly  :: core_os.O_RDONLY
 	FS_Open_Writeonly :: core_os.O_WRONLY
@@ -102,6 +105,7 @@ cursor :: proc {
 
 end :: proc {
 	slice_end,
+	slice_byte_end,
 	string_end,
 }
 

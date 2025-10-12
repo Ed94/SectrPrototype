@@ -2,6 +2,7 @@ package grime
 
 rune16 :: distinct u16
 
+when false {
 // Exposing the alloc_error
 @(require_results)
 string_to_runes :: proc ( content : string, allocator := context.allocator) -> (runes : []rune, alloc_error: Odin_AllocatorError) #optional_allocator_error {
@@ -35,4 +36,6 @@ string_to_runes_array :: proc( content : string, allocator := context.allocator 
 		idx        += 1
 	}
 	return runes, alloc_error
+}
+
 }

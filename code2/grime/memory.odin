@@ -27,7 +27,8 @@ slice_assert :: #force_inline proc (s: $SliceType / []$Type) {
 	assert(len(s) > 0)
 	assert(s != nil)
 }
-slice_end :: #force_inline proc "contextless" (s : $SliceType / []$Type) -> ^Type { return & cursor(s)[len(s)] }
+slice_end      :: #force_inline proc "contextless" (s : $SliceType / []$Type) -> ^Type { return cursor(s)[len(s):] }
+slice_byte_end :: #force_inline proc "contextless" (s : SliceByte)            -> ^byte { return s.data[s.len:] }
 
 slice_copy :: #force_inline proc "contextless" (dst, src: $SliceType / []$Type) -> int {
 	n := max(0, min(len(dst), len(src)))
@@ -37,8 +38,8 @@ slice_copy :: #force_inline proc "contextless" (dst, src: $SliceType / []$Type) 
 	return n
 }
 
-@(require_results) slice_to_bytes :: #force_inline proc "contextless" (s: []$Type) -> []byte         { return ([^]byte)(raw_data(s))[:len(s) * size_of(Type)] }
-@(require_results) slice_raw      :: #force_inline proc "contextless" (s: []$Type) -> SliceRaw(Type) { return transmute(SliceRaw(Type)) s }
+@(require_results) slice_to_bytes     :: #force_inline proc "contextless" (s: []$Type) -> []byte         { return ([^]byte)(raw_data(s))[:len(s) * size_of(Type)] }
+@(require_results) slice_raw          :: #force_inline proc "contextless" (s: []$Type) -> SliceRaw(Type) { return transmute(SliceRaw(Type)) s }
 
 //region Memory Math
 

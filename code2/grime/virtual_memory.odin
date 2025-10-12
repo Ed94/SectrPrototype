@@ -95,7 +95,7 @@ virtual_release :: proc "contextless" ( vmem : VirtualMemoryRegion ) {
 }
 
 // If the OS is not windows, we just use the library's interface which does not support base_address.
-when ODIN_OS != OS_Type.Windows {
+when ODIN_OS != .Windows {
 
 virtual_resreve__platform_impl :: proc "contextless" ( base_address : uintptr, size : uint ) -> ( vmem : VirtualMemoryRegion, alloc_error : AllocatorError )
 {

@@ -38,7 +38,6 @@ KT1CX_ByteMeta :: struct {
 	type:             typeid,
 }
 KT1CX_InfoMeta :: struct {
-	cell_pool_size:   int,
 	table_size:       int,
 	slot_size:        int,
 	slot_key_offset:  uintptr,
@@ -50,14 +49,11 @@ KT1CX_InfoMeta :: struct {
 }
 KT1CX_Info :: struct {
 	backing_table: AllocatorInfo,
-	backing_cells: AllocatorInfo,
 }
 kt1cx_init :: proc(info: KT1CX_Info, m: KT1CX_InfoMeta, result: ^KT1CX_Byte) {
 	assert(result                       != nil)
-	assert(info.backing_cells.procedure != nil)
 	assert(info.backing_table.procedure != nil)
 	assert(m.cell_depth     >  0)
-	assert(m.cell_pool_size >= 4 * Kilo)
 	assert(m.table_size     >= 4 * Kilo)
 	assert(m.type_width     >  0)
 	table_raw := transmute(SliceByte) mem_alloc(m.table_size * m.cell_size, ainfo = odin_allocator(info.backing_table))
@@ -75,7 +71,7 @@ kt1cx_clear :: proc(kt: KT1CX_Byte, m: KT1CX_ByteMeta) {
 		for;; {
 			slot := slice(slot_cursor, m.slot_size)          // slot = slots[slot_id]
 			zero(slot)                                       // slot = {}
-			if slot_cursor == end(transmute([]byte) slots) { // if slot == end(slot)
+			if slot_cursor == end(slots) { // if slot == end(slot)
 				next := slot_cursor[m.cell_next_offset:]       // next = kt.table.cells[cell_id + 1]
 				if next != nil {                               // if next != nil
 					slots.data  = next                           // slots = next.slots
@@ -105,7 +101,7 @@ kt1cx_get :: proc(kt: KT1CX_Byte, key: u64, m: KT1CX_ByteMeta) -> ^byte {
 			if slot.occupied && slot.key == key {
 				return cast(^byte) slot_cursor
 			}
-			if slot_cursor == end(transmute([]byte) slots)
+			if slot_cursor == end(slots)
 			{
 				cell_next := cell_cursor[m.cell_next_offset:] // cell.next
 				if cell_next != nil {
@@ -140,7 +136,7 @@ kt1cx_set :: proc(kt: KT1CX_Byte, key: u64, value: []byte, backing_cells: Alloca
 			else if slot.key == key {
 				return cast(^byte) slot_cursor
 			}
-			if slot_cursor == end(transmute([]byte) slots) {
+			if slot_cursor == end(slots) {
 				curr_cell := transmute(^KT1CX_Byte_Cell) (uintptr(cell_cursor) + m.cell_next_offset) // curr_cell = cell
 				if curr_cell != nil {
 					slots.data  = curr_cell.next
@@ -163,7 +159,6 @@ kt1cx_set :: proc(kt: KT1CX_Byte, key: u64, value: []byte, backing_cells: Alloca
 	}
 }
 kt1cx_assert :: proc(kt: $type / KT1CX) {
-	slice_assert(kt.cell_pool)
 	slice_assert(kt.table)
 }
-kt1cx_byte :: proc(kt: $type / KT1CX) -> KT1CX_Byte { return { to_bytes(kt.cell_pool), slice( transmute([^]byte) cursor(kt.table), len(kt.table)) } }
+kt1cx_byte :: proc(kt: $type / KT1CX) -> KT1CX_Byte { return { slice( transmute([^]byte) cursor(kt.table), len(kt.table)) } }
