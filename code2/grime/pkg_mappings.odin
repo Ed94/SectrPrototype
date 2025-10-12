@@ -21,16 +21,23 @@ import "base:runtime"
 
 import fmt_io "core:fmt"
 	str_pfmt_out       :: fmt_io.printf
-	str_pfmt_tmp       :: fmt_io.tprintf
+	str_pfmt_tmp       :: #force_inline proc(fmt: string, args: ..any, newline := false) -> string { context.temp_allocator = odin_ainfo_wrap(context.temp_allocator); return fmt_io.tprintf(fmt, ..args, newline = newline) }
 	str_pfmt           :: fmt_io.aprintf // Decided to make aprintf the default. (It will always be the default allocator)
 	str_pfmt_builder   :: fmt_io.sbprintf
 	str_pfmt_buffer    :: fmt_io.bprintf
 	str_pfmt_file_ln   :: fmt_io.fprintln
-	str_tmp_from_any  :: fmt_io.tprint
+	str_tmp_from_any   :: fmt_io.tprint
 
 import "core:log"
 	Default_File_Logger_Opts   :: log.Default_File_Logger_Opts
 	Logger_Full_Timestamp_Opts :: log.Full_Timestamp_Opts
+
+import "core:mem"
+	Odin_AllocatorMode      :: mem.Allocator_Mode
+	Odin_AllocatorProc      :: mem.Allocator_Proc
+	Odin_Allocator          :: mem.Allocator
+	Odin_AllocatorQueryInfo :: mem.Allocator_Query_Info
+	Odin_AllocatorError     :: mem.Allocator_Error
 
 import core_os "core:os"
 	FS_Open_Readonly  :: core_os.O_RDONLY

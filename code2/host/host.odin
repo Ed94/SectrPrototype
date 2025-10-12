@@ -22,7 +22,7 @@ main :: proc()
 {
 	// TODO(Ed): Change this
 	host_scratch: mem.Arena; mem.arena_init(& host_scratch, host_memory.host_scratch[:])
-	context.allocator = mem.arena_allocator(& host_scratch)
+	context.allocator      = mem.arena_allocator(& host_scratch)
 	context.temp_allocator = context.allocator
 
 	thread_memory.index = .Master_Prepper
