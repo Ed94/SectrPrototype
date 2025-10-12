@@ -14,9 +14,8 @@ I can use either... so I'll just keep both
 */
 
 ArrayHeader :: struct ( $ Type : typeid ) {
-	backing   : Odin_Allocator,
+	backing   : AllocatorInfo,
 	dbg_name  : string,
-	fixed_cap : b32,
 	capacity  : int,
 	num       : int,
 	data      : [^]Type,

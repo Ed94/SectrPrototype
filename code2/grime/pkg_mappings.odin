@@ -21,13 +21,14 @@ import "base:runtime"
 	LoggerLevel            :: runtime.Logger_Level
 	LoggerOptions          :: runtime.Logger_Options
 	Random_Generator       :: runtime.Random_Generator
+	SourceCodeLocation     :: runtime.Source_Code_Location
 	slice_copy_overlapping :: runtime.copy_slice
 
 import fmt_io "core:fmt"
 	// % based template formatters
 	str_pfmt_out       :: fmt_io.printf
-	str_pfmt_tmp       :: #force_inline proc(fmt: string, args: ..any, newline := false) -> string { context.temp_allocator = odin_ainfo_giftwrap(context.temp_allocator); return fmt_io.tprintf(fmt, ..args, newline = newline) }
-	str_pfmt           :: fmt_io.aprintf // Decided to make aprintf the default. (It will always be the default allocator)
+	str_pfmt_tmp       :: #force_inline proc(fmt: string, args: ..any,                                 newline := false) -> string { context.temp_allocator = resolve_odin_allocator(context.temp_allocator); return fmt_io.tprintf(fmt, ..args, newline = newline) }
+	str_pfmt           :: #force_inline proc(fmt: string, args: ..any, allocator := context.allocator, newline := false) -> string { return fmt_io.aprintf(fmt, ..args, newline = newline, allocator = resolve_odin_allocator(allocator)) }
 	str_pfmt_builder   :: fmt_io.sbprintf
 	str_pfmt_buffer    :: fmt_io.bprintf
 	str_pfmt_file_ln   :: fmt_io.fprintln
@@ -38,18 +39,16 @@ import "core:log"
 	Logger_Full_Timestamp_Opts :: log.Full_Timestamp_Opts
 
 import "core:mem"
-	Odin_AllocatorMode      :: mem.Allocator_Mode
-	Odin_AllocatorProc      :: mem.Allocator_Proc
 	Odin_Allocator          :: mem.Allocator
-	Odin_AllocatorQueryInfo :: mem.Allocator_Query_Info
 	Odin_AllocatorError     :: mem.Allocator_Error
+	Odin_AllocatorQueryInfo :: mem.Allocator_Query_Info
+	Odin_AllocatorMode      :: mem.Allocator_Mode
+	Odin_AllocatorModeSet   :: mem.Allocator_Mode_Set
+	Odin_AllocatorProc      :: mem.Allocator_Proc
 
 	align_forward_int     :: mem.align_forward_int
 	align_forward_uintptr :: mem.align_backward_uintptr
 	align_forward_raw     :: mem.align_forward
-	is_power_of_two       :: mem.is_power_of_two
-
-	align_pow2 :: mem.align_forward_int
 
 import "core:mem/virtual"
 	VirtualProtectFlags :: virtual.Protect_Flags
@@ -99,6 +98,8 @@ import "core:unicode/utf8"
 	// string_to_runes :: utf8.string_to_runes
 
 cursor :: proc {
+	raw_cursor,
+	ptr_cursor,
 	slice_cursor,
 	string_cursor,
 }
@@ -125,6 +126,7 @@ copy_non_overlaping :: proc {
 
 to_bytes :: proc {
 	slice_to_bytes,
+	type_to_bytes,
 }
 
 zero :: proc {

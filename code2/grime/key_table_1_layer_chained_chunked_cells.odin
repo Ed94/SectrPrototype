@@ -56,7 +56,7 @@ kt1cx_init :: proc(info: KT1CX_Info, m: KT1CX_InfoMeta, result: ^KT1CX_Byte) {
 	assert(m.cell_depth     >  0)
 	assert(m.table_size     >= 4 * Kilo)
 	assert(m.type_width     >  0)
-	table_raw := transmute(SliceByte) mem_alloc(m.table_size * m.cell_size, ainfo = odin_allocator(info.backing_table))
+	table_raw := transmute(SliceByte) mem_alloc(m.table_size * m.cell_size, ainfo = allocator(info.backing_table))
 	slice_assert(transmute([]byte) table_raw)
 	table_raw.len = m.table_size
 	result.table  = transmute([]byte) table_raw
@@ -145,7 +145,7 @@ kt1cx_set :: proc(kt: KT1CX_Byte, key: u64, value: []byte, backing_cells: Alloca
 					continue
 				}
 				else {
-					new_cell       := mem_alloc(m.cell_size, ainfo = odin_allocator(backing_cells))
+					new_cell       := mem_alloc(m.cell_size, ainfo = allocator(backing_cells))
 					curr_cell.next  = raw_data(new_cell)
 					slot            = transmute(^KT1CX_Byte_Slot) cursor(new_cell)[m.slot_key_offset:]
 					slot.occupied   = true

@@ -5,7 +5,15 @@ Mega :: Kilo * 1024
 Giga :: Mega * 1024
 Tera :: Giga * 1024
 
+raw_cursor :: #force_inline proc "contextless" (ptr: rawptr) -> [^]byte { return transmute([^]byte) ptr }
 ptr_cursor :: #force_inline proc "contextless" (ptr: ^$Type) -> [^]Type { return transmute([^]Type) ptr }
+
+@(require_results) is_power_of_two :: #force_inline proc "contextless" (x: uintptr) -> bool { return (x > 0) && ((x & (x-1)) == 0) }
+@(require_results)
+align_pow2 :: #force_inline proc "contextless" (ptr, align: int) -> int { 
+	assert_contextless(is_power_of_two(uintptr(align)))
+	return ptr & ~(align-1)
+}
 
 memory_zero_explicit :: #force_inline proc "contextless" (data: rawptr, len: int) -> rawptr {
 	mem_zero_volatile(data, len) // Use the volatile mem_zero
@@ -23,9 +31,9 @@ SliceRaw  :: struct ($Type: typeid) {
 }
 slice        :: #force_inline proc "contextless" (s: [^] $Type, num: $Some_Integer) -> [ ]Type { return transmute([]Type) SliceRaw(Type) { s, cast(int) num } }
 slice_cursor :: #force_inline proc "contextless" (s: []$Type)                       -> [^]Type { return transmute([^]Type) raw_data(s) }
-slice_assert :: #force_inline proc (s: $SliceType / []$Type) {
-	assert(len(s) > 0)
-	assert(s != nil)
+slice_assert :: #force_inline proc "contextless" (s: $SliceType / []$Type) {
+	assert_contextless(len(s) > 0)
+	assert_contextless(s != nil)
 }
 slice_end      :: #force_inline proc "contextless" (s : $SliceType / []$Type) -> ^Type { return cursor(s)[len(s):] }
 slice_byte_end :: #force_inline proc "contextless" (s : SliceByte)            -> ^byte { return s.data[s.len:] }
@@ -40,6 +48,8 @@ slice_copy :: #force_inline proc "contextless" (dst, src: $SliceType / []$Type) 
 
 @(require_results) slice_to_bytes     :: #force_inline proc "contextless" (s: []$Type) -> []byte         { return ([^]byte)(raw_data(s))[:len(s) * size_of(Type)] }
 @(require_results) slice_raw          :: #force_inline proc "contextless" (s: []$Type) -> SliceRaw(Type) { return transmute(SliceRaw(Type)) s }
+
+@(require_results) type_to_bytes :: #force_inline proc "contextless" (obj: ^$Type) -> []byte { return ([^]byte)(obj)[:size_of(Type)] }
 
 //region Memory Math
 
