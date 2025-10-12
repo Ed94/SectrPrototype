@@ -1,8 +1,14 @@
 package sectr
 
 // This should be the only global on client module side.
-host_memory: ^HostMemory
+memory: ^HostMemory
+
+@(thread_local)
+thread_memory: ^ThreadMemory
+
+THREAD_TICK_LANES :: 2
 
 State :: struct {
+	live_threads: int,
 	job_system: JobSystemContext,
 }

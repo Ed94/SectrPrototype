@@ -1,8 +1,5 @@
 package host
 
-// TODO(Ed): Remove this
-import "core:mem"
-
 Path_Logs :: "../logs"
 when ODIN_OS == .Windows
 {
@@ -21,8 +18,8 @@ master_prepper_proc :: proc(thread: ^SysThread) {}
 main :: proc()
 {
 	// TODO(Ed): Change this
-	host_scratch: mem.Arena; mem.arena_init(& host_scratch, host_memory.host_scratch[:])
-	context.allocator      = mem.arena_allocator(& host_scratch)
+	host_scratch: Arena; arena_init(& host_scratch, host_memory.host_scratch[:])
+	context.allocator      = arena_allocator(& host_scratch)
 	context.temp_allocator = context.allocator
 
 	thread_memory.index = .Master_Prepper
@@ -63,6 +60,7 @@ main :: proc()
 		host_memory.client_api.hot_reload = hot_reload
 	}
 	host_memory.host_api.sync_client_module = sync_client_api
+	host_memory.host_api.launch_live_thread = launch_live_thread
 	host_memory.client_api.startup(& host_memory, & thread_memory)
 }
 
@@ -70,4 +68,13 @@ main :: proc()
 sync_client_api :: proc()
 {
 	// Fill out detection and reloading of client api.
+
+	// Needs to flag and atomic to spin-lock live helepr threads when reloading
+}
+
+@export
+launch_live_thread :: proc()
+{
+	// TODO(Ed): Prep the thread
+	host_memory.client_api.live_thread_startup(& thread_memory)
 }

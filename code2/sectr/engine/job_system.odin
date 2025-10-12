@@ -42,8 +42,8 @@ JobSystemContext :: struct {
 
 ThreadWorkerContext :: struct {
 	system_ctx: Thread,
-	index:      WorkerID,
-}	
+	id:         WorkerID,
+}
 
 WorkerID :: enum int {
 	Master_Prepper = 0,

@@ -19,6 +19,11 @@ import "core:dynlib"
 	os_lib_unload   :: dynlib.unload_library
 	os_lib_get_proc :: dynlib.symbol_address
 
+import "core:mem"
+	Arena           :: mem.Arena
+	arena_allocator :: mem.arena_allocator
+	arena_init      :: mem.arena_init
+
 import core_os "core:os"
 	file_last_write_time_by_name :: core_os.last_write_time_by_name
 	OS_ERROR_NONE                :: core_os.ERROR_NONE
