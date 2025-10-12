@@ -7,19 +7,10 @@ Tera :: Giga * 1024
 
 ptr_cursor :: #force_inline proc "contextless" (ptr: ^$Type) -> [^]Type { return transmute([^]Type) ptr }
 
-align_pow2 :: proc(x: int, b: int) -> int {
-    assert(b != 0)
-    assert((b & (b - 1)) == 0) // Check power of 2
-    return ((x + b - 1) & ~(b - 1))
-}
-memory_zero_explicit :: proc "contextless" (data: rawptr, len: int) -> rawptr {
+memory_zero_explicit :: #force_inline proc "contextless" (data: rawptr, len: int) -> rawptr {
 	mem_zero_volatile(data, len) // Use the volatile mem_zero
 	atomic_thread_fence(.Seq_Cst) // Prevent reordering
 	return data
-}
-memory_copy :: proc "contextless" (dst, src: rawptr, len: int) -> rawptr {
-	mem_copy(dst, src, len)
-	return dst
 }
 
 SliceByte :: struct {
@@ -38,7 +29,7 @@ slice_assert :: #force_inline proc (s: $SliceType / []$Type) {
 }
 slice_end :: #force_inline proc "contextless" (s : $SliceType / []$Type) -> ^Type { return & cursor(s)[len(s)] }
 
-slice_copy :: proc "contextless" (dst, src: $SliceType / []$Type) -> int {
+slice_copy :: #force_inline proc "contextless" (dst, src: $SliceType / []$Type) -> int {
 	n := max(0, min(len(dst), len(src)))
 	if n > 0 {
 		mem_copy(raw_data(dst), raw_data(src), n * size_of(Type))
@@ -46,289 +37,82 @@ slice_copy :: proc "contextless" (dst, src: $SliceType / []$Type) -> int {
 	return n
 }
 
-@(require_results) slice_to_bytes :: proc "contextless" (s: []$Type) -> []byte         { return ([^]byte)(raw_data(s))[:len(s) * size_of(Type)] }
-@(require_results) slice_raw      :: proc "contextless" (s: []$Type) -> SliceRaw(Type) { return transmute(SliceRaw(Type)) s }
+@(require_results) slice_to_bytes :: #force_inline proc "contextless" (s: []$Type) -> []byte         { return ([^]byte)(raw_data(s))[:len(s) * size_of(Type)] }
+@(require_results) slice_raw      :: #force_inline proc "contextless" (s: []$Type) -> SliceRaw(Type) { return transmute(SliceRaw(Type)) s }
 
-//region Allocator Interface
-AllocatorOp :: enum u32 {
-	Alloc_NoZero = 0, // If Alloc exist, so must No_Zero
-	Alloc,
-	Free,
-	Reset,
-	Grow_NoZero,
-	Grow,
-	Shrink,
-	Rewind,
-	SavePoint,
-	Query, // Must always be implemented
-}
-AllocatorQueryFlag :: enum u64 {
-	Alloc,
-	Free,
-	Reset, // Wipe the allocator's state
+//region Memory Math
 
-	Shrink,
-	Grow, 
-	Resize, // Supports both grow and shrink
-
-	Rewind, // Ability to rewind to a save point (ex: arenas, stack), must also be able to save such a point
-
-	// Actually_Resize,
-	// Is_This_Yours,
-
-	Hint_Fast_Bump,
-	Hint_General_Heap,
-	Hint_Per_Frame_Temporary,
-	Hint_Debug_Support,
-}
-AllocatorError :: enum i32 {
-	None                 = 0,
-	Out_Of_Memory        = 1,
-	Invalid_Pointer      = 2,
-	Invalid_Argument     = 3,
-	Mode_Not_Implemented = 4,
-}
-AllocatorQueryFlags :: bit_set[AllocatorQueryFlag; u64]
-AllocatorSP :: struct {
-	type_sig: AllocatorProc,
-	slot:     int,
-}
-AllocatorProc :: #type proc (input: AllocatorProc_In, out: ^AllocatorProc_Out)
-AllocatorProc_In :: struct {
-	data:             rawptr,
-	requested_size:   int,
-	alignment:        int,
-	using _ : struct #raw_union {
-		old_allocation: []byte,
-		save_point    : AllocatorSP,
-	},
-	op:               AllocatorOp,
-}
-AllocatorProc_Out :: struct {
-	using _ : struct #raw_union {
-		allocation: []byte,
-		save_point: AllocatorSP,
-	},
-	features:         AllocatorQueryFlags,
-	left:             int,
-	max_alloc:        int,
-	min_alloc:        int,
-	error:            AllocatorError,
-}
-AllocatorQueryInfo :: struct {
-	save_point:       AllocatorSP,
-	features:         AllocatorQueryFlags,
-	left:             int,
-	max_alloc:        int,
-	min_alloc:        int,
-	alignment:        i32,
-}
-AllocatorInfo :: struct {
-	_ : struct #raw_union {
-		procedure: AllocatorProc,
-		proc_id:   AllocatorProcID,
-	},
-	data:      rawptr,
-}
-// #assert(size_of(AllocatorQueryInfo) == size_of(AllocatorProc_Out))
-
-// Listing of every single allocator (used on hot-reloadable builds)
-AllocatorProcID :: enum uintptr {
-	FArena,
-	VArena,
-	CArena,
-	Pool,
-	Slab,
-	Odin_Arena,
-	// Odin_VArena,
-}
-
-resolve_allocator_proc :: #force_inline proc(procedure: Odin_AllocatorProc) -> AllocatorProc {
-	when ODIN_DEBUG {
-		switch (transmute(AllocatorProcID)procedure) {
-			case .FArena:      return nil // farena_allocator_proc
-			case .VArena:      return nil // varena_allocaotr_proc
-			case .CArena:      return nil // carena_allocator_proc
-			case .Pool:        return nil // pool_allocator_proc
-			case .Slab:        return nil // slab_allocator_proc
-			case .Odin_Arena:  return nil // odin_arena_allocator_proc
-			// case .Odin_VArena: return odin_varena_allocator_proc
-		}
-	}
-	else {
-		return transmute(AllocatorProc) procedure
-	}
-	return nil
-}
-
-MEMORY_ALIGNMENT_DEFAULT :: 2 * size_of(rawptr)
-
-allocator_query :: proc(ainfo := context.allocator) -> AllocatorQueryInfo {
-	assert(ainfo.procedure != nil)
-	out: AllocatorQueryInfo; resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .Query}, transmute(^AllocatorProc_Out) & out)
-	return out
-}
-mem_free :: proc(mem: []byte, ainfo := context.allocator) {
-	assert(ainfo.procedure != nil)
-	resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .Free, old_allocation = mem}, & {})
-}
-mem_reset :: proc(ainfo := context.allocator) {
-	assert(ainfo.procedure != nil)
-	resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .Reset}, &{})
-}
-mem_rewind :: proc(ainfo := context.allocator, save_point: AllocatorSP) {
-	assert(ainfo.procedure != nil)
-	resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .Rewind, save_point = save_point}, & {})
-}
-mem_save_point :: proc(ainfo := context.allocator) -> AllocatorSP {
-	assert(ainfo.procedure != nil)
-	out: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .SavePoint}, & out)
-	return out.save_point
-}
-mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator) -> []byte {
-	assert(ainfo.procedure != nil)
-	input := AllocatorProc_In {
-		data           = ainfo.data,
-		op             = no_zero ? .Alloc_NoZero : .Alloc,
-		requested_size = size,
-		alignment      = alignment,
-	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return output.allocation
-}
-mem_grow :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator) -> []byte {
-	assert(ainfo.procedure != nil)
-	input := AllocatorProc_In {
-		data           = ainfo.data,
-		op             = no_zero ? .Grow_NoZero : .Grow,
-		requested_size = size,
-		alignment      = alignment,
-		old_allocation = mem,
-	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return output.allocation
-}
-mem_resize :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator) -> []byte {
-	assert(ainfo.procedure != nil)
-	input := AllocatorProc_In {
-		data           = ainfo.data,
-		op             = len(mem) < size ? .Shrink :  no_zero ? .Grow_NoZero : .Grow,
-		requested_size = size,
-		alignment      = alignment,
-		old_allocation = mem,
-	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return output.allocation
-}
-mem_shrink :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator) -> []byte {
-	assert(ainfo.procedure != nil)
-	input := AllocatorProc_In {
-		data           = ainfo.data,
-		op             = .Shrink,
-		requested_size = size,
-		alignment      = alignment,
-		old_allocation = mem,
-	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return output.allocation
-}
-
-alloc_type  :: proc($Type: typeid, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator) -> ^Type {
-	assert(ainfo.procedure != nil)
-	input := AllocatorProc_In {
-		data           = ainfo.data,
-		op             = no_zero ? .Alloc_NoZero : .Alloc,
-		requested_size = size_of(Type),
-		alignment      = alignment,
-	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return transmute(^Type) raw_data(output.allocation)
-}
-alloc_slice :: proc($SliceType: typeid / []$Type, num : int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator) -> []Type {
-	assert(ainfo.procedure != nil)
-	input := AllocatorProc_In {
-		data           = ainfo.data,
-		op             = no_zero ? .Alloc_NoZero : .Alloc,
-		requested_size = size_of(Type) * num,
-		alignment      = alignment,
-	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return transmute([]Type) slice(raw_data(output.allocation), num)
-}
-//endregion Allocator Interface
-
-/*
- Ideally we wrap all procedures that go to ideomatic odin with the following pattern:
-
- Usually we do the following:
-```
- import "core:dynlib"
-	os_lib_load :: dynlib.load_library
-```
-	Instead:
-	os_lib_load :: #force_inline proc "contextless" (... same signature as load_library, allocator := ...) { return dynlib.load_library(..., odin_ainfo_wrap(allocator)) }
-*/
-
-odin_allocator_mode_to_allocator_op :: #force_inline proc "contextless" (mode: Odin_AllocatorMode, size_diff : int) -> AllocatorOp {
-	switch mode {
-		case .Alloc:             return .Alloc
-		case .Alloc_Non_Zeroed:  return .Alloc_NoZero
-		case .Free:              return .Free
-		case .Free_All:          return .Reset
-		case .Resize:            return size_diff > 0 ? .Grow        : .Shrink
-		case .Resize_Non_Zeroed: return size_diff > 0 ? .Grow_NoZero : .Shrink
-		case .Query_Features:    return .Query
-		case .Query_Info:        return .Query
-	}
-	panic_contextless("Impossible path")
-}
-
-odin_allocator_wrap_proc :: proc(
-	allocator_data : rawptr,
-	mode           : Odin_AllocatorMode,
-	size           : int,
-	alignment      : int,
-	old_memory     : rawptr,
-	old_size       : int,
-	loc            := #caller_location
-) -> ( data : []byte, alloc_error : Odin_AllocatorError)
+// See: core/mem.odin, I wanted to study it an didn't like the naming.
+@(require_results)
+calc_padding_with_header :: proc "contextless" (pointer: uintptr, alignment: uintptr, header_size: int) -> int
 {
-	input := AllocatorProc_In {
-		data           = (transmute(^AllocatorInfo)allocator_data).data,
-		requested_size = size,
-		alignment      = alignment,
-		old_allocation = slice(transmute([^]byte)old_memory, old_size),
-		op             = odin_allocator_mode_to_allocator_op(mode, size - old_size),
-	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc((transmute(^Odin_Allocator)allocator_data).procedure)(input, & output)
+	alignment_offset := pointer & (alignment - 1)
 
-	#partial switch mode {
-		case .Query_Features:
-			debug_trap() // TODO(Ed): Finish this...
-			return nil, nil
-		case .Query_Info: 
-			info := (^Odin_AllocatorQueryInfo)(old_memory)
-			if info != nil && info.pointer != nil {
-				info.size = output.left
-				info.alignment = cast(int) (transmute(AllocatorQueryInfo)output).alignment
-				return slice(transmute(^byte)info, size_of(info^) ), nil
+	initial_padding := uintptr(0)
+	if alignment_offset != 0 {
+			initial_padding = alignment - alignment_offset
+	}
+
+	header_space_adjustment := uintptr(header_size)
+	if initial_padding < header_space_adjustment
+	{
+			additional_space_needed := header_space_adjustment - initial_padding
+			unaligned_extra_space   := additional_space_needed & (alignment - 1)
+
+			if unaligned_extra_space > 0 {
+					initial_padding += alignment * (1 + (additional_space_needed / alignment))
 			}
-			return nil, nil
+			else {
+					initial_padding += alignment * (additional_space_needed / alignment)
+			}
 	}
-	return output.allocation, cast(Odin_AllocatorError)output.error
+
+	return int(initial_padding)
 }
 
-odin_ainfo_wrap :: #force_inline proc(ainfo := context.allocator) -> Odin_Allocator { 
-	@(thread_local)
-	cursed_allocator_wrap_ref : Odin_Allocator
-	cursed_allocator_wrap_ref = {ainfo.procedure, ainfo.data}
-	return {odin_allocator_wrap_proc, & cursed_allocator_wrap_ref} 
+// Helper to get the the beginning of memory after a slice
+memory_after :: #force_inline proc "contextless" ( s: []byte ) -> ( ^ byte) {
+	return cursor(s)[len(s):]
 }
+
+memory_after_header :: #force_inline proc "contextless" ( header : ^($ Type) ) -> ( [^]byte) {
+	result := cast( [^]byte) ptr_offset( header, 1 )
+	// result := cast( [^]byte) (cast( [^]Type) header)[ 1:]
+	return result
+}
+
+@(require_results)
+memory_align_formula :: #force_inline proc "contextless" ( size, align : uint) -> uint {
+	result := size + align - 1
+	return result - result % align
+}
+
+// This is here just for docs
+memory_misalignment :: #force_inline proc ( address, alignment  : uintptr) -> uint {
+	// address % alignment
+	assert(is_power_of_two(alignment))
+	return uint( address & (alignment - 1) )
+}
+
+// This is here just for docs
+@(require_results)
+memory_aign_forward :: #force_inline proc( address, alignment : uintptr) -> uintptr
+{
+	assert(is_power_of_two(alignment))
+
+	aligned_address := address
+	misalignment    := cast(uintptr) memory_misalignment( address, alignment )
+	if misalignment != 0 {
+		aligned_address += alignment - misalignment
+	}
+	return aligned_address
+}
+
+
+// align_up :: proc(address: uintptr, alignment: uintptr) -> uintptr {
+// 	return (address + alignment - 1) & ~(alignment - 1)
+// }
+
+//endregion Memory Math
+
+swap :: #force_inline proc "contextless" ( a, b : ^ $Type ) -> ( ^ Type, ^ Type ) { return b, a }

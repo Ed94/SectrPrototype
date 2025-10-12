@@ -5,10 +5,14 @@ import "base:builtin"
 
 import "base:intrinsics"
 	atomic_thread_fence  :: intrinsics.atomic_thread_fence
-	mem_zero             :: intrinsics.mem_zero
 	mem_zero_volatile    :: intrinsics.mem_zero_volatile
-	mem_copy             :: intrinsics.mem_copy_non_overlapping
-	mem_copy_overlapping :: intrinsics.mem_copy
+	// mem_zero             :: intrinsics.mem_zero
+	// mem_copy             :: intrinsics.mem_copy_non_overlapping
+	// mem_copy_overlapping :: intrinsics.mem_copy
+
+mem_zero                 :: #force_inline proc "contextless" (data:     rawptr, len: int) { intrinsics.mem_zero                (data,     len) }
+mem_copy_non_overlapping :: #force_inline proc "contextless" (dst, src: rawptr, len: int) { intrinsics.mem_copy_non_overlapping(dst, src, len) }
+mem_copy                 :: #force_inline proc "contextless" (dst, src: rawptr, len: int) { intrinsics.mem_copy                (dst, src, len) }
 
 import "base:runtime"
 	Assertion_Failure_Proc :: runtime.Assertion_Failure_Proc
@@ -20,8 +24,9 @@ import "base:runtime"
 	slice_copy_overlapping :: runtime.copy_slice
 
 import fmt_io "core:fmt"
+	// % based template formatters
 	str_pfmt_out       :: fmt_io.printf
-	str_pfmt_tmp       :: #force_inline proc(fmt: string, args: ..any, newline := false) -> string { context.temp_allocator = odin_ainfo_wrap(context.temp_allocator); return fmt_io.tprintf(fmt, ..args, newline = newline) }
+	str_pfmt_tmp       :: #force_inline proc(fmt: string, args: ..any, newline := false) -> string { context.temp_allocator = odin_ainfo_giftwrap(context.temp_allocator); return fmt_io.tprintf(fmt, ..args, newline = newline) }
 	str_pfmt           :: fmt_io.aprintf // Decided to make aprintf the default. (It will always be the default allocator)
 	str_pfmt_builder   :: fmt_io.sbprintf
 	str_pfmt_buffer    :: fmt_io.bprintf
@@ -38,6 +43,13 @@ import "core:mem"
 	Odin_Allocator          :: mem.Allocator
 	Odin_AllocatorQueryInfo :: mem.Allocator_Query_Info
 	Odin_AllocatorError     :: mem.Allocator_Error
+
+	align_forward_int     :: mem.align_forward_int
+	align_forward_uintptr :: mem.align_backward_uintptr
+	align_forward_raw     :: mem.align_forward
+	is_power_of_two       :: mem.is_power_of_two
+
+	align_pow2 :: mem.align_forward_int
 
 import core_os "core:os"
 	FS_Open_Readonly  :: core_os.O_RDONLY
@@ -78,10 +90,40 @@ import "core:time"
 	time_date         :: time.date
 	time_now          :: time.now
 
+import "core:unicode/utf8"
+	str_rune_count  :: utf8.rune_count_in_string
+	runes_to_string :: utf8.runes_to_string
+	// string_to_runes :: utf8.string_to_runes
+
 cursor :: proc {
 	slice_cursor,
+	string_cursor,
+}
+
+end :: proc {
+	slice_end,
+	string_end,
 }
 
 to_string :: proc {
 	strings.to_string,
+}
+
+copy :: proc {
+	mem_copy,
+	slice_copy,
+}
+
+copy_non_overlaping :: proc {
+	mem_copy_non_overlapping,
+	slice_copy_overlapping,
+}
+
+to_bytes :: proc {
+	slice_to_bytes,
+}
+
+zero :: proc {
+	mem_zero,
+	slice_zero,
 }
