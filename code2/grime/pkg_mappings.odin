@@ -12,12 +12,69 @@ import "base:intrinsics"
 
 import "base:runtime"
 	Assertion_Failure_Proc :: runtime.Assertion_Failure_Proc
-	Logger                 :: runtime.Logger
+	debug_trap             :: runtime.debug_trap
+	Odin_Logger            :: runtime.Logger
+	LoggerLevel            :: runtime.Logger_Level
+	LoggerOptions          :: runtime.Logger_Options
 	Random_Generator       :: runtime.Random_Generator
 	slice_copy_overlapping :: runtime.copy_slice
 
+import fmt_io "core:fmt"
+	str_pfmt_out       :: fmt_io.printf
+	str_pfmt_tmp       :: fmt_io.tprintf
+	str_pfmt           :: fmt_io.aprintf // Decided to make aprintf the default. (It will always be the default allocator)
+	str_pfmt_builder   :: fmt_io.sbprintf
+	str_pfmt_buffer    :: fmt_io.bprintf
+	str_pfmt_file_ln   :: fmt_io.fprintln
+	str_tmp_from_any  :: fmt_io.tprint
+
+import "core:log"
+	Default_File_Logger_Opts   :: log.Default_File_Logger_Opts
+	Logger_Full_Timestamp_Opts :: log.Full_Timestamp_Opts
+
 import core_os "core:os"
-	// ODIN_OS :: core_os.ODIN_OS
+	FS_Open_Readonly  :: core_os.O_RDONLY
+	FS_Open_Writeonly :: core_os.O_WRONLY
+	FS_Open_Create    :: core_os.O_CREATE
+	FS_Open_Trunc     :: core_os.O_TRUNC
+
+	OS_ERROR_NONE       :: core_os.ERROR_NONE
+	OS_Handle           :: core_os.Handle
+	OS_ERROR_HANDLE_EOF :: core_os.ERROR_HANDLE_EOF
+	OS_INVALID_HANDLE   :: core_os.INVALID_HANDLE
+
+	FileFlag_Create    :: core_os.O_CREATE
+	FileFlag_ReadWrite :: core_os.O_RDWR
+	FileTime           :: core_os.File_Time
+	file_close         :: core_os.close
+	file_open          :: core_os.open
+	file_read          :: core_os.read
+	file_remove        :: core_os.remove
+	file_seek          :: core_os.seek
+	file_status        :: core_os.stat
+	file_truncate      :: core_os.truncate
+	file_write         :: core_os.write
+
+	file_read_entire  :: core_os.read_entire_file
+	file_write_entire :: core_os.write_entire_file
+
+import "core:strings"
+	StrBuilder            :: strings.Builder
+	strbuilder_from_bytes :: strings.builder_from_bytes
 
 import "core:slice"
 	slice_zero :: slice.zero
+
+import "core:time"
+	TIME_IS_SUPPORTED :: time.IS_SUPPORTED
+	time_clock        :: time.clock
+	time_date         :: time.date
+	time_now          :: time.now
+
+cursor :: proc {
+	slice_cursor,
+}
+
+to_string :: proc {
+	strings.to_string,
+}

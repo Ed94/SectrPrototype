@@ -81,6 +81,13 @@ AllocatorQueryFlag :: enum u64 {
 	Hint_Per_Frame_Temporary,
 	Hint_Debug_Support,
 }
+AllocatorError :: enum byte {
+	None                 = 0,
+	Out_Of_Memory        = 1,
+	Invalid_Pointer      = 2,
+	Invalid_Argument     = 3,
+	Mode_Not_Implemented = 4,
+}
 AllocatorQueryFlags :: bit_set[AllocatorQueryFlag; u64]
 AllocatorSP :: struct {
 	type_sig: AllocatorProc,
@@ -106,7 +113,7 @@ AllocatorProc_Out :: struct {
 	left:             int,
 	max_alloc:        int,
 	min_alloc:        int,
-	continuity_break: b32,
+	error:            AllocatorError,
 }
 AllocatorQueryInfo :: struct {
 	save_point:       AllocatorSP,

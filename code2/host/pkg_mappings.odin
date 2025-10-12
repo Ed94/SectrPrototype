@@ -14,11 +14,39 @@ import "base:runtime"
 	// Assertion_Failure_Proc :: runtime.Assertion_Failure_Proc
 	// Logger                 :: runtime.Logger
 
+import "core:dynlib"
+	os_lib_load     :: dynlib.load_library
+	os_lib_unload   :: dynlib.unload_library
+	os_lib_get_proc :: dynlib.symbol_address
+
 import core_os "core:os"
+	file_last_write_time_by_name :: core_os.last_write_time_by_name
+	OS_ERROR_NONE                :: core_os.ERROR_NONE
+
+import "core:sync"
+	thread_current_id :: sync.current_thread_id
+
+import "core:time"
+	Millisecond       :: time.Millisecond
+	Second            :: time.Second
+	Duration          :: time.Duration
+	duration_seconds  :: time.duration_seconds
+	thread_sleep      :: time.sleep
+
+import "core:thread"
+	SysThread :: thread.Thread
 
 import grime "codebase:grime"
+	file_copy_sync :: grime.file_copy_sync
 
 import "codebase:sectr"
-	Client_API :: sectr.ModuleAPI
-	HostMemory :: sectr.HostMemory
-	
+	Client_API   :: sectr.ModuleAPI
+	HostMemory   :: sectr.HostMemory
+	ThreadMemory :: sectr.ThreadMemory
+
+Kilo :: 1024
+Mega :: Kilo * 1024
+Giga :: Mega * 1024
+Tera :: Giga * 1024
+
+

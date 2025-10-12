@@ -19,9 +19,10 @@ ModuleAPI :: struct {
 StartupContext :: struct {}
 
 @export
-startup :: proc(host_mem: ^HostMemory)
+startup :: proc(host_mem: ^HostMemory, thread_mem: ^ThreadMemory)
 {
-
+	dummy : int = 0
+	dummy += 1
 
 	thread_wide_startup()
 }
@@ -32,7 +33,7 @@ thread_wide_startup :: proc()
 }
 
 @export
-hot_reload :: proc()
+hot_reload :: proc(host_mem: ^HostMemory, thread_mem: ^ThreadMemory)
 {
 
 }
