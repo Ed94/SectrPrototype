@@ -32,7 +32,7 @@ import fmt_io "core:fmt"
 	str_pfmt_builder   :: fmt_io.sbprintf
 	str_pfmt_buffer    :: fmt_io.bprintf
 	str_pfmt_file_ln   :: fmt_io.fprintln
-	str_tmp_from_any   :: fmt_io.tprint
+	str_tmp_from_any   :: #force_inline proc(args: ..any, sep := " ") -> string { context.temp_allocator = resolve_odin_allocator(context.temp_allocator); return fmt_io.tprint(..args, sep = sep) }
 
 import "core:log"
 	Default_File_Logger_Opts   :: log.Default_File_Logger_Opts
@@ -53,31 +53,33 @@ import "core:mem"
 import "core:mem/virtual"
 	VirtualProtectFlags :: virtual.Protect_Flags
 
-import core_os "core:os"
-	FS_Open_Readonly  :: core_os.O_RDONLY
-	FS_Open_Writeonly :: core_os.O_WRONLY
-	FS_Open_Create    :: core_os.O_CREATE
-	FS_Open_Trunc     :: core_os.O_TRUNC
+import "core:os"
+	FS_Open_Readonly  :: os.O_RDONLY
+	FS_Open_Writeonly :: os.O_WRONLY
+	FS_Open_Create    :: os.O_CREATE
+	FS_Open_Trunc     :: os.O_TRUNC
 
-	OS_ERROR_NONE       :: core_os.ERROR_NONE
-	OS_Handle           :: core_os.Handle
-	OS_ERROR_HANDLE_EOF :: core_os.ERROR_HANDLE_EOF
-	OS_INVALID_HANDLE   :: core_os.INVALID_HANDLE
+	OS_ERROR_NONE       :: os.ERROR_NONE
+	OS_Handle           :: os.Handle
+	OS_ERROR_HANDLE_EOF :: os.ERROR_HANDLE_EOF
+	OS_INVALID_HANDLE   :: os.INVALID_HANDLE
 
-	FileFlag_Create    :: core_os.O_CREATE
-	FileFlag_ReadWrite :: core_os.O_RDWR
-	FileTime           :: core_os.File_Time
-	file_close         :: core_os.close
-	file_open          :: core_os.open
-	file_read          :: core_os.read
-	file_remove        :: core_os.remove
-	file_seek          :: core_os.seek
-	file_status        :: core_os.stat
-	file_truncate      :: core_os.truncate
-	file_write         :: core_os.write
+	process_exit :: os.exit
 
-	file_read_entire  :: core_os.read_entire_file
-	file_write_entire :: core_os.write_entire_file
+	FileFlag_Create    :: os.O_CREATE
+	FileFlag_ReadWrite :: os.O_RDWR
+	FileTime           :: os.File_Time
+	file_close         :: os.close
+	file_open          :: os.open
+	file_read          :: os.read
+	file_remove        :: os.remove
+	file_seek          :: os.seek
+	file_status        :: os.stat
+	file_truncate      :: os.truncate
+	file_write         :: os.write
+
+	file_read_entire  :: os.read_entire_file
+	file_write_entire :: os.write_entire_file
 
 import "core:strings"
 	StrBuilder            :: strings.Builder

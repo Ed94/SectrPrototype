@@ -1,8 +1,6 @@
 package sectr
 
-// import    "base:runtime"
-// import  c "core:c/libc"
-import    "core:dynlib"
+import "core:dynlib"
 import "core:sync"
 
 Path_Assets       :: "../assets/"
@@ -10,60 +8,70 @@ Path_Shaders      :: "../shaders/"
 Path_Input_Replay :: "input.sectr_replay"
 
 ModuleAPI :: struct {
-	lib:        dynlib.Library,
-	// write-time: FileTime,
+	lib:          dynlib.Library,
+	write_time:   FileTime,
+	lib_version : int,
 
 	startup:           type_of( startup ),
-	hot_reload:        type_of( hot_reload ),
 	tick_lane_startup: type_of( tick_lane_startup),
+	hot_reload:        type_of( hot_reload ),
+	tick_lane:         type_of( tick_lane ),
+	clean_frame:       type_of( clean_frame),
 }
 
 StartupContext :: struct {}
 
+/*
+Called by host.main when it completes its setup.
+
+The goal of startup is to first prapre persistent state, 
+then prepare for multi-threaded "laned" tick: thread_wide_startup.
+*/
 @export
-startup :: proc(host_mem: ^HostMemory, thread_mem: ^ThreadMemory)
+startup :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
-	dummy : int = 0
-	dummy += 1
-
 	memory = host_mem
-
-	thread_wide_startup(thread_mem)
 }
 
-thread_wide_startup :: proc(thread_mem: ^ThreadMemory)
+/*
+Called by sync_client_api when the client module has be reloaded.
+Threads will eventually return to their tick_lane upon completion.
+*/
+@export
+hot_reload :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
-	if thread_mem.id == .Master_Prepper {
-		sync.barrier_init(& memory.client_api_sync_lock, THREAD_TICK_LANES)
+	thread_ctx = thread_mem
+	if thread_ctx.id == .Master_Prepper {
+		thread_coherent_store(& memory, host_mem)
 	}
-	memory.host_api.launch_tick_lane_thread(.Atomic_Accountant)
-	tick_lane_startup(thread_mem)
 }
 
+/*
+	Called by host_tick_lane_startup
+	Used for lane specific startup operations
+	
+	The lane tick cannot be handled it, its call must be done by the host module.
+	(We need threads to not be within a client callstack in the even of a hot-reload)
+*/
 @export
 tick_lane_startup :: proc(thread_mem: ^ThreadMemory)
 {
-	thread_memory            = thread_mem
-	thread_memory.live_lanes = THREAD_TICK_LANES
-	tick_lane()
-}
-
-tick_lane :: proc()
-{
-	dummy : int = 0
-	for ;;
-	{
-		dummy += 1
-		if thread_memory.id == .Master_Prepper
-		{
-			memory.host_api.sync_client_module()
-		}
-		leader := sync.barrier_wait(& memory.client_api_sync_lock)
-	}
+	thread_ctx            = thread_mem
+	thread_ctx.live_lanes = THREAD_TICK_LANES
 }
 
 @export
-hot_reload :: proc(host_mem: ^HostMemory, thread_mem: ^ThreadMemory)
+tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_close: b64)
 {
+	@thread_local dummy: int = 0;
+	dummy += 2
+	return true
+}
 
+@export
+clean_frame :: proc()
+{
+	@thread_local dummy: int = 0;
+	dummy += 1
+	return
 }

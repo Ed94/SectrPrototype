@@ -1,10 +1,10 @@
 package sectr
 
 // This should be the only global on client module side.
-memory: ^HostMemory
+memory: ^ProcessMemory
 
 @(thread_local)
-thread_memory: ^ThreadMemory
+thread_ctx: ^ThreadMemory
 
 THREAD_TICK_LANES :: 2
 

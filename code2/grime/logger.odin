@@ -42,26 +42,10 @@ logger_init :: proc( logger : ^ Logger,  id : string, file_path : string, file :
 	LOGGER_VARENA_BASE_ADDRESS : uintptr = 2 * Tera
 	@static vmem_init_counter  : uintptr = 0
 
-	// alloc_error : AllocatorError
-	// logger.varena, alloc_error = varena_init(
-	// 	LOGGER_VARENA_BASE_ADDRESS + vmem_init_counter * 250 * Megabyte,
-	// 	1   * Megabyte,
-	// 	128 * Kilobyte,
-	// 	growth_policy       = nil,
-	// 	allow_any_resize    = true,
-	// 	dbg_name            = "logger varena",
-	// 	enable_mem_tracking = false )
-	// verify( alloc_error == .None, "Failed to allocate logger's virtual arena")
-	vmem_init_counter += 1
-
-	// TODO(Ed): Figure out another solution here...
-	// logger.entries, alloc_error = array_init(Array(LoggerEntry), 8192, runtime.heap_allocator())
-	// verify( alloc_error == .None, "Failed to allocate logger's entries array")
-
 	context.logger = { logger_interface, logger, LoggerLevel.Debug, Default_File_Logger_Opts }
-	log("Initialized Logger")
+	log_print("Initialized Logger")
 	when false {
-		log("This sentence is over 80 characters long on purpose to test the ability of this logger to properfly wrap long as logs with a new line and then at the end of that pad it with the appropraite signature.")
+		log_print("This sentence is over 80 characters long on purpose to test the ability of this logger to properfly wrap long as logs with a new line and then at the end of that pad it with the appropraite signature.")
 	}
 }
 
@@ -137,24 +121,13 @@ logger_interface :: proc(
 	str_pfmt_file_ln( logger.file, to_string(builder) )
 }
 
-// This buffer is used below excluisvely to prevent any allocator recusion when verbose logging from allocators.
-// This means a single line is limited to 32k buffer (increase naturally if this SOMEHOW becomes a bottleneck...)
-Logger_Allocator_Buffer : [32 * Kilo]u8
+// Below are made on demand per-package.
+// They should strict only use a scratch allocator...
 
-log :: proc( msg : string, level := LoggerLevel.Info, loc := #caller_location ) {
-	// TODO(Ed): Finish this
-	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
-	// context.allocator      = arena_allocator(& temp_arena)
-	// context.temp_allocator = arena_allocator(& temp_arena)
-
-	// core_log.log( level, msg, location = loc )
+log_print :: proc( msg : string, level := LoggerLevel.Info, loc := #caller_location ) {
+	core_log.log( level, msg, location = loc )
 }
 
-log_fmt :: proc( fmt : string, args : ..any,  level := LoggerLevel.Info, loc := #caller_location  ) {
-	// TODO(Ed): Finish this
-	// temp_arena : Arena; arena_init(& temp_arena, Logger_Allocator_Buffer[:])
-	// context.allocator      = arena_allocator(& temp_arena)
-	// context.temp_allocator = arena_allocator(& temp_arena)
-
-	// core_log.logf( level, fmt, ..args, location = loc )
+log_print_fmt :: proc( fmt : string, args : ..any,  level := LoggerLevel.Info, loc := #caller_location  ) {
+	core_log.logf( level, fmt, ..args, location = loc )
 }

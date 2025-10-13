@@ -17,4 +17,3 @@ sll_queue_push_nz :: proc "contextless" (first: ^$ParentType, last, n: ^^$Type, 
 	}
 }
 sll_queue_push_n :: #force_inline proc "contextless" (first: $ParentType, last, n: ^^$Type) { sll_queue_push_nz(first, last, n, nil) }
-
