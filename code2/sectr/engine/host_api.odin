@@ -5,6 +5,12 @@ import "core:sync"
 /*
 Everything defined for the host module within the client module
 so that the client module has full awareness of relevant host definitions
+
+Client interaction with host is very minimal, 
+host will only provide the base runtime for client's tick lanes and job system workers.
+
+Host is has all statically (data/bss) defined memory for the application, it will not mess with
+client_memory however.
 */
 
 ProcessMemory :: struct {
@@ -19,8 +25,7 @@ ProcessMemory :: struct {
 	logger: Logger,
 
 	// Profiling
-	spall_profiler: SpallProfiler,
-	// TODO(Ed): Try Superluminal!
+	spall_profiler: ^SpallProfiler,
 
 	// Multi-threading
 	threads: [MAX_THREADS](SysThread),
@@ -34,12 +39,8 @@ ProcessMemory :: struct {
 }
 
 Host_API :: struct {
-	launch_tick_lane_thread: #type proc(WorkerID),
-
 	request_virtual_memory: #type proc(),
 	request_virtual_mapped_io: #type proc(),
-	
-	sync_client_module : #type proc(),
 }
 
 ThreadMemory :: struct {

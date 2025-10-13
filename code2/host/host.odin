@@ -1,59 +1,39 @@
 package host
 
-import "core:thread"
-import "core:sync"
+//region STATIC MEMORY
+// All program defined process memory here. (There will still be artifacts from the OS CRT and third-party pacakges)
+                host_memory:   ProcessMemory
+@(thread_local) thread_memory: ThreadMemory
 
-Path_Logs :: "../logs"
-when ODIN_OS == .Windows
-{
-	Path_Sectr_Module        :: "sectr.dll"
-	Path_Sectr_Live_Module   :: "sectr_live.dll"
-	Path_Sectr_Debug_Symbols :: "sectr.pdb"
-	Path_Sectr_Spall_Record  :: "sectr.spall"
-}
+//endregion STATIC MEMORY
 
-// Only static memory host has.
-host_memory: ProcessMemory
+//region HOST RUNTIME
 
-@(thread_local)
-thread_memory: ThreadMemory
-
-load_client_api :: proc(version_id: int) -> (loaded_module: Client_API)
-{
-	write_time, result := file_last_write_time_by_name("sectr.dll")
-	if result != OS_ERROR_NONE {
+load_client_api :: proc(version_id: int) -> (loaded_module: Client_API) {
+	using loaded_module
+	// Make sure we have a dll to work with
+	file_io_err: OS_Error; write_time, file_io_err = file_last_write_time_by_name("sectr.dll")
+	if file_io_err != OS_ERROR_NONE {
 		panic_contextless( "Could not resolve the last write time for sectr")
 	}
-
+	//TODO(Ed): Lets try to minimize this...
 	thread_sleep( Millisecond * 100 )
-
+	// Get the live dll loaded up
 	live_file := Path_Sectr_Live_Module
 	file_copy_sync( Path_Sectr_Module, live_file, allocator = context.temp_allocator )
-
-	lib, load_result := os_lib_load( live_file )
-	if ! load_result {
-		panic( "Failed to load the sectr module." )
-	}
-
-	startup           := cast( type_of( host_memory.client_api.startup))           os_lib_get_proc(lib, "startup")
-	tick_lane_startup := cast( type_of( host_memory.client_api.tick_lane_startup)) os_lib_get_proc(lib, "tick_lane_startup")
-	hot_reload        := cast( type_of( host_memory.client_api.hot_reload))        os_lib_get_proc(lib, "hot_reload")
-	tick_lane         := cast( type_of( host_memory.client_api.tick_lane))         os_lib_get_proc(lib, "tick_lane")
-	clean_frame       := cast( type_of( host_memory.client_api.clean_frame))       os_lib_get_proc(lib, "clean_frame")
+	did_load: bool; lib, did_load = os_lib_load( live_file )
+	if ! did_load do panic( "Failed to load the sectr module.")
+	startup           = cast( type_of( host_memory.client_api.startup))           os_lib_get_proc(lib, "startup")
+	tick_lane_startup = cast( type_of( host_memory.client_api.tick_lane_startup)) os_lib_get_proc(lib, "tick_lane_startup")
+	hot_reload        = cast( type_of( host_memory.client_api.hot_reload))        os_lib_get_proc(lib, "hot_reload")
+	tick_lane         = cast( type_of( host_memory.client_api.tick_lane))         os_lib_get_proc(lib, "tick_lane")
+	clean_frame       = cast( type_of( host_memory.client_api.clean_frame))       os_lib_get_proc(lib, "clean_frame")
 	if startup           == nil do panic("Failed to load sectr.startup symbol" )
 	if tick_lane_startup == nil do panic("Failed to load sectr.tick_lane_startup symbol" )
 	if hot_reload        == nil do panic("Failed to load sectr.hot_reload symbol" )
 	if tick_lane         == nil do panic("Failed to load sectr.tick_lane symbol" )
 	if clean_frame       == nil do panic("Failed to load sectr.clean_frmae symbol" )
-
-	loaded_module.lib               = lib
-	loaded_module.write_time        = write_time
-	loaded_module.lib_version       = version_id
-	loaded_module.startup           = startup
-	loaded_module.tick_lane_startup = tick_lane_startup
-	loaded_module.hot_reload        = hot_reload
-	loaded_module.tick_lane         = tick_lane
-	loaded_module.clean_frame       = clean_frame
+	lib_version = version_id
 	return
 }
 
@@ -65,8 +45,9 @@ main :: proc()
 	arena_init(& host_memory.host_scratch, host_memory.host_scratch_buf[:])
 	context.allocator      = arena_allocator(& host_memory.host_persist)
 	context.temp_allocator = arena_allocator(& host_memory.host_scratch)
-	// Setup the profiler
+	when SHOULD_SETUP_PROFILERS
 	{
+		// Setup profilers
 		buffer_backing := make([]u8, SPALL_BUFFER_DEFAULT_SIZE * 4)
 		host_memory.spall_profiler.ctx    = spall_context_create(Path_Sectr_Spall_Record)
 		host_memory.spall_profiler.buffer = spall_buffer_create(buffer_backing)
@@ -120,43 +101,32 @@ main :: proc()
 		host_memory.client_api = load_client_api( 1 )
 		verify( host_memory.client_api.lib_version != 0, "Failed to initially load the sectr module" )
 	}
-
 	// Client API Startup
-	host_memory.host_api.sync_client_module      = sync_client_api
-	host_memory.host_api.launch_tick_lane_thread = launch_tick_lane_thread
 	host_memory.client_api.startup(& host_memory, & thread_memory)
-
 	// Start the tick lanes 
-	thread_wide_startup()
-}
-
-thread_wide_startup :: proc()
-{
-	assert(thread_memory.id == .Master_Prepper)
-	if THREAD_TICK_LANES > 1 {
-		launch_tick_lane_thread(.Atomic_Accountant)
-		sync.barrier_init(& host_memory.client_api_sync_lock, THREAD_TICK_LANES)
+	/*thread_wide_startup() :: proc()*/ {
+		assert(thread_memory.id == .Master_Prepper)
+		if THREAD_TICK_LANES > 1 {
+			launch_tick_lane_thread(.Atomic_Accountant)
+			barrier_init(& host_memory.client_api_sync_lock, THREAD_TICK_LANES)
+		}
+		host_tick_lane_startup(thread_memory.system_ctx)
 	}
-	host_tick_lane_startup(thread_memory.system_ctx)
 }
-
-@export
 launch_tick_lane_thread :: proc(id : WorkerID) {
 	assert_contextless(thread_memory.id == .Master_Prepper)
 	// TODO(Ed): We need to make our own version of this that doesn't allocate memory.
-	lane_thread           := thread.create(host_tick_lane_startup, .High)
+	lane_thread           := thread_create(host_tick_lane_startup, .High)
 	lane_thread.user_index = int(id)
-	thread.start(lane_thread)
+	thread_start(lane_thread)
 }
 
 host_tick_lane_startup :: proc(lane_thread: ^SysThread) {
 	thread_memory.system_ctx = lane_thread
 	thread_memory.id         = cast(WorkerID) lane_thread.user_index
 	host_memory.client_api.tick_lane_startup(& thread_memory)
-	
 	host_tick_lane()
 }
-
 host_tick_lane :: proc()
 {
 	delta_ns: Duration
@@ -167,6 +137,7 @@ host_tick_lane :: proc()
 	for ; running ;
 	{
 		profile("Host Tick")
+		leader := barrier_wait(& host_memory.client_api_sync_lock)
 		sync_client_api()
 
 		running = host_memory.client_api.tick_lane( duration_seconds(delta_ns), delta_ns )
@@ -180,41 +151,40 @@ host_tick_lane :: proc()
 @export
 sync_client_api :: proc()
 {
-	leader := sync.barrier_wait(& host_memory.client_api_sync_lock)
-	free_all(context.temp_allocator)
 	profile(#procedure)
-	if thread_memory.id == .Master_Prepper 
 	{
-		write_time, result := file_last_write_time_by_name( Path_Sectr_Module );
-		if result == OS_ERROR_NONE && host_memory.client_api.write_time != write_time
+		if thread_memory.id == .Master_Prepper 
 		{
-			cache_coherent_store(& host_memory.client_api_hot_reloaded, true)
-
-			version_id := host_memory.client_api.lib_version + 1
-			unload_client_api( & host_memory.client_api )
-
-			// Wait for pdb to unlock (linker may still be writting)
-			for ; file_is_locked( Path_Sectr_Debug_Symbols ) && file_is_locked( Path_Sectr_Live_Module ); {}
-			thread_sleep( Millisecond * 100 )
-
-			host_memory.client_api = load_client_api( version_id )
-			verify( host_memory.client_api.lib_version != 0, "Failed to hot-reload the sectr module" )
+			profile("Master_Prepper: Reloading client module")
+			write_time, result := file_last_write_time_by_name( Path_Sectr_Module );
+			if result == OS_ERROR_NONE && host_memory.client_api.write_time != write_time
+			{
+				sync_store(& host_memory.client_api_hot_reloaded, true, .Release)
+				version_id := host_memory.client_api.lib_version + 1
+				unload_client_api( & host_memory.client_api )
+				// Wait for pdb to unlock (linker may still be writting)
+				for ; file_is_locked( Path_Sectr_Debug_Symbols ) && file_is_locked( Path_Sectr_Live_Module ); {}
+				thread_sleep( Millisecond * 100 )
+				host_memory.client_api = load_client_api( version_id )
+				verify( host_memory.client_api.lib_version != 0, "Failed to hot-reload the sectr module" )
+			}
 		}
 	}
-	leader = sync.barrier_wait(& host_memory.client_api_sync_lock)
-	if cache_coherent_load(& host_memory.client_api_hot_reloaded)
+	leader := barrier_wait(& host_memory.client_api_sync_lock)
+	if sync_load(& host_memory.client_api_hot_reloaded, .Acquire)
 	{
 		host_memory.client_api.hot_reload(& host_memory, & thread_memory)
 		if thread_memory.id == .Master_Prepper {
-			cache_coherent_store(& host_memory.client_api_hot_reloaded, false)
+			sync_store(& host_memory.client_api_hot_reloaded, false, .Release)
 		}
 	}
 }
-
 unload_client_api :: proc( module : ^Client_API )
 {
 	os_lib_unload( module.lib )
 	file_remove( Path_Sectr_Live_Module )
 	module^ = {}
-	log_print("Unloaded sectr API")
+	log_print("Unloaded client API")
 }
+
+//endregion HOST RUNTIME

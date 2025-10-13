@@ -78,8 +78,12 @@ import "core:os"
 	file_truncate      :: os.truncate
 	file_write         :: os.write
 
-	file_read_entire  :: os.read_entire_file
-	file_write_entire :: os.write_entire_file
+	file_read_entire_from_filename :: #force_inline proc(name: string, allocator := context.allocator, loc := #caller_location) -> (data: []byte, success: bool) { return os.read_entire_file_from_filename(name, resolve_odin_allocator(allocator), loc) }
+	file_write_entire               :: os.write_entire_file
+
+	file_read_entire :: proc {
+		file_read_entire_from_filename,
+	}
 
 import "core:strings"
 	StrBuilder            :: strings.Builder

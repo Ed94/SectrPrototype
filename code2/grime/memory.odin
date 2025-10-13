@@ -119,7 +119,6 @@ memory_aign_forward :: #force_inline proc( address, alignment : uintptr) -> uint
 	return aligned_address
 }
 
-
 // align_up :: proc(address: uintptr, alignment: uintptr) -> uintptr {
 // 	return (address + alignment - 1) & ~(alignment - 1)
 // }
