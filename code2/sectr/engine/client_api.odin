@@ -42,7 +42,7 @@ hot_reload :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
 	thread_ctx = thread_mem
 	if thread_ctx.id == .Master_Prepper {
-		thread_coherent_store(& memory, host_mem)
+		cache_coherent_store(& memory, host_mem, .Release)
 	}
 }
 

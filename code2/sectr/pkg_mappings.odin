@@ -8,7 +8,7 @@ import "core:os"
 
 import "core:sync"
 	AtomicMutex :: sync.Atomic_Mutex
-	thread_coherent_store :: sync.atomic_store
+	cache_coherent_store :: sync.atomic_store_explicit
 
 import "core:thread"
 	SysThread :: thread.Thread

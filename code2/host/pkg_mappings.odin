@@ -51,9 +51,9 @@ import "core:strings"
 	builder_to_str        :: strings.to_string
 
 import "core:sync"
-	thread_current_id     :: sync.current_thread_id
-	thread_coherent_load  :: sync.atomic_load
-	thread_coherent_store :: sync.atomic_store
+	thread_current_id    :: sync.current_thread_id
+	cache_coherent_load  :: sync.atomic_load
+	cache_coherent_store :: sync.atomic_store
 
 import "core:time"
 	Millisecond          :: time.Millisecond

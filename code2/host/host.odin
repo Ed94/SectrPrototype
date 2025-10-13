@@ -188,7 +188,7 @@ sync_client_api :: proc()
 		write_time, result := file_last_write_time_by_name( Path_Sectr_Module );
 		if result == OS_ERROR_NONE && host_memory.client_api.write_time != write_time
 		{
-			thread_coherent_store(& host_memory.client_api_hot_reloaded, true)
+			cache_coherent_store(& host_memory.client_api_hot_reloaded, true)
 
 			version_id := host_memory.client_api.lib_version + 1
 			unload_client_api( & host_memory.client_api )
@@ -202,11 +202,11 @@ sync_client_api :: proc()
 		}
 	}
 	leader = sync.barrier_wait(& host_memory.client_api_sync_lock)
-	if thread_coherent_load(& host_memory.client_api_hot_reloaded)
+	if cache_coherent_load(& host_memory.client_api_hot_reloaded)
 	{
 		host_memory.client_api.hot_reload(& host_memory, & thread_memory)
 		if thread_memory.id == .Master_Prepper {
-			thread_coherent_store(& host_memory.client_api_hot_reloaded, false)
+			cache_coherent_store(& host_memory.client_api_hot_reloaded, false)
 		}
 	}
 }
