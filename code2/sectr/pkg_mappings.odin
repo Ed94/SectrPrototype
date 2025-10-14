@@ -27,20 +27,29 @@ import "core:os"
 	process_exit :: os.exit
 
 import "core:prof/spall"
+	SPALL_BUFFER_DEFAULT_SIZE :: spall.BUFFER_DEFAULT_SIZE
+	Spall_Context             :: spall.Context
+	Spall_Buffer              :: spall.Buffer
 
 import "core:sync"
 	AtomicMutex :: sync.Atomic_Mutex
 	sync_store  :: sync.atomic_store_explicit
+	sync_load   :: sync.atomic_load_explicit
 
-import "core:thread"
-	SysThread :: thread.Thread
+import threading "core:thread"
+	SysThread     :: threading.Thread
+	ThreadProc    :: threading.Thread_Proc
+	thread_create :: threading.create
+	thread_start  :: threading.start
 
 import "core:time"
 	Duration :: time.Duration
 
 import "codebase:grime"
-	Logger            :: grime.Logger
-	SpallProfiler     :: grime.SpallProfiler
+	Logger :: grime.Logger
+
+	grime_set_profiler_module_context :: grime.set_profiler_module_context
+	grime_set_profiler_thread_buffer  :: grime.set_profiler_thread_buffer
 
 Kilo :: 1024
 Mega :: Kilo * 1024
@@ -77,6 +86,15 @@ log_print_fmt :: proc( fmt : string, args : ..any,  level := LoggerLevel.Info, l
 	log.logf( level, fmt, ..args, location = loc )
 }
 
-@(deferred_none = profile_end, disabled = DISABLE_CLIENT_PROFILING) profile       :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) { spall._buffer_begin( & memory.spall_profiler.ctx, & memory.spall_profiler.buffer, name, "", loc ) }
-@(                             disabled = DISABLE_CLIENT_PROFILING) profile_begin :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) { spall._buffer_begin( & memory.spall_profiler.ctx, & memory.spall_profiler.buffer, name, "", loc ) }
-@(                             disabled = DISABLE_CLIENT_PROFILING) profile_end   :: #force_inline proc "contextless" ()                                         { spall._buffer_end  ( & memory.spall_profiler.ctx, & memory.spall_profiler.buffer) }
+@(deferred_none = profile_end, disabled = DISABLE_CLIENT_PROFILING)
+profile :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {
+	spall._buffer_begin( & memory.spall_context, & thread.spall_buffer, name, "", loc )
+}
+@(disabled = DISABLE_CLIENT_PROFILING)
+profile_begin :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {
+	spall._buffer_begin( & memory.spall_context, & thread.spall_buffer, name, "", loc )
+}
+@(disabled = DISABLE_CLIENT_PROFILING)
+profile_end :: #force_inline proc "contextless" () {
+	spall._buffer_end( & memory.spall_context, & thread.spall_buffer)
+}

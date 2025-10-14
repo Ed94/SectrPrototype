@@ -11,6 +11,7 @@ import "core:dynlib"
 import "core:fmt"
 	str_pfmt_builder :: fmt.sbprintf
 	str_pfmt_buffer  :: fmt.bprintf
+	str_pfmt_tmp     :: fmt.tprintf
 
 import "core:log"
 	LoggerLevel :: log.Level
@@ -24,8 +25,11 @@ import "core:os"
 	OS_ERROR_NONE                :: os.ERROR_NONE
 	OS_Error                     :: os.Error
 	FileTime                     :: os.File_Time
+	file_close                   :: os.close
 	file_last_write_time_by_name :: os.last_write_time_by_name
 	file_remove                  :: os.remove
+	file_rename                  :: os.rename
+	file_status                  :: os.stat
 	os_is_directory              :: os.is_dir
 	os_make_directory            :: os.make_directory
 	os_core_count                :: os.processor_core_count
@@ -33,9 +37,10 @@ import "core:os"
 	process_exit                 :: os.exit
 
 import "core:prof/spall"
-	SPALL_BUFFER_DEFAULT_SIZE :: spall.BUFFER_DEFAULT_SIZE
 	spall_context_create      :: spall.context_create
+	spall_context_destroy     :: spall.context_destroy
 	spall_buffer_create       :: spall.buffer_create
+	spall_buffer_destroy      :: spall.buffer_destroy
 
 import "core:strings"
 	strbuilder_from_bytes :: strings.builder_from_bytes
@@ -46,6 +51,7 @@ import "core:sync"
 	barrier_init         :: sync.barrier_init
 	barrier_wait         :: sync.barrier_wait
 	thread_current_id    :: sync.current_thread_id
+	// Cache coherent loads and stores (synchronizes relevant cache blocks/lines)
 	sync_load            :: sync.atomic_load_explicit
 	sync_store           :: sync.atomic_store_explicit
 
@@ -62,35 +68,72 @@ import "core:time"
 	time_tick_lap_time   :: time.tick_lap_time
 
 import "core:thread"
-	SysThread     :: thread.Thread
-	thread_create :: thread.create
-	thread_start  :: thread.start
+	SysThread            :: thread.Thread
+	thread_create        :: thread.create
+	thread_start         :: thread.start
+	thread_destroy       :: thread.destroy
+	thread_join_multiple :: thread.join_multiple
+	thread_terminate     :: thread.terminate
 
 import grime "codebase:grime"
 	DISABLE_GRIME_PROFILING  :: grime.DISABLE_PROFILING
 
-	file_copy_sync    :: grime.file_copy_sync
+	grime_set_profiler_module_context :: grime.set_profiler_module_context
+	grime_set_profiler_thread_buffer  :: grime.set_profiler_thread_buffer
+
 	file_is_locked    :: grime.file_is_locked
 	logger_init       :: grime.logger_init
 	to_odin_logger    :: grime.to_odin_logger
+
+	// Need to have it with un-wrapped allocator
+	// file_copy_sync    :: grime.file_copy_sync
+	file_copy_sync :: proc( path_src, path_dst: string, allocator := context.allocator ) -> b32
+	{
+		file_size : i64
+		{
+			path_info, result := file_status( path_src, allocator )
+			if result != OS_ERROR_NONE {
+				log_print_fmt("Could not get file info: %v", result, LoggerLevel.Error )
+				return false
+			}
+			file_size = path_info.size
+		}
+
+		src_content, result := os.read_entire_file_from_filename( path_src, allocator )
+		if ! result {
+			log_print_fmt( "Failed to read file to copy: %v", path_src, LoggerLevel.Error )
+			debug_trap()
+			return false
+		}
+
+		result = os.write_entire_file( path_dst, src_content, false )
+		if ! result {
+			log_print_fmt( "Failed to copy file: %v", path_dst, LoggerLevel.Error )
+			debug_trap()
+			return false
+		}
+		return true
+	}
 
 import "codebase:sectr"
 	DISABLE_HOST_PROFILING   :: sectr.DISABLE_HOST_PROFILING
 	DISABLE_CLIENT_PROFILING :: sectr.DISABLE_CLIENT_PROFILING
 
-	Path_Logs                :: sectr.Path_Logs
-	Path_Sectr_Debug_Symbols :: sectr.Path_Debug_Symbols
-	Path_Sectr_Live_Module   :: sectr.Path_Live_Module
-	Path_Sectr_Module        :: sectr.Path_Module
-	Path_Sectr_Spall_Record  :: sectr.Path_Spall_Record
-	MAX_THREADS              :: sectr.MAX_THREADS
-	THREAD_TICK_LANES        :: sectr.THREAD_TICK_LANES
+	Path_Logs                  :: sectr.Path_Logs
+	Path_Sectr_Debug_Symbols   :: sectr.Path_Debug_Symbols
+	Path_Sectr_Live_Module     :: sectr.Path_Live_Module
+	Path_Sectr_Module          :: sectr.Path_Module
+	Path_Sectr_Spall_Record    :: sectr.Path_Spall_Record
+	MAX_THREADS                :: sectr.MAX_THREADS
+	THREAD_TICK_LANES          :: sectr.THREAD_TICK_LANES
+	THREAD_JOB_WORKERS         :: sectr.THREAD_JOB_WORKERS
+	THREAD_JOB_WORKER_ID_START :: sectr.THREAD_JOB_WORKER_ID_START
+	THREAD_JOB_WORKER_ID_END   :: sectr.THREAD_JOB_WORKER_ID_END
 
-	Client_API    :: sectr.ModuleAPI
-	ProcessMemory :: sectr.ProcessMemory
-	ThreadMemory  :: sectr.ThreadMemory
-	WorkerID      :: sectr.WorkerID
-	SpallProfiler :: sectr.SpallProfiler
+	Client_API         :: sectr.ModuleAPI
+	ProcessMemory      :: sectr.ProcessMemory
+	ThreadMemory       :: sectr.ThreadMemory
+	WorkerID           :: sectr.WorkerID
 
 ensure :: #force_inline proc( condition : b32, msg : string, location := #caller_location ) {
 	if condition do return
@@ -122,14 +165,23 @@ log_print_fmt :: proc( fmt : string, args : ..any,  level := LoggerLevel.Info, l
 	log.logf( level, fmt, ..args, location = loc )
 }
 
-@(deferred_none = profile_end, disabled = DISABLE_HOST_PROFILING) profile       :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) { spall._buffer_begin( & host_memory.spall_profiler.ctx, & host_memory.spall_profiler.buffer, name, "", loc ) }
-@(                             disabled = DISABLE_HOST_PROFILING) profile_begin :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) { spall._buffer_begin( & host_memory.spall_profiler.ctx, & host_memory.spall_profiler.buffer, name, "", loc ) }
-@(                             disabled = DISABLE_HOST_PROFILING) profile_end   :: #force_inline proc "contextless" ()                                         { spall._buffer_end  ( & host_memory.spall_profiler.ctx, & host_memory.spall_profiler.buffer) }
-
 SHOULD_SETUP_PROFILERS :: \
 	DISABLE_GRIME_PROFILING  == false ||
 	DISABLE_CLIENT_PROFILING == false ||
 	DISABLE_HOST_PROFILING   == false 
+
+@(deferred_none = profile_end, disabled = DISABLE_HOST_PROFILING)
+profile :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {
+	spall._buffer_begin( & host_memory.spall_context, & thread_memory.spall_buffer, name, "", loc )
+}
+@(disabled = DISABLE_HOST_PROFILING)
+profile_begin :: #force_inline proc "contextless" ( name : string, loc := #caller_location ) {
+	spall._buffer_begin( & host_memory.spall_context, & thread_memory.spall_buffer, name, "", loc )
+}
+@(disabled = DISABLE_HOST_PROFILING)
+profile_end :: #force_inline proc "contextless" () {
+	spall._buffer_end( & host_memory.spall_context, & thread_memory.spall_buffer)
+}
 
 Kilo :: 1024
 Mega :: Kilo * 1024

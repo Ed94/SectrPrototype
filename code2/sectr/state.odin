@@ -7,5 +7,4 @@ package sectr
 //endregion STATIC MEMORy
 
 State :: struct {
-	job_system: JobSystemContext,
 }

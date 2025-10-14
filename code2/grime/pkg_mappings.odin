@@ -92,6 +92,17 @@ import "core:strings"
 import "core:slice"
 	slice_zero :: slice.zero
 
+import "core:prof/spall"
+	Spall_Context :: spall.Context
+	Spall_Buffer  :: spall.Buffer
+
+import "core:sync"
+	sync_load  :: sync.atomic_load_explicit
+	sync_store :: sync.atomic_store_explicit
+
+import "core:thread"
+	SysThread :: thread.Thread
+
 import "core:time"
 	TIME_IS_SUPPORTED :: time.IS_SUPPORTED
 	time_clock        :: time.clock

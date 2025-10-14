@@ -1,8 +1,6 @@
 package sectr
 
-ThreadProc :: #type proc(data: rawptr)
-
-IgnoredThreads :: bit_set[ 0 ..< 64 ]
+JobIgnoredThreads :: bit_set[ 0 ..< 64 ]
 
 JobProc :: #type proc(data: rawptr)
 
@@ -11,7 +9,7 @@ JobGroup :: struct {
 }
 
 JobPriority :: enum {
-	Medium = 0,
+	Normal = 0,
 	Low,
 	High,
 }
@@ -22,7 +20,7 @@ Job :: struct {
 	data:    rawptr,
 	// scratch: ^CArena,
 	group:   ^JobGroup,
-	ignored: IgnoredThreads,
+	ignored: JobIgnoredThreads,
 	dbg_lbl: string,
 }
 
@@ -33,11 +31,11 @@ JobList :: struct {
 
 JobSystemContext :: struct {
 	job_lists:   [JobPriority]JobList,
-	worker_cb:   ThreadProc,
-	worker_data: rawptr,
-	counter:     int,
-	workers:     [] ^ThreadWorkerContext,
-	running:     b32,
+	// worker_cb:   ThreadProc,
+	// worker_data: rawptr,
+	worker_num: int,
+	workers:    [THREAD_JOB_WORKERS]^ThreadWorkerContext,
+	running:    b32,
 }
 
 ThreadWorkerContext :: struct {
@@ -188,30 +186,58 @@ WorkerID :: enum int {
 	Zombo_Vistor,
 }
 
-// Hard constraint for Windows
-MAX_THREADS :: 64
+@(private) div_ceil :: #force_inline proc(a, b: int) -> int { return (a + b - 1) / b }
 
-/*
-Threads are setup upfront during the client API's startup.
-*/
-
-jobsys_startup :: proc(ctx: ^JobSystemContext, num_workers : int, worker_exec: ThreadProc, worker_data: rawptr) {
-	ctx^ = {
-		worker_cb      = worker_exec,
-		worker_data    = worker_data,
-		counter        = 1,
-	}
-	// Determine number of physical cores
-	// Allocate worker contextes based on number of physical cores - 1 (main thread managed by host included assumed to be index 0)
-	// 
-	// num_hw_threads = min(JOB_SYSTEM_MAX_WORKER_THREADS, )
-	// jobsys_worker_make :
+make_job_raw :: proc(group: ^JobGroup, data: rawptr, cb: JobProc, ignored_threads: JobIgnoredThreads = {}) -> Job {
+    assert(group != nil)
+    assert(cb != nil)
+    return {cb = cb, data = data, group = group}
 }
 
-thread_worker_exec :: proc(_: rawptr) {
-	
+job_dispatch :: proc(job: Job, priorty: JobPriority = .Normal) {
+	assert(job.group != nil)
+	// sync_add(& job.group.atomic_counter, 1)
+	// if 
+
+	// sync_mutex_lock
 }
 
-jobsys_shutdown :: proc(ctx: ^JobSystemContext) {
+// Note: it's on you to clean up the memory after the jobs if you use a custom allocator.
+// dispatch :: proc(priority: Priority = .Medium, jobs: ..Job, allocator := context.temp_allocator) -> []Job {
+//     _jobs := make([]Job, len(jobs), allocator)
+//     copy(_jobs, jobs)
+//     dispatch_jobs(priority, _jobs)
+//     return _jobs
+// }
 
-}
+// Push jobs to the queue for the given priority.
+// dispatch_jobs :: proc(priority: Priority, jobs: []Job) {
+//     for &job, i in jobs {
+//         assert(job.group != nil)
+//         intrinsics.atomic_add(&job.group.atomic_counter, 1)
+//         if i < len(jobs) - 1 {
+//             job._next = &jobs[i + 1]
+//         }
+//     }
+
+//     sync.atomic_mutex_lock(&_state.job_lists[priority].mutex)
+//     jobs[len(jobs) - 1]._next = _state.job_lists[priority].head
+//     _state.job_lists[priority].head = &jobs[0]
+//     sync.atomic_mutex_unlock(&_state.job_lists[priority].mutex)
+// }
+
+// Block the current thread until all jobs in the group are finished.
+// Other queued jobs are executed while waiting.
+// wait :: proc(group: ^Group) {
+//     for !group_is_finished(group) {
+//         try_execute_queued_job()
+//     }
+//     group^ = {}
+// }
+
+// Check if all jobs in the group are finished.
+// @(require_results)
+// group_is_finished :: #force_inline proc(group: ^Group) -> bool {
+//     return intrinsics.atomic_load(&group.atomic_counter) <= 0
+// }
+

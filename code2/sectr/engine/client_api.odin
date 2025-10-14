@@ -16,11 +16,12 @@ ModuleAPI :: struct {
 	write_time:   FileTime,
 	lib_version : int,
 
-	startup:           type_of( startup ),
-	tick_lane_startup: type_of( tick_lane_startup),
-	hot_reload:        type_of( hot_reload ),
-	tick_lane:         type_of( tick_lane ),
-	clean_frame:       type_of( clean_frame),
+	startup:            type_of( startup ),
+	tick_lane_startup:  type_of( tick_lane_startup),
+	hot_reload:         type_of( hot_reload ),
+	tick_lane:          type_of( tick_lane ),
+	clean_frame:        type_of( clean_frame),
+	jobsys_worker_tick: type_of( jobsys_worker_tick)
 }
 
 /*
@@ -33,6 +34,10 @@ then prepare for multi-threaded "laned" tick: thread_wide_startup.
 startup :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
 	memory = host_mem
+	thread = thread_mem
+	grime_set_profiler_module_context(& memory.spall_context)
+	grime_set_profiler_thread_buffer(& thread.spall_buffer)
+	profile(#procedure)
 }
 
 /*
@@ -42,10 +47,13 @@ Threads will eventually return to their tick_lane upon completion.
 @export
 hot_reload :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
+	profile(#procedure)
 	thread = thread_mem
 	if thread.id == .Master_Prepper {
+		grime_set_profiler_module_context(& memory.spall_context)
 		sync_store(& memory, host_mem, .Release)
 	}
+	grime_set_profiler_thread_buffer(& thread.spall_buffer)
 }
 
 /*
@@ -58,38 +66,75 @@ The lane tick cannot be handled it, its call must be done by the host module.
 @export
 tick_lane_startup :: proc(thread_mem: ^ThreadMemory)
 {
-	thread            = thread_mem
-	thread.live_lanes = THREAD_TICK_LANES
+	if thread_mem.id != .Master_Prepper {
+		thread = thread_mem
+		grime_set_profiler_thread_buffer(& thread.spall_buffer)
+	}
+	profile(#procedure)
 }
 
 /*
 
 */
 @export
-tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_close: b64)
+tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_close: b64 = false)
 {
-	profile_begin("sokol_app: pre_client_tick")
+	profile(#procedure)
+	@thread_local dummy: int = 0
+	dummy += 1
+
+	// profile_begin("sokol_app: pre_client_tick")
 	// should_close |= cast(b64) sokol_app.pre_client_frame()
-	profile_end()
+	@static timer: f64
+	if thread.id == .Master_Prepper {
+		timer        += host_delta_time_ms
+		sync_store(& should_close, timer > 5, .Release)
+	}
+	// profile_end()
 
-	profile_begin("Client Tick")
-	profile_end()
+	// profile_begin("Client Tick")
 
-	profile_begin("sokol_app: post_client_tick")
-	profile_end()
+	// @thread_local test_job: TestJobInfo
+	// for job_id := 1; job_id < 64; job_id += 1 {
+		// job_dispatch(test_job, & test_job, .Medium, "Job Test")
+	// }
+
+	// profile_end()
+
+	// profile_begin("sokol_app: post_client_tick")
+	// profile_end()
 
 	tick_lane_frametime()
-	return true
+	return sync_load(& should_close, .Acquire)
+}
+
+@export
+jobsys_worker_tick :: proc() {
+	profile("Worker Tick")
+
+	@thread_local dummy: int = 0;
+	dummy += 1
+}
+
+TestJobInfo :: struct {
+	id: int,
+}
+test_job :: proc(data: rawptr)
+{
+	profile(#procedure)
+	info := cast(^TestJobInfo) data
+	// log_print_fmt("Test job succeeded: %v", info.id)
 }
 
 tick_lane_frametime :: proc()
 {
-
+	profile(#procedure)
 }
 
 @export
 clean_frame :: proc()
 {
+	profile(#procedure)
 	if thread.id == .Master_Prepper
 	{
 

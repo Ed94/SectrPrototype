@@ -15,35 +15,40 @@ client_memory however.
 
 ProcessMemory :: struct {
 	// Host 
-	host_persist_buf: [64 * Mega]byte,
-	host_scratch_buf: [32 * Mega]byte,
+	host_persist_buf: [32 * Mega]byte,
+	host_scratch_buf: [64 * Mega]byte,
 	host_persist:     Odin_Arena,
 	host_scratch:     Odin_Arena,
 	host_api:         Host_API,
 
 	// Textual Logging
 	logger: Logger,
+	path_logger_finalized: string,
 
 	// Profiling
-	spall_profiler: ^SpallProfiler,
+	spall_context: Spall_Context,
 
 	// Multi-threading
-	threads: [MAX_THREADS](SysThread),
-
-	client_api_hot_reloaded: b64,
-	client_api_sync_lock:    sync.Barrier,
+	threads:             [MAX_THREADS](^SysThread),
+	job_system:          JobSystemContext,
+	tick_lanes:          int,
+	lane_sync:           sync.Barrier,
+	job_hot_reload_sync: sync.Barrier, // Used to sync jobs with main thread during hot-reload junction.
 
 	// Client Module
+	client_api_hot_reloaded: b64,
 	client_api:    ModuleAPI,
 	client_memory: State,
 }
 
 Host_API :: struct {
-	request_virtual_memory: #type proc(),
+	request_virtual_memory:    #type proc(),
 	request_virtual_mapped_io: #type proc(),
 }
 
 ThreadMemory :: struct {
-	using _: ThreadWorkerContext,
-	live_lanes: int,
+	using _:    ThreadWorkerContext,
+
+	spall_buffer_backing: [SPALL_BUFFER_DEFAULT_SIZE * 2]byte,
+	spall_buffer:         Spall_Buffer,
 }
