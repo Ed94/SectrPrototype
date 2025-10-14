@@ -109,7 +109,8 @@ main :: proc()
 	{
 		profile("thread_wide_startup")
 		assert(thread_memory.id == .Master_Prepper)
-		host_memory.tick_lanes = THREAD_TICK_LANES
+		host_memory.tick_running = true
+		host_memory.tick_lanes   = THREAD_TICK_LANES
 		barrier_init(& host_memory.lane_sync, THREAD_TICK_LANES)
 		if THREAD_TICK_LANES > 1 {
 			for id in 1 ..= (THREAD_TICK_LANES - 1) {
@@ -120,6 +121,7 @@ main :: proc()
 		grime_set_profiler_thread_buffer(& thread_memory.spall_buffer)
 		// Job System Setup
 		{
+			host_memory.job_system.running    = true
 			host_memory.job_system.worker_num = THREAD_JOB_WORKERS
 			// Determine number of physical cores
 			barrier_init(& host_memory.job_hot_reload_sync, THREAD_JOB_WORKERS + 1)
@@ -133,10 +135,9 @@ main :: proc()
 		host_tick_lane()
 	}
 
-
-	// We have all threads resolve here (non-laned threads will need to have end-run signal broadcasted)
+	sync_store(& host_memory.job_system.running, false, .Release)
 	if thread_memory.id == .Master_Prepper {
-		thread_join_multiple(.. host_memory.threads[1:])
+		thread_join_multiple(.. host_memory.threads[1:THREAD_TICK_LANES + THREAD_JOB_WORKERS])
 	}
 
 	unload_client_api( & host_memory.client_api )
@@ -174,19 +175,18 @@ host_tick_lane :: proc()
 	delta_ns: Duration
 	host_tick := time_tick_now()
 
-	running : b64 = true
-	for ; running ;
+	for ; sync_load(& host_memory.tick_running, .Relaxed);
 	{
 		profile("Host Tick")
 		sync_client_api()
 
-		running = host_memory.client_api.tick_lane( duration_seconds(delta_ns), delta_ns ) == false
+		running: b64 = host_memory.client_api.tick_lane( duration_seconds(delta_ns), delta_ns ) == false
+		if thread_memory.id == .Master_Prepper { sync_store(& host_memory.tick_running, running, .Release) }
 		// host_memory.client_api.clean_frame()
 
 		delta_ns  = time_tick_lap_time( & host_tick )
 		host_tick = time_tick_now()
 	}
-	leader := barrier_wait(& host_memory.lane_sync)
 	host_lane_shutdown()
 }
 host_lane_shutdown :: proc()
@@ -205,11 +205,12 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 		host_memory.client_api.tick_lane_startup(& thread_memory)
 		grime_set_profiler_thread_buffer(& thread_memory.spall_buffer)
 	}
+	// TODO(Ed): We should make sure job system can never be set to "not running" without first draining jobs.
 	for ; sync_load(& host_memory.job_system.running, .Relaxed); 
 	{
 		profile("Host Job Tick")
 		host_memory.client_api.jobsys_worker_tick()
-		// TODO(Ed): We cannot allow job threads to enter the reload barrier until they have drained their enqueued jobs.
+		// TODO(Ed): We cannot allow job threads to enter the reload barrier until all jobs have drained.
 		if sync_load(& host_memory.client_api_hot_reloaded, .Acquire) {
 			leader :=barrier_wait(& host_memory.job_hot_reload_sync)
 			break

@@ -34,6 +34,7 @@ ProcessMemory :: struct {
 	tick_lanes:          int,
 	lane_sync:           sync.Barrier,
 	job_hot_reload_sync: sync.Barrier, // Used to sync jobs with main thread during hot-reload junction.
+	tick_running:        b64,
 
 	// Client Module
 	client_api_hot_reloaded: b64,
