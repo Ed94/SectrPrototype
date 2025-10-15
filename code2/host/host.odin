@@ -125,6 +125,9 @@ main :: proc()
 		{
 			host_memory.job_system.running    = true
 			host_memory.job_system.worker_num = THREAD_JOB_WORKERS
+			for & list in host_memory.job_system.job_lists {
+				list = {}
+			}
 			// Determine number of physical cores
 			barrier_init(& host_memory.job_hot_reload_sync, THREAD_JOB_WORKERS + 1)
 			for id in THREAD_JOB_WORKER_ID_START ..< THREAD_JOB_WORKER_ID_END {
@@ -138,7 +141,6 @@ main :: proc()
 		host_tick_lane()
 	}
 
-	sync_store(& host_memory.job_system.running, false, .Release)
 	if thread_memory.id == .Master_Prepper {
 		thread_join_multiple(.. host_memory.threads[1:THREAD_TICK_LANES + THREAD_JOB_WORKERS])
 	}
@@ -184,19 +186,26 @@ host_tick_lane :: proc()
 		sync_client_api()
 
 		running: b64 = host_memory.client_api.tick_lane( duration_seconds(delta_ns), delta_ns ) == false
-		if thread_memory.id == .Master_Prepper { sync_store(& host_memory.tick_running, running, .Release) }
+		if thread_memory.id == .Master_Prepper { 
+			sync_store(& host_memory.tick_running, running, .Release) 
+		}
 		// host_memory.client_api.clean_frame()
 
 		delta_ns  = time_tick_lap_time( & host_tick )
 		host_tick = time_tick_now()
+
+		leader := barrier_wait(& host_memory.lane_sync)
 	}
-	leader := barrier_wait(& host_memory.lane_sync)
 	host_lane_shutdown()
 }
 host_lane_shutdown :: proc()
 {
 	profile(#procedure)
-	spall_buffer_destroy( & host_memory.spall_context, & thread_memory.spall_buffer )
+	if thread_memory.id == .Master_Prepper {
+		sync_store(& host_memory.job_system.running, false, .Release)
+	}
+	leader := barrier_wait(& host_memory.lane_job_sync)
+	// spall_buffer_destroy( & host_memory.spall_context, & thread_memory.spall_buffer )
 }
 
 host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
@@ -223,6 +232,7 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 			host_memory.client_api.hot_reload(& host_memory, & thread_memory)
 		}
 	}
+	leader := barrier_wait(& host_memory.lane_job_sync)
 }
 
 @export

@@ -42,6 +42,14 @@ ProcessMemory :: struct {
 	client_api_hot_reloaded: b64,       // Used to signal to threads when hot-reload paths should be taken.
 	client_api:              ModuleAPI, // Host -> Client Interface
 	client_memory:           State,
+
+	// Testing
+	job_group_reload: JobGroup,
+	job_info_reload: [64]TestJobInfo,
+	job_reload:      [64]Job,
+	job_group_exit:  JobGroup,
+	job_info_exit:   [64]TestJobInfo,
+	job_exit:        [64]Job,
 }
 
 Host_API :: struct {

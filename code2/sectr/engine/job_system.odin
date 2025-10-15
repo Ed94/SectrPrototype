@@ -8,20 +8,20 @@ JobGroup :: struct {
 	counter: u64,
 }
 
-JobPriority :: enum {
+JobPriority :: enum (u32) {
 	Normal = 0,
 	Low,
 	High,
 }
 
 Job :: struct {
-	next:    ^Job,
-	cb:      JobProc,
-	data:    rawptr,
-	// scratch: ^CArena,
-	group:   ^JobGroup,
-	ignored: JobIgnoredThreads,
-	dbg_lbl: string,
+	next:      ^Job,
+	cb:        JobProc,
+	data:      rawptr,
+	// scratch:   ^CArena,
+	group:     ^JobGroup,
+	ignored:   JobIgnoredThreads,
+	dbg_label: string,
 }
 
 JobList :: struct {
@@ -188,18 +188,20 @@ WorkerID :: enum int {
 
 @(private) div_ceil :: #force_inline proc(a, b: int) -> int { return (a + b - 1) / b }
 
-make_job_raw :: proc(group: ^JobGroup, data: rawptr, cb: JobProc, ignored_threads: JobIgnoredThreads = {}) -> Job {
+make_job_raw :: proc(group: ^JobGroup, data: rawptr, cb: JobProc, ignored_threads: JobIgnoredThreads = {}, dbg_label: string = "") -> Job {
     assert(group != nil)
     assert(cb != nil)
-    return {cb = cb, data = data, group = group}
+    return {cb = cb, data = data, group = group, ignored = {}, dbg_label = dbg_label}
 }
 
-job_dispatch :: proc(job: Job, priorty: JobPriority = .Normal) {
+job_dispatch_single :: proc(job: ^Job, priority: JobPriority = .Normal) {
 	assert(job.group != nil)
-	// sync_add(& job.group.atomic_counter, 1)
-	// if 
+	sync_add(& job.group.counter, 1, .Seq_Cst)	
 
-	// sync_mutex_lock
+	sync_mutex_lock(& memory.job_system.job_lists[priority].mutex)
+	job.next = memory.job_system.job_lists[priority].head
+	memory.job_system.job_lists[priority].head = job
+	sync_mutex_unlock(& memory.job_system.job_lists[priority].mutex)
 }
 
 // Note: it's on you to clean up the memory after the jobs if you use a custom allocator.
@@ -240,4 +242,3 @@ job_dispatch :: proc(job: Job, priorty: JobPriority = .Normal) {
 // group_is_finished :: #force_inline proc(group: ^Group) -> bool {
 //     return intrinsics.atomic_load(&group.atomic_counter) <= 0
 // }
-

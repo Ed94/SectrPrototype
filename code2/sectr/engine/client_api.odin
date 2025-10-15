@@ -34,8 +34,13 @@ then prepare for multi-threaded "laned" tick: thread_wide_startup.
 @export
 startup :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
-	memory = host_mem
-	thread = thread_mem
+	// Rad Debugger driving me crazy..
+	for ; memory == nil; {
+		memory = host_mem
+	}
+	for ; thread == nil; {
+		thread = thread_mem
+	}
 	grime_set_profiler_module_context(& memory.spall_context)
 	grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	profile(#procedure)
@@ -120,23 +125,36 @@ tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_c
 	@thread_local dummy: int = 0
 	dummy += 1
 
+	EXIT_TIME :: 1
+
 	// profile_begin("sokol_app: pre_client_tick")
 	// should_close |= cast(b64) sokol_app.pre_client_frame()
 	@static timer: f64
 	if thread.id == .Master_Prepper {
-		timer        += host_delta_time_ms
-		sync_store(& should_close, timer > 5, .Release)
+		timer += host_delta_time_ms
+		sync_store(& should_close, timer > EXIT_TIME, .Release)
+
+		// Test dispatching 64 jobs during hot_reload loop (when the above store is uncommented)
+		for job_id := 1; job_id < 64; job_id += 1 {
+			memory.job_info_reload[job_id].id = job_id
+			memory.job_reload[job_id] = make_job_raw(& memory.job_group_reload, & memory.job_info_reload[job_id], test_job, {}, "Job Test (Hot-Reload)")
+			job_dispatch_single(& memory.job_reload[job_id], .Normal)
+		}
 	}
 	// profile_end()
 
-	// profile_begin("Client Tick")
+	profile_begin("Client Tick")
 
-	// @thread_local test_job: TestJobInfo
-	// for job_id := 1; job_id < 64; job_id += 1 {
-		// job_dispatch(test_job, & test_job, .Medium, "Job Test")
-	// }
+	if thread.id == .Master_Prepper && timer > EXIT_TIME {
+		// Test dispatching 64 jobs during the last iteration before exiting.
+		for job_id := 1; job_id < 64; job_id += 1 {
+			memory.job_info_exit[job_id].id = job_id
+			memory.job_exit[job_id] = make_job_raw(& memory.job_group_exit, & memory.job_info_exit[job_id], test_job, {}, "Job Test (Exit)")
+			job_dispatch_single(& memory.job_exit[job_id], .Normal)
+		}
+	}
 
-	// profile_end()
+	profile_end()
 
 	// profile_begin("sokol_app: post_client_tick")
 	// profile_end()
@@ -146,11 +164,35 @@ tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_c
 }
 
 @export
-jobsys_worker_tick :: proc() {
+jobsys_worker_tick :: proc()
+{
 	profile("Worker Tick")
 
-	@thread_local dummy: int = 0;
-	dummy += 1
+	ORDERED_PRIORITIES :: [len(JobPriority)]JobPriority{.High, .Normal, .Low}
+	block: for priority in ORDERED_PRIORITIES 
+	{
+		if memory.job_system.job_lists[priority].head == nil do continue
+		if sync_mutex_try_lock(& memory.job_system.job_lists[priority].mutex) 
+		{
+			if job := memory.job_system.job_lists[priority].head; job != nil 
+			{
+				if int(thread.id) in job.ignored {
+					sync_mutex_unlock(& memory.job_system.job_lists[priority].mutex)
+					continue
+				}
+				memory.job_system.job_lists[priority].head = job.next
+				sync_mutex_unlock(& memory.job_system.job_lists[priority].mutex)
+
+				assert(job.group != nil)
+				assert(job.cb    != nil)
+				job.cb(job.data)
+
+				sync_sub(& job.group.counter, 1, .Seq_Cst)
+				break block
+			}
+			sync_mutex_unlock(& memory.job_system.job_lists[priority].mutex)
+		}
+	}
 }
 
 TestJobInfo :: struct {

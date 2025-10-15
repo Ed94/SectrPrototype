@@ -32,10 +32,15 @@ import "core:prof/spall"
 	Spall_Buffer              :: spall.Buffer
 
 import "core:sync"
-	AtomicMutex  :: sync.Atomic_Mutex
-	barrier_wait :: sync.barrier_wait
-	sync_store   :: sync.atomic_store_explicit
-	sync_load    :: sync.atomic_load_explicit
+	AtomicMutex         :: sync.Atomic_Mutex
+	barrier_wait        :: sync.barrier_wait
+	sync_store          :: sync.atomic_store_explicit
+	sync_load           :: sync.atomic_load_explicit
+	sync_add            :: sync.atomic_add_explicit
+	sync_sub            :: sync.atomic_sub_explicit
+	sync_mutex_lock     :: sync.atomic_mutex_lock
+	sync_mutex_unlock   :: sync.atomic_mutex_unlock
+	sync_mutex_try_lock :: sync.atomic_mutex_try_lock
 
 import threading "core:thread"
 	SysThread     :: threading.Thread
