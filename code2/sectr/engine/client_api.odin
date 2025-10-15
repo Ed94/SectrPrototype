@@ -41,6 +41,44 @@ startup :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 	grime_set_profiler_module_context(& memory.spall_context)
 	grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	profile(#procedure)
+
+	using memory.client_memory
+
+		// Configuration Load
+	// TODO(Ed): Make this actually load from an ini
+	{
+		using config
+		resolution_width  = 1000
+		resolution_height =  600
+		refresh_rate      =    0
+
+		cam_min_zoom                 = 0.001
+		cam_max_zoom                 = 5.0
+		cam_zoom_mode                = .Smooth
+		cam_zoom_smooth_snappiness   = 4.0
+		cam_zoom_sensitivity_smooth  = 0.5
+		cam_zoom_sensitivity_digital = 0.25
+		cam_zoom_scroll_delta_scale  = 0.25
+
+		engine_refresh_hz = 240
+
+		timing_fps_moving_avg_alpha = 0.9
+
+		ui_resize_border_width = 5
+
+		// color_theme = App_Thm_Dusk
+
+		text_snap_glyph_shape_position = false
+		text_snap_glyph_render_height  = false
+		text_size_screen_scalar        = 1.4
+		text_size_canvas_scalar        = 1.4
+		text_alpha_sharpen             = 0.1
+	}
+
+	Desired_OS_Scheduler_MS :: 1
+	sleep_is_granular = set__scheduler_granularity( Desired_OS_Scheduler_MS )
+
+
 }
 
 /*
@@ -130,7 +168,7 @@ tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_c
 	@static timer: f64
 	if thread.id == .Master_Prepper {
 		timer += host_delta_time_ms
-		sync_store(& should_close, timer > EXIT_TIME, .Release)
+		// sync_store(& should_close, timer > EXIT_TIME, .Release)
 
 	}
 	// profile_end()
@@ -145,20 +183,21 @@ tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_c
 			job_dispatch_single(& memory.job_exit[job_id], .Normal)
 		}
 	}
+	client_tick := tick_now()
 
 	profile_end()
 
 	// profile_begin("sokol_app: post_client_tick")
 	// profile_end()
 
-	tick_lane_frametime()
+	tick_lane_frametime(& client_tick, host_delta_time_ms, host_delta_ns)
 	return sync_load(& should_close, .Acquire)
 }
 
 @export
-jobsys_worker_tick :: proc()
+jobsys_worker_tick :: proc(host_delta_time_ms: f64, host_delta_ns: Duration)
 {
-	profile("Worker Tick")
+	// profile("Worker Tick")
 
 	ORDERED_PRIORITIES :: [len(JobPriority)]JobPriority{.High, .Normal, .Low}
 	block: for priority in ORDERED_PRIORITIES 
@@ -166,6 +205,7 @@ jobsys_worker_tick :: proc()
 		if memory.job_system.job_lists[priority].head == nil do continue
 		if sync_mutex_try_lock(& memory.job_system.job_lists[priority].mutex) 
 		{
+			profile("Executing Job")
 			if job := memory.job_system.job_lists[priority].head; job != nil 
 			{
 				if int(thread.id) in job.ignored {
@@ -185,6 +225,12 @@ jobsys_worker_tick :: proc()
 			sync_mutex_unlock(& memory.job_system.job_lists[priority].mutex)
 		}
 	}
+
+	// Updating worker frametime
+	{
+		// TODO(Ed): Setup 
+		
+	}
 }
 
 TestJobInfo :: struct {
@@ -199,22 +245,20 @@ test_job :: proc(data: rawptr)
 
 Frametime_High_Perf_Threshold_MS :: 1 / 240.0
 
-tick_lane_frametime :: proc()
+tick_lane_frametime :: proc(client_tick: ^Tick, host_delta_time_ms: f64, host_delta_ns: Duration, can_sleep := true)
 {
 	profile(#procedure)
 	config    := app_config()
-	frametime := get_frametime()
+	frametime := & memory.client_memory.frametime
 	// context.allocator      = frame_slab_allocator()
 	// context.temp_allocator = transient_allocator()
-
-	profile("Client tick timing processing")
 
 	if thread.id == .Master_Prepper
 	{
 		frametime.target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
 		sub_ms_granularity_required := frametime.target_ms <= Frametime_High_Perf_Threshold_MS
 
-		frametime.delta_ns      = time_tick_lap_time( client_tick )
+		frametime.delta_ns      = tick_lap_time( client_tick )
 		frametime.delta_ms      = duration_ms( frametime.delta_ns )
 		frametime.delta_seconds = duration_seconds( host_delta_ns )
 		frametime.elapsed_ms    = frametime.delta_ms + host_delta_time_ms
@@ -222,14 +266,14 @@ tick_lane_frametime :: proc()
 		if frametime.elapsed_ms < frametime.target_ms
 		{
 			sleep_ms       := frametime.target_ms - frametime.elapsed_ms
-			pre_sleep_tick := time_tick_now()
+			pre_sleep_tick := tick_now()
 
 			if can_sleep && sleep_ms > 0 {
 				// thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
 				// thread__highres_wait( sleep_ms )
 			}
 
-			sleep_delta_ns := time_tick_lap_time( & pre_sleep_tick)
+			sleep_delta_ns := tick_lap_time( & pre_sleep_tick)
 			sleep_delta_ms := duration_ms( sleep_delta_ns )
 
 			if sleep_delta_ms < sleep_ms {
@@ -238,7 +282,7 @@ tick_lane_frametime :: proc()
 
 			frametime.elapsed_ms += sleep_delta_ms
 			for ; frametime.elapsed_ms < frametime.target_ms; {
-				sleep_delta_ns = time_tick_lap_time( & pre_sleep_tick)
+				sleep_delta_ns = tick_lap_time( & pre_sleep_tick)
 				sleep_delta_ms = duration_ms( sleep_delta_ns )
 
 				frametime.elapsed_ms += sleep_delta_ms
@@ -258,7 +302,6 @@ tick_lane_frametime :: proc()
 	else 
 	{
 		// Non-main thread tick lane timing (since they are in lock-step this should be minimal delta)
-
 	}
 }
 

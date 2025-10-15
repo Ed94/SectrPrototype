@@ -114,7 +114,7 @@ main :: proc()
 		host_memory.tick_running = true
 		host_memory.tick_lanes   = THREAD_TICK_LANES
 		barrier_init(& host_memory.lane_sync, THREAD_TICK_LANES)
-		if THREAD_TICK_LANES > 1 {
+		when THREAD_TICK_LANES > 1 {
 			for id in 1 ..= (THREAD_TICK_LANES - 1) {
 				launch_tick_lane_thread(cast(WorkerID) id)
 			}
@@ -184,7 +184,7 @@ host_tick_lane :: proc()
 	{
 		profile("Host Tick")
 
-		running: b64 = host_memory.client_api.tick_lane( duration_seconds(delta_ns), delta_ns ) == false
+		running: b64 = host_memory.client_api.tick_lane(duration_seconds(delta_ns), delta_ns) == false
 		if thread_memory.id == .Master_Prepper { 
 			sync_store(& host_memory.tick_running, running, .Release) 
 		}
@@ -218,10 +218,17 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 		host_memory.client_api.tick_lane_startup(& thread_memory)
 		grime_set_profiler_thread_buffer(& thread_memory.spall_buffer)
 	}
+	delta_ns: Duration
+	host_tick := time_tick_now()
 	for ; sync_load(& host_memory.job_system.running, .Relaxed); 
 	{
 		profile("Host Job Tick")
-		host_memory.client_api.jobsys_worker_tick()
+
+		host_memory.client_api.jobsys_worker_tick(duration_seconds(delta_ns), delta_ns)
+
+		delta_ns  = time_tick_lap_time( & host_tick )
+		host_tick = time_tick_now()
+
 		if sync_load(& host_memory.client_api_hot_reloaded, .Acquire) {
 			// Signals to main hread when all jobs have drained.
 			leader :=barrier_wait(& host_memory.job_hot_reload_sync) 

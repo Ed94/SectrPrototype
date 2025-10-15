@@ -47,15 +47,22 @@ import threading "core:thread"
 	thread_start  :: threading.start
 
 import "core:time"
-	Millisecond  :: time.Millisecond
-	Duration     :: time.Duration
-	thread_sleep :: time.sleep 
+	Millisecond      :: time.Millisecond
+	Duration         :: time.Duration
+	Tick             :: time.Tick
+	duration_ms      :: time.duration_milliseconds
+	duration_seconds :: time.duration_seconds
+	thread_sleep     :: time.sleep 
+	tick_lap_time    :: time.tick_lap_time
+	tick_now         :: time.tick_now
 
 import "codebase:grime"
 	Logger :: grime.Logger
 
 	grime_set_profiler_module_context :: grime.set_profiler_module_context
 	grime_set_profiler_thread_buffer  :: grime.set_profiler_thread_buffer
+
+	set__scheduler_granularity :: grime.set__scheduler_granularity
 
 Kilo :: 1024
 Mega :: Kilo * 1024
@@ -123,10 +130,11 @@ profile_end :: #force_inline proc "contextless" () {
 	spall._buffer_end( & memory.spall_context, & thread.spall_buffer)
 }
 
-
+// Procedure Mappings
 
 add :: proc {
 	add_r2f4,
+	add_biv3f4,
 }
 
 biv3f4 :: proc {
@@ -139,6 +147,13 @@ cross :: proc {
 	cross_s,
 	cross_v2,
 	cross_v3,
+
+	cross_v3f4_uv3f4,
+	cross_u3f4_v3f4,
+}
+
+div :: proc {
+	div_biv3f4_f32,
 }
 
 dot :: proc {
@@ -147,6 +162,13 @@ dot :: proc {
 	qdot_f2,
 	qdot_f4,
 	qdot_f8,
+
+	dot_v3f4_uv3f4,
+	dot_uv3f4_v3f4,
+}
+
+equal :: proc {
+	equal_r2f4,
 }
 
 is_power_of_two :: proc {
@@ -159,6 +181,12 @@ mov_avg_exp :: proc {
 	mov_avg_exp_f64,
 }
 
+mul :: proc {
+	mul_biv3f4,
+	mul_biv3f4_f32,
+	mul_f32_biv3f4,
+}
+
 join :: proc {
 	join_r2f4,
 }
@@ -167,15 +195,16 @@ inverse_sqrt :: proc {
 	inverse_sqrt_f32,
 }
 
-sub :: proc {
-	sub_r2f4,
-	sub_biv3f4,
-	join_point3_f4,
-	join_pointflat3_f4,
+point3 :: proc {
+	v3f4_to_point3f4,
 }
 
 pow2 :: proc {
 	pow2_v3f4,
+}
+
+quatf4 :: proc {
+	quatf4_from_rotor3f4,
 }
 
 regress :: proc {
@@ -188,8 +217,15 @@ rotor3 :: proc {
 	// rotor3f4_via_from_to_v3f4,
 }
 
-quatf4 :: proc {
-	quatf4_from_rotor3f4,
+size :: proc {
+	size_r2f4,
+}
+
+sub :: proc {
+	sub_r2f4,
+	sub_biv3f4,
+	// join_point3_f4,
+	// join_pointflat3_f4,
 }
 
 v2f4 :: proc {

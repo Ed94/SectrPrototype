@@ -70,9 +70,13 @@ State :: struct {
 }
 
 ThreadState :: struct {
+	
+
+	// Frametime
 	delta_seconds: f64,
 	delta_ms:      f64,
 	delta_ns:      Duration,
+	target_ms:     f64, // NOTE(Ed): This can only be used on job worker threads.
 	elapsed_ms:    f64,
 	avg_ms:        f64,
 }
