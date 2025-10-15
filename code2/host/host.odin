@@ -19,21 +19,23 @@ load_client_api :: proc(version_id: int) -> (loaded_module: Client_API) {
 	//TODO(Ed): Lets try to minimize this...
 	thread_sleep( Millisecond * 100 )
 	// Get the live dll loaded up
-	live_file := Path_Sectr_Live_Module
-	file_copy_sync( Path_Sectr_Module, live_file, allocator = context.temp_allocator )
-	did_load: bool; lib, did_load = os_lib_load( Path_Sectr_Module )
+	file_copy_sync( Path_Sectr_Module, Path_Sectr_Live_Module, allocator = context.temp_allocator )
+	did_load: bool; lib, did_load = os_lib_load( Path_Sectr_Live_Module )
 	if ! did_load do panic( "Failed to load the sectr module.")
 	startup            = cast( type_of( host_memory.client_api.startup))            os_lib_get_proc(lib, "startup")
 	tick_lane_startup  = cast( type_of( host_memory.client_api.tick_lane_startup))  os_lib_get_proc(lib, "tick_lane_startup")
+	job_worker_startup = cast( type_of( host_memory.client_api.job_worker_startup)) os_lib_get_proc(lib, "job_worker_startup")
 	hot_reload         = cast( type_of( host_memory.client_api.hot_reload))         os_lib_get_proc(lib, "hot_reload")
 	tick_lane          = cast( type_of( host_memory.client_api.tick_lane))          os_lib_get_proc(lib, "tick_lane")
 	clean_frame        = cast( type_of( host_memory.client_api.clean_frame))        os_lib_get_proc(lib, "clean_frame")
 	jobsys_worker_tick = cast( type_of( host_memory.client_api.jobsys_worker_tick)) os_lib_get_proc(lib, "jobsys_worker_tick")
-	if startup           == nil do panic("Failed to load sectr.startup symbol" )
-	if tick_lane_startup == nil do panic("Failed to load sectr.tick_lane_startup symbol" )
-	if hot_reload        == nil do panic("Failed to load sectr.hot_reload symbol" )
-	if tick_lane         == nil do panic("Failed to load sectr.tick_lane symbol" )
-	if clean_frame       == nil do panic("Failed to load sectr.clean_frmae symbol" )
+	if startup            == nil do panic("Failed to load sectr.startup symbol" )
+	if tick_lane_startup  == nil do panic("Failed to load sectr.tick_lane_startup symbol" )
+	if job_worker_startup == nil do panic("Failed to load sectr.job_worker_startup symbol" )
+	if hot_reload         == nil do panic("Failed to load sectr.hot_reload symbol" )
+	if tick_lane          == nil do panic("Failed to load sectr.tick_lane symbol" )
+	if clean_frame        == nil do panic("Failed to load sectr.clean_frame symbol" )
+	if jobsys_worker_tick == nil do panic("Failed to laod sectr.jobsys_worker_tick")
 	lib_version = version_id
 	return
 }
@@ -132,6 +134,7 @@ main :: proc()
 				thread_start(worker_thread)
 			}
 		}
+		barrier_init(& host_memory.lane_job_sync, THREAD_TICK_LANES + THREAD_JOB_WORKERS)
 		host_tick_lane()
 	}
 
@@ -187,6 +190,7 @@ host_tick_lane :: proc()
 		delta_ns  = time_tick_lap_time( & host_tick )
 		host_tick = time_tick_now()
 	}
+	leader := barrier_wait(& host_memory.lane_sync)
 	host_lane_shutdown()
 }
 host_lane_shutdown :: proc()
@@ -212,8 +216,11 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 		host_memory.client_api.jobsys_worker_tick()
 		// TODO(Ed): We cannot allow job threads to enter the reload barrier until all jobs have drained.
 		if sync_load(& host_memory.client_api_hot_reloaded, .Acquire) {
-			leader :=barrier_wait(& host_memory.job_hot_reload_sync)
-			break
+			// Signals to main hread when all jobs have drained.
+			leader :=barrier_wait(& host_memory.job_hot_reload_sync) 
+			// Job threads wait here until client module is back
+			leader  =barrier_wait(& host_memory.job_hot_reload_sync) 
+			host_memory.client_api.hot_reload(& host_memory, & thread_memory)
 		}
 	}
 }
@@ -232,28 +239,25 @@ sync_client_api :: proc()
 			profile("Master_Prepper: Reloading client module")
 			sync_store(& host_memory.client_api_hot_reloaded, true, .Release)
 			// We nee to wait for the job queue to drain.
-			barrier_wait(& host_memory.job_hot_reload_sync)
+			leader = barrier_wait(& host_memory.job_hot_reload_sync)
+			{
+				version_id := host_memory.client_api.lib_version + 1
+				unload_client_api( & host_memory.client_api )
+				// Wait for pdb to unlock (linker may still be writting)
+				for ; file_is_locked( Path_Sectr_Debug_Symbols ) && file_is_locked( Path_Sectr_Live_Module ); {}
 
-			version_id := host_memory.client_api.lib_version + 1
-			unload_client_api( & host_memory.client_api )
-			// Wait for pdb to unlock (linker may still be writting)
-			for ; file_is_locked( Path_Sectr_Debug_Symbols ) && file_is_locked( Path_Sectr_Live_Module ); {}
-			thread_sleep( Millisecond * 100 )
-			host_memory.client_api = load_client_api( version_id )
-			verify( host_memory.client_api.lib_version != 0, "Failed to hot-reload the sectr module" )
+				thread_sleep( Millisecond * 100 )
 
-			// Don't let jobs continue until after we clear loading.
-			barrier_wait(& host_memory.job_hot_reload_sync)
+				host_memory.client_api = load_client_api( version_id )
+				verify( host_memory.client_api.lib_version != 0, "Failed to hot-reload the sectr module" )
+			}
+			leader = barrier_wait(& host_memory.job_hot_reload_sync)
 		}
 	}
-	leader  = barrier_wait(& host_memory.lane_sync)
+	leader = barrier_wait(& host_memory.lane_sync)
 	// Lanes are safe to continue.
-	if sync_load(& host_memory.client_api_hot_reloaded, .Acquire)
-	{
+	if sync_load(& host_memory.client_api_hot_reloaded, .Acquire) {
 		host_memory.client_api.hot_reload(& host_memory, & thread_memory)
-		if thread_memory.id == .Master_Prepper {
-			sync_store(& host_memory.client_api_hot_reloaded, false, .Release)
-		}
 	}
 }
 unload_client_api :: proc( module : ^Client_API )

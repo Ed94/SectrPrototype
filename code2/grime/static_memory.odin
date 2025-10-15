@@ -1,8 +1,8 @@
 package grime
 
 //region STATIC MEMORY
-              static_memory: StaticMemory
-@thread_local thread_memory: ThreadMemory
+              grime_memory: StaticMemory
+@thread_local grime_thread: ThreadMemory
 //endregion STATIC MEMORY
 
 StaticMemory :: struct {

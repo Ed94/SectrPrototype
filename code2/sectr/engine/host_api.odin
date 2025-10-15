@@ -17,39 +17,42 @@ ProcessMemory :: struct {
 	// Host 
 	host_persist_buf: [32 * Mega]byte,
 	host_scratch_buf: [64 * Mega]byte,
-	host_persist:     Odin_Arena,
-	host_scratch:     Odin_Arena,
-	host_api:         Host_API,
+	host_persist:     Odin_Arena,      // Host Persistent (Non-Wipeable), for bad third-party static object allocation
+	host_scratch:     Odin_Arena,      // Host Temporary  Wipable
+	host_api:         Host_API,        // Client -> Host Interface
 
 	// Textual Logging
-	logger: Logger,
+	logger:                Logger,
 	path_logger_finalized: string,
 
 	// Profiling
 	spall_context: Spall_Context,
+	// TODO(Ed): Try out Superluminal's API!
 
 	// Multi-threading
-	threads:             [MAX_THREADS](^SysThread),
-	job_system:          JobSystemContext,
-	tick_lanes:          int,
-	lane_sync:           sync.Barrier,
-	job_hot_reload_sync: sync.Barrier, // Used to sync jobs with main thread during hot-reload junction.
-	tick_running:        b64,
+	threads:             [MAX_THREADS](^SysThread), // All threads are tracked here.
+	job_system:          JobSystemContext, // State tracking for job system.
+	tick_running:        b64,              // When disabled will lead to shutdown of the process.
+	tick_lanes:          int,              // Runtime tracker of live tick lane threads
+	lane_sync:           sync.Barrier,     // Used to sync tick lanes during wide junctions.
+	job_hot_reload_sync: sync.Barrier,     // Used to sync jobs with main thread during hot-reload junction.
+	lane_job_sync:       sync.Barrier,     // Used to sync tick lanes and job workers during hot-reload.
 
 	// Client Module
-	client_api_hot_reloaded: b64,
-	client_api:    ModuleAPI,
-	client_memory: State,
+	client_api_hot_reloaded: b64,       // Used to signal to threads when hot-reload paths should be taken.
+	client_api:              ModuleAPI, // Host -> Client Interface
+	client_memory:           State,
 }
 
 Host_API :: struct {
-	request_virtual_memory:    #type proc(),
-	request_virtual_mapped_io: #type proc(),
+	request_virtual_memory:    #type proc(), // All dynamic allocations will utilize vmem interfaces
+	request_virtual_mapped_io: #type proc(), // TODO(Ed): Figure out usage constraints of this.
 }
 
 ThreadMemory :: struct {
 	using _:    ThreadWorkerContext,
 
+	// Per-thread profiling
 	spall_buffer_backing: [SPALL_BUFFER_DEFAULT_SIZE * 2]byte,
 	spall_buffer:         Spall_Buffer,
 }

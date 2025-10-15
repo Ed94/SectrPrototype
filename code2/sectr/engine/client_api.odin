@@ -18,6 +18,7 @@ ModuleAPI :: struct {
 
 	startup:            type_of( startup ),
 	tick_lane_startup:  type_of( tick_lane_startup),
+	job_worker_startup: type_of( job_worker_startup),
 	hot_reload:         type_of( hot_reload ),
 	tick_lane:          type_of( tick_lane ),
 	clean_frame:        type_of( clean_frame),
@@ -47,21 +48,46 @@ Threads will eventually return to their tick_lane upon completion.
 @export
 hot_reload :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
-	profile(#procedure)
-	thread = thread_mem
-	if thread.id == .Master_Prepper {
-		grime_set_profiler_module_context(& memory.spall_context)
-		sync_store(& memory, host_mem, .Release)
+	// Critical reference synchronization
+	{
+		thread = thread_mem
+		if thread.id == .Master_Prepper {
+			sync_store(& memory, host_mem, .Release)
+			grime_set_profiler_module_context(& memory.spall_context)
+		}
+		else {
+			for ; memory == nil; {
+				sync_load(& memory, .Acquire)
+			}
+			for ; thread == nil; {
+				thread = thread_mem
+			}
+		}
+		grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	}
-	grime_set_profiler_thread_buffer(& thread.spall_buffer)
+	profile(#procedure)
+	// Do hot-reload stuff...
+	{
+		
+	}
+	// Critical reference synchronization
+	{
+		leader := barrier_wait(& memory.lane_job_sync)
+		if thread.id == .Master_Prepper {
+				sync_store(& memory.client_api_hot_reloaded, false, .Release)
+		}
+		else {
+			for ; memory.client_api_hot_reloaded == true;  {
+				sync_load(& memory.client_api_hot_reloaded, .Acquire)
+			}
+		}
+		leader = barrier_wait(& memory.lane_job_sync)
+	}
 }
 
 /*
 Called by host_tick_lane_startup
 Used for lane specific startup operations
-
-The lane tick cannot be handled it, its call must be done by the host module.
-(We need threads to not be within a client callstack in the even of a hot-reload)
 */
 @export
 tick_lane_startup :: proc(thread_mem: ^ThreadMemory)
@@ -73,8 +99,19 @@ tick_lane_startup :: proc(thread_mem: ^ThreadMemory)
 	profile(#procedure)
 }
 
-/*
+@export
+job_worker_startup :: proc(thread_mem: ^ThreadMemory)
+{
+	if thread_mem.id != .Master_Prepper {
+		thread = thread_mem
+		grime_set_profiler_thread_buffer(& thread.spall_buffer)
+	}
+	profile(#procedure)
+}
 
+/*
+Host handles the loop. 
+(We need threads to be outside of client callstack in the event of a hot-reload)
 */
 @export
 tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_close: b64 = false)

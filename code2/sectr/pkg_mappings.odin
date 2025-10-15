@@ -32,9 +32,10 @@ import "core:prof/spall"
 	Spall_Buffer              :: spall.Buffer
 
 import "core:sync"
-	AtomicMutex :: sync.Atomic_Mutex
-	sync_store  :: sync.atomic_store_explicit
-	sync_load   :: sync.atomic_load_explicit
+	AtomicMutex  :: sync.Atomic_Mutex
+	barrier_wait :: sync.barrier_wait
+	sync_store   :: sync.atomic_store_explicit
+	sync_load    :: sync.atomic_load_explicit
 
 import threading "core:thread"
 	SysThread     :: threading.Thread
@@ -43,7 +44,9 @@ import threading "core:thread"
 	thread_start  :: threading.start
 
 import "core:time"
-	Duration :: time.Duration
+	Millisecond  :: time.Millisecond
+	Duration     :: time.Duration
+	thread_sleep :: time.sleep 
 
 import "codebase:grime"
 	Logger :: grime.Logger
