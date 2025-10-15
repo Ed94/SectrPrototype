@@ -3,8 +3,6 @@ package sectr
 /*
 All direct non-codebase package symbols should do zero allocations.
 Any symbol that does must be mapped from the Grime package to properly tirage its allocator to odin's ideomatic interface.
-
-
 */
 
 import "base:intrinsics"
@@ -64,6 +62,24 @@ Mega :: Kilo * 1024
 Giga :: Mega * 1024
 Tera :: Giga * 1024
 
+// chrono
+	NS_To_MS :: grime.NS_To_MS
+	NS_To_US :: grime.NS_To_US
+	NS_To_S  :: grime.NS_To_S
+
+	US_To_NS :: grime.US_To_NS
+	US_To_MS :: grime.US_To_MS
+	US_To_S  :: grime.US_To_S
+
+	MS_To_NS :: grime.MS_To_NS
+	MS_To_US :: grime.MS_To_US
+	MS_To_S  :: grime.MS_To_S
+
+	S_To_NS :: grime.S_To_NS
+	S_To_US :: grime.S_To_US
+	S_To_MS :: grime.S_To_MS
+
+
 ensure :: #force_inline proc( condition : b32, msg : string, location := #caller_location ) {
 	if condition do return
 	log_print( msg, LoggerLevel.Warning, location )
@@ -105,4 +121,112 @@ profile_begin :: #force_inline proc "contextless" ( name : string, loc := #calle
 @(disabled = DISABLE_CLIENT_PROFILING)
 profile_end :: #force_inline proc "contextless" () {
 	spall._buffer_end( & memory.spall_context, & thread.spall_buffer)
+}
+
+
+
+add :: proc {
+	add_r2f4,
+}
+
+biv3f4 :: proc {
+	biv3f4_via_f32s,
+	v3f4_to_biv3f4,
+}
+bivec :: biv3f4
+
+cross :: proc {
+	cross_s,
+	cross_v2,
+	cross_v3,
+}
+
+dot :: proc {
+	sdot,
+	vdot,
+	qdot_f2,
+	qdot_f4,
+	qdot_f8,
+}
+
+is_power_of_two :: proc {
+	is_power_of_two_u32,
+	// is_power_of_two_uintptr,
+}
+
+mov_avg_exp :: proc {
+	mov_avg_exp_f32,
+	mov_avg_exp_f64,
+}
+
+join :: proc {
+	join_r2f4,
+}
+
+inverse_sqrt :: proc {
+	inverse_sqrt_f32,
+}
+
+sub :: proc {
+	sub_r2f4,
+	sub_biv3f4,
+	join_point3_f4,
+	join_pointflat3_f4,
+}
+
+pow2 :: proc {
+	pow2_v3f4,
+}
+
+regress :: proc {
+	regress_biv3f4,
+}
+
+rotor3 :: proc {
+	rotor3f4_via_comps_f4,
+	rotor3f4_via_bv_s_f4,
+	// rotor3f4_via_from_to_v3f4,
+}
+
+quatf4 :: proc {
+	quatf4_from_rotor3f4,
+}
+
+v2f4 :: proc {
+	v2f4_from_f32s,
+	v2f4_from_scalar,
+	v2f4_from_v2s4,
+	v2s4_from_v2f4,
+}
+
+v3f4 :: proc {
+	v3f4_via_f32s,
+	biv3f4_to_v3f4,
+	point3f4_to_v3f4,
+	pointflat3f4_to_v3f4,
+	uv3f4_to_v3f4,
+}
+
+v2 :: proc {
+	v2f4_from_f32s,
+	v2f4_from_scalar,
+	v2f4_from_v2s4,
+	v2s4_from_v2f4,
+}
+
+v3 :: proc {
+	v3f4_via_f32s,
+	biv3f4_to_v3f4,
+	point3f4_to_v3f4,
+	pointflat3f4_to_v3f4,
+	uv3f4_to_v3f4,
+}
+
+v4 :: proc {
+	uv4f4_to_v4f4,
+}
+
+wedge :: proc {
+	wedge_v3f4,
+	wedge_biv3f4,
 }

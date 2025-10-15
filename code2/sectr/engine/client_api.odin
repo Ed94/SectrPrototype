@@ -35,12 +35,9 @@ then prepare for multi-threaded "laned" tick: thread_wide_startup.
 startup :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
 	// Rad Debugger driving me crazy..
-	for ; memory == nil; {
-		memory = host_mem
-	}
-	for ; thread == nil; {
-		thread = thread_mem
-	}
+	// NOTE(Ed): This is problably not necessary, they're just loops for my sanity.
+	for ; memory == nil; { memory = host_mem   }
+	for ; thread == nil; { thread = thread_mem }
 	grime_set_profiler_module_context(& memory.spall_context)
 	grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	profile(#procedure)
@@ -61,19 +58,21 @@ hot_reload :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 			grime_set_profiler_module_context(& memory.spall_context)
 		}
 		else {
-			for ; memory == nil; {
-				sync_load(& memory, .Acquire)
-			}
-			for ; thread == nil; {
-				thread = thread_mem
-			}
+			// NOTE(Ed): This is problably not necessary, they're just loops for my sanity.
+			for ; memory == nil; { sync_load(& memory, .Acquire) }
+			for ; thread == nil; { thread = thread_mem }
 		}
 		grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	}
 	profile(#procedure)
 	// Do hot-reload stuff...
 	{
-		
+		// Test dispatching 64 jobs during hot_reload loop (when the above store is uncommented)
+		for job_id := 1; job_id < 64; job_id += 1 {
+			memory.job_info_reload[job_id].id = job_id
+			memory.job_reload[job_id] = make_job_raw(& memory.job_group_reload, & memory.job_info_reload[job_id], test_job, {}, "Job Test (Hot-Reload)")
+			job_dispatch_single(& memory.job_reload[job_id], .Normal)
+		}
 	}
 	// Critical reference synchronization
 	{
@@ -82,9 +81,8 @@ hot_reload :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 				sync_store(& memory.client_api_hot_reloaded, false, .Release)
 		}
 		else {
-			for ; memory.client_api_hot_reloaded == true;  {
-				sync_load(& memory.client_api_hot_reloaded, .Acquire)
-			}
+			// NOTE(Ed): This is problably not necessary, they're just loops for my sanity.
+			for ; memory.client_api_hot_reloaded == true;  { sync_load(& memory.client_api_hot_reloaded, .Acquire) }
 		}
 		leader = barrier_wait(& memory.lane_job_sync)
 	}
@@ -134,12 +132,6 @@ tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_c
 		timer += host_delta_time_ms
 		sync_store(& should_close, timer > EXIT_TIME, .Release)
 
-		// Test dispatching 64 jobs during hot_reload loop (when the above store is uncommented)
-		for job_id := 1; job_id < 64; job_id += 1 {
-			memory.job_info_reload[job_id].id = job_id
-			memory.job_reload[job_id] = make_job_raw(& memory.job_group_reload, & memory.job_info_reload[job_id], test_job, {}, "Job Test (Hot-Reload)")
-			job_dispatch_single(& memory.job_reload[job_id], .Normal)
-		}
 	}
 	// profile_end()
 
@@ -205,9 +197,69 @@ test_job :: proc(data: rawptr)
 	// log_print_fmt("Test job succeeded: %v", info.id)
 }
 
+Frametime_High_Perf_Threshold_MS :: 1 / 240.0
+
 tick_lane_frametime :: proc()
 {
 	profile(#procedure)
+	config    := app_config()
+	frametime := get_frametime()
+	// context.allocator      = frame_slab_allocator()
+	// context.temp_allocator = transient_allocator()
+
+	profile("Client tick timing processing")
+
+	if thread.id == .Master_Prepper
+	{
+		frametime.target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
+		sub_ms_granularity_required := frametime.target_ms <= Frametime_High_Perf_Threshold_MS
+
+		frametime.delta_ns      = time_tick_lap_time( client_tick )
+		frametime.delta_ms      = duration_ms( frametime.delta_ns )
+		frametime.delta_seconds = duration_seconds( host_delta_ns )
+		frametime.elapsed_ms    = frametime.delta_ms + host_delta_time_ms
+
+		if frametime.elapsed_ms < frametime.target_ms
+		{
+			sleep_ms       := frametime.target_ms - frametime.elapsed_ms
+			pre_sleep_tick := time_tick_now()
+
+			if can_sleep && sleep_ms > 0 {
+				// thread_sleep( cast(Duration) sleep_ms * MS_To_NS )
+				// thread__highres_wait( sleep_ms )
+			}
+
+			sleep_delta_ns := time_tick_lap_time( & pre_sleep_tick)
+			sleep_delta_ms := duration_ms( sleep_delta_ns )
+
+			if sleep_delta_ms < sleep_ms {
+				// log( str_fmt_tmp("frametime sleep was off by: %v ms", sleep_delta_ms - sleep_ms ))
+			}
+
+			frametime.elapsed_ms += sleep_delta_ms
+			for ; frametime.elapsed_ms < frametime.target_ms; {
+				sleep_delta_ns = time_tick_lap_time( & pre_sleep_tick)
+				sleep_delta_ms = duration_ms( sleep_delta_ns )
+
+				frametime.elapsed_ms += sleep_delta_ms
+			}
+		}
+
+		config.timing_fps_moving_avg_alpha = 0.99
+		frametime.avg_ms  = mov_avg_exp( f64(config.timing_fps_moving_avg_alpha), frametime.elapsed_ms, frametime.avg_ms )
+		frametime.fps_avg = 1 / (frametime.avg_ms * MS_To_S)
+
+		if frametime.elapsed_ms > 60.0 {
+			log_print_fmt("Big tick! %v ms", frametime.elapsed_ms, LoggerLevel.Warning)
+		}
+
+		frametime.current_frame += 1
+	}
+	else 
+	{
+		// Non-main thread tick lane timing (since they are in lock-step this should be minimal delta)
+
+	}
 }
 
 @export

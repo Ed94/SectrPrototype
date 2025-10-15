@@ -61,6 +61,8 @@ ThreadMemory :: struct {
 	using _:    ThreadWorkerContext,
 
 	// Per-thread profiling
-	spall_buffer_backing: [SPALL_BUFFER_DEFAULT_SIZE * 2]byte,
+	spall_buffer_backing: [SPALL_BUFFER_DEFAULT_SIZE * 4]byte,
 	spall_buffer:         Spall_Buffer,
+
+	client_memory: ThreadState,
 }

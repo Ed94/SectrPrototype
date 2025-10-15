@@ -17,7 +17,7 @@ load_client_api :: proc(version_id: int) -> (loaded_module: Client_API) {
 		panic_contextless( "Could not resolve the last write time for sectr")
 	}
 	//TODO(Ed): Lets try to minimize this...
-	thread_sleep( Millisecond * 100 )
+	thread_sleep( Millisecond * 50 )
 	// Get the live dll loaded up
 	file_copy_sync( Path_Sectr_Module, Path_Sectr_Live_Module, allocator = context.temp_allocator )
 	did_load: bool; lib, did_load = os_lib_load( Path_Sectr_Live_Module )
@@ -138,8 +138,8 @@ main :: proc()
 			}
 		}
 		barrier_init(& host_memory.lane_job_sync, THREAD_TICK_LANES + THREAD_JOB_WORKERS)
-		host_tick_lane()
 	}
+	host_tick_lane()
 
 	if thread_memory.id == .Master_Prepper {
 		thread_join_multiple(.. host_memory.threads[1:THREAD_TICK_LANES + THREAD_JOB_WORKERS])
@@ -183,7 +183,6 @@ host_tick_lane :: proc()
 	for ; sync_load(& host_memory.tick_running, .Relaxed);
 	{
 		profile("Host Tick")
-		sync_client_api()
 
 		running: b64 = host_memory.client_api.tick_lane( duration_seconds(delta_ns), delta_ns ) == false
 		if thread_memory.id == .Master_Prepper { 
@@ -194,7 +193,8 @@ host_tick_lane :: proc()
 		delta_ns  = time_tick_lap_time( & host_tick )
 		host_tick = time_tick_now()
 
-		leader := barrier_wait(& host_memory.lane_sync)
+		// Lanes are synced before doing running check..
+		sync_client_api()
 	}
 	host_lane_shutdown()
 }
@@ -218,12 +218,10 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 		host_memory.client_api.tick_lane_startup(& thread_memory)
 		grime_set_profiler_thread_buffer(& thread_memory.spall_buffer)
 	}
-	// TODO(Ed): We should make sure job system can never be set to "not running" without first draining jobs.
 	for ; sync_load(& host_memory.job_system.running, .Relaxed); 
 	{
 		profile("Host Job Tick")
 		host_memory.client_api.jobsys_worker_tick()
-		// TODO(Ed): We cannot allow job threads to enter the reload barrier until all jobs have drained.
 		if sync_load(& host_memory.client_api_hot_reloaded, .Acquire) {
 			// Signals to main hread when all jobs have drained.
 			leader :=barrier_wait(& host_memory.job_hot_reload_sync) 
@@ -232,6 +230,7 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 			host_memory.client_api.hot_reload(& host_memory, & thread_memory)
 		}
 	}
+	// Were exiting, wait for tick lanes.
 	leader := barrier_wait(& host_memory.lane_job_sync)
 }
 
@@ -256,7 +255,7 @@ sync_client_api :: proc()
 				// Wait for pdb to unlock (linker may still be writting)
 				for ; file_is_locked( Path_Sectr_Debug_Symbols ) && file_is_locked( Path_Sectr_Live_Module ); {}
 
-				thread_sleep( Millisecond * 100 )
+				thread_sleep( Millisecond * 50 )
 
 				host_memory.client_api = load_client_api( version_id )
 				verify( host_memory.client_api.lib_version != 0, "Failed to hot-reload the sectr module" )
