@@ -18,7 +18,7 @@ kt1l_populate_slice_a2_Slice_Byte :: proc(kt: ^[]byte, backing: AllocatorInfo, v
 	assert(kt != nil)
 	if num_values == 0 { return }
 	table_size_bytes := num_values * int(m.slot_size)
-	kt^               = mem_alloc(table_size_bytes, ainfo = transmute(Odin_Allocator) backing)
+	kt^, _            = mem_alloc(table_size_bytes, ainfo = transmute(Odin_Allocator) backing)
 	slice_assert(kt ^)
 	kt_raw : SliceByte = transmute(SliceByte) kt^
 	for id in 0 ..< cast(uintptr) num_values {

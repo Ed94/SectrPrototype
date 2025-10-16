@@ -2,6 +2,7 @@ package grime
 
 // Below should be defined per-package
 
+@(disabled = ODIN_DEBUG == false)
 ensure :: #force_inline proc( condition : b32, msg : string, location := #caller_location ) {
 	if condition do return
 	log_print( msg, LoggerLevel.Warning, location )

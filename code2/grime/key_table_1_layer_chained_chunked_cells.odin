@@ -56,10 +56,10 @@ kt1cx_init :: proc(info: KT1CX_Info, m: KT1CX_InfoMeta, result: ^KT1CX_Byte) {
 	assert(m.cell_depth     >  0)
 	assert(m.table_size     >= 4 * Kilo)
 	assert(m.type_width     >  0)
-	table_raw := transmute(SliceByte) mem_alloc(m.table_size * m.cell_size, ainfo = allocator(info.backing_table))
-	slice_assert(transmute([]byte) table_raw)
-	table_raw.len = m.table_size
-	result.table  = transmute([]byte) table_raw
+	table_raw, error := mem_alloc(m.table_size * m.cell_size, ainfo = allocator(info.backing_table))
+	assert(error == .None); slice_assert(transmute([]byte) table_raw)
+	(transmute(^SliceByte) & table_raw).len = m.table_size
+	result.table = table_raw
 }
 kt1cx_clear :: proc(kt: KT1CX_Byte, m: KT1CX_ByteMeta) {
 	cell_cursor := cursor(kt.table)
@@ -118,7 +118,7 @@ kt1cx_get :: proc(kt: KT1CX_Byte, key: u64, m: KT1CX_ByteMeta) -> ^byte {
 		}
 	}
 }
-kt1cx_set :: proc(kt: KT1CX_Byte, key: u64, value: []byte, backing_cells: AllocatorInfo, m: KT1CX_ByteMeta) -> ^byte {
+kt1cx_set :: proc(kt: KT1CX_Byte, key: u64, value: []byte, backing_cells: Odin_Allocator, m: KT1CX_ByteMeta) -> ^byte {
 	hash_index  := kt1cx_slot_id(kt, key, m)
 	cell_offset := uintptr(hash_index) * uintptr(m.cell_size)
 	cell_cursor := cursor(kt.table)[cell_offset:] // KT1CX_Cell(Type) cell = kt.table[hash_index]
@@ -145,7 +145,7 @@ kt1cx_set :: proc(kt: KT1CX_Byte, key: u64, value: []byte, backing_cells: Alloca
 					continue
 				}
 				else {
-					new_cell       := mem_alloc(m.cell_size, ainfo = allocator(backing_cells))
+					new_cell, _    := mem_alloc(m.cell_size, ainfo = backing_cells)
 					curr_cell.next  = raw_data(new_cell)
 					slot            = transmute(^KT1CX_Byte_Slot) cursor(new_cell)[m.slot_key_offset:]
 					slot.occupied   = true

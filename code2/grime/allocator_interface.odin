@@ -187,7 +187,7 @@ allocator_query :: proc(ainfo := context.allocator, loc := #caller_location) -> 
 	out: AllocatorQueryInfo; resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .Query, loc = loc}, transmute(^AllocatorProc_Out) & out)
 	return out
 }
-mem_free_ainfo :: proc(mem: []byte, ainfo: AllocatorInfo, loc := #caller_location) {
+mem_free_ainfo :: proc(mem: []byte, ainfo:= context.allocator, loc := #caller_location) {
 	assert(ainfo.procedure != nil)
 	resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .Free, old_allocation = mem, loc = loc}, & {})
 }
@@ -205,7 +205,7 @@ mem_save_point :: proc(ainfo := context.allocator, loc := #caller_location) -> A
 	resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .SavePoint, loc = loc}, & out)
 	return out.save_point
 }
-mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo : $Type = context.allocator, loc := #caller_location) -> []byte {
+mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo : $Type = context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -216,7 +216,7 @@ mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero:
 	}
 	output: AllocatorProc_Out
 	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return output.allocation
+	return output.allocation, output.error
 }
 mem_grow :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator, loc := #caller_location) -> []byte {
 	assert(ainfo.procedure != nil)

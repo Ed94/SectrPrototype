@@ -11,6 +11,7 @@ import "core:dynlib"
 import "core:fmt"
 	str_pfmt_builder :: fmt.sbprintf
 	str_pfmt_buffer  :: fmt.bprintf
+	str_pfmt         :: fmt.aprintf
 	str_pfmt_tmp     :: fmt.tprintf
 
 import "core:log"
@@ -44,6 +45,7 @@ import "core:prof/spall"
 
 import "core:strings"
 	strbuilder_from_bytes :: strings.builder_from_bytes
+	strbuilder_make_len   :: strings.builder_make_len
 	builder_to_str        :: strings.to_string
 
 import "core:sync"

@@ -47,6 +47,7 @@ master_prepper_proc :: proc(thread: ^SysThread) {}
 main :: proc()
 {
 	// Setup host arenas
+	// TODO(Ed): Preferablly I want to eliminate usage of this. We should be able to do almost everything here with fixed allocations..
 	arena_init(& host_memory.host_persist, host_memory.host_persist_buf[:])
 	arena_init(& host_memory.host_scratch, host_memory.host_scratch_buf[:])
 	context.allocator      = arena_allocator(& host_memory.host_persist)
@@ -78,8 +79,6 @@ main :: proc()
 	path_logger_finalized: string
 	{
 		profile("Setup the logger")
-		fmt_backing := make([]byte, 32 * Kilo, allocator = context.temp_allocator);
-		
 		// Generating the logger's name, it will be used when the app is shutting down.
 		{
 			startup_time     := time_now()
@@ -89,14 +88,14 @@ main :: proc()
 			if ! os_is_directory( Path_Logs ) {
 				os_make_directory( Path_Logs )
 			}
-			timestamp                        := str_pfmt_buffer( fmt_backing, "%04d-%02d-%02d_%02d-%02d-%02d", year, month, day, hour, min, sec)
-			host_memory.path_logger_finalized = str_pfmt_buffer( fmt_backing, "%s/sectr_%v.log", Path_Logs, timestamp)
+			timestamp                        := str_pfmt_tmp("%04d-%02d-%02d_%02d-%02d-%02d", year, month, day, hour, min, sec)
+			host_memory.path_logger_finalized = str_pfmt("%s/sectr_%v.log", Path_Logs, timestamp)
 		}
-		logger_init( & host_memory.host_logger, "Sectr Host", str_pfmt_buffer( fmt_backing, "%s/sectr.log", Path_Logs ) )
+		logger_init( & host_memory.host_logger, "Sectr Host", str_pfmt_tmp("%s/sectr.log", Path_Logs))
 		context.logger = to_odin_logger( & host_memory.host_logger )
 		{
 			// Log System Context
-			builder := strbuilder_from_bytes( fmt_backing )
+			builder := strbuilder_make_len(16 * Kilo, context.temp_allocator)
 			str_pfmt_builder( & builder, "Core Count: %v, ", os_core_count() )
 			str_pfmt_builder( & builder, "Page Size: %v",    os_page_size() )
 			log_print( to_str(builder) )
@@ -145,6 +144,7 @@ main :: proc()
 		}
 		barrier_init(& host_memory.lane_job_sync, THREAD_TICK_LANES + THREAD_JOB_WORKERS)
 	}
+	free_all(context.temp_allocator)
 	host_tick_lane()
 
 	profile_begin("Host Shutdown")
@@ -156,7 +156,7 @@ main :: proc()
 
 	log_print("Succesfuly closed")
 	file_close( host_memory.host_logger.file )
-	file_rename( str_pfmt_tmp( "%s/sectr.log",  Path_Logs), host_memory.path_logger_finalized )
+	file_rename( str_pfmt_tmp("%s/sectr.log",  Path_Logs), host_memory.path_logger_finalized )
 	profile_end()
 
 	// End profiling
@@ -202,7 +202,6 @@ host_tick_lane :: proc()
 
 		delta_ns  = time_tick_lap_time( & host_tick )
 		host_tick = time_tick_now()
-
 		// Lanes are synced before doing running check..
 		sync_client_api()
 	}
@@ -213,17 +212,13 @@ host_lane_shutdown :: proc()
 	profile(#procedure)
 	if thread_memory.id == .Master_Prepper {
 		jobs_enqueued := true
-		if jobs_enqueued == false {
-			// debug_trap()
-		}
+		// if jobs_enqueued == false do debug_trap()
 		for ; jobs_enqueued; {
 			jobs_enqueued  = false
 			jobs_enqueued |= host_memory.job_system.job_lists[.Normal].head != nil
 			jobs_enqueued |= host_memory.job_system.job_lists[.Low].head    != nil
 			jobs_enqueued |= host_memory.job_system.job_lists[.High].head   != nil
-			if jobs_enqueued == false {
-				// debug_trap()
-			}
+			// if jobs_enqueued == false do debug_trap()
 		} 
 		sync_store(& host_memory.job_system.running, false, .Release)
 	}
@@ -297,7 +292,7 @@ sync_client_api :: proc()
 				// Wait for pdb to unlock (linker may still be writting)
 				for ; file_is_locked( Path_Sectr_Debug_Symbols ) && file_is_locked( Path_Sectr_Live_Module ); {}
 
-				thread_sleep( Millisecond * 50 )
+				thread_sleep( Millisecond * 25 )
 
 				host_memory.client_api = load_client_api( version_id )
 				verify( host_memory.client_api.lib_version != 0, "Failed to hot-reload the sectr module" )

@@ -50,6 +50,8 @@ import "core:mem"
 	align_forward_uintptr :: mem.align_backward_uintptr
 	align_forward_raw     :: mem.align_forward
 
+	mem_fill :: mem.set
+
 import "core:mem/virtual"
 	VirtualProtectFlags :: virtual.Protect_Flags
 
@@ -97,6 +99,7 @@ import "core:prof/spall"
 	Spall_Buffer  :: spall.Buffer
 
 import "core:sync"
+	Mutex      :: sync.Mutex
 	sync_load  :: sync.atomic_load_explicit
 	sync_store :: sync.atomic_store_explicit
 
@@ -114,6 +117,18 @@ import "core:unicode/utf8"
 	runes_to_string :: utf8.runes_to_string
 	// string_to_runes :: utf8.string_to_runes
 
+array_append :: proc {
+	array_append_value,
+	array_append_array,
+	array_append_slice,
+}
+
+array_append_at :: proc {
+	array_append_at_array,
+	array_append_at_slice,
+	array_append_at_value,
+}
+
 cursor :: proc {
 	raw_cursor,
 	ptr_cursor,
@@ -127,10 +142,6 @@ end :: proc {
 	string_end,
 }
 
-to_string :: proc {
-	strings.to_string,
-}
-
 copy :: proc {
 	mem_copy,
 	slice_copy,
@@ -141,9 +152,22 @@ copy_non_overlaping :: proc {
 	slice_copy_overlapping,
 }
 
+fill :: proc {
+	mem_fill,
+	slice_fill,
+}
+
+make :: proc {
+	array_init,
+}
+
 to_bytes :: proc {
 	slice_to_bytes,
 	type_to_bytes,
+}
+
+to_string :: proc {
+	strings.to_string,
 }
 
 zero :: proc {

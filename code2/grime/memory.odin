@@ -46,6 +46,8 @@ slice_copy :: #force_inline proc "contextless" (dst, src: $SliceType / []$Type) 
 	return n
 }
 
+slice_fill :: #force_inline proc "contextless" (s: $SliceType / []$Type, value: Type) { memory_fill(cursor(s), value, len(s)) }
+
 @(require_results) slice_to_bytes     :: #force_inline proc "contextless" (s: []$Type) -> []byte         { return ([^]byte)(raw_data(s))[:len(s) * size_of(Type)] }
 @(require_results) slice_raw          :: #force_inline proc "contextless" (s: []$Type) -> SliceRaw(Type) { return transmute(SliceRaw(Type)) s }
 

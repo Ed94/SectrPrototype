@@ -238,7 +238,6 @@ tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_c
 				// log("sokol_app: Event-based frame callback triggered (detected a resize")
 			// }
 		}
-
 		
 		// Test dispatching 64 jobs during hot_reload loop (when the above store is uncommented)
 		if true

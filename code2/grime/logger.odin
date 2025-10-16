@@ -2,6 +2,9 @@ package grime
 
 import core_log "core:log"
 
+// TODO(Ed): This logger doesn't support multi-threading.
+// TODO(Ed): Look into Lottes's wait-free logger.
+
 Max_Logger_Message_Width :: 160
 
 LoggerEntry :: struct {
