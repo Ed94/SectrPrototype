@@ -57,12 +57,14 @@ import "core:time"
 	tick_now         :: time.tick_now
 
 import "codebase:grime"
-	Logger :: grime.Logger
+	Logger         :: grime.Logger
+	logger_init    :: grime.logger_init
+	to_odin_logger :: grime.to_odin_logger
+
+	set__scheduler_granularity :: grime.set__scheduler_granularity
 
 	grime_set_profiler_module_context :: grime.set_profiler_module_context
 	grime_set_profiler_thread_buffer  :: grime.set_profiler_thread_buffer
-
-	set__scheduler_granularity :: grime.set__scheduler_granularity
 
 Kilo :: 1024
 Mega :: Kilo * 1024

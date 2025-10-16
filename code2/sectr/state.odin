@@ -67,6 +67,8 @@ State :: struct {
 
 	// Overall frametime of the tick frame (currently main thread's)
 	using frametime : FrameTime,
+
+	logger: Logger,
 }
 
 ThreadState :: struct {

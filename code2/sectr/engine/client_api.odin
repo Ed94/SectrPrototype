@@ -16,11 +16,12 @@ ModuleAPI :: struct {
 	write_time:   FileTime,
 	lib_version : int,
 
-	startup:            type_of( startup ),
+	startup:            type_of( startup),
+	shutdown:           type_of( sectr_shutdown),
 	tick_lane_startup:  type_of( tick_lane_startup),
 	job_worker_startup: type_of( job_worker_startup),
-	hot_reload:         type_of( hot_reload ),
-	tick_lane:          type_of( tick_lane ),
+	hot_reload:         type_of( hot_reload),
+	tick_lane:          type_of( tick_lane),
 	clean_frame:        type_of( clean_frame),
 	jobsys_worker_tick: type_of( jobsys_worker_tick)
 }
@@ -35,12 +36,17 @@ then prepare for multi-threaded "laned" tick: thread_wide_startup.
 startup :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
 	// Rad Debugger driving me crazy..
-	// NOTE(Ed): This is problably not necessary, they're just loops for my sanity.
+	// NOTE(Ed): This is not necessary, they're just loops for my sanity.
 	for ; memory == nil; { memory = host_mem   }
 	for ; thread == nil; { thread = thread_mem }
 	grime_set_profiler_module_context(& memory.spall_context)
 	grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	profile(#procedure)
+
+	startup_tick := tick_now()
+
+	logger_init(& memory.client_memory.logger, "Sectr", memory.host_logger.file_path, memory.host_logger.file)
+	context.logger = to_odin_logger(& memory.client_memory.logger)
 
 	using memory.client_memory
 
@@ -78,7 +84,34 @@ startup :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 	Desired_OS_Scheduler_MS :: 1
 	sleep_is_granular = set__scheduler_granularity( Desired_OS_Scheduler_MS )
 
+	// TODO(Ed): String Cache (Not backed by slab!)
 
+	// TODO(Ed): Setup input system
+
+	// TODO(Ed): Setup sokol_app
+	// TODO(Ed): Setup sokol_gfx
+	// TODO(Ed): Setup sokol_gp
+
+	// TODO(Ed): Use job system to load fonts!!!
+
+	// TODO(Ed): Setup screen ui state
+	// TODO(Ed): Setup proper workspace scaffold
+
+	startup_ms := duration_ms( tick_lap_time( & startup_tick))
+	log_print_fmt("Startup time: %v ms", startup_ms)
+}
+
+// For some reason odin's symbols conflict with native foreign symbols...
+@export
+sectr_shutdown :: proc()
+{
+	context.logger = to_odin_logger(& memory.client_memory.logger)
+
+	// TODO(Ed): Shut down font system
+
+	// TODO(Ed): Shutdown sokol gp, gfx, and app.
+
+	log_print("Client module shutdown complete")
 }
 
 /*
@@ -105,12 +138,21 @@ hot_reload :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 	profile(#procedure)
 	// Do hot-reload stuff...
 	{
-		// Test dispatching 64 jobs during hot_reload loop (when the above store is uncommented)
-		for job_id := 1; job_id < 64; job_id += 1 {
-			memory.job_info_reload[job_id].id = job_id
-			memory.job_reload[job_id] = make_job_raw(& memory.job_group_reload, & memory.job_info_reload[job_id], test_job, {}, "Job Test (Hot-Reload)")
-			job_dispatch_single(& memory.job_reload[job_id], .Normal)
+		context.logger = to_odin_logger(& memory.client_memory.logger)
+
+		// TODO(Ed): Setup context alloators
+
+
+		// TODO(Ed): Patch Sokol contextes
+
+		// We hopefully don't have to patch third-party allocators anymore per-hot-reload.
+		{
+
 		}
+
+		// TODO(Ed): Reload the font system
+
+		log_print("Module reloaded")
 	}
 	// Critical reference synchronization
 	{
@@ -158,37 +200,68 @@ Host handles the loop.
 tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_close: b64 = false)
 {
 	profile(#procedure)
-	@thread_local dummy: int = 0
-	dummy += 1
 
-	EXIT_TIME :: 1
-
-	// profile_begin("sokol_app: pre_client_tick")
-	// should_close |= cast(b64) sokol_app.pre_client_frame()
-	@static timer: f64
-	if thread.id == .Master_Prepper {
-		timer += host_delta_time_ms
-		// sync_store(& should_close, timer > EXIT_TIME, .Release)
-
-	}
-	// profile_end()
-
-	profile_begin("Client Tick")
-
-	if thread.id == .Master_Prepper && timer > EXIT_TIME {
-		// Test dispatching 64 jobs during the last iteration before exiting.
-		for job_id := 1; job_id < 64; job_id += 1 {
-			memory.job_info_exit[job_id].id = job_id
-			memory.job_exit[job_id] = make_job_raw(& memory.job_group_exit, & memory.job_info_exit[job_id], test_job, {}, "Job Test (Exit)")
-			job_dispatch_single(& memory.job_exit[job_id], .Normal)
-		}
-	}
-	client_tick := tick_now()
-
+	profile_begin("sokol_app: pre_client_tick")
+	// should_close |= cast(b64) sokol_app.pre_client_frame() // TODO(Ed): SOKOL!
 	profile_end()
 
-	// profile_begin("sokol_app: post_client_tick")
-	// profile_end()
+	profile_begin("Client Tick")
+	{
+		profile("Work frame")
+		context.logger = to_odin_logger( & memory.client_memory.logger )
+
+		// TODO(Ed): Setup frame alloator
+
+		if thread.id == .Master_Prepper
+		{
+			// config := & memory.client_memory.config
+			// debug  := & memory.client_memory.debug
+
+			// debug.draw_ui_box_bounds_points = false
+			// debug.draw_ui_padding_bounds    = false
+			// debug.draw_ui_content_bounds    = false
+
+			// config.engine_refresh_hz = 165
+
+			// config.color_theme = App_Thm_Light
+			// config.color_theme = App_Thm_Dusk
+			// config.color_theme = App_Thm_Dark
+
+			// sokol_width  := sokol_app.widthf()
+			// sokol_height := sokol_app.heightf()
+
+			// window := & get_state().app_window
+			// if	int(window.extent.x) != int(sokol_width) || int(window.extent.y) != int(sokol_height) {
+				// window.resized = true
+				// window.extent.x = sokol_width  * 0.5
+				// window.extent.y = sokol_height * 0.5
+				// log("sokol_app: Event-based frame callback triggered (detected a resize")
+			// }
+		}
+
+		
+		// Test dispatching 64 jobs during hot_reload loop (when the above store is uncommented)
+		if true
+		{
+			if thread.id == .Master_Prepper {
+				profile("dispatching")
+				for job_id := 1; job_id < JOB_TEST_NUM; job_id += 1 {
+					memory.job_info_reload[job_id].id = job_id
+					memory.job_reload[job_id] = make_job_raw(& memory.job_group_reload, & memory.job_info_reload[job_id], test_job, {}, "Job Test (Hot-Reload)")
+					job_dispatch_single(& memory.job_reload[job_id], .Normal)
+				}
+			}
+			should_close = true
+		}
+		// should_close |= update( host_delta_time_ms )
+		// render()
+	}
+	client_tick := tick_now()
+	profile_end()
+
+	profile_begin("sokol_app: post_client_tick")
+	// sokol_app.post_client_frame() // TODO(Ed): SOKOL!
+	profile_end()
 
 	tick_lane_frametime(& client_tick, host_delta_time_ms, host_delta_ns)
 	return sync_load(& should_close, .Acquire)
@@ -197,7 +270,8 @@ tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_c
 @export
 jobsys_worker_tick :: proc(host_delta_time_ms: f64, host_delta_ns: Duration)
 {
-	// profile("Worker Tick")
+	profile("Worker Tick")
+	context.logger = to_odin_logger(& memory.client_memory.logger)
 
 	ORDERED_PRIORITIES :: [len(JobPriority)]JobPriority{.High, .Normal, .Low}
 	block: for priority in ORDERED_PRIORITIES 
@@ -225,11 +299,9 @@ jobsys_worker_tick :: proc(host_delta_time_ms: f64, host_delta_ns: Duration)
 			sync_mutex_unlock(& memory.job_system.job_lists[priority].mutex)
 		}
 	}
-
-	// Updating worker frametime
+	// Updating worker timing
 	{
-		// TODO(Ed): Setup 
-		
+		// TODO(Ed): Setup timing
 	}
 }
 
@@ -240,7 +312,7 @@ test_job :: proc(data: rawptr)
 {
 	profile(#procedure)
 	info := cast(^TestJobInfo) data
-	// log_print_fmt("Test job succeeded: %v", info.id)
+	log_print_fmt("Test job succeeded: %v", info.id)
 }
 
 Frametime_High_Perf_Threshold_MS :: 1 / 240.0
@@ -248,14 +320,13 @@ Frametime_High_Perf_Threshold_MS :: 1 / 240.0
 tick_lane_frametime :: proc(client_tick: ^Tick, host_delta_time_ms: f64, host_delta_ns: Duration, can_sleep := true)
 {
 	profile(#procedure)
-	config    := app_config()
-	frametime := & memory.client_memory.frametime
-	// context.allocator      = frame_slab_allocator()
-	// context.temp_allocator = transient_allocator()
+	config := app_config()
 
 	if thread.id == .Master_Prepper
 	{
-		frametime.target_ms          = 1.0 / f64(config.engine_refresh_hz) * S_To_MS
+		frametime := & memory.client_memory.frametime
+
+		frametime.target_ms          = 1.0 / f64(config.engine_refresh_hz)
 		sub_ms_granularity_required := frametime.target_ms <= Frametime_High_Perf_Threshold_MS
 
 		frametime.delta_ns      = tick_lap_time( client_tick )
@@ -309,9 +380,11 @@ tick_lane_frametime :: proc(client_tick: ^Tick, host_delta_time_ms: f64, host_de
 clean_frame :: proc()
 {
 	profile(#procedure)
+	context.logger = to_odin_logger(& memory.client_memory.logger)
+
 	if thread.id == .Master_Prepper
 	{
-
+		// mem_reset( frame_allocator() )
 	}
 	return
 }

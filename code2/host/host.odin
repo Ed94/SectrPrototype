@@ -10,6 +10,7 @@ package host
 //region HOST RUNTIME
 
 load_client_api :: proc(version_id: int) -> (loaded_module: Client_API) {
+	profile(#procedure)
 	using loaded_module
 	// Make sure we have a dll to work with
 	file_io_err: OS_Error; write_time, file_io_err = file_last_write_time_by_name("sectr.dll")
@@ -17,12 +18,13 @@ load_client_api :: proc(version_id: int) -> (loaded_module: Client_API) {
 		panic_contextless( "Could not resolve the last write time for sectr")
 	}
 	//TODO(Ed): Lets try to minimize this...
-	thread_sleep( Millisecond * 50 )
+	thread_sleep( Millisecond * 25 )
 	// Get the live dll loaded up
 	file_copy_sync( Path_Sectr_Module, Path_Sectr_Live_Module, allocator = context.temp_allocator )
 	did_load: bool; lib, did_load = os_lib_load( Path_Sectr_Live_Module )
 	if ! did_load do panic( "Failed to load the sectr module.")
 	startup            = cast( type_of( host_memory.client_api.startup))            os_lib_get_proc(lib, "startup")
+	shutdown           = cast( type_of( host_memory.client_api.shutdown))           os_lib_get_proc(lib, "sectr_shutdown")
 	tick_lane_startup  = cast( type_of( host_memory.client_api.tick_lane_startup))  os_lib_get_proc(lib, "tick_lane_startup")
 	job_worker_startup = cast( type_of( host_memory.client_api.job_worker_startup)) os_lib_get_proc(lib, "job_worker_startup")
 	hot_reload         = cast( type_of( host_memory.client_api.hot_reload))         os_lib_get_proc(lib, "hot_reload")
@@ -30,6 +32,7 @@ load_client_api :: proc(version_id: int) -> (loaded_module: Client_API) {
 	clean_frame        = cast( type_of( host_memory.client_api.clean_frame))        os_lib_get_proc(lib, "clean_frame")
 	jobsys_worker_tick = cast( type_of( host_memory.client_api.jobsys_worker_tick)) os_lib_get_proc(lib, "jobsys_worker_tick")
 	if startup            == nil do panic("Failed to load sectr.startup symbol" )
+	if shutdown           == nil do panic("Failed to load sectr.shutdown symbol" )
 	if tick_lane_startup  == nil do panic("Failed to load sectr.tick_lane_startup symbol" )
 	if job_worker_startup == nil do panic("Failed to load sectr.job_worker_startup symbol" )
 	if hot_reload         == nil do panic("Failed to load sectr.hot_reload symbol" )
@@ -69,6 +72,7 @@ main :: proc()
 		host_memory.spall_context = spall_context_create(Path_Sectr_Spall_Record)
 		grime_set_profiler_module_context(& host_memory.spall_context)
 		thread_memory.spall_buffer = spall_buffer_create(thread_memory.spall_buffer_backing[:], cast(u32) thread_memory.system_ctx.id)
+		grime_set_profiler_thread_buffer(& thread_memory.spall_buffer)
 	}
 	// Setup the logger
 	path_logger_finalized: string
@@ -88,8 +92,8 @@ main :: proc()
 			timestamp                        := str_pfmt_buffer( fmt_backing, "%04d-%02d-%02d_%02d-%02d-%02d", year, month, day, hour, min, sec)
 			host_memory.path_logger_finalized = str_pfmt_buffer( fmt_backing, "%s/sectr_%v.log", Path_Logs, timestamp)
 		}
-		logger_init( & host_memory.logger, "Sectr Host", str_pfmt_buffer( fmt_backing, "%s/sectr.log", Path_Logs ) )
-		context.logger = to_odin_logger( & host_memory.logger )
+		logger_init( & host_memory.host_logger, "Sectr Host", str_pfmt_buffer( fmt_backing, "%s/sectr.log", Path_Logs ) )
+		context.logger = to_odin_logger( & host_memory.host_logger )
 		{
 			// Log System Context
 			builder := strbuilder_from_bytes( fmt_backing )
@@ -99,7 +103,7 @@ main :: proc()
 		}
 		free_all(context.temp_allocator)
 	}
-	context.logger = to_odin_logger( & host_memory.logger )
+	context.logger = to_odin_logger( & host_memory.host_logger )
 	// Load the Enviornment API for the first-time
 	{
 		host_memory.client_api = load_client_api( 1 )
@@ -107,22 +111,23 @@ main :: proc()
 	}
 	// Client API Startup
 	host_memory.client_api.startup(& host_memory, & thread_memory)
-	// Start the tick lanes 
 	{
 		profile("thread_wide_startup")
 		assert(thread_memory.id == .Master_Prepper)
-		host_memory.tick_running = true
-		host_memory.tick_lanes   = THREAD_TICK_LANES
-		barrier_init(& host_memory.lane_sync, THREAD_TICK_LANES)
-		when THREAD_TICK_LANES > 1 {
-			for id in 1 ..= (THREAD_TICK_LANES - 1) {
-				launch_tick_lane_thread(cast(WorkerID) id)
+		{
+			profile("Tick Lanes")
+			host_memory.tick_running = true
+			host_memory.tick_lanes   = THREAD_TICK_LANES
+			barrier_init(& host_memory.lane_sync, THREAD_TICK_LANES)
+			when THREAD_TICK_LANES > 1 {
+				for id in 1 ..= (THREAD_TICK_LANES - 1) {
+					launch_tick_lane_thread(cast(WorkerID) id)
+				}
 			}
 		}
-		grime_set_profiler_module_context(& host_memory.spall_context)
-		grime_set_profiler_thread_buffer(& thread_memory.spall_buffer)
 		// Job System Setup
 		{
+			profile("Job System")
 			host_memory.job_system.running    = true
 			host_memory.job_system.worker_num = THREAD_JOB_WORKERS
 			for & list in host_memory.job_system.job_lists {
@@ -131,6 +136,7 @@ main :: proc()
 			// Determine number of physical cores
 			barrier_init(& host_memory.job_hot_reload_sync, THREAD_JOB_WORKERS + 1)
 			for id in THREAD_JOB_WORKER_ID_START ..< THREAD_JOB_WORKER_ID_END {
+				log_print_fmt("Spawned job worker: %v", cast(WorkerID) id)
 				worker_thread           := thread_create(host_job_worker_entrypoint, .Normal)
 				worker_thread.user_index = int(id)
 				host_memory.threads[worker_thread.user_index] = worker_thread
@@ -141,18 +147,21 @@ main :: proc()
 	}
 	host_tick_lane()
 
+	profile_begin("Host Shutdown")
 	if thread_memory.id == .Master_Prepper {
 		thread_join_multiple(.. host_memory.threads[1:THREAD_TICK_LANES + THREAD_JOB_WORKERS])
 	}
 
 	unload_client_api( & host_memory.client_api )
 
-	// End profiling
-	spall_context_destroy( & host_memory.spall_context )
-
 	log_print("Succesfuly closed")
-	file_close( host_memory.logger.file )
+	file_close( host_memory.host_logger.file )
 	file_rename( str_pfmt_tmp( "%s/sectr.log",  Path_Logs), host_memory.path_logger_finalized )
+	profile_end()
+
+	// End profiling
+	spall_buffer_destroy(& host_memory.spall_context, & thread_memory.spall_buffer)
+	spall_context_destroy( & host_memory.spall_context )
 }
 launch_tick_lane_thread :: proc(id : WorkerID) {
 	assert_contextless(thread_memory.id == .Master_Prepper)
@@ -183,12 +192,13 @@ host_tick_lane :: proc()
 	for ; sync_load(& host_memory.tick_running, .Relaxed);
 	{
 		profile("Host Tick")
+		leader := barrier_wait(& host_memory.lane_sync)
 
 		running: b64 = host_memory.client_api.tick_lane(duration_seconds(delta_ns), delta_ns) == false
 		if thread_memory.id == .Master_Prepper { 
 			sync_store(& host_memory.tick_running, running, .Release) 
 		}
-		// host_memory.client_api.clean_frame()
+		host_memory.client_api.clean_frame()
 
 		delta_ns  = time_tick_lap_time( & host_tick )
 		host_tick = time_tick_now()
@@ -202,10 +212,25 @@ host_lane_shutdown :: proc()
 {
 	profile(#procedure)
 	if thread_memory.id == .Master_Prepper {
+		jobs_enqueued := true
+		if jobs_enqueued == false {
+			// debug_trap()
+		}
+		for ; jobs_enqueued; {
+			jobs_enqueued  = false
+			jobs_enqueued |= host_memory.job_system.job_lists[.Normal].head != nil
+			jobs_enqueued |= host_memory.job_system.job_lists[.Low].head    != nil
+			jobs_enqueued |= host_memory.job_system.job_lists[.High].head   != nil
+			if jobs_enqueued == false {
+				// debug_trap()
+			}
+		} 
 		sync_store(& host_memory.job_system.running, false, .Release)
 	}
+	if thread_memory.id != .Master_Prepper {
+		spall_buffer_destroy( & host_memory.spall_context, & thread_memory.spall_buffer )
+	}
 	leader := barrier_wait(& host_memory.lane_job_sync)
-	// spall_buffer_destroy( & host_memory.spall_context, & thread_memory.spall_buffer )
 }
 
 host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
@@ -218,9 +243,13 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 		host_memory.client_api.tick_lane_startup(& thread_memory)
 		grime_set_profiler_thread_buffer(& thread_memory.spall_buffer)
 	}
+	jobs_enqueued := false
+	jobs_enqueued |= host_memory.job_system.job_lists[.Normal].head != nil
+	jobs_enqueued |= host_memory.job_system.job_lists[.Low].head    != nil
+	jobs_enqueued |= host_memory.job_system.job_lists[.High].head   != nil
 	delta_ns: Duration
 	host_tick := time_tick_now()
-	for ; sync_load(& host_memory.job_system.running, .Relaxed); 
+	for ; jobs_enqueued || sync_load(& host_memory.job_system.running, .Relaxed); 
 	{
 		profile("Host Job Tick")
 
@@ -229,7 +258,12 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 		delta_ns  = time_tick_lap_time( & host_tick )
 		host_tick = time_tick_now()
 
-		if sync_load(& host_memory.client_api_hot_reloaded, .Acquire) {
+		jobs_enqueued  = false
+		jobs_enqueued |= host_memory.job_system.job_lists[.Normal].head != nil
+		jobs_enqueued |= host_memory.job_system.job_lists[.Low].head    != nil
+		jobs_enqueued |= host_memory.job_system.job_lists[.High].head   != nil
+
+		if jobs_enqueued == false && sync_load(& host_memory.client_api_hot_reloaded, .Acquire) {
 			// Signals to main hread when all jobs have drained.
 			leader :=barrier_wait(& host_memory.job_hot_reload_sync) 
 			// Job threads wait here until client module is back
@@ -237,6 +271,7 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 			host_memory.client_api.hot_reload(& host_memory, & thread_memory)
 		}
 	}
+	spall_buffer_destroy( & host_memory.spall_context, & thread_memory.spall_buffer )
 	// Were exiting, wait for tick lanes.
 	leader := barrier_wait(& host_memory.lane_job_sync)
 }
@@ -278,6 +313,7 @@ sync_client_api :: proc()
 }
 unload_client_api :: proc( module : ^Client_API )
 {
+	profile(#procedure)
 	os_lib_unload( module.lib )
 	file_remove( Path_Sectr_Live_Module )
 	module^ = {}

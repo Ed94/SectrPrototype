@@ -22,7 +22,7 @@ ProcessMemory :: struct {
 	host_api:         Host_API,        // Client -> Host Interface
 
 	// Textual Logging
-	logger:                Logger,
+	host_logger:           Logger,
 	path_logger_finalized: string,
 
 	// Profiling
@@ -45,12 +45,10 @@ ProcessMemory :: struct {
 
 	// Testing
 	job_group_reload: JobGroup,
-	job_info_reload: [64]TestJobInfo,
-	job_reload:      [64]Job,
-	job_group_exit:  JobGroup,
-	job_info_exit:   [64]TestJobInfo,
-	job_exit:        [64]Job,
+	job_info_reload: [JOB_TEST_NUM]TestJobInfo,
+	job_reload:      [JOB_TEST_NUM]Job,
 }
+JOB_TEST_NUM :: 64
 
 Host_API :: struct {
 	request_virtual_memory:    #type proc(), // All dynamic allocations will utilize vmem interfaces
@@ -61,7 +59,7 @@ ThreadMemory :: struct {
 	using _:    ThreadWorkerContext,
 
 	// Per-thread profiling
-	spall_buffer_backing: [SPALL_BUFFER_DEFAULT_SIZE * 4]byte,
+	spall_buffer_backing: [SPALL_BUFFER_DEFAULT_SIZE]byte,
 	spall_buffer:         Spall_Buffer,
 
 	client_memory: ThreadState,
