@@ -282,7 +282,7 @@ jobsys_worker_tick :: proc(host_delta_time_ms: f64, host_delta_ns: Duration)
 			profile("Executing Job")
 			if job := memory.job_system.job_lists[priority].head; job != nil 
 			{
-				if int(thread.id) in job.ignored {
+				if thread.id in job.ignored {
 					sync_mutex_unlock(& memory.job_system.job_lists[priority].mutex)
 					continue
 				}

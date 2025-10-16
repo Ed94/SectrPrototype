@@ -1,6 +1,6 @@
 package sectr
 
-JobIgnoredThreads :: bit_set[ 0 ..< 64 ]
+JobIgnoredThreads :: bit_set[ WorkerID ]
 
 JobProc :: #type proc(data: rawptr)
 
@@ -86,7 +86,6 @@ WorkerID :: enum int {
 	Dereference_Doctorate,
 	Checkbox_Validator,
 	Credible_Threat,
-	Dead_Drop_Delegate,
 	Deadline_Denialist,
 	DMA_Desperado,
 	Dump_Curator,
@@ -96,7 +95,6 @@ WorkerID :: enum int {
 	Fitness_Unpacker,
 	Flop_Flipper,
 	Floating_Point_Propoganda,
-	Forgets_To_Check,
 	Global_Guardian,
 	Ghost_Protocols,
 	Halting_Solver,
@@ -109,14 +107,10 @@ WorkerID :: enum int {
 	Implementation_Detailer,
 	Interrupt_Ignorer,
 	Interrupt_Insurgent,
-	Jank_Jockey,
-	Jefe_De_Errores,
 	Kickoff_Holiday,
 	Kilobyte_Kingpin,
 	Latency_Lover,
-	Leeroy_Jenkins,
 	Legacy_Liaison,
-	Loop_Lobbyist,
 	Linter_Lamenter,
 	Low_Hanging_Fruit_Picker,
 	Malloc_Maverick,
@@ -142,18 +136,15 @@ WorkerID :: enum int {
 	Pipeline_Plumber,
 	Pointer_Pilgrim,
 	Production_Pusher,
-	Query_Gremlin,
 	Red_Tape_Renderer,
 	Resting_Receptionist,
 	Quantum_Quibbler,
-	Regex_Rancher,
 	Register_Riveter,
 	Register_Spill_Rancher,
 	Roadmap_Revisionist,
 	Runtime_Ruffian,
 	Sabbatical_Scheduler,
 	Scope_Creep_Shepherd,
-	Shift_Manager,
 	Segfault_Stretcher,
 	Siesta_Scheduler,
 	Singleton_Sinner,
@@ -162,9 +153,7 @@ WorkerID :: enum int {
 	Speculative_Skeptic,
 	Stack_Smuggler,
 	Techdebt_Treasurer,
-	Tenured_Trapper,
 	Triage_Technician,
-	Tunnel_Fisherman,
 	Undefined_Behavior_Brokerage,
 	Unreachable_Utopian,
 	Unicode_Usurper,
