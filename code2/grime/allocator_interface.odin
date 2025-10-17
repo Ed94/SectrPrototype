@@ -205,7 +205,7 @@ mem_save_point :: proc(ainfo := context.allocator, loc := #caller_location) -> A
 	resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .SavePoint, loc = loc}, & out)
 	return out.save_point
 }
-mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo : $Type = context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
+mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo : $Type = context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -218,7 +218,7 @@ mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero:
 	resolve_allocator_proc(ainfo.procedure)(input, & output)
 	return output.allocation, output.error
 }
-mem_grow :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator, loc := #caller_location) -> []byte {
+mem_grow :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -230,9 +230,9 @@ mem_grow :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAU
 	}
 	output: AllocatorProc_Out
 	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return output.allocation
+	return output.allocation, output.error
 }
-mem_resize :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator, loc := #caller_location) -> []byte {
+mem_resize :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -244,9 +244,9 @@ mem_resize :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEF
 	}
 	output: AllocatorProc_Out
 	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return output.allocation
+	return output.allocation, output.error
 }
-mem_shrink :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator, loc := #caller_location) -> []byte {
+mem_shrink :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -258,10 +258,10 @@ mem_shrink :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEF
 	}
 	output: AllocatorProc_Out
 	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return output.allocation
+	return output.allocation, output.error
 }
 
-alloc_type  :: proc($Type: typeid, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator, loc := #caller_location) -> ^Type {
+alloc_type  :: proc($Type: typeid, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> (^Type, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -272,9 +272,9 @@ alloc_type  :: proc($Type: typeid, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no
 	}
 	output: AllocatorProc_Out
 	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return transmute(^Type) raw_data(output.allocation)
+	return transmute(^Type) raw_data(output.allocation), output.error
 }
-alloc_slice :: proc($SliceType: typeid / []$Type, num : int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: b32 = false, ainfo := context.allocator, loc := #caller_location) -> []Type {
+alloc_slice :: proc($SliceType: typeid / []$Type, num: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]Type, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -285,5 +285,5 @@ alloc_slice :: proc($SliceType: typeid / []$Type, num : int, alignment: int = ME
 	}
 	output: AllocatorProc_Out
 	resolve_allocator_proc(ainfo.procedure)(input, & output)
-	return transmute([]Type) slice(raw_data(output.allocation), num)
+	return transmute([]Type) slice(raw_data(output.allocation), num), output.error
 }

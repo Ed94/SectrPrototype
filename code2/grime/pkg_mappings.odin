@@ -124,7 +124,7 @@ array_append :: proc {
 }
 
 array_append_at :: proc {
-	array_append_at_array,
+	// array_append_at_array,
 	array_append_at_slice,
 	array_append_at_value,
 }
