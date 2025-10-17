@@ -55,3 +55,5 @@ CameraZoomMode :: enum u32 {
 	Smooth,
 }
 
+Extents2_F4 :: V2_F4
+Extents2_S4 :: V2_S4

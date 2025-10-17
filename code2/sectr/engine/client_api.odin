@@ -197,7 +197,7 @@ Host handles the loop.
 (We need threads to be outside of client callstack in the event of a hot-reload)
 */
 @export
-tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_close: b64 = false)
+tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_close: bool = false)
 {
 	profile(#procedure)
 
@@ -207,53 +207,7 @@ tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_c
 
 	profile_begin("Client Tick")
 	{
-		profile("Work frame")
-		context.logger = to_odin_logger( & memory.client_memory.logger )
-
-		// TODO(Ed): Setup frame alloator
-
-		if thread.id == .Master_Prepper
-		{
-			// config := & memory.client_memory.config
-			// debug  := & memory.client_memory.debug
-
-			// debug.draw_ui_box_bounds_points = false
-			// debug.draw_ui_padding_bounds    = false
-			// debug.draw_ui_content_bounds    = false
-
-			// config.engine_refresh_hz = 165
-
-			// config.color_theme = App_Thm_Light
-			// config.color_theme = App_Thm_Dusk
-			// config.color_theme = App_Thm_Dark
-
-			// sokol_width  := sokol_app.widthf()
-			// sokol_height := sokol_app.heightf()
-
-			// window := & get_state().app_window
-			// if	int(window.extent.x) != int(sokol_width) || int(window.extent.y) != int(sokol_height) {
-				// window.resized = true
-				// window.extent.x = sokol_width  * 0.5
-				// window.extent.y = sokol_height * 0.5
-				// log("sokol_app: Event-based frame callback triggered (detected a resize")
-			// }
-		}
-		
-		// Test dispatching 64 jobs during hot_reload loop (when the above store is uncommented)
-		if true
-		{
-			if thread.id == .Master_Prepper {
-				profile("dispatching")
-				for job_id := 1; job_id < JOB_TEST_NUM; job_id += 1 {
-					memory.job_info_reload[job_id].id = job_id
-					memory.job_reload[job_id] = make_job_raw(& memory.job_group_reload, & memory.job_info_reload[job_id], test_job, {}, "Job Test (Hot-Reload)")
-					job_dispatch_single(& memory.job_reload[job_id], .Normal)
-				}
-			}
-			should_close = true
-		}
-		// should_close |= update( host_delta_time_ms )
-		// render()
+		should_close = tick_lane_work_frame(host_delta_time_ms)
 	}
 	client_tick := tick_now()
 	profile_end()
@@ -266,10 +220,63 @@ tick_lane :: proc(host_delta_time_ms: f64, host_delta_ns: Duration) -> (should_c
 	return sync_load(& should_close, .Acquire)
 }
 
+// Note(Ed): Necessary for sokol_app_frame_callback
+tick_lane_work_frame :: proc(host_delta_time_ms: f64) -> (should_close: bool)
+{
+	profile("Work frame")
+	context.logger = to_odin_logger( & memory.client_memory.logger )
+
+	// TODO(Ed): Setup frame alloator
+
+	if thread.id == .Master_Prepper
+	{
+		// config := & memory.client_memory.config
+		// debug  := & memory.client_memory.debug
+
+		// debug.draw_ui_box_bounds_points = false
+		// debug.draw_ui_padding_bounds    = false
+		// debug.draw_ui_content_bounds    = false
+
+		// config.engine_refresh_hz = 165
+
+		// config.color_theme = App_Thm_Light
+		// config.color_theme = App_Thm_Dusk
+		// config.color_theme = App_Thm_Dark
+
+		// sokol_width  := sokol_app.widthf()
+		// sokol_height := sokol_app.heightf()
+
+		// window := & get_state().app_window
+		// if	int(window.extent.x) != int(sokol_width) || int(window.extent.y) != int(sokol_height) {
+			// window.resized = true
+			// window.extent.x = sokol_width  * 0.5
+			// window.extent.y = sokol_height * 0.5
+			// log("sokol_app: Event-based frame callback triggered (detected a resize")
+		// }
+	}
+	
+	// Test dispatching 64 jobs during hot_reload loop (when the above store is uncommented)
+	if true
+	{
+		if thread.id == .Master_Prepper {
+			profile("dispatching")
+			for job_id := 1; job_id < JOB_TEST_NUM; job_id += 1 {
+				memory.job_info_reload[job_id].id = job_id
+				memory.job_reload[job_id] = make_job_raw(& memory.job_group_reload, & memory.job_info_reload[job_id], test_job, {}, "Job Test (Hot-Reload)")
+				job_dispatch_single(& memory.job_reload[job_id], .Normal)
+			}
+		}
+		should_close = true
+	}
+	// should_close |= update( host_delta_time_ms )
+	// render()
+	return
+}
+
 @export
 jobsys_worker_tick :: proc(host_delta_time_ms: f64, host_delta_ns: Duration)
 {
-	profile("Worker Tick")
+	// profile("Worker Tick")
 	context.logger = to_odin_logger(& memory.client_memory.logger)
 
 	ORDERED_PRIORITIES :: [len(JobPriority)]JobPriority{.High, .Normal, .Low}
@@ -316,6 +323,7 @@ test_job :: proc(data: rawptr)
 
 Frametime_High_Perf_Threshold_MS :: 1 / 240.0
 
+// TODO(Ed): Lift this to be usable by both tick lanes and job worker threads.
 tick_lane_frametime :: proc(client_tick: ^Tick, host_delta_time_ms: f64, host_delta_ns: Duration, can_sleep := true)
 {
 	profile(#procedure)

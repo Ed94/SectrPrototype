@@ -6,7 +6,7 @@ Made becasue of the map issue with fonts during hot-reload.
 I didn't want to make the HMapZPL impl with the [dynamic] array for now to isolate the hot-reload issue (when I was diagnoising)
 
 Note 2024-5-26:
-TODO(Ed): Raw_Dynamic_Array is defined within base:runtime/core.odin and exposes what we need for worst case hot-reloads.
+Raw_Dynamic_Array is defined within base:runtime/core.odin and exposes what we need for worst case hot-reloads.
 So its best to go back to regular dynamic arrays at some point.
 Note 2025-5-12:
 I can use either... so I'll just keep both

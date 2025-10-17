@@ -49,6 +49,13 @@ AppConfig :: struct {
 	text_alpha_sharpen             : f32,
 }
 
+AppWindow :: struct {
+	extent:    Extents2_F4, // Window half-size
+	dpi_scale: f32,         // Dots per inch scale (provided by raylib via glfw)
+	ppcm:      f32,         // Dots per centimetre
+	resized:   b32,         // Extent changed this frame
+}
+
 FrameTime :: struct {
 	sleep_is_granular : b32,
 
@@ -63,12 +70,16 @@ FrameTime :: struct {
 }
 
 State :: struct {
-	config: AppConfig,
+	config:     AppConfig,
+	app_window: AppWindow,
 
 	// Overall frametime of the tick frame (currently main thread's)
 	using frametime : FrameTime,
 
 	logger: Logger,
+
+	sokol_frame_count: i64,
+	sokol_context:     Context,
 }
 
 ThreadState :: struct {

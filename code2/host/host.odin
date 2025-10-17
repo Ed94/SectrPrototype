@@ -235,7 +235,7 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 	when SHOULD_SETUP_PROFILERS
 	{
 		thread_memory.spall_buffer = spall_buffer_create(thread_memory.spall_buffer_backing[:], cast(u32) thread_memory.system_ctx.id)
-		host_memory.client_api.tick_lane_startup(& thread_memory)
+		host_memory.client_api.job_worker_startup(& thread_memory)
 		grime_set_profiler_thread_buffer(& thread_memory.spall_buffer)
 	}
 	jobs_enqueued := false
@@ -246,7 +246,7 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 	host_tick := time_tick_now()
 	for ; jobs_enqueued || sync_load(& host_memory.job_system.running, .Relaxed); 
 	{
-		profile("Host Job Tick")
+		// profile("Host Job Tick")
 
 		host_memory.client_api.jobsys_worker_tick(duration_seconds(delta_ns), delta_ns)
 

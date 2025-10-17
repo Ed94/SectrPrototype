@@ -8,6 +8,9 @@ Any symbol that does must be mapped from the Grime package to properly tirage it
 import "base:intrinsics"
 	debug_trap :: intrinsics.debug_trap
 
+import "base:runtime"
+	Context :: runtime.Context
+
 import "core:dynlib"
 	// Only referenced in ModuleAPI
 	DynLibrary :: dynlib.Library
