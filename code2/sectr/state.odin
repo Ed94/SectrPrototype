@@ -2,8 +2,8 @@ package sectr
 
 //region STATIC MEMORY
 // This should be the only global on client module side.
-                memory: ^ProcessMemory
-@(thread_local) thread: ^ThreadMemory
+@(private)               memory: ^ProcessMemory
+@(private, thread_local) thread: ^ThreadMemory
 //endregion STATIC MEMORy
 
 MemoryConfig :: struct {
@@ -70,16 +70,28 @@ FrameTime :: struct {
 }
 
 State :: struct {
+	sokol_frame_count: i64,
+	sokol_context:     Context,
+
 	config:     AppConfig,
 	app_window: AppWindow,
+
+	logger: Logger,
 
 	// Overall frametime of the tick frame (currently main thread's)
 	using frametime : FrameTime,
 
-	logger: Logger,
 
-	sokol_frame_count: i64,
-	sokol_context:     Context,
+	input_data : [2]InputState,
+	input_prev : ^InputState,
+	input      : ^InputState, // TODO(Ed): Rename to indicate its the device's signal state for the frame?
+
+	input_events:      InputEvents,
+	input_binds_stack: Array(InputContext),
+
+	// Note(Ed): Do not modify directly, use its interface in app/event.odin
+	staged_input_events : Array(InputEvent),
+	// TODO(Ed): Add a multi-threaded guard for accessing or mutating staged_input_events.
 }
 
 ThreadState :: struct {
@@ -96,3 +108,7 @@ ThreadState :: struct {
 
 app_config    :: #force_inline proc "contextless" () -> AppConfig     { return memory.client_memory.config }
 get_frametime :: #force_inline proc "contextless" () -> FrameTime     { return memory.client_memory.frametime }
+// get_state     :: #force_inline proc "contextless" () -> ^State        { return memory.client_memory }
+
+get_input_binds       :: #force_inline proc "contextless" () ->   InputContext { return array_back    (memory.client_memory.input_binds_stack) }
+get_input_binds_stack :: #force_inline proc "contextless" () -> []InputContext { return array_to_slice(memory.client_memory.input_binds_stack) }

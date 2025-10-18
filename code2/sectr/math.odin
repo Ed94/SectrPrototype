@@ -28,8 +28,7 @@ f32_Min      :: 0x00800000
 // Note(Ed) : I don't see an intrinsict available anywhere for this. So I'll be using the Terathon non-sse impl
 // Inverse Square Root
 // C++ Source https://github.com/EricLengyel/Terathon-Math-Library/blob/main/TSMath.cpp#L191
-inverse_sqrt_f32 :: proc "contextless" ( value: f32 ) -> f32
-{
+inverse_sqrt_f32 :: proc "contextless" ( value: f32 ) -> f32 {
 	if ( value < f32_Min) { return f32_Infinity }
 	value_u32 := transmute(u32) value
 
