@@ -1,9 +1,7 @@
 package grime
 
-//region STATIC MEMORY
-              grime_memory: StaticMemory
-@thread_local grime_thread: ThreadMemory
-//endregion STATIC MEMORY
+@(private)               grime_memory: StaticMemory
+@(private, thread_local) grime_thread: ThreadMemory
 
 StaticMemory :: struct {
 	spall_context: ^Spall_Context,

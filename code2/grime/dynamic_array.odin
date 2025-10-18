@@ -159,7 +159,7 @@ array_append_at_value :: proc(self: ^Array($Type), item: Type, id: int) -> Alloc
 	return AllocatorError.None
 }
 
-array_back :: #force_inline proc "contextless" (self : Array($Type)) -> Type { assert(self.num > 0); return self.data[self.num - 1] }
+array_back :: #force_inline proc "contextless" (self : Array($Type)) -> Type { assert_contextless(self.num > 0); return self.data[self.num - 1] }
 
 array_clear :: #force_inline proc "contextless" (self: Array($Type), zero_data: bool = false) {
 	if zero_data do zero(self.data, int(self.num) * size_of(Type))

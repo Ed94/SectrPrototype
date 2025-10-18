@@ -15,9 +15,9 @@ align_pow2 :: #force_inline proc "contextless" (ptr, align: int) -> int {
 	return ptr & ~(align-1)
 }
 
-memory_zero_explicit :: #force_inline proc "contextless" (data: rawptr, len: int) -> rawptr {
-	mem_zero_volatile(data, len) // Use the volatile mem_zero
-	atomic_thread_fence(.Seq_Cst) // Prevent reordering
+sync_mem_zero :: #force_inline proc "contextless" (data: rawptr, len: int) -> rawptr {
+	mem_zero_volatile(data, len)  // Use the volatile mem_zero
+	sync_fence(.Seq_Cst)          // Prevent reordering
 	return data
 }
 
@@ -38,11 +38,14 @@ slice_assert :: #force_inline proc "contextless" (s: $SliceType / []$Type) {
 slice_end      :: #force_inline proc "contextless" (s : $SliceType / []$Type) -> ^Type { return cursor(s)[len(s):] }
 slice_byte_end :: #force_inline proc "contextless" (s : SliceByte)            -> ^byte { return s.data[s.len:] }
 
+slice_zero :: #force_inline proc "contextless" (s: $SliceType / []$Type) { 
+	assert_contextless(len(s) > 0)
+	mem_zero(raw_data(s), size_of(Type) * len(s))
+}
 slice_copy :: #force_inline proc "contextless" (dst, src: $SliceType / []$Type) -> int {
 	n := max(0, min(len(dst), len(src)))
-	if n > 0 {
-		mem_copy(raw_data(dst), raw_data(src), n * size_of(Type))
-	}
+	assert_contextless(n > 0)
+	mem_copy(raw_data(dst), raw_data(src), n * size_of(Type))
 	return n
 }
 
@@ -84,37 +87,33 @@ calc_padding_with_header :: proc "contextless" (pointer: uintptr, alignment: uin
 }
 
 // Helper to get the the beginning of memory after a slice
-memory_after :: #force_inline proc "contextless" ( s: []byte ) -> ( ^ byte) {
+@(require_results)
+memory_after :: #force_inline proc "contextless" (s: []byte ) -> (^byte) {
 	return cursor(s)[len(s):]
 }
-
-memory_after_header :: #force_inline proc "contextless" ( header : ^($ Type) ) -> ( [^]byte) {
+memory_after_header :: #force_inline proc "contextless" (header: ^($Type)) -> ([^]byte) {
 	result := cast( [^]byte) ptr_offset( header, 1 )
 	// result := cast( [^]byte) (cast( [^]Type) header)[ 1:]
 	return result
 }
-
 @(require_results)
-memory_align_formula :: #force_inline proc "contextless" ( size, align : uint) -> uint {
+memory_align_formula :: #force_inline proc "contextless" (size, align: uint) -> uint {
 	result := size + align - 1
 	return result - result % align
 }
-
 // This is here just for docs
-memory_misalignment :: #force_inline proc ( address, alignment  : uintptr) -> uint {
+memory_misalignment :: #force_inline proc "contextless" (address, alignment: uintptr) -> uint {
 	// address % alignment
-	assert(is_power_of_two(alignment))
+	assert_contextless(is_power_of_two(alignment))
 	return uint( address & (alignment - 1) )
 }
-
 // This is here just for docs
 @(require_results)
-memory_aign_forward :: #force_inline proc( address, alignment : uintptr) -> uintptr
+memory_aign_forward :: #force_inline proc "contextless" (address, alignment : uintptr) -> uintptr
 {
-	assert(is_power_of_two(alignment))
-
+	assert_contextless(is_power_of_two(alignment))
 	aligned_address := address
-	misalignment    := cast(uintptr) memory_misalignment( address, alignment )
+	misalignment    := transmute(uintptr) memory_misalignment( address, alignment )
 	if misalignment != 0 {
 		aligned_address += alignment - misalignment
 	}

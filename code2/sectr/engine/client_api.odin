@@ -35,12 +35,11 @@ then prepare for multi-threaded "laned" tick: thread_wide_startup.
 @export
 startup :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 {
-	// Rad Debugger driving me crazy..
-	// NOTE(Ed): This is not necessary, they're just loops for my sanity.
-	for ; memory == nil; { memory = host_mem   }
-	for ; thread == nil; { thread = thread_mem }
-	grime_set_profiler_module_context(& memory.spall_context)
-	grime_set_profiler_thread_buffer(& thread.spall_buffer)
+	// (Ignore RAD Debugger's values being null)
+	memory = host_mem
+	thread = thread_mem
+	// grime_set_profiler_module_context(& memory.spall_context)
+	// grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	profile(#procedure)
 
 	startup_tick := tick_now()
@@ -126,14 +125,14 @@ hot_reload :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 		thread = thread_mem
 		if thread.id == .Master_Prepper {
 			sync_store(& memory, host_mem, .Release)
-			grime_set_profiler_module_context(& memory.spall_context)
+			// grime_set_profiler_module_context(& memory.spall_context)
 		}
 		else {
 			// NOTE(Ed): This is problably not necessary, they're just loops for my sanity.
 			for ; memory == nil; { sync_load(& memory, .Acquire) }
 			for ; thread == nil; { thread = thread_mem }
 		}
-		grime_set_profiler_thread_buffer(& thread.spall_buffer)
+		// grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	}
 	profile(#procedure)
 	// Do hot-reload stuff...
@@ -177,7 +176,7 @@ tick_lane_startup :: proc(thread_mem: ^ThreadMemory)
 {
 	if thread_mem.id != .Master_Prepper {
 		thread = thread_mem
-		grime_set_profiler_thread_buffer(& thread.spall_buffer)
+		// grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	}
 	profile(#procedure)
 }
@@ -187,7 +186,7 @@ job_worker_startup :: proc(thread_mem: ^ThreadMemory)
 {
 	if thread_mem.id != .Master_Prepper {
 		thread = thread_mem
-		grime_set_profiler_thread_buffer(& thread.spall_buffer)
+		// grime_set_profiler_thread_buffer(& thread.spall_buffer)
 	}
 	profile(#procedure)
 }

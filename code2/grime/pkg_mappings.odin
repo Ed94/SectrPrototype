@@ -80,7 +80,7 @@ import "core:os"
 	file_truncate      :: os.truncate
 	file_write         :: os.write
 
-	file_read_entire_from_filename :: #force_inline proc(name: string, allocator := context.allocator, loc := #caller_location) -> (data: []byte, success: bool) { return os.read_entire_file_from_filename(name, resolve_odin_allocator(allocator), loc) }
+	file_read_entire_from_filename :: #force_inline proc(name: string, allocator := context.allocator, loc := #caller_location) -> ([]byte, bool) { return os.read_entire_file_from_filename(name, resolve_odin_allocator(allocator), loc) }
 	file_write_entire               :: os.write_entire_file
 
 	file_read_entire :: proc {
@@ -91,15 +91,13 @@ import "core:strings"
 	StrBuilder            :: strings.Builder
 	strbuilder_from_bytes :: strings.builder_from_bytes
 
-import "core:slice"
-	slice_zero :: slice.zero
-
 import "core:prof/spall"
 	Spall_Context :: spall.Context
 	Spall_Buffer  :: spall.Buffer
 
 import "core:sync"
 	Mutex      :: sync.Mutex
+	sync_fence :: sync.atomic_thread_fence
 	sync_load  :: sync.atomic_load_explicit
 	sync_store :: sync.atomic_store_explicit
 
@@ -122,54 +120,50 @@ array_append :: proc {
 	array_append_array,
 	array_append_slice,
 }
-
 array_append_at :: proc {
 	// array_append_at_array,
 	array_append_at_slice,
 	array_append_at_value,
 }
-
 cursor :: proc {
 	raw_cursor,
 	ptr_cursor,
 	slice_cursor,
 	string_cursor,
 }
-
 end :: proc {
 	slice_end,
 	slice_byte_end,
 	string_end,
 }
-
 copy :: proc {
 	mem_copy,
 	slice_copy,
 }
-
 copy_non_overlaping :: proc {
 	mem_copy_non_overlapping,
 	slice_copy_overlapping,
 }
-
 fill :: proc {
 	mem_fill,
 	slice_fill,
 }
-
+iterator :: proc {
+	iterator_ringbuf_fixed,
+}
 make :: proc {
 	array_init,
 }
-
+peek_back :: proc {
+	ringbuf_fixed_peak_back,
+}
 to_bytes :: proc {
 	slice_to_bytes,
 	type_to_bytes,
 }
-
 to_string :: proc {
 	strings.to_string,
 }
-
 zero :: proc {
 	mem_zero,
 	slice_zero,

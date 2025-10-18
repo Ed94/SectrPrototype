@@ -97,6 +97,7 @@ $flag_radlink                   = '-radlink'
 $flag_sanitize_address          = '-sanitize:address'
 $flag_sanitize_memory           = '-sanitize:memory'
 $flag_sanitize_thread           = '-sanitize:thread'
+$flag_show_definables           = '-show-defineables'
 $flag_subsystem                 = '-subsystem:'
 $flag_show_debug_messages       = '-show-debug-messages'
 $flag_show_timings              = '-show-timings'
@@ -233,13 +234,14 @@ push-location $path_root
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
 			# $build_args += $flag_show_debug_messages
+			$build_args += $flag_show_definabless
 			$build_args += $flag_show_timings
 			# $build_args += $flag_build_diagnostics
 			# TODO(Ed): Enforce nil default allocator
 
-			foreach ($arg in $build_args) {
-				write-host `t $arg  -ForegroundColor Cyan
-			}
+			# foreach ($arg in $build_args) {
+			# 	write-host `t $arg  -ForegroundColor Cyan
+			# }
 
 			if ( Test-Path $module_dll) {
 				$module_dll_pre_build_hash = get-filehash -path $module_dll -Algorithm MD5
@@ -301,8 +303,8 @@ push-location $path_root
 			# $build_args += $flag_micro_architecture_native
 			$build_args += $flag_microarch_zen5
 			$build_args += $flag_thread_count + $CoreCount_Physical
-			$build_args += $flag_optimize_none
-			# $build_args += $flag_optimize_minimal
+			# $build_args += $flag_optimize_none
+			$build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
 			# $build_args += $falg_optimize_aggressive
 			$build_args += $flag_debug
@@ -318,11 +320,12 @@ push-location $path_root
 			# $build_args += $flag_sanitize_address
 			# $build_args += $flag_sanitize_memory
 			# $build_args += $flag_build_diagnostics
+			$build_args += $flag_show_definabless
 			# TODO(Ed): Enforce nil default allocator
 			
-			foreach ($arg in $build_args) {
-				write-host `t $arg  -ForegroundColor Cyan
-			}
+			# foreach ($arg in $build_args) {
+			# 	write-host `t $arg  -ForegroundColor Cyan
+			# }
 
 			if ( Test-Path $executable) {
 				$executable_pre_build_hash = get-filehash -path $executable -Algorithm MD5

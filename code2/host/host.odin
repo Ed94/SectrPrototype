@@ -271,7 +271,6 @@ host_job_worker_entrypoint :: proc(worker_thread: ^SysThread)
 	leader := barrier_wait(& host_memory.lane_job_sync)
 }
 
-@export
 sync_client_api :: proc()
 {
 	profile(#procedure)

@@ -205,7 +205,7 @@ mem_save_point :: proc(ainfo := context.allocator, loc := #caller_location) -> A
 	resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .SavePoint, loc = loc}, & out)
 	return out.save_point
 }
-mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo : $Type = context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
+mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo: $Type = context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,

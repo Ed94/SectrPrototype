@@ -19,6 +19,7 @@ import "core:log"
 	LoggerLevel :: log.Level
 
 import "core:mem"
+	AllocatorError       :: mem.Allocator_Error
 	// Used strickly for the logger
 	Odin_Arena           :: mem.Arena
 	odin_arena_allocator :: mem.arena_allocator
@@ -60,14 +61,38 @@ import "core:time"
 	tick_now         :: time.tick_now
 
 import "codebase:grime"
-	Logger         :: grime.Logger
-	logger_init    :: grime.logger_init
-	to_odin_logger :: grime.to_odin_logger
-
+	Array                       :: grime.Array
+	array_to_slice              :: grime.array_to_slice
+	array_append_array          :: grime.array_append_array
+	array_append_slice          :: grime.array_append_slice
+	array_append_value          :: grime.array_append_value
+	array_back                  :: grime.array_back
+	array_clear                 :: grime.array_clear
+	// Logging
+	Logger                      :: grime.Logger
+	logger_init                 :: grime.logger_init
+	// Memory
+	mem_alloc                   :: grime.mem_alloc
+	mem_copy                    :: grime.mem_copy
+	mem_copy_non_overlapping    :: grime.mem_copy_non_overlapping
+	mem_zero                    :: grime.mem_zero
+	slice_zero                  :: grime.slice_zero
+	// Ring Buffer
+	FRingBuffer                 :: grime.FRingBuffer
+	FRingBufferIterator         :: grime.FRingBufferIterator
+	ringbuf_fixed_peak_back     :: grime.ringbuf_fixed_peak_back
+	ringbuf_fixed_push          :: grime.ringbuf_fixed_push
+	ringbuf_fixed_push_slice    :: grime.ringbuf_fixed_push_slice
+	iterator_ringbuf_fixed      :: grime.iterator_ringbuf_fixed
+	next_ringbuf_fixed_iterator :: grime.next_ringbuf_fixed_iterator
+	// Strings
+	cstr_to_str_capped          :: grime.cstr_to_str_capped
+	to_odin_logger              :: grime.to_odin_logger
+	// Operating System
 	set__scheduler_granularity :: grime.set__scheduler_granularity
 
-	grime_set_profiler_module_context :: grime.set_profiler_module_context
-	grime_set_profiler_thread_buffer  :: grime.set_profiler_thread_buffer
+	// grime_set_profiler_module_context :: grime.set_profiler_module_context
+	// grime_set_profiler_thread_buffer  :: grime.set_profiler_thread_buffer
 
 Kilo :: 1024
 Mega :: Kilo * 1024
@@ -141,13 +166,24 @@ add :: proc {
 	add_r2f4,
 	add_biv3f4,
 }
-
+append :: proc {
+	array_append_array,
+	array_append_slice,
+	array_append_value,
+}
+array_append :: proc {
+	array_append_array,
+	array_append_slice,
+	array_append_value,
+}
 biv3f4 :: proc {
 	biv3f4_via_f32s,
 	v3f4_to_biv3f4,
 }
 bivec :: biv3f4
-
+clear :: proc {
+	array_clear,
+}
 cross :: proc {
 	cross_s,
 	cross_v2,
@@ -156,11 +192,9 @@ cross :: proc {
 	cross_v3f4_uv3f4,
 	cross_u3f4_v3f4,
 }
-
 div :: proc {
 	div_biv3f4_f32,
 }
-
 dot :: proc {
 	sdot,
 	vdot,
@@ -171,75 +205,76 @@ dot :: proc {
 	dot_v3f4_uv3f4,
 	dot_uv3f4_v3f4,
 }
-
 equal :: proc {
 	equal_r2f4,
 }
-
 is_power_of_two :: proc {
 	is_power_of_two_u32,
 	// is_power_of_two_uintptr,
 }
-
+iterator :: proc {
+	iterator_ringbuf_fixed,
+}
 mov_avg_exp :: proc {
 	mov_avg_exp_f32,
 	mov_avg_exp_f64,
 }
-
 mul :: proc {
 	mul_biv3f4,
 	mul_biv3f4_f32,
 	mul_f32_biv3f4,
 }
-
 join :: proc {
 	join_r2f4,
 }
-
 inverse_sqrt :: proc {
 	inverse_sqrt_f32,
 }
-
+next :: proc {
+	next_ringbuf_fixed_iterator,
+}
 point3 :: proc {
 	v3f4_to_point3f4,
 }
-
 pow2 :: proc {
 	pow2_v3f4,
 }
-
+peek_back :: proc {
+	ringbuf_fixed_peak_back,
+}
+push :: proc {
+	ringbuf_fixed_push,
+	ringbuf_fixed_push_slice,
+}
 quatf4 :: proc {
 	quatf4_from_rotor3f4,
 }
-
 regress :: proc {
 	regress_biv3f4,
 }
-
 rotor3 :: proc {
 	rotor3f4_via_comps_f4,
 	rotor3f4_via_bv_s_f4,
 	// rotor3f4_via_from_to_v3f4,
 }
-
 size :: proc {
 	size_r2f4,
 }
-
 sub :: proc {
 	sub_r2f4,
 	sub_biv3f4,
 	// join_point3_f4,
 	// join_pointflat3_f4,
 }
-
+to_slice :: proc {
+	array_to_slice,
+}
 v2f4 :: proc {
 	v2f4_from_f32s,
 	v2f4_from_scalar,
 	v2f4_from_v2s4,
 	v2s4_from_v2f4,
 }
-
 v3f4 :: proc {
 	v3f4_via_f32s,
 	biv3f4_to_v3f4,
@@ -247,14 +282,12 @@ v3f4 :: proc {
 	pointflat3f4_to_v3f4,
 	uv3f4_to_v3f4,
 }
-
 v2 :: proc {
 	v2f4_from_f32s,
 	v2f4_from_scalar,
 	v2f4_from_v2s4,
 	v2s4_from_v2f4,
 }
-
 v3 :: proc {
 	v3f4_via_f32s,
 	biv3f4_to_v3f4,
@@ -262,12 +295,14 @@ v3 :: proc {
 	pointflat3f4_to_v3f4,
 	uv3f4_to_v3f4,
 }
-
 v4 :: proc {
 	uv4f4_to_v4f4,
 }
-
 wedge :: proc {
 	wedge_v3f4,
 	wedge_biv3f4,
+}
+zero :: proc {
+	mem_zero,
+	slice_zero,
 }
