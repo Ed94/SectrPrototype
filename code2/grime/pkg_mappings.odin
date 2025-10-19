@@ -6,6 +6,7 @@ import "base:builtin"
 import "base:intrinsics"
 	atomic_thread_fence  :: intrinsics.atomic_thread_fence
 	mem_zero_volatile    :: intrinsics.mem_zero_volatile
+	add_overflow         :: intrinsics.overflow_add
 	// mem_zero             :: intrinsics.mem_zero
 	// mem_copy             :: intrinsics.mem_copy_non_overlapping
 	// mem_copy_overlapping :: intrinsics.mem_copy
@@ -140,7 +141,7 @@ copy :: proc {
 	mem_copy,
 	slice_copy,
 }
-copy_non_overlaping :: proc {
+copy_non_overlapping :: proc {
 	mem_copy_non_overlapping,
 	slice_copy_overlapping,
 }

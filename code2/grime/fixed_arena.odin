@@ -172,6 +172,6 @@ when ODIN_DEBUG {
 	farena_allocator :: #force_inline proc "contextless" (arena: ^FArena) -> Odin_Allocator { return transmute(Odin_Allocator) AllocatorInfo{proc_id = .FArena, data = arena} }
 }
 else {
-	farena_ainfo     :: #force_inline proc "contextless" (arena: ^FArena) -> AllocatorInfo  { return                           AllocatorInfo{procedure = farena_allocator_proc, data = arena} }
-	farena_allocator :: #force_inline proc "contextless" (arena: ^FArena) -> Odin_Allocator { return transmute(Odin_Allocator) AllocatorInfo{procedure = farena_allocator_proc, data = arena} }
+	farena_ainfo     :: #force_inline proc "contextless" (arena: ^FArena) -> AllocatorInfo  { return                           AllocatorInfo{procedure = farena_allocator_proc,     data = arena} }
+	farena_allocator :: #force_inline proc "contextless" (arena: ^FArena) -> Odin_Allocator { return transmute(Odin_Allocator) AllocatorInfo{procedure = farena_odin_allocator_proc, data = arena} }
 }

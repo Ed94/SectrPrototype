@@ -115,7 +115,7 @@ AllocatorInfo :: struct {
 // Listing of every single allocator (used on hot-reloadable builds)
 AllocatorProcID :: enum uintptr {
 	FArena,
-	// VArena,
+	VArena,
 	// CArena,
 	// Pool,
 	// Slab,
@@ -127,7 +127,7 @@ resolve_allocator_proc :: #force_inline proc "contextless" (procedure: $Allocato
 	when ODIN_DEBUG {
 		switch (transmute(AllocatorProcID)procedure) {
 			case .FArena:      return farena_allocator_proc
-			// case .VArena:      return varena_allocaotr_proc
+			case .VArena:      return varena_allocator_proc
 			// case .CArena:      return carena_allocator_proc
 			// case .Pool:        return pool_allocator_proc
 			// case .Slab:        return slab_allocator_proc
@@ -145,7 +145,7 @@ resolve_odin_allocator :: #force_inline proc "contextless" (allocator: Odin_Allo
 	when ODIN_DEBUG {
 		switch (transmute(AllocatorProcID)allocator.procedure) {
 			case .FArena:      return { farena_odin_allocator_proc, allocator.data }
-			// case .VArena:      return { varena_odin_allocaotr_proc, allocator.data }
+			case .VArena:      return { varena_odin_allocator_proc, allocator.data }
 			// case .CArena:      return { carena_odin_allocator_proc, allocator.data }
 			// case .Pool:        return nil // pool_allocator_proc
 			// case .Slab:        return nil // slab_allocator_proc
@@ -177,6 +177,7 @@ odin_allocator_mode_to_allocator_op :: #force_inline proc "contextless" (mode: O
 	panic_contextless("Impossible path")
 }
 
+// TODO(Ed): Change to DEFAULT_ALIGNMENT
 MEMORY_ALIGNMENT_DEFAULT :: 2 * size_of(rawptr)
 
 allocatorinfo :: #force_inline proc(ainfo := context.allocator) -> AllocatorInfo  { return transmute(AllocatorInfo)  ainfo }

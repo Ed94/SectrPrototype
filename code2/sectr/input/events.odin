@@ -183,11 +183,9 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 	for prev_key, id in prev_input.keyboard.keys {
 		input.keyboard.keys[id].ended_down = prev_key.ended_down
 	}
-
 	for prev_btn, id in prev_input.mouse.btns {
 		input.mouse.btns[id].ended_down = prev_btn.ended_down
 	}
-
 	input.mouse.raw_pos = prev_input.mouse.raw_pos
 	input.mouse.pos     = prev_input.mouse.pos
 
@@ -200,7 +198,6 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 	if events.num > 0 {
 		last_frame = peek_back( events).frame_id
 	}
-
 	// No new events, don't update
 	if last_frame == prev_frame do return
 
@@ -232,7 +229,6 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 			}
 		}
 	}
-
 	Iterate_Mouse_Events:
 	{
 		iter_obj  := iterator( & mouse_events ); iter := & iter_obj
@@ -241,17 +237,13 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 			if last_frame > event.frame_id {
 				break
 			}
-
 			process_digital_btn :: proc( btn : ^DigitalBtn, prev_btn : DigitalBtn, ended_down : b32 )
 			{
 				first_transition := btn.half_transitions == 0
-
 				btn.half_transitions += 1
 				btn.ended_down        = ended_down
 			}
-
-			// logf("mouse event: %v", event)
-
+			// log_print_fmt("mouse event: %v", event)
 			#partial switch event.type {
 				case .Mouse_Pressed:
 					btn      := & input.mouse.btns[event.btn]
@@ -277,22 +269,18 @@ poll_input_events :: proc( input, prev_input : ^InputState, input_events : Input
 			input.mouse.delta   = event.delta * { 1, -1 }
 		}
 	}
-
 	prev_frame = last_frame
 }
 
 input_event_iter :: #force_inline proc () -> FRingBufferIterator(InputEvent) {
 	return iterator_ringbuf_fixed( & memory.client_memory.input_events.events )
 }
-
 input_key_event_iter :: #force_inline proc() -> FRingBufferIterator(InputKeyEvent) {
 	return iterator_ringbuf_fixed( & memory.client_memory.input_events.key_events )
 }
-
 input_mouse_event_iter :: #force_inline proc() -> FRingBufferIterator(InputMouseEvent) {
 	return iterator_ringbuf_fixed( & memory.client_memory.input_events.mouse_events )
 }
-
 input_codes_pressed_slice :: #force_inline proc() -> []rune {
 	return to_slice( memory.client_memory.input_events.codes_pressed )
 }

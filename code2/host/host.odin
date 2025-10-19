@@ -151,6 +151,8 @@ main :: proc()
 	if thread_memory.id == .Master_Prepper {
 		thread_join_multiple(.. host_memory.threads[1:THREAD_TICK_LANES + THREAD_JOB_WORKERS])
 	}
+	
+	host_memory.client_api.shutdown();
 
 	unload_client_api( & host_memory.client_api )
 

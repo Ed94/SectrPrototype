@@ -100,7 +100,8 @@ startup :: proc(host_mem: ^ProcessMemory, thread_mem: ^ThreadMemory)
 	log_print_fmt("Startup time: %v ms", startup_ms)
 }
 
-// For some reason odin's symbols conflict with native foreign symbols...
+// NOTE(Ed): For some reason odin's symbols conflict with native foreign symbols...
+// Called in host.main after all tick lane or job worker threads have joined.
 @export
 sectr_shutdown :: proc()
 {
