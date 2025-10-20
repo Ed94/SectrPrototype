@@ -9,9 +9,9 @@ KT1L_Slot :: struct($Type: typeid) {
 	value: Type,
 }
 KT1L_Meta :: struct {
-	slot_size:       uintptr,
-	kt_value_offset: uintptr,
-	type_width:      uintptr,
+	slot_size:       int,
+	kt_value_offset: int,
+	type_width:      int,
 	type:            typeid,
 }
 kt1l_populate_slice_a2_Slice_Byte :: proc(kt: ^[]byte, backing: AllocatorInfo, values: []byte, num_values: int, m: KT1L_Meta) {
@@ -21,7 +21,7 @@ kt1l_populate_slice_a2_Slice_Byte :: proc(kt: ^[]byte, backing: AllocatorInfo, v
 	kt^, _            = mem_alloc(table_size_bytes, ainfo = transmute(Odin_Allocator) backing)
 	slice_assert(kt ^)
 	kt_raw : SliceByte = transmute(SliceByte) kt^
-	for id in 0 ..< cast(uintptr) num_values {
+	for id in 0 ..< num_values {
 		slot_offset := id * m.slot_size                                        // slot id
 		slot_cursor := kt_raw.data[slot_offset:]                               // slots[id]            type: KT1L_<Type>
 		// slot_key    := transmute(^u64) slot_cursor                          // slots[id].key        type: U64
@@ -30,7 +30,7 @@ kt1l_populate_slice_a2_Slice_Byte :: proc(kt: ^[]byte, backing: AllocatorInfo, v
 		a2_cursor   := cursor(values)[a2_offset:]                              // a2_entries[id]       type: A2_<Type>
 		// a2_key      := (transmute(^[]byte) a2_cursor) ^                     // a2_entries[id].key   type: <Type>
 		// a2_value    := slice(a2_cursor[m.type_width:], m.type_width)        // a2_entries[id].value type: <Type>
-		mem_copy_non_overlapping(slot_cursor[m.kt_value_offset:], a2_cursor[m.type_width:], cast(int) m.type_width) // slots[id].value = a2_entries[id].value
+		mem_copy_non_overlapping(slot_cursor[m.kt_value_offset:], a2_cursor[m.type_width:], m.type_width) // slots[id].value = a2_entries[id].value
 		(transmute([^]u64) slot_cursor)[0] = 0; 
 		hash64_djb8(transmute(^u64) slot_cursor, (transmute(^[]byte) a2_cursor) ^)  // slots[id].key = hash64_djb8(a2_entries[id].key)
 	}

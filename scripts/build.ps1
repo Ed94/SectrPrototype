@@ -216,8 +216,8 @@ push-location $path_root
 			$build_args += $flag_microarch_zen5
 			$build_args += $flag_use_separate_modules
 			$build_args += $flag_thread_count + $CoreCount_Physical
-			$build_args += $flag_optimize_none
-			# $build_args += $flag_optimize_minimal
+			# $build_args += $flag_optimize_none
+			$build_args += $flag_optimize_minimal
 			# $build_args += $flag_optimize_speed
 			# $build_args += $falg_optimize_aggressive
 			$build_args += $flag_debug
