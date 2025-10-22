@@ -1,6 +1,9 @@
 package grime
 
+// TODO(Ed): Review this
 import "base:runtime"
+
+// TODO(Ed): Support address sanitizer
 
 /*
 So this is a virtual memory backed arena allocator designed
@@ -15,59 +18,36 @@ Thus for the scope of this prototype the Virtual Arena are the only interfaces t
 The host application as well ideally (although this may not be the case for a while)
 */
 
-VArena :: struct {
-	using vmem:       VirtualMemoryRegion,
-	tracker:          MemoryTracker,
-	dbg_name:         string,
-	commit_used:      uint,
-	growth_policy:    VArena_GrowthPolicyProc,
-	allow_any_resize: b64,
-	mutex:            Mutex,
+VArenaFlags :: bit_set[VArenaFlag; u32]
+VArenaFlag  :: enum u32 {
+	No_Large_Pages,
 }
 
-VArena_GrowthPolicyProc      :: #type proc(commit_used, committed, reserved, requested_size: uint) -> uint
-varena_default_growth_policy ::       proc(commit_used, committed, reserved, requested_size: uint) -> uint {
-	@static commit_limit := uint(1  * Mega)
-	@static increment    := uint(16 * Kilo)
-	page_size := uint(virtual_get_page_size())
-	if increment < Giga && committed > commit_limit {
-		commit_limit *= 2
-		increment    *= 2
-		increment     = clamp(increment, Mega, Giga)
-	}
-	remaining_reserve := reserved - committed
-	growth_increment  := max( increment, requested_size )
-	growth_increment   = clamp( growth_increment, page_size, remaining_reserve )
-	next_commit_size  := memory_align_formula( committed + growth_increment, page_size )
-	return next_commit_size
+VArena :: struct {
+	using vmem:       VirtualMemoryRegion,
+	commit_size:      uint,
+	commit_used:      uint,
+	flags:            VArenaFlags,
 }
 
 // Default growth_policy is varena_default_growth_policy
-varena_init :: proc(base_address: uintptr, to_reserve, to_commit: uint,
-	growth_policy:       VArena_GrowthPolicyProc = varena_default_growth_policy, 
-	allow_any_resize:    bool                     = false, 
-	dbg_name:            string                   = "", 
-	enable_mem_tracking: bool                     = false,
-) -> (arena: VArena, alloc_error: AllocatorError)
+varena_make :: proc(to_reserve, commit_size: uint, base_address: uintptr, flags: VArenaFlags = {}
+) -> (arena: ^VArena, alloc_error: AllocatorError)
 {
 	page_size := uint(virtual_get_page_size())
-	verify( page_size > size_of(VirtualMemoryRegion), "Make sure page size is not smaller than a VirtualMemoryRegion?")
-	verify( to_reserve >= page_size, "Attempted to reserve less than a page size" )
-	verify( to_commit  >= page_size, "Attempted to commit less than a page size")
-	verify( to_reserve >= to_commit, "Attempted to commit more than there is to reserve" )
+	verify( page_size   >  size_of(VirtualMemoryRegion), "Make sure page size is not smaller than a VirtualMemoryRegion?")
+	verify( to_reserve  >= page_size,   "Attempted to reserve less than a page size" )
+	verify( commit_size >= page_size,   "Attempted to commit less than a page size")
+	verify( to_reserve  >= commit_size, "Attempted to commit more than there is to reserve" )
 	vmem : VirtualMemoryRegion
-	vmem, alloc_error = virtual_reserve_and_commit( base_address, to_reserve, to_commit )
+	vmem, alloc_error = virtual_reserve_and_commit( base_address, to_reserve, commit_size )
 	if ensure(vmem.base_address == nil || alloc_error != .None, "Failed to allocate requested virtual memory for virtual arena") {
 		return
 	}
+	arena = transmute(^VArena) vmem.base_address;
 	arena.vmem        = vmem
-	arena.commit_used = 0
-	if growth_policy == nil do arena.growth_policy = varena_default_growth_policy
-	else                    do arena.growth_policy = growth_policy
-	arena.allow_any_resize = b64(allow_any_resize)
-	if Track_Memory && enable_mem_tracking {
-		memtracker_init( & arena.tracker, runtime.heap_allocator(), Kilo * 128, dbg_name)
-	}
+	arena.commit_used = cast(uint) align_pow2(size_of(arena), MEMORY_ALIGNMENT_DEFAULT)
+	arena.flags       = flags
 	return
 }
 varena_alloc :: proc(using self: ^VArena,
@@ -103,7 +83,7 @@ varena_alloc :: proc(using self: ^VArena,
 	needs_more_committed := commit_left < size_to_allocate
 	if needs_more_committed {
 		profile("VArena Growing")
-		next_commit_size := growth_policy( commit_used, committed, reserved, size_to_allocate )
+		next_commit_size := max(to_be_used, commit_size)
 		alloc_error       = virtual_commit( vmem, next_commit_size )
 		if alloc_error != .None do return
 	}
@@ -117,9 +97,6 @@ varena_alloc :: proc(using self: ^VArena,
 		// log( str_pfmt_buffer( backing_slice, "Zeroring data (Range: %p to %p)", raw_data(data), cast(rawptr) (uintptr(raw_data(data)) + uintptr(requested_size))))
 		// zero( data )
 		mem_zero( data_ptr, int(requested_size) )
-	}
-	if Track_Memory && self.tracker.entries.header != nil {
-		memtracker_register_auto_name( & tracker, & data[0], & data[len(data) - 1] )
 	}
 	return
 }
@@ -148,19 +125,19 @@ varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_s
 			return
 		}
 	}
-	verify( old_memory_offset == current_offset || bool(self.allow_any_resize),
+	verify( old_memory_offset == current_offset,
 		"Cannot grow existing allocation in vitual arena to a larger size unless it was the last allocated" )
 
 	log_backing: [Kilo * 16]byte
 	backing_slice := log_backing[:]
-	if old_memory_offset != current_offset && self.allow_any_resize
+	if old_memory_offset != current_offset
 	{
 		// Give it new memory and copy the old over. Old memory is unrecoverable until clear.
 		new_region : []byte
 		new_region, error = varena_alloc( self, requested_size, alignment, should_zero, loc )
 		if ensure(new_region == nil || error != .None, "Failed to grab new region") {
 			data = old_memory
-			if Track_Memory && self.tracker.entries.header != nil {
+			when Track_Memory do if self.tracker.entries.header != nil {
 				memtracker_register_auto_name( & self.tracker, & data[0], & data[len(data) - 1] )
 			}
 			return
@@ -168,9 +145,6 @@ varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_s
 		copy_non_overlapping( cursor(new_region), cursor(old_memory), len(old_memory) )
 		data = new_region
 		// log_print_fmt("varena resize (new): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size)
-		if Track_Memory && self.tracker.entries.header != nil {
-			memtracker_register_auto_name( & self.tracker, & data[0], & data[len(data) - 1] )
-		}
 		return
 	}
 	new_region : []byte
@@ -181,9 +155,6 @@ varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_s
 	}
 	data = slice(cursor(old_memory), requested_size )
 	// log_print_fmt("varena resize (expanded): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size)
-	if Track_Memory && self.tracker.entries.header != nil {
-		memtracker_register_auto_name( & self.tracker, & data[0], & data[len(data) - 1] )
-	}
 	return
 }
 varena_shrink :: proc(self: ^VArena, memory: []byte, requested_size: int, loc := #caller_location) -> (data: []byte, error: AllocatorError)
@@ -201,7 +172,7 @@ varena_reset :: #force_inline proc(self: ^VArena) {
 	// TODO(Ed): Prevent multiple threads from entering here extrusively?
 	// sync.mutex_guard( & mutex )
 	self.commit_used = 0
-	if Track_Memory && self.tracker.entries.header != nil {
+	when Track_Memory do if self.tracker.entries.header != nil {
 		array_clear(self.tracker.entries)
 	}
 }
@@ -294,4 +265,10 @@ when ODIN_DEBUG {
 else {
 	varena_ainfo     :: #force_inline proc "contextless" (arena: ^VArena) -> AllocatorInfo  { return                           AllocatorInfo{procedure = varena_allocator_proc, data = arena} }
 	varena_allocator :: #force_inline proc "contextless" (arena: ^VArena) -> Odin_Allocator { return transmute(Odin_Allocator) AllocatorInfo{procedure = varena_allocator_proc, data = arena} }
+}
+
+varena_push :: #force_inline proc(va: ^VArena, $Type: typeid, amount: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, should_zero := true, location := #caller_location
+) -> ([]Type, AllocatorError) {
+	raw, error := varena_alloc(va, size_of(Type) * amount, alignment, should_zero, location)
+	return slice(transmute([^]Type) cursor(raw), len(raw) / size_of(Type)), error
 }
