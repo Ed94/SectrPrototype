@@ -61,6 +61,10 @@ import "core:time"
 	tick_now         :: time.tick_now
 
 import "codebase:grime"
+	ensure :: grime.ensure
+	fatal  :: grime.fatal
+	verify :: grime.verify
+
 	Array                       :: grime.Array
 	array_to_slice              :: grime.array_to_slice
 	array_append_array          :: grime.array_append_array
@@ -117,24 +121,24 @@ Tera :: Giga * 1024
 	S_To_MS :: grime.S_To_MS
 
 
-ensure :: #force_inline proc( condition : b32, msg : string, location := #caller_location ) {
-	if condition do return
-	log_print( msg, LoggerLevel.Warning, location )
-	debug_trap()
-}
-// TODO(Ed) : Setup exit codes!
-fatal :: #force_inline proc( msg : string, exit_code : int = -1, location := #caller_location ) {
-	log_print( msg, LoggerLevel.Fatal, location )
-	debug_trap()
-	process_exit( exit_code )
-}
-// TODO(Ed) : Setup exit codes!
-verify :: #force_inline proc( condition : b32, msg : string, exit_code : int = -1, location := #caller_location ) {
-	if condition do return
-	log_print( msg, LoggerLevel.Fatal, location )
-	debug_trap()
-	process_exit( exit_code )
-}
+// ensure :: #force_inline proc( condition : b32, msg : string, location := #caller_location ) {
+// 	if condition do return
+// 	log_print( msg, LoggerLevel.Warning, location )
+// 	debug_trap()
+// }
+// // TODO(Ed) : Setup exit codes!
+// fatal :: #force_inline proc( msg : string, exit_code : int = -1, location := #caller_location ) {
+// 	log_print( msg, LoggerLevel.Fatal, location )
+// 	debug_trap()
+// 	process_exit( exit_code )
+// }
+// // TODO(Ed) : Setup exit codes!
+// verify :: #force_inline proc( condition : b32, msg : string, exit_code : int = -1, location := #caller_location ) {
+// 	if condition do return
+// 	log_print( msg, LoggerLevel.Fatal, location )
+// 	debug_trap()
+// 	process_exit( exit_code )
+// }
 
 log_print :: proc( msg : string, level := LoggerLevel.Info, loc := #caller_location ) {
 	context.allocator      = odin_arena_allocator(& memory.host_scratch)

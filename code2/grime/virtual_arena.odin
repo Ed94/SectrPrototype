@@ -268,7 +268,6 @@ varena_push_item :: #force_inline proc(va: ^VArena, $Type: typeid, alignment: in
 	raw, error := varena_alloc(va, size_of(Type), alignment, should_zero, location)
 	return transmute(^Type) cursor(raw), error
 }
-
 varena_push_slice :: #force_inline proc(va: ^VArena, $Type: typeid, amount: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, should_zero := true, location := #caller_location
 ) -> ([]Type, AllocatorError) {
 	raw, error := varena_alloc(va, size_of(Type) * amount, alignment, should_zero, location)

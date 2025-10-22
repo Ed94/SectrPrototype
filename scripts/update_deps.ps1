@@ -12,6 +12,8 @@ $url_odin_repo      = 'https://github.com/Ed94/Odin.git'
 $url_sokol          = 'https://github.com/Ed94/sokol-odin.git'
 $url_sokol_tools    = 'https://github.com/floooh/sokol-tools-bin.git'
 
+# TODO(Ed): https://github.com/karl-zylinski/odin-handle-map
+
 $path_harfbuzz      = join-path $path_thirdparty 'harfbuzz'
 $path_ini_parser    = join-path $path_thirdparty 'ini'
 $path_odin          = join-path $path_toolchain  'Odin'

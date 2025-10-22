@@ -18,14 +18,14 @@ KTL_Meta :: struct {
 	type:            typeid,
 }
 
-ktl_get :: #force_inline proc(kt: []KTL_Slot($Type), key: u64) -> ^Type { 
+ktl_get :: #force_inline proc "contextless" (kt: []KTL_Slot($Type), key: u64) -> ^Type { 
 	for & slot in kt { if key == slot.key do return & slot.value; }
 	return nil 
 }
 
 // Unique populator for key-value pair strings
 
-ktl_populate_slice_a2_str :: #force_inline proc (kt: ^[]KTL_Slot(string), backing: Odin_Allocator, values: [][2]string) {
+ktl_populate_slice_a2_str :: #force_inline proc(kt: ^[]KTL_Slot(string), backing: Odin_Allocator, values: [][2]string) {
 	assert(kt != nil)
 	if len(values) == 0 { return }
 	raw_bytes, error := mem_alloc(size_of(KTL_Slot(string)) * len(values), ainfo = backing); assert(error == .None);

@@ -1,6 +1,6 @@
 package grime
 
-// Below should be defined per-package
+// TODO(Ed): Below should be defined per-package?
 
 ensure :: #force_inline proc(condition: bool, msg: string, location := #caller_location) -> bool {
 	if condition do return true

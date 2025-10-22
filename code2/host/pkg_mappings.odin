@@ -83,6 +83,10 @@ import grime "codebase:grime"
 	grime_set_profiler_module_context :: grime.set_profiler_module_context
 	grime_set_profiler_thread_buffer  :: grime.set_profiler_thread_buffer
 
+	ensure :: grime.ensure
+	fatal  :: grime.fatal
+	verify :: grime.verify
+
 	file_is_locked    :: grime.file_is_locked
 	logger_init       :: grime.logger_init
 	to_odin_logger    :: grime.to_odin_logger
@@ -137,24 +141,24 @@ import "codebase:sectr"
 	ThreadMemory       :: sectr.ThreadMemory
 	WorkerID           :: sectr.WorkerID
 
-ensure :: #force_inline proc( condition : b32, msg : string, location := #caller_location ) {
-	if condition do return
-	log_print( msg, LoggerLevel.Warning, location )
-	debug_trap()
-}
-// TODO(Ed) : Setup exit codes!
-fatal :: #force_inline proc( msg : string, exit_code : int = -1, location := #caller_location ) {
-	log_print( msg, LoggerLevel.Fatal, location )
-	debug_trap()
-	process_exit( exit_code )
-}
-// TODO(Ed) : Setup exit codes!
-verify :: #force_inline proc( condition : b32, msg : string, exit_code : int = -1, location := #caller_location ) {
-	if condition do return
-	log_print( msg, LoggerLevel.Fatal, location )
-	debug_trap()
-	process_exit( exit_code )
-}
+// ensure :: #force_inline proc( condition : b32, msg : string, location := #caller_location ) {
+// 	if condition do return
+// 	log_print( msg, LoggerLevel.Warning, location )
+// 	debug_trap()
+// }
+// // TODO(Ed) : Setup exit codes!
+// fatal :: #force_inline proc( msg : string, exit_code : int = -1, location := #caller_location ) {
+// 	log_print( msg, LoggerLevel.Fatal, location )
+// 	debug_trap()
+// 	process_exit( exit_code )
+// }
+// // TODO(Ed) : Setup exit codes!
+// verify :: #force_inline proc( condition : b32, msg : string, exit_code : int = -1, location := #caller_location ) {
+// 	if condition do return
+// 	log_print( msg, LoggerLevel.Fatal, location )
+// 	debug_trap()
+// 	process_exit( exit_code )
+// }
 
 log_print :: proc( msg : string, level := LoggerLevel.Info, loc := #caller_location ) {
 	context.allocator      = arena_allocator(& host_memory.host_scratch)

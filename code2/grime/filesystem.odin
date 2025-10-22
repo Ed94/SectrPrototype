@@ -1,7 +1,7 @@
 package grime
 // TODO(Ed): Review when os2 is done.
 
-// TODO(Ed): Make an async option...
+// TODO(Ed): Make an async option?
 file_copy_sync :: proc( path_src, path_dst: string, allocator := context.allocator ) -> b32
 {
   file_size : i64

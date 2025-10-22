@@ -92,8 +92,6 @@ arena_rewind :: proc(arena: ^Arena, save_point: AllocatorSP) {
 }
 arena_save :: #force_inline proc(arena: ^Arena) -> AllocatorSP { return { type_sig = arena_allocator_proc, slot = arena.base_pos + arena.current.pos } }
 
-
-
 arena_allocator_proc :: proc(input: AllocatorProc_In, output: ^AllocatorProc_Out) {
 	panic("not implemented")
 }
@@ -118,7 +116,11 @@ else {
 	arena_allocator :: #force_inline proc "contextless" (arena: ^Arena) -> Odin_Allocator { return transmute(Odin_Allocator) AllocatorInfo{procedure = arena_allocator_proc, data = arena} }
 }
 
-arena_push :: proc()
+arena_push_item :: proc()
+{
+
+}
+arena_push_array :: proc()
 {
 
 }
