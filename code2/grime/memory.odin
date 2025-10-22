@@ -5,6 +5,23 @@ Mega :: Kilo * 1024
 Giga :: Mega * 1024
 Tera :: Giga * 1024
 
+// Provides the nearest prime number value for the given capacity
+closest_prime :: proc(capacity: uint) -> uint
+{
+	prime_table : []uint = {
+		53, 97, 193, 389, 769, 1543, 3079, 6151, 12289, 24593,
+		49157, 98317, 196613, 393241, 786433, 1572869, 3145739,
+		6291469, 12582917, 25165843, 50331653, 100663319,
+		201326611, 402653189, 805306457, 1610612741, 3221225473, 6442450941
+	};
+	for slot in prime_table {
+		if slot >= capacity {
+			return slot
+		}
+	}
+	return prime_table[len(prime_table) - 1]
+}
+
 raw_cursor :: #force_inline proc "contextless" (ptr: rawptr) -> [^]byte { return transmute([^]byte) ptr }
 ptr_cursor :: #force_inline proc "contextless" (ptr: ^$Type) -> [^]Type { return transmute([^]Type) ptr }
 

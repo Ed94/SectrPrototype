@@ -1,13 +1,14 @@
 package grime
 
 /*
-Hassh Table based on John's Jai & Sean Barrett's
+Hash Table based on John's Jai & Sean Barrett's
 I don't like the table definition cntaining 
 the allocator, hash or compare procedure to be used.
 So it has been stripped and instead applied on procedure site,
 the parent container or is responsible for tracking that.
 
 TODO(Ed): Resolve appropriate Key-Table term for it.
+TODO(Ed): Complete this later if we actually have issues with KT1CX or Odin's map.
 */
 
 KT_Slot :: struct(
