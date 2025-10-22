@@ -128,7 +128,7 @@ array_append_value :: proc(self: ^Array($Type), value: Type) -> AllocatorError {
 
 // Asumes non-overlapping for items.
 array_append_at_slice :: proc(self : ^Array($Type ), items: []Type, id: int) -> AllocatorError {
-	ensure(id < self.num, "Why are we doing an append at beyond the bounds of the current element count")
+	assert(id < self.num, "Why are we doing an append at beyond the bounds of the current element count")
 	id := id
 	if id >= self.num { return array_append_slice(items) }
 	if len(items) > self.capacity {
@@ -143,7 +143,7 @@ array_append_at_slice :: proc(self : ^Array($Type ), items: []Type, id: int) -> 
 	return AllocatorError.None
 }
 array_append_at_value :: proc(self: ^Array($Type), item: Type, id: int) -> AllocatorError {
-	ensure(id < self.num, "Why are we doing an append at beyond the bounds of the current element count")
+	assert(id < self.num, "Why are we doing an append at beyond the bounds of the current element count")
 	id := id; {
 		// TODO(Ed): Not sure I want this...
 		if id >= self.num do id = self.num
@@ -167,8 +167,8 @@ array_clear :: #force_inline proc "contextless" (self: Array($Type), zero_data: 
 }
 
 array_fill :: proc(self: Array($Type), begin, end: u64, value: Type) -> bool {
-	ensure(end - begin <= num)
-	ensure(end         <= num)
+	assert(end - begin <= num)
+	assert(end         <= num)
 	if (end - begin > num) || (end > num) do return false
 	mem_fill(data[begin:], value, end - begin)
 	return true
@@ -183,7 +183,7 @@ array_push_back :: #force_inline proc "contextless" (self: Array($Type)) -> bool
 }
 
 array_remove_at :: proc(self: Array($Type), id: int) {
-	verify( id < self.num, "Attempted to remove from an index larger than the array" )
+	assert( id < self.num, "Attempted to remove from an index larger than the array" )
 	mem_copy(self.data[id:], self.data[id + 1:], (self.num - id) * size_of(Type))
 	self.num -= 1
 }
