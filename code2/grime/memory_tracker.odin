@@ -5,6 +5,8 @@
 	It only makes sure that memory allocations don't collide in the allocator and deallocations don't occur for memory never allocated.
 
 	I'm keeping it around as an artifact & for future allocators I may make.
+
+	NOTE(Ed): Perfer sanitizers
 */
 package grime
 

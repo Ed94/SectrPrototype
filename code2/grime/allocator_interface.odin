@@ -116,7 +116,7 @@ AllocatorInfo :: struct {
 AllocatorProcID :: enum uintptr {
 	FArena,
 	VArena,
-	// CArena,
+	Arena,
 	// Pool,
 	// Slab,
 	// Odin_Arena,
@@ -128,7 +128,7 @@ resolve_allocator_proc :: #force_inline proc "contextless" (procedure: $Allocato
 		switch (transmute(AllocatorProcID)procedure) {
 			case .FArena:      return farena_allocator_proc
 			case .VArena:      return varena_allocator_proc
-			// case .CArena:      return carena_allocator_proc
+			case .Arena:       return arena_allocator_proc
 			// case .Pool:        return pool_allocator_proc
 			// case .Slab:        return slab_allocator_proc
 			// case .Odin_Arena:  return odin_arena_allocator_proc
@@ -146,7 +146,7 @@ resolve_odin_allocator :: #force_inline proc "contextless" (allocator: Odin_Allo
 		switch (transmute(AllocatorProcID)allocator.procedure) {
 			case .FArena:      return { farena_odin_allocator_proc, allocator.data }
 			case .VArena:      return { varena_odin_allocator_proc, allocator.data }
-			// case .CArena:      return { carena_odin_allocator_proc, allocator.data }
+			case .Arena:       return { arena_odin_allocator_proc,  allocator.data }
 			// case .Pool:        return nil // pool_allocator_proc
 			// case .Slab:        return nil // slab_allocator_proc
 			// case .Odin_Arena:  return nil // odin_arena_allocator_proc
@@ -157,7 +157,7 @@ resolve_odin_allocator :: #force_inline proc "contextless" (allocator: Odin_Allo
 		switch (allocator.procedure) {
 			case farena_allocator_proc: return { farena_odin_allocator_proc, allocator.data }
 			case varena_allocator_proc: return { varena_odin_allocator_proc, allocator.data }
-			case carena_allocator_proc: return { carena_odin_allocator_proc, allocator.data }
+			case arena_allocator_proc:  return { arena_odin_allocator_proc,  allocator.data }
 		}
 	}
 	panic_contextless("Unresolvable procedure")

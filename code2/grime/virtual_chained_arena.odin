@@ -18,45 +18,47 @@ Arena :: struct {
 	flags:    ArenaFlags,
 }
 
-arena_make :: proc(reserve_size : uint = Mega * 64, commit_size : uint = Mega * 64, base_addr: uintptr = 0, flags: ArenaFlags = {}) -> ^Arena {
+arena_make :: proc(reserve_size : int = Mega * 64, commit_size : int = Mega * 64, base_addr: uintptr = 0, flags: ArenaFlags = {}) -> ^Arena {
 	header_size    := align_pow2(size_of(Arena), MEMORY_ALIGNMENT_DEFAULT)
 	current, error := varena_make(reserve_size, commit_size, base_addr, transmute(VArenaFlags) flags)
 	assert(error   == .None)
 	assert(current != nil)
-	arena: []Arena; arena, error = varena_push(current, Arena, 1)
+	arena: ^Arena; arena, error = varena_push_item(current, Arena, 1)
 	assert(error == .None)
-	assert(len(arena) > 0)
-	arena[0] = Arena {
+	assert(arena != nil)
+	arena^ = Arena {
 		backing  = current,
 		prev     = nil,
-		current  = & arena[0],
+		current  = arena,
 		base_pos = 0,
 		pos      = header_size,
 		flags    = flags,
 	}
-	return & arena[0]
+	return arena
 }
-arena_push :: proc(arena: ^Arena, $Type: typeid, amount: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT) -> []Type {
+arena_alloc :: proc(arena: ^Arena, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT) -> []byte {
 	assert(arena != nil)
 	active         := arena.current
-	size_requested := amount * size_of(Type)
+	size_requested := size
 	size_aligned   := align_pow2(size_requested, alignment)
 	pos_pre        := active.pos
 	pos_pst        := pos_pre + size_aligned
-	should_chain   := (.No_Chaining not_in arena.flags) && (active.backing.reserve < pos_pst)	
+	reserved       := int(active.backing.reserved)
+	should_chain   := (.No_Chaining not_in arena.flags) && (reserved < pos_pst)	
 	if should_chain {
-		new_arena := arena_make(active.backing.reserve, active.backing.commit_size, 0, transmute(ArenaFlags) active.backing.flags)
-		new_arena.base_pos = active.base_pos + active.backing.reserve
+		new_arena := arena_make(reserved, active.backing.commit_size, 0, transmute(ArenaFlags) active.backing.flags)
+		new_arena.base_pos = active.base_pos + reserved
 		sll_stack_push_n(& arena.current, & new_arena, & new_arena.prev)
 		new_arena.prev = active
 		active = arena.current
 	}
-	result_ptr := transmute([^]byte) (uintptr(active) + uintptr(pos_pre))
-	vresult    := varena_push(active.backing, byte, size_aligned, alignment)
+	result_ptr     := transmute([^]byte) (uintptr(active) + uintptr(pos_pre))
+	vresult, error := varena_alloc(active.backing, size_aligned, alignment)
+	assert(error == .None)
 	slice_assert(vresult)
 	assert(raw_data(vresult) == result_ptr)
 	active.pos = pos_pst
-	return slice(result_ptr, amount)
+	return slice(result_ptr, size)
 }
 arena_release :: proc(arena: ^Arena) {
 	assert(arena != nil)
@@ -93,5 +95,30 @@ arena_save :: #force_inline proc(arena: ^Arena) -> AllocatorSP { return { type_s
 
 
 arena_allocator_proc :: proc(input: AllocatorProc_In, output: ^AllocatorProc_Out) {
-	
+	panic("not implemented")
+}
+arena_odin_allocator_proc :: proc(
+	allocator_data : rawptr,
+	mode           : Odin_AllocatorMode,
+	size           : int,
+	alignment      : int,
+	old_memory     : rawptr,
+	old_size       : int,
+	location       : SourceCodeLocation = #caller_location
+) -> (data: []byte, alloc_error: AllocatorError)
+{
+	panic("not implemented")
+}
+when ODIN_DEBUG {
+	arena_ainfo     :: #force_inline proc "contextless" (arena: ^Arena) -> AllocatorInfo  { return                           AllocatorInfo{proc_id = .Arena, data = arena} }
+	arena_allocator :: #force_inline proc "contextless" (arena: ^Arena) -> Odin_Allocator { return transmute(Odin_Allocator) AllocatorInfo{proc_id = .Arena, data = arena} }
+}
+else {
+	arena_ainfo     :: #force_inline proc "contextless" (arena: ^Arena) -> AllocatorInfo  { return                           AllocatorInfo{procedure = arena_allocator_proc, data = arena} }
+	arena_allocator :: #force_inline proc "contextless" (arena: ^Arena) -> Odin_Allocator { return transmute(Odin_Allocator) AllocatorInfo{procedure = arena_allocator_proc, data = arena} }
+}
+
+arena_push :: proc()
+{
+
 }

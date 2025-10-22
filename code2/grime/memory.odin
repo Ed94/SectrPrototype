@@ -27,6 +27,11 @@ ptr_cursor :: #force_inline proc "contextless" (ptr: ^$Type) -> [^]Type { return
 
 @(require_results) is_power_of_two :: #force_inline proc "contextless" (x: uintptr) -> bool { return (x > 0) && ((x & (x-1)) == 0) }
 @(require_results)
+align_pow2_uint :: #force_inline proc "contextless" (ptr, align: uint) -> uint { 
+	assert_contextless(is_power_of_two(uintptr(align)))
+	return ptr & ~(align-1)
+}
+@(require_results)
 align_pow2 :: #force_inline proc "contextless" (ptr, align: int) -> int { 
 	assert_contextless(is_power_of_two(uintptr(align)))
 	return ptr & ~(align-1)

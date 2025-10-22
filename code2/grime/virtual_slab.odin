@@ -11,8 +11,5 @@ Slab_Max_Size_Classes :: 24
 SlabPolicy :: FStack(VSlabSizeClass, Slab_Max_Size_Classes)
 
 VSlab :: struct {
-	pools:    FStack(VPool, Slab_Max_Size_Classes),
-	dbg_name: string,
+	pools: FStack(VPool, Slab_Max_Size_Classes),
 }
-
-

@@ -9,10 +9,20 @@ import "base:runtime"
 Pool allocator backed by chained virtual arenas.
 */
 
-VPool_FreeBlock :: struct { offset: int, }
+Pool_FreeBlock :: struct { next: ^Pool_FreeBlock }
 
 VPool :: struct {
-	
-	dbg_name: string,
+	arenas:     ^Arena,
+	block_size: uint,
+	// alignment:  uint,
+
+	free_list_head: ^Pool_FreeBlock,
 }
+
+pool_make :: proc() -> (pool: VPool, error: AllocatorError)
+{
+	panic("not implemented")
+	// return
+}
+
 
