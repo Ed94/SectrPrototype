@@ -31,7 +31,7 @@ ktl_populate_slice_a2_str :: #force_inline proc(kt: ^[]KTL_Slot(string), backing
 	raw_bytes, error := mem_alloc(size_of(KTL_Slot(string)) * len(values), ainfo = backing); assert(error == .None);
 	kt^               = slice( transmute([^]KTL_Slot(string)) cursor(raw_bytes), len(raw_bytes) / size_of(KTL_Slot(string)) )
 	for id in 0 ..< len(values) {
-		mem_copy_non_overlapping(& kt[id].value, & values[id][1], size_of(string))
+		mem_copy(& kt[id].value, & values[id][1], size_of(string))
 		hash64_fnv1a(& kt[id].key, transmute([]byte) values[id][0])
 	}
 }

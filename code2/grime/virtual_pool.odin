@@ -24,5 +24,3 @@ pool_make :: proc() -> (pool: VPool, error: AllocatorError)
 	panic("not implemented")
 	// return
 }
-
-

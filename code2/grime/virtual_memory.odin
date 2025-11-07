@@ -32,7 +32,7 @@ virtual_reserve_remaining :: proc "contextless" ( using vmem : VirtualMemoryRegi
 @(require_results)
 virtual_commit :: proc "contextless" ( using vmem : VirtualMemoryRegion, size : uint ) -> ( alloc_error : AllocatorError )
 {
-	if size < committed {
+	if size < committed { 
 		return .None
 	}
 

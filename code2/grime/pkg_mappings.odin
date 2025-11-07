@@ -11,9 +11,9 @@ import "base:intrinsics"
 	// mem_copy             :: intrinsics.mem_copy_non_overlapping
 	// mem_copy_overlapping :: intrinsics.mem_copy
 
-mem_zero                 :: #force_inline proc "contextless" (data:     rawptr, len: int) { intrinsics.mem_zero                (data,     len) }
-mem_copy_non_overlapping :: #force_inline proc "contextless" (dst, src: rawptr, len: int) { intrinsics.mem_copy_non_overlapping(dst, src, len) }
-mem_copy                 :: #force_inline proc "contextless" (dst, src: rawptr, len: int) { intrinsics.mem_copy                (dst, src, len) }
+mem_zero             :: #force_inline proc "contextless" (data:     rawptr, len: int) { intrinsics.mem_zero                (data,     len) }
+mem_copy             :: #force_inline proc "contextless" (dst, src: rawptr, len: int) { intrinsics.mem_copy_non_overlapping(dst, src, len) }
+mem_copy_overlapping :: #force_inline proc "contextless" (dst, src: rawptr, len: int) { intrinsics.mem_copy                (dst, src, len) }
 
 import "base:runtime"
 	Assertion_Failure_Proc :: runtime.Assertion_Failure_Proc
@@ -40,6 +40,9 @@ import "core:log"
 	Logger_Full_Timestamp_Opts :: log.Full_Timestamp_Opts
 
 import "core:mem"
+	DEFAULT_ALIGNMENT :: mem.DEFAULT_ALIGNMENT
+	DEFAULT_PAGE_SIZE :: mem.DEFAULT_PAGE_SIZE
+
 	Odin_Allocator          :: mem.Allocator
 	Odin_AllocatorError     :: mem.Allocator_Error
 	Odin_AllocatorQueryInfo :: mem.Allocator_Query_Info
@@ -141,8 +144,8 @@ copy :: proc {
 	mem_copy,
 	slice_copy,
 }
-copy_non_overlapping :: proc {
-	mem_copy_non_overlapping,
+copy_overlapping :: proc {
+	mem_copy_overlapping,
 	slice_copy_overlapping,
 }
 fill :: proc {

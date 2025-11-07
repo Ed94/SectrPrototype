@@ -17,7 +17,7 @@ farena_init :: proc "contextless" (arena: ^FArena, backing: []byte) {
 	arena.used = 0
 }
 @require_results
-farena_push :: proc "contextless" (arena: ^FArena, $Type: typeid, amount: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, loc := #caller_location) -> ([]Type, AllocatorError) {
+farena_push :: proc "contextless" (arena: ^FArena, $Type: typeid, amount: int, alignment: int = DEFAULT_ALIGNMENT, loc := #caller_location) -> ([]Type, AllocatorError) {
 	assert_contextless(arena != nil)
 	if amount == 0 {
 		return {}, .None
@@ -32,7 +32,7 @@ farena_push :: proc "contextless" (arena: ^FArena, $Type: typeid, amount: int, a
 	return slice(cursor(arena.mem)[arena.used:], amount), .None
 }
 @require_results
-farena_grow :: proc "contextless" (arena: ^FArena, old_allocation: []byte, requested_size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, should_zero: bool = true, loc := #caller_location) -> (allocation: []byte, err: AllocatorError) {
+farena_grow :: proc "contextless" (arena: ^FArena, old_allocation: []byte, requested_size: int, alignment: int = DEFAULT_ALIGNMENT, should_zero: bool = true, loc := #caller_location) -> (allocation: []byte, err: AllocatorError) {
 	assert_contextless(arena != nil)
 	if len(old_allocation) == 0 {
 		return {}, .Invalid_Argument
@@ -58,7 +58,7 @@ farena_grow :: proc "contextless" (arena: ^FArena, old_allocation: []byte, reque
 	return
 }
 @require_results
-farena_shirnk :: proc "contextless" (arena: ^FArena, old_allocation: []byte, requested_size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, loc := #caller_location) -> (allocation: []byte, err: AllocatorError) {
+farena_shirnk :: proc "contextless" (arena: ^FArena, old_allocation: []byte, requested_size: int, alignment: int = DEFAULT_ALIGNMENT, loc := #caller_location) -> (allocation: []byte, err: AllocatorError) {
 	assert_contextless(arena != nil)
 	if len(old_allocation) == 0 {
 		return {}, .Invalid_Argument
@@ -70,7 +70,7 @@ farena_shirnk :: proc "contextless" (arena: ^FArena, old_allocation: []byte, req
 		return old_allocation[:requested_size], .None
 	}
 	// Calculate shrinkage
-	aligned_original := align_pow2(len(old_allocation), MEMORY_ALIGNMENT_DEFAULT)
+	aligned_original := align_pow2(len(old_allocation), DEFAULT_ALIGNMENT)
 	aligned_new      := align_pow2(requested_size, alignment)
 	arena.used       -= (aligned_original - aligned_new)
 	return old_allocation[:requested_size], .None
@@ -162,7 +162,7 @@ farena_odin_allocator_proc :: proc(
 		info := (^Odin_AllocatorQueryInfo)(old_memory)
 		info.pointer   = transmute(rawptr) farena_save(arena^).slot
 		info.size      = len(arena.mem) - arena.used
-		info.alignment = MEMORY_ALIGNMENT_DEFAULT
+		info.alignment = DEFAULT_ALIGNMENT
 		return to_bytes(info), nil
 	}
 	panic_contextless("Impossible path")

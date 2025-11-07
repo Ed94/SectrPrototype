@@ -22,7 +22,6 @@ VArenaFlags :: bit_set[VArenaFlag; u32]
 VArenaFlag  :: enum u32 {
 	No_Large_Pages,
 }
-
 VArena :: struct {
 	using vmem:  VirtualMemoryRegion,
 	commit_size: int,
@@ -46,13 +45,13 @@ varena_make :: proc(to_reserve, commit_size: int, base_address: uintptr, flags: 
 	}
 	arena = transmute(^VArena) vmem.base_address;
 	arena.vmem        = vmem
-	arena.commit_used = align_pow2(size_of(arena), MEMORY_ALIGNMENT_DEFAULT)
+	arena.commit_used = align_pow2(size_of(arena), DEFAULT_ALIGNMENT)
 	arena.flags       = flags
 	return
 }
 varena_alloc :: proc(self: ^VArena,
-	size:      int,
-	alignment: int = MEMORY_ALIGNMENT_DEFAULT,
+	size:        int,
+	alignment:   int = DEFAULT_ALIGNMENT,
 	zero_memory := true,
 	location    := #caller_location
 ) -> (data: []byte, alloc_error: AllocatorError)
@@ -104,11 +103,11 @@ varena_alloc :: proc(self: ^VArena,
 	}
 	return
 }
-varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, should_zero := true, loc := #caller_location
+varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_size: int, alignment: int = DEFAULT_ALIGNMENT, zero_memory := true, loc := #caller_location
 ) -> (data: []byte, error: AllocatorError)
 {
 	if ensure(old_memory == nil, "Growing without old_memory?") {
-		data, error = varena_alloc(self, requested_size, alignment, should_zero, loc)
+		data, error = varena_alloc(self, requested_size, alignment, zero_memory, loc)
 		return
 	}
 	if ensure(requested_size == len(old_memory), "Requested grow when none needed") {
@@ -137,18 +136,18 @@ varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_s
 	{
 		// Give it new memory and copy the old over. Old memory is unrecoverable until clear.
 		new_region : []byte
-		new_region, error = varena_alloc( self, requested_size, alignment, should_zero, loc )
+		new_region, error = varena_alloc( self, requested_size, alignment, zero_memory, loc )
 		if ensure(new_region == nil || error != .None, "Failed to grab new region") {
 			data = old_memory
 			return
 		}
-		copy_non_overlapping( cursor(new_region), cursor(old_memory), len(old_memory) )
+		copy( cursor(new_region), cursor(old_memory), len(old_memory) )
 		data = new_region
 		// log_print_fmt("varena resize (new): old: %p %v new: %p %v", old_memory, old_size, (& data[0]), size)
 		return
 	}
 	new_region : []byte
-	new_region, error = varena_alloc( self, requested_size - len(old_memory), alignment, should_zero, loc)
+	new_region, error = varena_alloc( self, requested_size - len(old_memory), alignment, zero_memory, loc)
 	if ensure(new_region == nil || error != .None, "Failed to grab new region") {
 		data = old_memory
 		return
@@ -243,7 +242,7 @@ varena_odin_allocator_proc :: proc(
 		info := (^Odin_AllocatorQueryInfo)(old_memory)
 		info.pointer   = transmute(rawptr) varena_save(arena).slot
 		info.size      = cast(int) arena.reserved
-		info.alignment = MEMORY_ALIGNMENT_DEFAULT
+		info.alignment = DEFAULT_ALIGNMENT
 		return to_bytes(info), nil
 	}
 	return
@@ -263,12 +262,12 @@ else {
 	varena_allocator :: #force_inline proc "contextless" (arena: ^VArena) -> Odin_Allocator { return transmute(Odin_Allocator) AllocatorInfo{procedure = varena_allocator_proc, data = arena} }
 }
 
-varena_push_item :: #force_inline proc(va: ^VArena, $Type: typeid, alignment: int = MEMORY_ALIGNMENT_DEFAULT, should_zero := true, location := #caller_location
+varena_push_item :: #force_inline proc(va: ^VArena, $Type: typeid, alignment: int = DEFAULT_ALIGNMENT, should_zero := true, location := #caller_location
 ) -> (^Type, AllocatorError) {
 	raw, error := varena_alloc(va, size_of(Type), alignment, should_zero, location)
 	return transmute(^Type) cursor(raw), error
 }
-varena_push_slice :: #force_inline proc(va: ^VArena, $Type: typeid, amount: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, should_zero := true, location := #caller_location
+varena_push_slice :: #force_inline proc(va: ^VArena, $Type: typeid, amount: int, alignment: int = DEFAULT_ALIGNMENT, should_zero := true, location := #caller_location
 ) -> ([]Type, AllocatorError) {
 	raw, error := varena_alloc(va, size_of(Type) * amount, alignment, should_zero, location)
 	return slice(transmute([^]Type) cursor(raw), len(raw) / size_of(Type)), error

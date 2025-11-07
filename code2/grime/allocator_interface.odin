@@ -177,9 +177,6 @@ odin_allocator_mode_to_allocator_op :: #force_inline proc "contextless" (mode: O
 	panic_contextless("Impossible path")
 }
 
-// TODO(Ed): Change to DEFAULT_ALIGNMENT
-MEMORY_ALIGNMENT_DEFAULT :: 2 * size_of(rawptr)
-
 allocatorinfo :: #force_inline proc(ainfo := context.allocator) -> AllocatorInfo  { return transmute(AllocatorInfo)  ainfo }
 allocator     :: #force_inline proc(ainfo: AllocatorInfo)       -> Odin_Allocator { return transmute(Odin_Allocator) ainfo }
 
@@ -202,11 +199,10 @@ mem_rewind :: proc(ainfo := context.allocator, save_point: AllocatorSP, loc := #
 }
 mem_save_point :: proc(ainfo := context.allocator, loc := #caller_location) -> AllocatorSP {
 	assert(ainfo.procedure != nil)
-	out: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .SavePoint, loc = loc}, & out)
+	out: AllocatorProc_Out; resolve_allocator_proc(ainfo.procedure)({data = ainfo.data, op = .SavePoint, loc = loc}, & out)
 	return out.save_point
 }
-mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo: $Type = context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
+mem_alloc :: proc(size: int, alignment: int = DEFAULT_ALIGNMENT, no_zero: bool = false, ainfo: $Type = context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -215,11 +211,10 @@ mem_alloc :: proc(size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero:
 		alignment      = alignment,
 		loc            = loc,
 	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
+	output: AllocatorProc_Out; resolve_allocator_proc(ainfo.procedure)(input, & output)
 	return output.allocation, output.error
 }
-mem_grow :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
+mem_grow :: proc(mem: []byte, size: int, alignment: int = DEFAULT_ALIGNMENT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -229,11 +224,10 @@ mem_grow :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAU
 		old_allocation = mem,
 		loc            = loc,
 	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
+	output: AllocatorProc_Out; resolve_allocator_proc(ainfo.procedure)(input, & output)
 	return output.allocation, output.error
 }
-mem_resize :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
+mem_resize :: proc(mem: []byte, size: int, alignment: int = DEFAULT_ALIGNMENT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -243,11 +237,10 @@ mem_resize :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEF
 		old_allocation = mem,
 		loc            = loc,
 	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
+	output: AllocatorProc_Out; resolve_allocator_proc(ainfo.procedure)(input, & output)
 	return output.allocation, output.error
 }
-mem_shrink :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
+mem_shrink :: proc(mem: []byte, size: int, alignment: int = DEFAULT_ALIGNMENT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]byte, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -257,12 +250,11 @@ mem_shrink :: proc(mem: []byte, size: int, alignment: int = MEMORY_ALIGNMENT_DEF
 		old_allocation = mem,
 		loc            = loc,
 	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
+	output: AllocatorProc_Out; resolve_allocator_proc(ainfo.procedure)(input, & output)
 	return output.allocation, output.error
 }
 
-alloc_type  :: proc($Type: typeid, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> (^Type, AllocatorError) {
+alloc_type  :: proc($Type: typeid, alignment: int = DEFAULT_ALIGNMENT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> (^Type, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -271,11 +263,10 @@ alloc_type  :: proc($Type: typeid, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no
 		alignment      = alignment,
 		loc            = loc,
 	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
+	output: AllocatorProc_Out; resolve_allocator_proc(ainfo.procedure)(input, & output)
 	return transmute(^Type) raw_data(output.allocation), output.error
 }
-alloc_slice :: proc($SliceType: typeid / []$Type, num: int, alignment: int = MEMORY_ALIGNMENT_DEFAULT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]Type, AllocatorError) {
+alloc_slice :: proc($SliceType: typeid / []$Type, num: int, alignment: int = DEFAULT_ALIGNMENT, no_zero: bool = false, ainfo := context.allocator, loc := #caller_location) -> ([]Type, AllocatorError) {
 	assert(ainfo.procedure != nil)
 	input := AllocatorProc_In {
 		data           = ainfo.data,
@@ -284,7 +275,6 @@ alloc_slice :: proc($SliceType: typeid / []$Type, num: int, alignment: int = MEM
 		alignment      = alignment,
 		loc            = loc,
 	}
-	output: AllocatorProc_Out
-	resolve_allocator_proc(ainfo.procedure)(input, & output)
+	output: AllocatorProc_Out; resolve_allocator_proc(ainfo.procedure)(input, & output)
 	return transmute([]Type) slice(raw_data(output.allocation), num), output.error
 }
