@@ -77,8 +77,8 @@ import "codebase:grime"
 	logger_init                 :: grime.logger_init
 	// Memory
 	mem_alloc                   :: grime.mem_alloc
+	mem_copy_overlapping        :: grime.mem_copy_overlapping
 	mem_copy                    :: grime.mem_copy
-	mem_copy_non_overlapping    :: grime.mem_copy_non_overlapping
 	mem_zero                    :: grime.mem_zero
 	slice_zero                  :: grime.slice_zero
 	// Ring Buffer

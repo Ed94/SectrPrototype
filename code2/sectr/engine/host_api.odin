@@ -56,7 +56,7 @@ Host_API :: struct {
 }
 
 ThreadMemory :: struct {
-	using _:    ThreadWorkerContext,
+	using _: ThreadWorkerContext,
 
 	// Per-thread profiling
 	spall_buffer_backing: [SPALL_BUFFER_DEFAULT_SIZE]byte,

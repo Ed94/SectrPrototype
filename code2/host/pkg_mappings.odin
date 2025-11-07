@@ -43,6 +43,9 @@ import "core:prof/spall"
 	spall_buffer_create       :: spall.buffer_create
 	spall_buffer_destroy      :: spall.buffer_destroy
 
+import "core:reflect"
+	enum_to_string        :: reflect.enum_string
+
 import "core:strings"
 	strbuilder_from_bytes :: strings.builder_from_bytes
 	strbuilder_make_len   :: strings.builder_make_len
@@ -72,6 +75,7 @@ import "core:time"
 import "core:thread"
 	SysThread            :: thread.Thread
 	thread_create        :: thread.create
+	thread_create_ex     :: thread.create_ex
 	thread_start         :: thread.start
 	thread_destroy       :: thread.destroy
 	thread_join_multiple :: thread.join_multiple
@@ -93,8 +97,7 @@ import grime "codebase:grime"
 
 	// Need to have it with un-wrapped allocator
 	// file_copy_sync    :: grime.file_copy_sync
-	file_copy_sync :: proc( path_src, path_dst: string, allocator := context.allocator ) -> b32
-	{
+	file_copy_sync :: proc( path_src, path_dst: string, allocator := context.allocator ) -> b32 {
 		file_size : i64
 		{
 			path_info, result := file_status( path_src, allocator )
@@ -104,14 +107,12 @@ import grime "codebase:grime"
 			}
 			file_size = path_info.size
 		}
-
 		src_content, result := os.read_entire_file_from_filename( path_src, allocator )
 		if ! result {
 			log_print_fmt( "Failed to read file to copy: %v", path_src, LoggerLevel.Error )
 			debug_trap()
 			return false
 		}
-
 		result = os.write_entire_file( path_dst, src_content, false )
 		if ! result {
 			log_print_fmt( "Failed to copy file: %v", path_dst, LoggerLevel.Error )
