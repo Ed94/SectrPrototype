@@ -85,6 +85,13 @@ farena_rewind :: #force_inline proc "contextless" (arena: ^FArena, save_point: A
 	arena.used = save_point.slot
 }
 farena_save :: #force_inline proc "contextless" (arena: FArena) -> AllocatorSP { return AllocatorSP { type_sig = farena_allocator_proc, slot = arena.used } }
+farena_is_owner :: #force_inline proc "contextless" (arena: FArena, memory: []byte) -> bool {
+		p0       := transmute(uintptr) cursor(memory)
+		p1       := transmute(uintptr) end(memory)
+		arena_p0 := transmute(uintptr) cursor(arena.mem)
+		arena_p1 := cast(uintptr) arena.used
+		return arena_p0 <= p0 && arena_p1 >= p1
+}
 farena_allocator_proc :: proc(input: AllocatorProc_In, output: ^AllocatorProc_Out) {
 	assert_contextless(output     != nil)
 	assert_contextless(input.data != nil)
@@ -115,12 +122,16 @@ farena_allocator_proc :: proc(input: AllocatorProc_In, output: ^AllocatorProc_Ou
 		output.save_point = farena_save(arena^)
 		return
 	case .Query:
-		output.features   = {.Alloc, .Reset, .Grow, .Shrink, .Rewind}
+		output.features   = {.Alloc, .Reset, .Grow, .Shrink, .Rewind, .Actually_Resize, .Is_Owner, .Hint_Fast_Bump}
 		output.max_alloc  = len(arena.mem) - arena.used
 		output.min_alloc  = 0
 		output.left       = output.max_alloc
 		output.save_point = farena_save(arena^)
 		return
+	case .Is_Owner:
+		output.error = farena_is_owner(arena ^, input.old_allocation) ? .Owner : .None
+	case .Startup, .Shutdown, .Thread_Start, .Thread_Stop:
+		output.error = .Mode_Not_Implemented
 	}
 	panic_contextless("Impossible path")
 }
@@ -132,32 +143,29 @@ farena_odin_allocator_proc :: proc(
 	old_memory     : rawptr,
 	old_size       : int,
 	location       : SourceCodeLocation = #caller_location
-) -> ( data : []byte, alloc_error : AllocatorError)
+) -> ( data : []byte, error : Odin_AllocatorError)
 {
+	error_: AllocatorError 
 	assert_contextless(allocator_data != nil)
 	arena := transmute(^FArena) allocator_data
 	switch mode {
 	case .Alloc, .Alloc_Non_Zeroed:
-		data, alloc_error = farena_push(arena, byte, size, alignment, location)
+		data, error_ = farena_push(arena, byte, size, alignment, location)
 		if mode == .Alloc {
 			zero(data)
 		}
-		return
 	case .Free:
 		return {}, .Mode_Not_Implemented
 	case .Free_All:
 		farena_reset(arena)
-		return
 	case .Resize, .Resize_Non_Zeroed:
-		if (size > old_size) do data, alloc_error = farena_grow  (arena, slice(cursor(old_memory), old_size), size, alignment, mode == .Resize)
-		else                 do data, alloc_error = farena_shirnk(arena, slice(cursor(old_memory), old_size), size, alignment)
-		return
+		if (size > old_size) do data, error_ = farena_grow  (arena, slice(cursor(old_memory), old_size), size, alignment, mode == .Resize)
+		else                 do data, error_ = farena_shirnk(arena, slice(cursor(old_memory), old_size), size, alignment)
 	case .Query_Features:
 		set := (^Odin_AllocatorModeSet)(old_memory)
 		if set != nil {
 			set^ = {.Alloc, .Alloc_Non_Zeroed, .Free_All, .Resize, .Resize_Non_Zeroed, .Query_Features, .Query_Info}
 		}
-		return
 	case .Query_Info:
 		info := (^Odin_AllocatorQueryInfo)(old_memory)
 		info.pointer   = transmute(rawptr) farena_save(arena^).slot
@@ -165,7 +173,8 @@ farena_odin_allocator_proc :: proc(
 		info.alignment = DEFAULT_ALIGNMENT
 		return to_bytes(info), nil
 	}
-	panic_contextless("Impossible path")
+	error = transmute(Odin_AllocatorError) error_
+	return
 }
 when ODIN_DEBUG {
 	farena_ainfo     :: #force_inline proc "contextless" (arena: ^FArena) -> AllocatorInfo  { return                           AllocatorInfo{proc_id = .FArena, data = arena} }

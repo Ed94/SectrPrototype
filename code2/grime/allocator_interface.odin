@@ -39,6 +39,11 @@ AllocatorOp :: enum u32 {
 	Rewind,
 	SavePoint,
 	Query, // Must always be implemented
+	Is_Owner,
+	Startup,
+	Shutdown,
+	Thread_Start,
+	Thread_Stop,
 }
 AllocatorQueryFlag :: enum u64 {
 	Alloc,
@@ -47,27 +52,29 @@ AllocatorQueryFlag :: enum u64 {
 
 	Shrink,
 	Grow, 
-	Resize, // Supports both grow and shrink
 
 	Rewind, // Ability to rewind to a save point (ex: arenas, stack), must also be able to save such a point
 
-	// Actually_Resize,
-	// Is_This_Yours,
+	Actually_Resize,
+	Multiple_Threads,
+	Is_Owner,
 
 	Hint_Fast_Bump,
 	Hint_General_Heap,
 	Hint_Per_Frame_Temporary,
 	Hint_Debug_Support,
 }
-AllocatorError :: Odin_AllocatorError
-// AllocatorError :: enum i32 {
-// 	None                 = 0,
-// 	Out_Of_Memory        = 1,
-// 	Invalid_Pointer      = 2,
-// 	Invalid_Argument     = 3,
-// 	Mode_Not_Implemented = 4,
-// }
 AllocatorQueryFlags :: bit_set[AllocatorQueryFlag; u64]
+
+// AllocatorError :: Odin_AllocatorError
+AllocatorError :: enum byte {
+	None                 = 0,
+	Out_Of_Memory        = 1,
+	Invalid_Pointer      = 2,
+	Invalid_Argument     = 3,
+	Mode_Not_Implemented = 4,
+	Owner                = 5,
+}
 AllocatorSP :: struct {
 	type_sig: AllocatorProc,
 	slot:     int,

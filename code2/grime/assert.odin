@@ -2,13 +2,13 @@ package grime
 
 // TODO(Ed): Below should be defined per-package?
 
-ensure :: #force_inline proc(condition: bool, msg: string, location := #caller_location) -> bool {
-	if condition do return true
+ensure :: #force_inline proc(condition: bool, msg := #caller_expression, location := #caller_location) -> bool {
+	if condition == false do return false
 	log_print( msg, LoggerLevel.Warning, location )
-	when ODIN_DEBUG == false do return false
+	when ODIN_DEBUG == false do return true
 	else {
 		debug_trap()
-		return false
+		return true
 	}
 }
 // TODO(Ed) : Setup exit codes!

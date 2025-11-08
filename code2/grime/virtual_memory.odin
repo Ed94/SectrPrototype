@@ -40,7 +40,7 @@ virtual_commit :: proc "contextless" ( using vmem : VirtualMemoryRegion, size : 
 	page_size   := uint(virtual_get_page_size())
 	to_commit   := memory_align_formula( size, page_size )
 
-	alloc_error = core_virtual.commit( base_address, to_commit )
+	alloc_error = cast(AllocatorError) core_virtual.commit( base_address, to_commit )
 	if alloc_error != .None {
 		return alloc_error
 	}

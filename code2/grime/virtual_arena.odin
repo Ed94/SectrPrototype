@@ -40,7 +40,7 @@ varena_make :: proc(to_reserve, commit_size: int, base_address: uintptr, flags: 
 	verify( to_reserve  >= commit_size, "Attempted to commit more than there is to reserve" )
 	vmem : VirtualMemoryRegion
 	vmem, alloc_error = virtual_reserve_and_commit( base_address, uint(to_reserve), uint(commit_size) )
-	if ensure(vmem.base_address == nil || alloc_error != .None, "Failed to allocate requested virtual memory for virtual arena") {
+	if ensure(vmem.base_address != nil && alloc_error == .None, "Failed to allocate requested virtual memory for virtual arena") {
 		return
 	}
 	arena = transmute(^VArena) vmem.base_address;
@@ -59,7 +59,7 @@ varena_alloc :: proc(self: ^VArena,
 	verify( alignment & (alignment - 1) == 0, "Non-power of two alignment", location = location )
 	page_size      := uint(virtual_get_page_size())
 	requested_size := uint(size)
-	if ensure(requested_size == 0, "Requested 0 size") do return nil, .Invalid_Argument
+	if ensure(requested_size > 0, "Requested 0 size") do return nil, .Invalid_Argument
 	// ensure( requested_size > page_size, "Requested less than a page size, going to allocate a page size")
 	// requested_size = max(requested_size, page_size)
 
@@ -106,11 +106,11 @@ varena_alloc :: proc(self: ^VArena,
 varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_size: int, alignment: int = DEFAULT_ALIGNMENT, zero_memory := true, loc := #caller_location
 ) -> (data: []byte, error: AllocatorError)
 {
-	if ensure(old_memory == nil, "Growing without old_memory?") {
+	if ensure(old_memory != nil, "Growing without old_memory?") {
 		data, error = varena_alloc(self, requested_size, alignment, zero_memory, loc)
 		return
 	}
-	if ensure(requested_size == len(old_memory), "Requested grow when none needed") {
+	if ensure(requested_size != len(old_memory), "Requested grow when none needed") {
 		data = old_memory
 		return
 	}
@@ -137,7 +137,7 @@ varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_s
 		// Give it new memory and copy the old over. Old memory is unrecoverable until clear.
 		new_region : []byte
 		new_region, error = varena_alloc( self, requested_size, alignment, zero_memory, loc )
-		if ensure(new_region == nil || error != .None, "Failed to grab new region") {
+		if ensure(new_region != nil && error == .None, "Failed to grab new region") {
 			data = old_memory
 			return
 		}
@@ -148,7 +148,7 @@ varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_s
 	}
 	new_region : []byte
 	new_region, error = varena_alloc( self, requested_size - len(old_memory), alignment, zero_memory, loc)
-	if ensure(new_region == nil || error != .None, "Failed to grab new region") {
+	if ensure(new_region != nil && error == .None, "Failed to grab new region") {
 		data = old_memory
 		return
 	}
@@ -158,7 +158,7 @@ varena_grow :: #force_inline proc(self: ^VArena, old_memory: []byte, requested_s
 }
 varena_shrink :: proc(self: ^VArena, memory: []byte, requested_size: int, loc := #caller_location) -> (data: []byte, error: AllocatorError) {
 	if requested_size == len(memory) { return memory, .None }
-	if ensure(memory == nil, "Shrinking without old_memory?") do return memory, .Invalid_Argument
+	if ensure(memory != nil, "Shrinking without old_memory?") do return memory, .Invalid_Argument
 	current_offset := self.reserve_start[self.commit_used:]
 	shrink_amount  := len(memory) - requested_size
 	if shrink_amount < 0 { return memory, .None }
@@ -204,12 +204,16 @@ varena_allocator_proc :: proc(input: AllocatorProc_In, output: ^AllocatorProc_Ou
 		varena_rewind(arena, input.save_point)
 	case .SavePoint:
 		output.save_point = varena_save(arena)
+	case .Is_Owner:
+		output.error = .Mode_Not_Implemented
 	case .Query:
-		output.features   = {.Alloc, .Reset, .Grow, .Shrink, .Rewind}
+		output.features   = {.Alloc, .Reset, .Grow, .Shrink, .Rewind, .Actually_Resize, .Hint_Fast_Bump, .Is_Owner}
 		output.max_alloc  = int(arena.reserved) - arena.commit_used
 		output.min_alloc  = 0
 		output.left       = output.max_alloc
 		output.save_point = varena_save(arena)
+	case .Startup, .Shutdown, .Thread_Start, .Thread_Stop:
+		output.error = .Mode_Not_Implemented
 	}
 }
 varena_odin_allocator_proc :: proc(
@@ -220,21 +224,21 @@ varena_odin_allocator_proc :: proc(
 	old_memory     : rawptr,
 	old_size       : int,
 	location       : SourceCodeLocation = #caller_location
-) -> (data: []byte, alloc_error: AllocatorError)
+) -> (data: []byte, error: Odin_AllocatorError)
 {
+	error_: AllocatorError
 	arena     := transmute( ^VArena) allocator_data
 	page_size := uint(virtual_get_page_size())
 	switch mode {
 	case .Alloc, .Alloc_Non_Zeroed:
-		data, alloc_error = varena_alloc( arena, size, alignment, (mode == .Alloc), location )
-		return
+		data, error_ = varena_alloc( arena, size, alignment, (mode == .Alloc), location )
 	case .Free:
-		alloc_error = .Mode_Not_Implemented
+		error = .Mode_Not_Implemented
 	case .Free_All:
 		varena_reset( arena )
 	case .Resize, .Resize_Non_Zeroed:
-		if size > old_size do varena_grow  (arena, slice(cursor(old_memory), old_size), size, alignment, (mode == .Alloc), location)
-		else               do varena_shrink(arena, slice(cursor(old_memory), old_size), size, location)
+		if size > old_size do data, error_ = varena_grow  (arena, slice(cursor(old_memory), old_size), size, alignment, (mode == .Alloc), location)
+		else               do data, error_ = varena_shrink(arena, slice(cursor(old_memory), old_size), size, location)
 	case .Query_Features:
 		set := cast( ^Odin_AllocatorModeSet) old_memory
 		if set != nil do (set ^) = {.Alloc, .Alloc_Non_Zeroed, .Free_All, .Resize, .Query_Features}
@@ -245,6 +249,7 @@ varena_odin_allocator_proc :: proc(
 		info.alignment = DEFAULT_ALIGNMENT
 		return to_bytes(info), nil
 	}
+	error = transmute(Odin_AllocatorError) error_
 	return
 }
 

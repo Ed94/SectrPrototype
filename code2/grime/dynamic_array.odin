@@ -80,7 +80,7 @@ array_set_capacity :: proc( self : ^Array( $ Type ), new_capacity: int) -> Alloc
 	new_size := header_size + new_capacity  * size_of(Type)
 	old_size := header_size + self.capacity * size_of(Type)
 	new_mem, result_code := mem_resize( slice(transmute(^u8)self.header, old_size), new_size, DEFAULT_ALIGNMENT, ainfo = self.backing )
-	if ensure( result_code != AllocatorError.None, "Failed to allocate for new array capacity" ) {
+	if ensure( result_code == AllocatorError.None, "Failed to allocate for new array capacity" ) {
 		log_print( "Failed to allocate for new array capacity", level = LoggerLevel.Warning )
 		return result_code
 	}
@@ -175,7 +175,7 @@ array_fill :: proc(self: Array($Type), begin, end: u64, value: Type) -> bool {
 }
 
 // Will push  value into the array (will not grow if at capacity, use append instead for when that matters)
-array_push_back :: #force_inline proc "contextless" (self: Array($Type)) -> bool {
+array_push :: #force_inline proc "contextless" (self: Array($Type)) -> bool {
 	if self.num == self.capacity { return false }
 	self.data[self.num] = value
 	self.num           += 1
